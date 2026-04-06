@@ -1,0 +1,21 @@
+{
+  "name": "online-pdf-score-converter",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:www": "npm run dev -w @score/www",
+    "dev:app": "npm run dev -w @score/app",
+    "dev:api": "npm run dev -w @score/api",
+    "dev:worker": "npm run dev -w @score/worker",
+    "build": "npm run build -w @score/shared && npm run build -w @score/api && npm run build -w @score/worker && npm run build -w @score/www && npm run build -w @score/app",
+    "typecheck": "npm run build -w @score/shared && npm run typecheck -w @score/api && npm run typecheck -w @score/worker && npm run typecheck -w @score/www && npm run typecheck -w @score/app"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
