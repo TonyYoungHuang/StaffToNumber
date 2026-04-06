@@ -69,6 +69,10 @@ type NoteheadCandidate = {
   area: number;
   confidence: number;
   staffIndex: number;
+  roundness: number;
+  coreWidth: number;
+  coreHeight: number;
+  coreArea: number;
 };
 
 type AnalyzedNotehead = NoteheadCandidate & {
@@ -96,6 +100,9 @@ type OmrPitchPreview = {
   accidentalCount: number;
   beamCount: number;
   stemmedCount: number;
+  certaintyCount: number;
+  spacingConfidence: number;
+  promotionScore: number;
 };
 
 const db = new DatabaseSync(workerConfig.dbFile);
@@ -452,6 +459,79 @@ function buildStaffSuppressedBinary(pngBuffer: Buffer, diagnostics: OmrDiagnosti
   return { width, height, binary: working };
 }
 
+function refineNoteheadCore(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  candidate: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    x: number;
+    y: number;
+  },
+  staff: StaffGroup,
+) {
+  const targetWidth = Math.max(5, Math.min(candidate.maxX - candidate.minX + 1, Math.round(staff.averageSpacing * 0.95)));
+  const targetHeight = Math.max(5, Math.min(candidate.maxY - candidate.minY + 1, Math.round(staff.averageSpacing * 0.78)));
+  const startX = Math.max(0, Math.floor(candidate.minX - 2));
+  const endX = Math.min(width - targetWidth, Math.ceil(candidate.maxX - targetWidth + 2));
+  const startY = Math.max(0, Math.floor(candidate.minY - 2));
+  const endY = Math.min(height - targetHeight, Math.ceil(candidate.maxY - targetHeight + 2));
+
+  let best = {
+    minX: candidate.minX,
+    maxX: candidate.maxX,
+    minY: candidate.minY,
+    maxY: candidate.maxY,
+    area: Math.max(1, (candidate.maxX - candidate.minX + 1) * (candidate.maxY - candidate.minY + 1)),
+    roundness: 0.5,
+    score: 0,
+  };
+
+  for (let top = startY; top <= endY; top += 1) {
+    for (let left = startX; left <= endX; left += 1) {
+      const region = measureDarkRegion(binary, width, height, left, left + targetWidth - 1, top, top + targetHeight - 1);
+      if (region.darkPixels < Math.max(8, Math.round(staff.averageSpacing * 0.25))) {
+        continue;
+      }
+
+      const centerX = left + (targetWidth / 2);
+      const centerY = top + (targetHeight / 2);
+      const distancePenalty =
+        (Math.abs(centerX - candidate.x) / Math.max(1, targetWidth)) +
+        (Math.abs(centerY - candidate.y) / Math.max(1, targetHeight));
+      const density = region.darkPixels / Math.max(1, region.pixelWidth * region.pixelHeight);
+      const roundness =
+        1 -
+        Math.min(
+          1,
+          Math.abs(region.occupiedColumnCount - region.occupiedRowCount) /
+            Math.max(1, Math.max(region.occupiedColumnCount, region.occupiedRowCount)),
+        );
+      const compactness =
+        Math.min(1, region.occupiedColumnCount / Math.max(1, targetWidth)) *
+        Math.min(1, region.occupiedRowCount / Math.max(1, targetHeight));
+      const score = density * 0.45 + roundness * 0.3 + compactness * 0.2 - Math.min(1, distancePenalty) * 0.15;
+
+      if (score > best.score) {
+        best = {
+          minX: left,
+          maxX: left + targetWidth - 1,
+          minY: top,
+          maxY: top + targetHeight - 1,
+          area: region.darkPixels,
+          roundness: Number(roundness.toFixed(3)),
+          score,
+        };
+      }
+    }
+  }
+
+  return best;
+}
+
 function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagnostics) {
   const { width, height, binary: working } = buildStaffSuppressedBinary(pngBuffer, diagnostics);
 
@@ -548,14 +628,34 @@ function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagn
       }
 
       const staff = diagnostics.staffGroups[matchedStaffIndex];
+      const core = refineNoteheadCore(
+        working,
+        width,
+        height,
+        {
+          minX,
+          maxX,
+          minY,
+          maxY,
+          x: centerX,
+          y: centerY,
+        },
+        staff,
+      );
+      const coreWidth = core.maxX - core.minX + 1;
+      const coreHeight = core.maxY - core.minY + 1;
       const aspectRatio = componentWidth / Math.max(1, componentHeight);
+      const coreAspectRatio = coreWidth / Math.max(1, coreHeight);
       if (
         aspectRatio < 0.55 ||
         aspectRatio > 1.85 ||
         componentWidth < Math.max(4, Math.floor(staff.averageSpacing * 0.24)) ||
         componentWidth > Math.ceil(staff.averageSpacing * 1.2) ||
         componentHeight < Math.max(4, Math.floor(staff.averageSpacing * 0.18)) ||
-        componentHeight > Math.ceil(staff.averageSpacing * 0.95)
+        componentHeight > Math.ceil(staff.averageSpacing * 0.95) ||
+        coreAspectRatio < 0.55 ||
+        coreAspectRatio > 1.75 ||
+        core.roundness < 0.38
       ) {
         continue;
       }
@@ -567,20 +667,28 @@ function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagn
       const shapeScore = 1 - Math.min(1, Math.abs(componentWidth - componentHeight) / Math.max(componentWidth, componentHeight));
       const densityScore = Math.min(1, density / 0.65);
       const columnScore = 1 - Math.min(1, nearestColumnDistance / Math.max(6, staff.averageSpacing * 1.3));
-      const confidence = Number(((shapeScore * 0.35) + (densityScore * 0.35) + (columnScore * 0.3)).toFixed(3));
+      const coreShapeScore = 1 - Math.min(1, Math.abs(coreWidth - coreHeight) / Math.max(coreWidth, coreHeight));
+      const roundnessScore = core.roundness;
+      const confidence = Number(
+        ((shapeScore * 0.2) + (densityScore * 0.22) + (columnScore * 0.24) + (coreShapeScore * 0.18) + (roundnessScore * 0.16)).toFixed(3),
+      );
 
       candidates.push({
-        minX,
-        maxX,
-        minY,
-        maxY,
-        x: Math.round(centerX),
-        y: Math.round(centerY),
-        width: componentWidth,
-        height: componentHeight,
-        area,
+        minX: core.minX,
+        maxX: core.maxX,
+        minY: core.minY,
+        maxY: core.maxY,
+        x: Math.round((core.minX + core.maxX) / 2),
+        y: Math.round((core.minY + core.maxY) / 2),
+        width: coreWidth,
+        height: coreHeight,
+        area: core.area,
         confidence,
         staffIndex: matchedStaffIndex,
+        roundness: roundnessScore,
+        coreWidth,
+        coreHeight,
+        coreArea: core.area,
       });
     }
   }
@@ -691,6 +799,25 @@ function classifyNoteheadFill(binary: Uint8Array, width: number, height: number,
     fillKind,
     fillRatio,
   };
+}
+
+function hasVerticalBarrier(binary: Uint8Array, width: number, height: number, candidate: NoteheadCandidate, staff: StaffGroup) {
+  const spacing = staff.averageSpacing;
+  const region = measureDarkRegion(
+    binary,
+    width,
+    height,
+    candidate.x - Math.max(1, candidate.width * 0.2),
+    candidate.x + Math.max(1, candidate.width * 0.2),
+    candidate.y - spacing * 2.8,
+    candidate.y + spacing * 2.8,
+  );
+
+  return (
+    region.occupiedColumnCount <= Math.max(3, Math.round(spacing * 0.18)) &&
+    region.occupiedRowCount >= Math.round(spacing * 3.2) &&
+    region.darkPixels >= Math.round(spacing * 5)
+  );
 }
 
 function detectStem(
@@ -902,7 +1029,9 @@ function analyzeNoteheads(diagnostics: OmrDiagnostics, pngBuffer: Buffer, notehe
     const fill = classifyNoteheadFill(originalImage.binary, originalImage.width, originalImage.height, candidate);
     const beam = detectBeamOrFlag(binary, width, height, staff, stem);
     const dotted = detectDot(binary, width, height, candidate, staff);
-    const accidental = detectAccidental(binary, width, height, candidate, staff);
+    const accidental = hasVerticalBarrier(binary, width, height, candidate, staff)
+      ? null
+      : detectAccidental(binary, width, height, candidate, staff);
     let duration: DurationValue;
 
     if (stem.direction !== "none") {
@@ -937,12 +1066,55 @@ function analyzeNoteheads(diagnostics: OmrDiagnostics, pngBuffer: Buffer, notehe
   });
 }
 
+function estimateSpacingConfidence(noteheads: AnalyzedNotehead[]) {
+  if (noteheads.length < 4) {
+    return noteheads.length >= 2 ? 0.55 : 0;
+  }
+
+  const gaps = noteheads
+    .slice(1)
+    .map((candidate, index) => candidate.x - noteheads[index].x)
+    .filter((gap) => gap > 0);
+
+  if (gaps.length < 2) {
+    return 0.5;
+  }
+
+  const avgGap = average(gaps);
+  const normalizedDeviation = average(gaps.map((gap) => Math.abs(gap - avgGap) / Math.max(1, avgGap)));
+  return Number(Math.max(0, 1 - Math.min(1, normalizedDeviation * 1.6)).toFixed(3));
+}
+
+function computePromotionScore(noteheads: AnalyzedNotehead[], averageConfidence: number, spacingConfidence: number) {
+  if (noteheads.length === 0) {
+    return 0;
+  }
+
+  const stemRatio = noteheads.filter((candidate) => candidate.stemDirection !== "none").length / noteheads.length;
+  const certaintyRatio = noteheads.filter((candidate) => candidate.fillKind !== "uncertain").length / noteheads.length;
+  const shapeQuality = average(noteheads.map((candidate) => candidate.roundness));
+  const score =
+    averageConfidence * 0.38 +
+    Math.min(1, noteheads.length / 8) * 0.16 +
+    stemRatio * 0.16 +
+    certaintyRatio * 0.14 +
+    spacingConfidence * 0.1 +
+    shapeQuality * 0.06;
+
+  return Number(score.toFixed(3));
+}
+
 function buildOmrPreviewFromDiagnostics(analyzedNoteheads: AnalyzedNotehead[]): OmrPitchPreview {
   const sorted = analyzedNoteheads
     .filter(
       (candidate) =>
-        candidate.confidence >= 0.46 &&
-        (candidate.stemDirection !== "none" || candidate.fillKind !== "uncertain"),
+        candidate.confidence >= 0.5 &&
+        candidate.roundness >= 0.42 &&
+        !(
+          candidate.stemDirection === "none" &&
+          candidate.fillKind === "uncertain" &&
+          candidate.accidental !== null
+        ),
     )
     .sort((left, right) => left.x - right.x || left.y - right.y);
   const tokens = sorted.map((candidate) => candidate.numberedToken);
@@ -960,6 +1132,8 @@ function buildOmrPreviewFromDiagnostics(analyzedNoteheads: AnalyzedNotehead[]): 
   const averageConfidence = sorted.length
     ? Number((sorted.reduce((sum, candidate) => sum + candidate.confidence, 0) / sorted.length).toFixed(3))
     : 0;
+  const spacingConfidence = estimateSpacingConfidence(sorted);
+  const promotionScore = computePromotionScore(sorted, averageConfidence, spacingConfidence);
 
   return {
     tokens,
@@ -971,6 +1145,9 @@ function buildOmrPreviewFromDiagnostics(analyzedNoteheads: AnalyzedNotehead[]): 
     accidentalCount: sorted.filter((candidate) => candidate.accidental !== null).length,
     beamCount: sorted.filter((candidate) => candidate.hasBeamOrFlag).length,
     stemmedCount: sorted.filter((candidate) => candidate.stemDirection !== "none").length,
+    certaintyCount: sorted.filter((candidate) => candidate.fillKind !== "uncertain").length,
+    spacingConfidence,
+    promotionScore,
   };
 }
 
@@ -1075,14 +1252,16 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     diagnostics &&
     omrPreview &&
     diagnostics.staffGroups.length >= 1 &&
-    omrPreview.tokens.length >= 6 &&
-    omrPreview.averageConfidence >= 0.42 &&
-    omrPreview.stemmedCount >= 2
+    omrPreview.tokens.length >= 5 &&
+    omrPreview.averageConfidence >= 0.48 &&
+    omrPreview.stemmedCount >= 2 &&
+    omrPreview.certaintyCount >= Math.max(3, Math.ceil(omrPreview.noteheads.length * 0.45)) &&
+    omrPreview.promotionScore >= 0.62
   ) {
     const previewText = [
-      `OMR final | notes: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence}`,
+      `OMR final | notes: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence} | promotion: ${omrPreview.promotionScore}`,
       `Durations e:${omrPreview.durationCounts.eighth} q:${omrPreview.durationCounts.quarter} h:${omrPreview.durationCounts.half} w:${omrPreview.durationCounts.whole}`,
-      `Symbols dots:${omrPreview.dottedCount} accidentals:${omrPreview.accidentalCount} flags/beams:${omrPreview.beamCount}`,
+      `Symbols dots:${omrPreview.dottedCount} accidentals:${omrPreview.accidentalCount} flags/beams:${omrPreview.beamCount} | spacing:${omrPreview.spacingConfidence}`,
       ...omrPreview.groupedLines.slice(0, 4),
     ].join(NEWLINE);
     const pdfBuffer = await buildResultPdf({
@@ -1093,10 +1272,11 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
         "",
         `Detected noteheads: ${omrPreview.noteheads.length}`,
         `Average confidence: ${omrPreview.averageConfidence}`,
+        `Promotion score: ${omrPreview.promotionScore} | spacing confidence: ${omrPreview.spacingConfidence}`,
         `Durations -> eighth: ${omrPreview.durationCounts.eighth}, quarter: ${omrPreview.durationCounts.quarter}, half: ${omrPreview.durationCounts.half}, whole: ${omrPreview.durationCounts.whole}`,
-        `Symbols -> dots: ${omrPreview.dottedCount}, accidentals: ${omrPreview.accidentalCount}, flags/beams: ${omrPreview.beamCount}`,
+        `Symbols -> dots: ${omrPreview.dottedCount}, accidentals: ${omrPreview.accidentalCount}, flags/beams: ${omrPreview.beamCount}, certain noteheads: ${omrPreview.certaintyCount}`,
       ],
-      footer: "Module 5C prototype: notehead fill, stem direction, duration, dot, accidental, and beam-like signals were strong enough to produce a numbered preview.",
+      footer: "Module 5D prototype: refined notehead cores, symbol-noise filtering, and structured promotion scoring were strong enough to produce a numbered preview.",
     });
     const outputPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-numbered-omr.pdf`);
     fs.writeFileSync(outputPath, pdfBuffer);
@@ -1119,7 +1299,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
   }
 
   const previewText = omrPreview
-    ? `OMR draft | staff groups: ${diagnostics?.staffGroups.length ?? 0} | noteheads: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence} | durations e:${omrPreview.durationCounts.eighth} q:${omrPreview.durationCounts.quarter} h:${omrPreview.durationCounts.half} w:${omrPreview.durationCounts.whole}`
+    ? `OMR draft | staff groups: ${diagnostics?.staffGroups.length ?? 0} | noteheads: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence} | promotion: ${omrPreview.promotionScore} | durations e:${omrPreview.durationCounts.eighth} q:${omrPreview.durationCounts.quarter} h:${omrPreview.durationCounts.half} w:${omrPreview.durationCounts.whole}`
     : diagnostics
       ? `OMR draft | staff groups: ${diagnostics.staffGroups.length} | candidate lines: ${diagnostics.lineCenters.length}`
       : rawText
@@ -1150,6 +1330,9 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     omrPreview
       ? `Accidental detections: ${omrPreview.accidentalCount} | beam/flag detections: ${omrPreview.beamCount}`
       : "Accidental detections: unavailable",
+    omrPreview
+      ? `Promotion score: ${omrPreview.promotionScore} | spacing confidence: ${omrPreview.spacingConfidence} | certain noteheads: ${omrPreview.certaintyCount}`
+      : "Promotion score: unavailable",
     diagnostics && diagnostics.staffGroups[0]
       ? `First staff candidate columns: ${diagnostics.staffGroups[0].noteCandidateColumns.slice(0, 12).join(", ") || "none"}`
       : "First staff candidate columns: unavailable",
@@ -1162,7 +1345,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     title: "Numbered notation draft",
     subtitle: `Manual correction required for ${inputFile.original_name}`,
     lines: draftLines,
-    footer: "Module 5C prototype: screenshot diagnostics plus duration/basic-symbol analysis are attached for manual review.",
+    footer: "Module 5D prototype: screenshot diagnostics plus structural filtering, duration analysis, and promotion scoring are attached for manual review.",
   });
   const draftPdfPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-draft.pdf`);
   fs.writeFileSync(draftPdfPath, draftPdfBuffer);
@@ -1188,7 +1371,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
           omrDiagnostics: diagnostics,
           omrPitchPreview: omrPreview,
           analyzedNoteheads: analyzedNoteheads,
-          recommendation: "Review the diagnostics and correct the draft numbered notation. Module 6 can package the final delivery flow.",
+          recommendation: "Review the diagnostics and correct the draft numbered notation. Module 5D adds structural filtering and promotion scoring, while later modules can improve delivery and editing.",
         },
         null,
         2,
