@@ -90,7 +90,7 @@ Module 5 now has four iterative recognition layers for `staff_pdf_to_numbered`:
 - `5A`: text-layer heuristic extraction for PDFs that contain parseable note letters
 - `5B`: first OMR preprocessing path that renders the first PDF page to an image, detects likely staff lines, finds notehead candidates, estimates pitch levels from staff spacing, and either upgrades the result to a numbered preview or packages diagnostics into a draft bundle
 - `5C`: duration and basic-symbol prototype that adds notehead fill analysis, stem direction estimation, and first-pass dot / accidental / beam-like detection to enrich the numbered preview
-- `5D`: structure-cleanup prototype that refines notehead cores, filters symbol noise more aggressively, and replaces the simple final-promotion rule with a structured promotion score
+- `5D`: structure-cleanup prototype that refines notehead cores, adds first-pass connected-cluster splitting, filters symbol noise more aggressively, and replaces the simple final-promotion rule with a structured promotion score
 
 ### Development seed code
 
