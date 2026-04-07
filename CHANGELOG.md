@@ -7,6 +7,7 @@ All notable project updates are recorded here.
 ### Changed
 
 - continued Module 5D with first-pass connected-cluster splitting for glued notehead/stem/accidental components
+- continued Module 5D with first valley-based sub-bounding-box subdivision before local notehead-core extraction
 - tightened final promotion gating with a minimum spacing-confidence check
 - verified that a dense connected synthetic sample now stays in `draft` instead of being over-promoted to `final`
 
@@ -16,6 +17,8 @@ All notable project updates are recorded here.
 - `npm run build`
 - clean synthetic verification job: `43310f76-e76a-4fd9-9f2c-838b17649d1f`
 - dense connected synthetic verification job: `639478ab-03bb-491f-b11c-272834585a23`
+- valley clean verification job: `d3a9d86d-d804-4177-aa29-4a34a86d9612`
+- valley dense verification job: `c0993dc4-9747-4339-a6ca-90737206cd3b`
 
 ## 2026-04-06
 

@@ -75,6 +75,16 @@ type NoteheadCandidate = {
   coreArea: number;
 };
 
+type DetectedComponent = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  x: number;
+  y: number;
+  area: number;
+};
+
 type AnalyzedNotehead = NoteheadCandidate & {
   stemDirection: "up" | "down" | "none";
   stemSide: "left" | "right" | "none";
@@ -644,6 +654,148 @@ function collectNoteheadSeeds(
   return selectedSeeds.length ? selectedSeeds : [{ x: Math.round(component.x), y: Math.round(component.y), score: 0.4 }];
 }
 
+function tightenComponentBounds(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  bounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  },
+) {
+  let minX = bounds.maxX;
+  let maxX = bounds.minX;
+  let minY = bounds.maxY;
+  let maxY = bounds.minY;
+  let area = 0;
+  let sumX = 0;
+  let sumY = 0;
+
+  for (let y = Math.max(0, bounds.minY); y <= Math.min(height - 1, bounds.maxY); y += 1) {
+    for (let x = Math.max(0, bounds.minX); x <= Math.min(width - 1, bounds.maxX); x += 1) {
+      if (!binary[y * width + x]) {
+        continue;
+      }
+
+      area += 1;
+      sumX += x;
+      sumY += y;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (area === 0) {
+    return null;
+  }
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    x: sumX / area,
+    y: sumY / area,
+    area,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+  };
+}
+
+function subdivideComponentByValleys(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  component: DetectedComponent,
+  staff: StaffGroup,
+  depth = 0,
+): DetectedComponent[] {
+  const spacing = staff.averageSpacing;
+  const componentWidth = component.maxX - component.minX + 1;
+  if (depth >= 2 || componentWidth < Math.round(spacing * 1.5)) {
+    return [component];
+  }
+
+  const columnProfile = Array.from({ length: componentWidth }, (_, offset) => {
+    const x = component.minX + offset;
+    let darkPixels = 0;
+    for (let y = component.minY; y <= component.maxY; y += 1) {
+      if (binary[y * width + x]) {
+        darkPixels += 1;
+      }
+    }
+    return darkPixels;
+  });
+  const smoothedProfile = columnProfile.map((_, index) =>
+    average(columnProfile.slice(Math.max(0, index - 2), Math.min(columnProfile.length, index + 3))),
+  );
+  const peak = Math.max(...smoothedProfile, 0);
+  const valleyThreshold = Math.max(1.1, peak * 0.28);
+  const minSegmentWidth = Math.max(6, Math.round(spacing * 0.55));
+  const candidateCuts = smoothedProfile
+    .map((value, index) => ({ value, index }))
+    .filter((entry, index) => {
+      if (index < minSegmentWidth || index > smoothedProfile.length - minSegmentWidth - 1) {
+        return false;
+      }
+      if (entry.value > valleyThreshold) {
+        return false;
+      }
+      const left = smoothedProfile[index - 1];
+      const right = smoothedProfile[index + 1];
+      return entry.value <= left && entry.value <= right;
+    })
+    .map((entry) => entry.index);
+
+  const groupedCuts = groupAdjacentNumbers(candidateCuts, 2).map((group) => Math.round(average(group)));
+  if (groupedCuts.length === 0) {
+    return [component];
+  }
+
+  const segments: DetectedComponent[] = [];
+  let segmentStart = component.minX;
+
+  for (const cut of groupedCuts) {
+    const segmentEnd = component.minX + cut - 1;
+    if (segmentEnd - segmentStart + 1 < minSegmentWidth) {
+      continue;
+    }
+
+    const tightened = tightenComponentBounds(binary, width, height, {
+      minX: segmentStart,
+      maxX: segmentEnd,
+      minY: component.minY,
+      maxY: component.maxY,
+    });
+    if (tightened && tightened.width >= 4 && tightened.height >= 4) {
+      segments.push(tightened);
+    }
+    segmentStart = component.minX + cut + 1;
+  }
+
+  if (component.maxX - segmentStart + 1 >= minSegmentWidth) {
+    const tightened = tightenComponentBounds(binary, width, height, {
+      minX: segmentStart,
+      maxX: component.maxX,
+      minY: component.minY,
+      maxY: component.maxY,
+    });
+    if (tightened && tightened.width >= 4 && tightened.height >= 4) {
+      segments.push(tightened);
+    }
+  }
+
+  if (segments.length < 2) {
+    return [component];
+  }
+
+  return segments.flatMap((segment) => subdivideComponentByValleys(binary, width, height, segment, staff, depth + 1));
+}
+
 function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagnostics) {
   const { width, height, binary: working } = buildStaffSuppressedBinary(pngBuffer, diagnostics);
 
@@ -745,7 +897,7 @@ function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagn
         continue;
       }
 
-      const componentSeeds = collectNoteheadSeeds(
+      const subcomponents = subdivideComponentByValleys(
         working,
         width,
         height,
@@ -756,80 +908,101 @@ function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagn
           maxY,
           x: centerX,
           y: centerY,
+          area,
         },
         staff,
       );
 
-      for (const seed of componentSeeds) {
-        const core = refineNoteheadCore(
-          working,
-          width,
-          height,
-          {
-            minX,
-            maxX,
-            minY,
-            maxY,
-            x: seed.x,
-            y: seed.y,
-          },
-          staff,
-        );
-        const coreWidth = core.maxX - core.minX + 1;
-        const coreHeight = core.maxY - core.minY + 1;
-        const coreAspectRatio = coreWidth / Math.max(1, coreHeight);
+      for (const subcomponent of subcomponents) {
+        const subcomponentWidth = subcomponent.maxX - subcomponent.minX + 1;
+        const subcomponentHeight = subcomponent.maxY - subcomponent.minY + 1;
+        const subcomponentDensity = subcomponent.area / Math.max(1, subcomponentWidth * subcomponentHeight);
         if (
-          coreWidth < Math.max(4, Math.floor(staff.averageSpacing * 0.22)) ||
-          coreWidth > Math.ceil(staff.averageSpacing * 1.05) ||
-          coreHeight < Math.max(4, Math.floor(staff.averageSpacing * 0.18)) ||
-          coreHeight > Math.ceil(staff.averageSpacing * 0.88) ||
-          coreAspectRatio < 0.55 ||
-          coreAspectRatio > 1.75 ||
-          core.roundness < 0.38
+          subcomponentWidth < 4 ||
+          subcomponentHeight < 4 ||
+          subcomponentWidth > 88 ||
+          subcomponentHeight > 88 ||
+          subcomponentDensity < 0.15
         ) {
           continue;
         }
 
-        const coreCenterX = (core.minX + core.maxX) / 2;
-        const nearestColumnDistance =
-          staff.noteCandidateColumns.length > 0
-            ? Math.min(...staff.noteCandidateColumns.map((column) => Math.abs(column - coreCenterX)))
-            : staff.averageSpacing * 2;
-        const shapeScore =
-          1 - Math.min(1, Math.abs(componentWidth - componentHeight) / Math.max(componentWidth, componentHeight));
-        const densityScore = Math.min(1, density / 0.65);
-        const columnScore = 1 - Math.min(1, nearestColumnDistance / Math.max(6, staff.averageSpacing * 1.3));
-        const coreShapeScore = 1 - Math.min(1, Math.abs(coreWidth - coreHeight) / Math.max(coreWidth, coreHeight));
-        const roundnessScore = core.roundness;
-        const seedScore = seed.score;
-        const confidence = Number(
-          (
-            shapeScore * 0.14 +
-            densityScore * 0.16 +
-            columnScore * 0.22 +
-            coreShapeScore * 0.18 +
-            roundnessScore * 0.18 +
-            seedScore * 0.12
-          ).toFixed(3),
-        );
+        const componentSeeds = collectNoteheadSeeds(working, width, height, subcomponent, staff);
 
-        candidates.push({
-          minX: core.minX,
-          maxX: core.maxX,
-          minY: core.minY,
-          maxY: core.maxY,
-          x: Math.round(coreCenterX),
-          y: Math.round((core.minY + core.maxY) / 2),
-          width: coreWidth,
-          height: coreHeight,
-          area: core.area,
-          confidence,
-          staffIndex: matchedStaffIndex,
-          roundness: roundnessScore,
-          coreWidth,
-          coreHeight,
-          coreArea: core.area,
-        });
+        for (const seed of componentSeeds) {
+          const core = refineNoteheadCore(
+            working,
+            width,
+            height,
+            {
+              minX: subcomponent.minX,
+              maxX: subcomponent.maxX,
+              minY: subcomponent.minY,
+              maxY: subcomponent.maxY,
+              x: seed.x,
+              y: seed.y,
+            },
+            staff,
+          );
+          const coreWidth = core.maxX - core.minX + 1;
+          const coreHeight = core.maxY - core.minY + 1;
+          const coreAspectRatio = coreWidth / Math.max(1, coreHeight);
+          if (
+            coreWidth < Math.max(4, Math.floor(staff.averageSpacing * 0.22)) ||
+            coreWidth > Math.ceil(staff.averageSpacing * 1.05) ||
+            coreHeight < Math.max(4, Math.floor(staff.averageSpacing * 0.18)) ||
+            coreHeight > Math.ceil(staff.averageSpacing * 0.88) ||
+            coreAspectRatio < 0.55 ||
+            coreAspectRatio > 1.75 ||
+            core.roundness < 0.38
+          ) {
+            continue;
+          }
+
+          const coreCenterX = (core.minX + core.maxX) / 2;
+          const nearestColumnDistance =
+            staff.noteCandidateColumns.length > 0
+              ? Math.min(...staff.noteCandidateColumns.map((column) => Math.abs(column - coreCenterX)))
+              : staff.averageSpacing * 2;
+          const shapeScore =
+            1 - Math.min(1, Math.abs(subcomponentWidth - subcomponentHeight) / Math.max(subcomponentWidth, subcomponentHeight));
+          const densityScore = Math.min(1, subcomponentDensity / 0.65);
+          const columnScore = 1 - Math.min(1, nearestColumnDistance / Math.max(6, staff.averageSpacing * 1.3));
+          const coreShapeScore = 1 - Math.min(1, Math.abs(coreWidth - coreHeight) / Math.max(coreWidth, coreHeight));
+          const roundnessScore = core.roundness;
+          const seedScore = seed.score;
+          const subdivisionBonus = subcomponents.length > 1 ? 0.06 : 0;
+          const confidence = Number(
+            Math.min(
+              1,
+              shapeScore * 0.12 +
+                densityScore * 0.16 +
+                columnScore * 0.22 +
+                coreShapeScore * 0.18 +
+                roundnessScore * 0.18 +
+                seedScore * 0.12 +
+                subdivisionBonus,
+            ).toFixed(3),
+          );
+
+          candidates.push({
+            minX: core.minX,
+            maxX: core.maxX,
+            minY: core.minY,
+            maxY: core.maxY,
+            x: Math.round(coreCenterX),
+            y: Math.round((core.minY + core.maxY) / 2),
+            width: coreWidth,
+            height: coreHeight,
+            area: core.area,
+            confidence,
+            staffIndex: matchedStaffIndex,
+            roundness: roundnessScore,
+            coreWidth,
+            coreHeight,
+            coreArea: core.area,
+          });
+        }
       }
     }
   }

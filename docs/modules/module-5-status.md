@@ -30,6 +30,7 @@ Turn `staff_pdf_to_numbered` from a placeholder worker flow into a usable staged
 
 - refined notehead core extraction
 - first-pass connected-cluster splitting for glued notehead/stem/accidental components
+- valley-based sub-bounding-box subdivision before local notehead refinement
 - structural noise filtering
 - promotion score replaces overly simple final gating
 - richer diagnostics for why a sample stays draft
