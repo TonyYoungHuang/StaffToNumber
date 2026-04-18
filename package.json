@@ -12,6 +12,7 @@
     "dev:app": "npm run dev -w @score/app",
     "dev:api": "npm run dev -w @score/api",
     "dev:worker": "npm run dev -w @score/worker",
+    "evaluate:samples": "npm run build -w @score/worker && npm run evaluate:samples -w @score/worker",
     "build": "npm run build -w @score/shared && npm run build -w @score/api && npm run build -w @score/worker && npm run build -w @score/www && npm run build -w @score/app",
     "typecheck": "npm run build -w @score/shared && npm run typecheck -w @score/api && npm run typecheck -w @score/worker && npm run typecheck -w @score/www && npm run typecheck -w @score/app"
   },

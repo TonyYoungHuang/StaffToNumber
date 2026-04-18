@@ -2,6 +2,27 @@
 
 All notable project updates are recorded here.
 
+## 2026-04-18
+
+### Added
+
+- Module 5 sample evaluation framework under `samples/clean`, `samples/draft`, `samples/fail`, and `samples/reports/`
+- `services/worker/src/evaluate-samples.ts` to run worker regressions against the tracked sample manifest
+- `docs/modules/module-5-evaluation.md` to document the sample/evaluation workflow
+
+### Changed
+
+- continued Module 5D into early Module 5E with stronger fragment filtering and sequence smoothing
+- stabilized pitch, duration, and accidental heuristics in `services/worker/src/index.ts`
+- extended the worker to aggregate up to three PDF pages into one OMR preview
+- updated repository docs to reflect the sample framework and current Module 5E focus
+
+### Verified
+
+- `npm run evaluate:samples`
+- `npm run typecheck`
+- `npm run build`
+
 ## 2026-04-07
 
 ### Changed

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "notes-source",
+      "category": "clean",
+      "file": "samples/clean/notes-source.pdf",
+      "expectedResultKind": "final",
+      "notes": "Text-layer sample that should stay confidently final."
+    },
+    {
+      "id": "valley-clean",
+      "category": "clean",
+      "file": "samples/clean/verify-5d-valley-clean.pdf",
+      "expectedResultKind": "final",
+      "notes": "Synthetic clean staff sample for stable final promotion."
+    },
+    {
+      "id": "staff-lines",
+      "category": "draft",
+      "file": "samples/draft/staff-lines.pdf",
+      "expectedResultKind": "draft",
+      "notes": "Simple staff-line image sample that should remain draft."
+    },
+    {
+      "id": "valley-dense",
+      "category": "draft",
+      "file": "samples/draft/verify-5d-valley-dense.pdf",
+      "expectedResultKind": "draft",
+      "notes": "Dense connected sample that should not be over-promoted."
+    },
+    {
+      "id": "blank-page",
+      "category": "fail",
+      "file": "samples/fail/blank-page.pdf",
+      "expectedResultKind": "draft",
+      "notes": "Intentionally unusable blank PDF; any final result is a regression."
+    }
+  ]
+}

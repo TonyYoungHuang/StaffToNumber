@@ -40,16 +40,26 @@ Turn `staff_pdf_to_numbered` from a placeholder worker flow into a usable staged
 - promotion score replaces overly simple final gating
 - richer diagnostics for why a sample stays draft
 
+### 5E
+
+- repeatable sample framework under `samples/clean`, `samples/draft`, and `samples/fail`
+- evaluator that records `latest` and timestamped history snapshots after each recognition change
+- multi-page aggregation for up to three PDF pages per job
+- stronger fragment rejection for text-like or weak symbol remnants
+- sequence smoothing for pitch and duration outliers inside each staff
+- more conservative accidental stabilization rules for `#` and `b`
+
 ## What is still not done in Module 5
 
-- reliable connected-symbol splitting
+- reliable connected-symbol splitting on complex real scans
 - strong barline/rest classification
-- multi-page and multi-staff-group sequencing robustness
-- production-grade accidental recognition
-- production-grade duration recognition
+- more robust multi-staff ordering on dense real-world layouts
+- production-grade accidental recognition with barline awareness
+- production-grade duration recognition beyond the current heuristic prototype
 
 ## Exit criteria for moving beyond Module 5
 
 - draft/final decision becomes meaningfully stable on mixed synthetic and real samples
+- sample evaluator shows stable or improving `final` / `draft` outcomes across tracked inputs
 - draft bundles provide enough signal for fast manual correction
 - worker can handle common clean treble-clef PDFs without obvious over-detection

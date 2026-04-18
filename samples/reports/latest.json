@@ -1,0 +1,88 @@
+{
+  "generatedAt": "2026-04-18T13:09:35.365Z",
+  "runId": "2026-04-18T13-09-29",
+  "results": [
+    {
+      "id": "notes-source",
+      "category": "clean",
+      "file": "samples/clean/notes-source.pdf",
+      "expectedResultKind": "final",
+      "status": "completed",
+      "resultKind": "final",
+      "matchedExpectation": true,
+      "previewHash": "95a33f145e",
+      "previewText": "1 2 3 4 5 6 7 1 6 5 4 3\n2 1",
+      "noteCount": 14,
+      "promotionScore": null,
+      "changedSinceLastRun": false,
+      "notes": "Text-layer sample that should stay confidently final."
+    },
+    {
+      "id": "valley-clean",
+      "category": "clean",
+      "file": "samples/clean/verify-5d-valley-clean.pdf",
+      "expectedResultKind": "final",
+      "status": "completed",
+      "resultKind": "final",
+      "matchedExpectation": true,
+      "previewHash": "294c4d14e4",
+      "previewText": "OMR final | pages: 1 | staff groups: 1 | notes: 9 | avg confidence: 0.749 | promotion: 0.747\nDurations e:2 q:3 h:2 w:2\nSymbols dots:0 accidentals:1 flags/beams:2 | spacing:0.18\n1'(q) 1'(h) #7(q) 6(w) 1'(w) 3'(e) 1''(e) 4(q) 1'(h)",
+      "noteCount": 9,
+      "promotionScore": 0.747,
+      "changedSinceLastRun": true,
+      "notes": "Synthetic clean staff sample for stable final promotion."
+    },
+    {
+      "id": "staff-lines",
+      "category": "draft",
+      "file": "samples/draft/staff-lines.pdf",
+      "expectedResultKind": "draft",
+      "status": "completed",
+      "resultKind": "draft",
+      "matchedExpectation": true,
+      "previewHash": "74d09ab5e9",
+      "previewText": "OMR draft | pages: 1 | staff groups: 1 | noteheads: 4 | avg confidence: 0.83 | promotion: 0.662 | durations e:0 q:4 h:0 w:0",
+      "noteCount": null,
+      "promotionScore": 0.662,
+      "changedSinceLastRun": true,
+      "notes": "Simple staff-line image sample that should remain draft."
+    },
+    {
+      "id": "valley-dense",
+      "category": "draft",
+      "file": "samples/draft/verify-5d-valley-dense.pdf",
+      "expectedResultKind": "draft",
+      "status": "completed",
+      "resultKind": "draft",
+      "matchedExpectation": true,
+      "previewHash": "11b5533d42",
+      "previewText": "OMR draft | pages: 1 | staff groups: 1 | noteheads: 10 | avg confidence: 0.77 | promotion: 0.727 | durations e:3 q:2 h:3 w:2",
+      "noteCount": null,
+      "promotionScore": 0.727,
+      "changedSinceLastRun": true,
+      "notes": "Dense connected sample that should not be over-promoted."
+    },
+    {
+      "id": "blank-page",
+      "category": "fail",
+      "file": "samples/fail/blank-page.pdf",
+      "expectedResultKind": "draft",
+      "status": "completed",
+      "resultKind": "draft",
+      "matchedExpectation": true,
+      "previewHash": "5a13d86bdc",
+      "previewText": "OMR draft | pages: 0 | staff groups: 0 | noteheads: 0 | avg confidence: 0 | promotion: 0 | durations e:0 q:0 h:0 w:0",
+      "noteCount": null,
+      "promotionScore": 0,
+      "changedSinceLastRun": true,
+      "notes": "Intentionally unusable blank PDF; any final result is a regression."
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "matched": 5,
+    "cleanFinal": 2,
+    "draftDraft": 2,
+    "failNonFinal": 1
+  }
+}
