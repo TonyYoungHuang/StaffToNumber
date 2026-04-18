@@ -92,6 +92,11 @@ Module 5 now has four iterative recognition layers for `staff_pdf_to_numbered`:
 - `5C`: duration and basic-symbol prototype that adds notehead fill analysis, stem direction estimation, and first-pass dot / accidental / beam-like detection to enrich the numbered preview
 - `5D`: structure-cleanup prototype that refines notehead cores, adds first-pass connected-cluster splitting plus valley-based sub-bounding-box subdivision, filters symbol noise more aggressively, and replaces the simple final-promotion rule with a structured promotion score
 
+Current exposure:
+
+- only `staff_pdf_to_numbered` is available in the UI and API
+- `numbered_pdf_to_staff` is deferred to a later module and is not exposed to users yet
+
 ### Development seed code
 
 The API seeds one activation code by default:

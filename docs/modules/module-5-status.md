@@ -4,6 +4,11 @@
 
 Turn `staff_pdf_to_numbered` from a placeholder worker flow into a usable staged-recognition pipeline for image and text PDFs.
 
+## Current exposure
+
+- only `staff_pdf_to_numbered` is exposed in the UI and API
+- `numbered_pdf_to_staff` is deferred and hidden from users
+
 ## Current stage summary
 
 ### 5A

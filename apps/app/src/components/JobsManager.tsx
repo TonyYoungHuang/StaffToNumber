@@ -36,10 +36,10 @@ export function JobsManager() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [selectedFileId, setSelectedFileId] = useState("");
-  const [direction, setDirection] = useState<ConversionDirection>("staff_pdf_to_numbered");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const direction: ConversionDirection = "staff_pdf_to_numbered";
 
   async function loadData() {
     if (!token) {
@@ -158,7 +158,7 @@ export function JobsManager() {
         <p style={eyebrowStyle}>Create conversion job</p>
         <h2 style={{ marginTop: 0 }}>Queue a task</h2>
         <p style={{ color: "#516174", lineHeight: 1.6 }}>
-          Module 4 creates a reusable task model, and Module 5 now plugs a first staff PDF to numbered-notation engine into it.
+          Module 4 creates a reusable task model, and Module 5 currently exposes only staff PDF to numbered-notation conversion.
         </p>
         <label style={labelStyle}>
           <span>Input file</span>
@@ -171,13 +171,10 @@ export function JobsManager() {
             ))}
           </select>
         </label>
-        <label style={labelStyle}>
+        <div style={labelStyle}>
           <span>Direction</span>
-          <select value={direction} onChange={(event) => setDirection(event.target.value as ConversionDirection)} style={inputStyle}>
-            <option value="staff_pdf_to_numbered">Staff PDF to numbered notation</option>
-            <option value="numbered_pdf_to_staff">Numbered notation PDF to staff</option>
-          </select>
-        </label>
+          <div style={lockedDirectionStyle}>Staff PDF to numbered notation</div>
+        </div>
         <button type="submit" disabled={submitting} style={buttonStyle}>
           {submitting ? "Creating..." : "Create job"}
         </button>
@@ -282,6 +279,12 @@ const inputStyle: React.CSSProperties = {
   borderRadius: "14px",
   padding: "12px 14px",
   fontSize: "16px",
+};
+
+const lockedDirectionStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: "#f4f7fb",
+  color: "#4f6277",
 };
 
 const eyebrowStyle: React.CSSProperties = {

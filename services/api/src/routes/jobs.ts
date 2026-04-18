@@ -5,7 +5,7 @@ import { findStoredFileById } from "../repositories/file-repository.js";
 import { createJob, findJobById, listJobsByUserId, mapJobForApi } from "../repositories/job-repository.js";
 
 function isDirection(value: unknown): value is ConversionDirection {
-  return value === "staff_pdf_to_numbered" || value === "numbered_pdf_to_staff";
+  return value === "staff_pdf_to_numbered";
 }
 
 export async function jobRoutes(app: FastifyInstance) {
@@ -51,7 +51,7 @@ export async function jobRoutes(app: FastifyInstance) {
 
       const body = (request.body ?? {}) as { inputFileId?: string; direction?: ConversionDirection };
       if (!body.inputFileId || !isDirection(body.direction)) {
-        return reply.code(400).send({ error: "inputFileId and direction are required." });
+        return reply.code(400).send({ error: "Only staff PDF to numbered notation is currently supported." });
       }
 
       const inputFile = findStoredFileById(body.inputFileId);
