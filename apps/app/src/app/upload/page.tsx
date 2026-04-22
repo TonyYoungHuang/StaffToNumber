@@ -4,27 +4,28 @@ import { UploadManager } from "../../components/UploadManager";
 
 export default function UploadPage() {
   return (
-    <main style={{ maxWidth: "960px", margin: "0 auto", padding: "64px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-        <div>
-          <p style={{ textTransform: "uppercase", letterSpacing: "0.1em", color: "#516174" }}>Module 3</p>
-          <h1 style={{ fontSize: "44px", margin: "12px 0 24px" }}>File upload and storage</h1>
+    <section className="container page-shell">
+      <div className="page-banner split">
+        <div className="stack-md">
+          <p className="eyebrow">Module 3</p>
+          <h1 className="page-title">File upload and source storage.</h1>
+          <p className="body-copy large">
+            Upload staff PDFs into the studio, keep them reusable, and prepare clean inputs for the conversion job queue.
+          </p>
         </div>
-        <Link href={APP_ROUTES.jobs} style={linkStyle}>Go to jobs</Link>
+        <div className="stack-md">
+          <div className="page-banner-actions">
+            <Link href={APP_ROUTES.jobs} className="button button-primary">
+              Go to jobs
+            </Link>
+            <Link href={APP_ROUTES.dashboard} className="button button-secondary">
+              Open dashboard
+            </Link>
+          </div>
+          <p className="micro-copy">Current live acceptance remains PDF only, matching the app scope you confirmed for v2.</p>
+        </div>
       </div>
       <UploadManager />
-    </main>
+    </section>
   );
 }
-
-const linkStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "12px 18px",
-  borderRadius: "999px",
-  textDecoration: "none",
-  background: "#12202f",
-  color: "#ffffff",
-  fontWeight: 600,
-};

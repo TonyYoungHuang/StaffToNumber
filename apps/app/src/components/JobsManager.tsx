@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { ConversionDirection } from "@score/shared";
+import { APP_ROUTES } from "@score/shared";
+import { DotIcon, DownloadIcon, FileStackIcon, SparkIcon, StatusPill } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 
@@ -152,173 +155,319 @@ export function JobsManager() {
     window.URL.revokeObjectURL(url);
   }
 
-  return (
-    <div style={{ display: "grid", gap: "24px" }}>
-      <form onSubmit={handleCreateJob} style={panelStyle}>
-        <p style={eyebrowStyle}>Create conversion job</p>
-        <h2 style={{ marginTop: 0 }}>Queue a task</h2>
-        <p style={{ color: "#516174", lineHeight: 1.6 }}>
-          Module 4 creates a reusable task model, and Module 5 currently exposes only staff PDF to numbered-notation conversion.
-        </p>
-        <label style={labelStyle}>
-          <span>Input file</span>
-          <select value={selectedFileId} onChange={(event) => setSelectedFileId(event.target.value)} style={inputStyle}>
-            <option value="">Select an uploaded PDF</option>
-            {files.map((file) => (
-              <option key={file.id} value={file.id}>
-                {file.originalName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div style={labelStyle}>
-          <span>Direction</span>
-          <div style={lockedDirectionStyle}>Staff PDF to numbered notation</div>
-        </div>
-        <button type="submit" disabled={submitting} style={buttonStyle}>
-          {submitting ? "Creating..." : "Create job"}
-        </button>
-        {status ? <p style={{ marginBottom: 0, color: "#435364" }}>{status}</p> : null}
-      </form>
+  const summary = {
+    queued: jobs.filter((job) => job.status === "queued").length,
+    processing: jobs.filter((job) => job.status === "processing").length,
+    completed: jobs.filter((job) => job.status === "completed").length,
+  };
+  const statusTone = status ? (status.toLowerCase().includes("created job") ? "success" : "error") : null;
+  const latestJob = jobs[0] ?? null;
+  const selectedFile = files.find((file) => file.id === selectedFileId) ?? null;
+  const latestResultTone = latestJob ? mapResultTone(latestJob.resultKind) : "neutral";
+  const latestResultClass = latestJob ? latestJob.resultKind : "none";
 
-      <section style={panelStyle}>
-        <p style={eyebrowStyle}>Jobs</p>
-        <h2 style={{ marginTop: 0 }}>Recent tasks</h2>
-        {loading ? <p>Loading jobs...</p> : null}
-        {!loading && jobs.length === 0 ? <p style={{ color: "#516174" }}>No jobs created yet.</p> : null}
-        <div style={{ display: "grid", gap: "12px" }}>
-          {jobs.map((job) => {
-            const file = files.find((item) => item.id === job.inputFileId);
-            return (
-              <div key={job.id} style={jobRowStyle}>
-                <div style={{ display: "grid", gap: "8px", flex: 1 }}>
-                  <div style={{ fontWeight: 700 }}>{file?.originalName ?? job.inputFileId}</div>
-                  <div style={{ color: "#516174", fontSize: "14px" }}>
-                    {job.direction} | status: {job.status} | created: {new Date(job.createdAt).toLocaleString()}
+  return (
+    <div className="page-stack">
+      <div className="summary-grid">
+        <div className="metric-card">
+          <p className="metric-label">Queued</p>
+          <p className="metric-value">{summary.queued}</p>
+          <p className="helper-copy">Waiting for worker pickup.</p>
+        </div>
+        <div className="metric-card">
+          <p className="metric-label">Processing</p>
+          <p className="metric-value">{summary.processing}</p>
+          <p className="helper-copy">Actively generating preview and output package.</p>
+        </div>
+        <div className="metric-card">
+          <p className="metric-label">Completed</p>
+          <p className="metric-value">{summary.completed}</p>
+          <p className="helper-copy">Ready for final PDF or draft bundle download.</p>
+        </div>
+      </div>
+
+      <section className="surface-panel studio-split">
+        <form onSubmit={handleCreateJob} className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">Create conversion job</p>
+            <h2 className="card-title">Queue a staff-to-numbered run</h2>
+            <p className="body-copy">
+              This panel now follows the Stitch converter rhythm: choose an uploaded source, keep the direction locked, and hand the PDF into the queue.
+            </p>
+          </div>
+
+          <label className="field-group">
+            <span className="field-label">Input file</span>
+            <select className="field-select" value={selectedFileId} onChange={(event) => setSelectedFileId(event.target.value)}>
+              <option value="">Select an uploaded PDF</option>
+              {files.map((file) => (
+                <option key={file.id} value={file.id}>
+                  {file.originalName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="field-group">
+            <span className="field-label">Direction</span>
+            <div className="locked-field">Staff PDF to numbered notation</div>
+          </div>
+
+          <div className="editorial-point">
+            <span className="info-icon tertiary">
+              <SparkIcon width={20} height={20} />
+            </span>
+            <div>
+              <strong>Draft-aware pipeline</strong>
+              <p className="helper-copy">Lower-confidence pages can remain draft output instead of being upgraded too early.</p>
+            </div>
+          </div>
+
+          <div className="preview-snapshot">
+            <p className="metric-label">Selected source</p>
+            <p className="item-title">{selectedFile ? selectedFile.originalName : "No source selected"}</p>
+            <p className="helper-copy">
+              {selectedFile
+                ? `Uploaded ${new Date(selectedFile.createdAt).toLocaleString()}. This file will be sent into the Staff PDF -> Jianpu queue.`
+                : "Upload a source PDF first if the selector is empty."}
+            </p>
+          </div>
+
+          <div className="button-row">
+            <button type="submit" disabled={submitting} className="button button-primary">
+              {submitting ? "Creating..." : "Create job"}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => void loadData()}>
+              Refresh queue
+            </button>
+            <Link href={APP_ROUTES.upload} className="button button-tertiary">
+              Open uploads
+            </Link>
+          </div>
+
+          {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+
+          <div className="stack-sm">
+            <p className="metric-label">Recent source library</p>
+            {files.length === 0 ? (
+              <div className="empty-state">No uploaded PDFs yet. Use the upload page first, then return here to queue the conversion.</div>
+            ) : (
+              <div className="file-library-list">
+                {files.slice(0, 3).map((file) => (
+                  <div key={file.id} className="file-library-item">
+                    <div>
+                      <strong>{file.originalName}</strong>
+                      <span>{new Date(file.createdAt).toLocaleString()}</span>
+                    </div>
+                    <button type="button" className="button button-secondary button-ghost" onClick={() => setSelectedFileId(file.id)}>
+                      Use this
+                    </button>
                   </div>
-                  {job.previewText ? <pre style={previewStyle}>{job.previewText}</pre> : null}
-                  {job.errorMessage ? <div style={{ color: "#915f2b", fontSize: "14px" }}>{job.errorMessage}</div> : null}
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    {job.outputFileId ? (
-                      <button
-                        type="button"
-                        style={secondaryButtonStyle}
-                        onClick={() => void handleDownload(job.outputFileId!, `${job.id}-${job.resultKind}.pdf`)}
-                      >
-                        Download result PDF
-                      </button>
-                    ) : null}
-                    {job.draftBundleFileId ? (
-                      <button
-                        type="button"
-                        style={secondaryButtonStyle}
-                        onClick={() => void handleDownload(job.draftBundleFileId!, `${job.id}-draft-bundle.zip`)}
-                      >
-                        Download draft bundle
-                      </button>
-                    ) : null}
+                ))}
+              </div>
+            )}
+          </div>
+        </form>
+
+        <div className="preview-side">
+          <div className="queue-toolbar">
+            <div className="stack-xs">
+              <p className="metric-label">Queue monitor</p>
+              <p className="item-title">Live conversion surface</p>
+            </div>
+            <div className="live-indicator">
+              <span className="live-dot" />
+              Auto-refreshing
+            </div>
+          </div>
+
+          <div className="queue-summary-grid">
+            <div className="queue-summary-chip">
+              <span>Queued</span>
+              <strong>{summary.queued}</strong>
+            </div>
+            <div className="queue-summary-chip">
+              <span>Processing</span>
+              <strong>{summary.processing}</strong>
+            </div>
+            <div className="queue-summary-chip">
+              <span>Completed</span>
+              <strong>{summary.completed}</strong>
+            </div>
+          </div>
+
+          {loading ? <div className="empty-state">Loading jobs...</div> : null}
+          {!loading && !latestJob ? <div className="empty-state">No jobs created yet. Pick an uploaded PDF on the left and create the first run.</div> : null}
+
+          {latestJob ? (
+            <div className="queue-latest-card">
+              <div className={`result-spotlight ${latestResultClass}`}>
+                <div className="inline-meta">
+                  <span className="info-icon">
+                    <FileStackIcon width={20} height={20} />
+                  </span>
+                  <div className="stack-xs">
+                    <p className="item-title">Latest job: {(files.find((item) => item.id === latestJob.inputFileId)?.originalName ?? latestJob.inputFileId)}</p>
+                    <p className="item-meta">Created {new Date(latestJob.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
-                <span style={statusBadge(job.status)}>{job.status}</span>
+                <div className="inline-meta">
+                  <StatusPill tone={mapJobTone(latestJob.status)} icon={<DotIcon width={10} height={10} />}>
+                    {latestJob.status}
+                  </StatusPill>
+                  <StatusPill tone={latestResultTone}>{latestJob.resultKind}</StatusPill>
+                </div>
+                <div className="stack-xs">
+                  <p className="metric-label">Result center</p>
+                  <p className="item-title">
+                    {latestJob.resultKind === "final"
+                      ? "This run is currently classified as final."
+                      : latestJob.resultKind === "draft"
+                        ? "This run is currently classified as draft."
+                        : "This run has not produced a downloadable outcome yet."}
+                  </p>
+                </div>
+                {latestJob.previewText ? <pre className="preview-block">{latestJob.previewText}</pre> : <p className="helper-copy">Preview text will appear here after the worker emits it.</p>}
+                {latestJob.errorMessage ? <p className="form-status error">{latestJob.errorMessage}</p> : null}
               </div>
-            );
-          })}
+
+              <div className="signal-grid">
+                <div className={`result-outcome-card ${latestJob.outputFileId ? "final" : "none"}`}>
+                  <p className="metric-label">Primary output</p>
+                  <p className="item-title">Final PDF</p>
+                  <p className="helper-copy">Available when the run upgrades cleanly to final.</p>
+                  {latestJob.outputFileId ? (
+                    <button
+                      type="button"
+                      className="button button-secondary button-ghost"
+                      onClick={() => void handleDownload(latestJob.outputFileId!, `${latestJob.id}-${latestJob.resultKind}.pdf`)}
+                    >
+                      <DownloadIcon width={16} height={16} />
+                      Download result PDF
+                    </button>
+                  ) : (
+                    <span className="status-chip tone-neutral">Not ready</span>
+                  )}
+                </div>
+                <div className={`result-outcome-card ${latestJob.draftBundleFileId ? "draft" : "none"}`}>
+                  <p className="metric-label">Fallback output</p>
+                  <p className="item-title">Draft bundle</p>
+                  <p className="helper-copy">Available when review artifacts need manual correction outside the browser.</p>
+                  {latestJob.draftBundleFileId ? (
+                    <button
+                      type="button"
+                      className="button button-tertiary button-ghost"
+                      onClick={() => void handleDownload(latestJob.draftBundleFileId!, `${latestJob.id}-draft-bundle.zip`)}
+                    >
+                      <DownloadIcon width={16} height={16} />
+                      Download draft bundle
+                    </button>
+                  ) : (
+                    <span className="status-chip tone-neutral">Not ready</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
+      </section>
+
+      <section className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">Recent jobs</p>
+          <h2 className="card-title">Queue archive</h2>
+          <p className="body-copy">Preview text, result type, and downloads stay visible here so you can review older runs after the top panel moves on to newer jobs.</p>
+        </div>
+
+        {!loading && jobs.length > 0 ? (
+          <div className="list-grid">
+            {jobs.map((job) => {
+              const file = files.find((item) => item.id === job.inputFileId);
+              const resultTone = mapResultTone(job.resultKind);
+              const archiveClass = job.resultKind === "final" ? "final" : job.resultKind === "draft" ? "draft" : "none";
+              return (
+                <div key={job.id} className={`job-card result-outcome-card ${archiveClass}`}>
+                  <div className="job-card-content">
+                    <div className="inline-meta">
+                      <span className="info-icon">
+                        <FileStackIcon width={20} height={20} />
+                      </span>
+                      <div className="stack-xs">
+                        <p className="item-title">{file?.originalName ?? job.inputFileId}</p>
+                        <p className="item-meta">{job.direction} | created {new Date(job.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="inline-meta">
+                      <StatusPill tone={mapJobTone(job.status)} icon={<DotIcon width={10} height={10} />}>
+                        {job.status}
+                      </StatusPill>
+                      <StatusPill tone={resultTone}>{job.resultKind}</StatusPill>
+                    </div>
+
+                    {job.previewText ? <pre className="preview-block">{job.previewText}</pre> : null}
+                    {job.errorMessage ? <p className="form-status error">{job.errorMessage}</p> : null}
+
+                    <div className="button-row">
+                      {job.outputFileId ? (
+                        <button
+                          type="button"
+                          className="button button-secondary button-ghost"
+                          onClick={() => void handleDownload(job.outputFileId!, `${job.id}-${job.resultKind}.pdf`)}
+                        >
+                          <DownloadIcon width={16} height={16} />
+                          Download result PDF
+                        </button>
+                      ) : null}
+                      {job.draftBundleFileId ? (
+                        <button
+                          type="button"
+                          className="button button-tertiary button-ghost"
+                          onClick={() => void handleDownload(job.draftBundleFileId!, `${job.id}-draft-bundle.zip`)}
+                        >
+                          <DownloadIcon width={16} height={16} />
+                          Download draft bundle
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="stack-sm">
+                    <span className="status-chip tone-neutral">{job.id.slice(0, 8)}</span>
+                    <span className="status-chip tone-primary">{job.completedAt ? "Completed" : job.startedAt ? "Running" : "Waiting"}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </section>
     </div>
   );
 }
 
-function statusBadge(status: JobItem["status"]): React.CSSProperties {
-  const colors = {
-    queued: { background: "#e7eef7", color: "#23405e" },
-    processing: { background: "#fff1d8", color: "#8c5b15" },
-    completed: { background: "#ddf5e8", color: "#17653b" },
-    failed: { background: "#f8dddd", color: "#7b2b2b" },
-  } as const;
-
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: "96px",
-    borderRadius: "999px",
-    padding: "8px 12px",
-    fontWeight: 700,
-    textTransform: "capitalize",
-    ...colors[status],
-  };
+function mapJobTone(status: JobItem["status"]) {
+  switch (status) {
+    case "queued":
+      return "neutral";
+    case "processing":
+      return "amber";
+    case "completed":
+      return "green";
+    case "failed":
+      return "red";
+    default:
+      return "neutral";
+  }
 }
 
-const panelStyle: React.CSSProperties = {
-  background: "#ffffff",
-  borderRadius: "24px",
-  padding: "24px",
-  boxShadow: "0 18px 60px rgba(18, 32, 47, 0.1)",
-};
-
-const jobRowStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "16px",
-  alignItems: "flex-start",
-  border: "1px solid #dfe7ee",
-  borderRadius: "18px",
-  padding: "14px 16px",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "8px",
-  marginBottom: "16px",
-  fontWeight: 600,
-};
-
-const inputStyle: React.CSSProperties = {
-  border: "1px solid #c9d4df",
-  borderRadius: "14px",
-  padding: "12px 14px",
-  fontSize: "16px",
-};
-
-const lockedDirectionStyle: React.CSSProperties = {
-  ...inputStyle,
-  background: "#f4f7fb",
-  color: "#4f6277",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 10px",
-  color: "#75869a",
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  fontSize: "12px",
-};
-
-const buttonStyle: React.CSSProperties = {
-  border: 0,
-  borderRadius: "14px",
-  padding: "12px 18px",
-  background: "#12202f",
-  color: "#ffffff",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: "#dfe7ee",
-  color: "#12202f",
-};
-
-const previewStyle: React.CSSProperties = {
-  margin: 0,
-  whiteSpace: "pre-wrap",
-  fontFamily: "Consolas, monospace",
-  fontSize: "13px",
-  lineHeight: 1.5,
-  background: "#f7f9fb",
-  borderRadius: "12px",
-  padding: "10px 12px",
-  color: "#334658",
-};
+function mapResultTone(resultKind: JobItem["resultKind"]) {
+  switch (resultKind) {
+    case "final":
+      return "green";
+    case "draft":
+      return "amber";
+    default:
+      return "neutral";
+  }
+}

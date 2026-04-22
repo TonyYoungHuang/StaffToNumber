@@ -44,16 +44,22 @@ Turn `staff_pdf_to_numbered` from a placeholder worker flow into a usable staged
 
 - repeatable sample framework under `samples/clean`, `samples/draft`, and `samples/fail`
 - evaluator that records `latest` and timestamped history snapshots after each recognition change
+- fixture generator for copied and composed multi-page / multi-staff sample PDFs
 - multi-page aggregation for up to three PDF pages per job
+- page/staff confidence layering so weak pages or staffs can stay diagnostic-only
+- first-pass barline detection and basic rest-component scanning per staff
 - stronger fragment rejection for text-like or weak symbol remnants
 - sequence smoothing for pitch and duration outliers inside each staff
+- measure-context stabilization for carried accidentals and implausible whole/half durations
 - more conservative accidental stabilization rules for `#` and `b`
+- targeted `barline-rest-context` fixture now reports stable barline/rest counts in draft diagnostics
 
 ## What is still not done in Module 5
 
 - reliable connected-symbol splitting on complex real scans
 - strong barline/rest classification
 - more robust multi-staff ordering on dense real-world layouts
+- better rest classification on targeted barline/rest fixtures
 - production-grade accidental recognition with barline awareness
 - production-grade duration recognition beyond the current heuristic prototype
 

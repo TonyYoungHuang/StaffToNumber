@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@score/shared": "0.1.0",
+    "@score/ui": "0.1.0",
     "next": "16.2.2",
     "react": "19.1.0",
     "react-dom": "19.1.0"

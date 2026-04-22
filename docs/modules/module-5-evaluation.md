@@ -12,6 +12,7 @@ Keep Module 5 heuristic changes measurable so each OMR tweak can be checked agai
 
 ## Evaluation outputs
 
+- `samples/generate-fixtures.mjs`: regenerates copied and composed sample PDFs
 - `samples/reports/latest.json`: machine-readable latest snapshot
 - `samples/reports/latest.md`: human-readable latest summary
 - `samples/reports/history/`: timestamped report history for change tracking
@@ -20,14 +21,18 @@ Keep Module 5 heuristic changes measurable so each OMR tweak can be checked agai
 ## Command
 
 ```bash
+npm run generate:samples
 npm run evaluate:samples
 ```
 
 ## Current checks
 
+- 20 tracked fixtures across clean / draft / fail
+- single-page, multi-page, and multi-staff composed layouts
+- `sourceKind` tagging so copied local uploads and composed fixtures are distinguishable in the manifest
 - expected `final` vs `draft` outcome per sample
 - preview hash changes between runs
-- note count and promotion score capture when available
+- note count, rest count, barline count, and promotion score capture when available
 - category-level summary across clean / draft / fail buckets
 
 ## Near-term expansion

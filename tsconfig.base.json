@@ -12,6 +12,12 @@
     "paths": {
       "@score/shared": [
         "packages/shared/src"
+      ],
+      "@score/ui": [
+        "packages/ui/src"
+      ],
+      "@score/ui/*": [
+        "packages/ui/src/*"
       ]
     }
   }

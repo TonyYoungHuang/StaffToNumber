@@ -5,7 +5,7 @@ export default function ActivatePage() {
   return (
     <AuthShell
       title="Redeem activation code"
-      description="Enter the code from your purchase. The current development seed code grants one year of access."
+      description="Enter the code from your purchase to activate the current studio workflow for one year of use."
     >
       <ActivationForm />
     </AuthShell>

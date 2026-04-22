@@ -1,7 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
@@ -19,6 +19,11 @@ export function ActivationForm() {
   const [code, setCode] = useState("DEMO-1YEAR-ACCESS");
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const statusTone = useMemo(() => {
+    if (!status) return null;
+    return status.toLowerCase().includes("redirecting") ? "success" : "error";
+  }, [status]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,52 +59,38 @@ export function ActivationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
-      <label style={labelStyle}>
-        <span>Activation code</span>
-        <input value={code} onChange={(event) => setCode(event.target.value)} required style={inputStyle} />
-      </label>
-      <button type="submit" disabled={submitting} style={buttonStyle}>
-        {submitting ? "Redeeming..." : "Redeem code"}
-      </button>
-      <p style={{ margin: 0, color: "#516174" }}>
-        Dev seed code: <code>DEMO-1YEAR-ACCESS</code>
-      </p>
-      {status ? <p style={statusStyle}>{status}</p> : null}
-    </form>
+    <div className="stack-lg">
+      <div className="stack-sm">
+        <p className="eyebrow">Redeem code</p>
+        <h2 className="card-title">Turn purchase into one year of access</h2>
+        <p className="body-copy">
+          Enter the exclusive activation code that ships with your purchase. The code binds access after account creation.
+        </p>
+      </div>
+
+      <div className="mini-card stack-sm">
+        <p className="metric-label">Development seed</p>
+        <p className="item-title">DEMO-1YEAR-ACCESS</p>
+        <p className="micro-copy">Keep this only for local development and test redemptions.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="form-grid">
+        <label className="field-group">
+          <span className="field-label">Activation code</span>
+          <input className="field-control" value={code} onChange={(event) => setCode(event.target.value)} required />
+        </label>
+        <div className="button-row">
+          <button type="submit" disabled={submitting} className="button button-primary">
+            {submitting ? "Redeeming..." : "Redeem code"}
+          </button>
+          <button type="button" className="button button-secondary" onClick={() => setCode("DEMO-1YEAR-ACCESS")}>
+            Fill demo code
+          </button>
+        </div>
+      </form>
+
+      <p className="micro-copy">If the code is valid, the dashboard should immediately show active entitlement dates.</p>
+      {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+    </div>
   );
 }
-
-const formStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "16px",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "8px",
-  fontWeight: 600,
-};
-
-const inputStyle: React.CSSProperties = {
-  border: "1px solid #c9d4df",
-  borderRadius: "14px",
-  padding: "12px 14px",
-  fontSize: "16px",
-};
-
-const buttonStyle: React.CSSProperties = {
-  border: 0,
-  borderRadius: "14px",
-  padding: "14px 16px",
-  background: "#12202f",
-  color: "#ffffff",
-  fontSize: "16px",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const statusStyle: React.CSSProperties = {
-  margin: 0,
-  color: "#3c4f61",
-};

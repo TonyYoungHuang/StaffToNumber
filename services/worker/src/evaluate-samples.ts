@@ -12,6 +12,7 @@ type SampleManifestEntry = {
   category: SampleCategory;
   file: string;
   expectedResultKind: "final" | "draft";
+  sourceKind?: "uploaded_copy" | "composed" | "synthetic";
   notes?: string;
 };
 
@@ -32,12 +33,15 @@ type EvaluationResult = {
   category: SampleCategory;
   file: string;
   expectedResultKind: "final" | "draft";
+  sourceKind?: "uploaded_copy" | "composed" | "synthetic";
   status: string;
   resultKind: string;
   matchedExpectation: boolean;
   previewHash: string;
   previewText: string;
   noteCount: number | null;
+  restCount: number | null;
+  barlineCount: number | null;
   promotionScore: number | null;
   changedSinceLastRun: boolean;
   notes?: string;
@@ -213,6 +217,16 @@ function parsePromotionScore(previewText: string) {
   return match ? Number(match[1]) : null;
 }
 
+function parseRestCount(previewText: string) {
+  const match = previewText.match(/rests:\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function parseBarlineCount(previewText: string) {
+  const match = previewText.match(/bars:\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
 function buildMarkdownReport(results: EvaluationResult[], runId: string) {
   const categorySummary = ["clean", "draft", "fail"].map((category) => {
     const subset = results.filter((result) => result.category === category);
@@ -231,7 +245,7 @@ function buildMarkdownReport(results: EvaluationResult[], runId: string) {
     ...(changed.length
       ? changed.map(
           (result) =>
-            `- ${result.id}: ${result.resultKind} | hash ${result.previewHash} | noteCount ${result.noteCount ?? "n/a"}`,
+            `- ${result.id}: ${result.resultKind} | hash ${result.previewHash} | noteCount ${result.noteCount ?? "n/a"} | restCount ${result.restCount ?? "n/a"} | bars ${result.barlineCount ?? "n/a"}`,
         )
       : ["- No final/draft preview changes detected."]),
     "",
@@ -290,12 +304,15 @@ async function main() {
       category: sample.category,
       file: sample.file,
       expectedResultKind: sample.expectedResultKind,
+      sourceKind: sample.sourceKind,
       status: row.status,
       resultKind: row.result_kind,
       matchedExpectation: row.status === "completed" && row.result_kind === sample.expectedResultKind,
       previewHash,
       previewText,
       noteCount: parseNoteCount(row.status, row.result_kind, previewText),
+      restCount: parseRestCount(previewText),
+      barlineCount: parseBarlineCount(previewText),
       promotionScore: parsePromotionScore(previewText),
       changedSinceLastRun:
         previousResult !== undefined &&

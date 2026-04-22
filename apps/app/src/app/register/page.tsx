@@ -5,7 +5,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      description="Create an account with your email and password, then redeem an activation code to unlock one year of access."
+      description="Create an account with your email and password first, then redeem your dedicated activation code to unlock one year of access."
     >
       <AuthForm mode="register" />
     </AuthShell>

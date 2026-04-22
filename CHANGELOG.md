@@ -9,16 +9,22 @@ All notable project updates are recorded here.
 - Module 5 sample evaluation framework under `samples/clean`, `samples/draft`, `samples/fail`, and `samples/reports/`
 - `services/worker/src/evaluate-samples.ts` to run worker regressions against the tracked sample manifest
 - `docs/modules/module-5-evaluation.md` to document the sample/evaluation workflow
+- `samples/generate-fixtures.mjs` to regenerate copied and composed multi-page / multi-staff sample PDFs
 
 ### Changed
 
 - continued Module 5D into early Module 5E with stronger fragment filtering and sequence smoothing
 - stabilized pitch, duration, and accidental heuristics in `services/worker/src/index.ts`
 - extended the worker to aggregate up to three PDF pages into one OMR preview
+- added page/staff confidence layering so weak pages can stay diagnostic-only without blocking strong pages
+- added first-pass barline detection and measure-context smoothing for accidental/duration stabilization
+- expanded the tracked sample set to 20 fixtures, including multi-page and multi-staff cases
+- stabilized `restCount` on the targeted `barline-rest-context` fixture and surfaced rest/bar counts in sample evaluation output
 - updated repository docs to reflect the sample framework and current Module 5E focus
 
 ### Verified
 
+- `npm run generate:samples`
 - `npm run evaluate:samples`
 - `npm run typecheck`
 - `npm run build`

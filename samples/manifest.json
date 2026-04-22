@@ -1,11 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "samples": [
     {
       "id": "notes-source",
       "category": "clean",
       "file": "samples/clean/notes-source.pdf",
       "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
       "notes": "Text-layer sample that should stay confidently final."
     },
     {
@@ -13,13 +14,71 @@
       "category": "clean",
       "file": "samples/clean/verify-5d-valley-clean.pdf",
       "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
       "notes": "Synthetic clean staff sample for stable final promotion."
+    },
+    {
+      "id": "verify-5d-clean",
+      "category": "clean",
+      "file": "samples/clean/verify-5d-clean.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
+      "notes": "Clean single-staff verification page."
+    },
+    {
+      "id": "verify-5d-structure",
+      "category": "clean",
+      "file": "samples/clean/verify-5d-structure.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
+      "notes": "Structure-focused clean page that should still promote."
+    },
+    {
+      "id": "staff-upgrade",
+      "category": "draft",
+      "file": "samples/clean/staff-upgrade.pdf",
+      "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
+      "notes": "Simple staff-only page that still stays conservative."
+    },
+    {
+      "id": "verify-5c-symbols-v3",
+      "category": "clean",
+      "file": "samples/clean/verify-5c-symbols-v3.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
+      "notes": "Accidental and dot heavy page for stable symbol handling."
+    },
+    {
+      "id": "multi-page-clean",
+      "category": "clean",
+      "file": "samples/clean/multi-page-clean.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "composed",
+      "notes": "Two-page composed clean sample for page aggregation."
+    },
+    {
+      "id": "multi-staff-clean",
+      "category": "clean",
+      "file": "samples/clean/multi-staff-clean.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "composed",
+      "notes": "Two stacked staff systems for multi-staff confidence layering."
+    },
+    {
+      "id": "barline-rest-context",
+      "category": "draft",
+      "file": "samples/clean/barline-rest-context.pdf",
+      "expectedResultKind": "draft",
+      "sourceKind": "synthetic",
+      "notes": "Targeted barline context sample that should remain diagnostic for now."
     },
     {
       "id": "staff-lines",
       "category": "draft",
       "file": "samples/draft/staff-lines.pdf",
       "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
       "notes": "Simple staff-line image sample that should remain draft."
     },
     {
@@ -27,14 +86,80 @@
       "category": "draft",
       "file": "samples/draft/verify-5d-valley-dense.pdf",
       "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
       "notes": "Dense connected sample that should not be over-promoted."
+    },
+    {
+      "id": "verify-5c-symbols",
+      "category": "clean",
+      "file": "samples/draft/verify-5c-symbols.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
+      "notes": "Symbol-rich sample that now promotes with stronger context rules."
+    },
+    {
+      "id": "verify-5c-symbols-v2",
+      "category": "clean",
+      "file": "samples/draft/verify-5c-symbols-v2.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "uploaded_copy",
+      "notes": "Alternate symbol layout that also promotes under the current heuristics."
+    },
+    {
+      "id": "verify-5d-splitting",
+      "category": "draft",
+      "file": "samples/draft/verify-5d-splitting.pdf",
+      "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
+      "notes": "Split-heavy page with glued symbols that should remain draft."
+    },
+    {
+      "id": "verify-5d-splitting-v2",
+      "category": "draft",
+      "file": "samples/draft/verify-5d-splitting-v2.pdf",
+      "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
+      "notes": "Barline-heavy split page for measure-context checks."
+    },
+    {
+      "id": "multi-page-context",
+      "category": "clean",
+      "file": "samples/draft/multi-page-context.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "composed",
+      "notes": "Multi-page mixed-confidence sample that should still promote from strong pages."
+    },
+    {
+      "id": "multi-staff-context",
+      "category": "clean",
+      "file": "samples/draft/multi-staff-context.pdf",
+      "expectedResultKind": "final",
+      "sourceKind": "composed",
+      "notes": "Multi-staff mixed-confidence sample that should still promote from strong staffs."
     },
     {
       "id": "blank-page",
       "category": "fail",
       "file": "samples/fail/blank-page.pdf",
       "expectedResultKind": "draft",
+      "sourceKind": "synthetic",
       "notes": "Intentionally unusable blank PDF; any final result is a regression."
+    },
+    {
+      "id": "sample-tiny",
+      "category": "fail",
+      "file": "samples/fail/sample-tiny.pdf",
+      "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
+      "notes": "Tiny unusable PDF fixture that should not promote."
+    },
+    {
+      "id": "job-sample-tiny",
+      "category": "fail",
+      "file": "samples/fail/job-sample-tiny.pdf",
+      "expectedResultKind": "draft",
+      "sourceKind": "uploaded_copy",
+      "notes": "Minimal placeholder PDF that should remain draft."
     }
   ]
 }

@@ -36,6 +36,13 @@ type StaffGroup = {
   noteCandidateColumns: number[];
 };
 
+type StaffMeasureContext = {
+  staffIndex: number;
+  barlineColumns: number[];
+  measureBoundaries: number[];
+  restColumns: number[];
+};
+
 type OmrDiagnostics = {
   width: number;
   height: number;
@@ -90,6 +97,9 @@ type DetectedComponent = {
 type AnalyzedNotehead = NoteheadCandidate & {
   pitchStep: number;
   baseNumberedToken: string;
+  measureIndex: number;
+  accidentalSource: "detected" | "measureCarry" | "none";
+  durationSource: "detected" | "measureContext";
   stemDirection: "up" | "down" | "none";
   stemSide: "left" | "right" | "none";
   stemLength: number;
@@ -104,12 +114,39 @@ type AnalyzedNotehead = NoteheadCandidate & {
   numberedToken: string;
 };
 
+type StaffPreviewSummary = {
+  staffIndex: number;
+  noteCount: number;
+  restCount: number;
+  barlineCount: number;
+  measureCount: number;
+  averageConfidence: number;
+  spacingConfidence: number;
+  promotionScore: number;
+  eligible: boolean;
+};
+
+type PagePreviewSummary = {
+  pageNumber: number;
+  noteCount: number;
+  restCount: number;
+  averageConfidence: number;
+  spacingConfidence: number;
+  promotionScore: number;
+  eligible: boolean;
+  selectedStaffCount: number;
+  diagnosticOnlyStaffCount: number;
+};
+
 type OmrPitchPreview = {
   tokens: string[];
   groupedLines: string[];
   noteheads: AnalyzedNotehead[];
   pageCount: number;
   staffGroupCount: number;
+  restCount: number;
+  barlineCount: number;
+  measureCount: number;
   averageConfidence: number;
   durationCounts: Record<DurationValue, number>;
   dottedCount: number;
@@ -119,6 +156,11 @@ type OmrPitchPreview = {
   certaintyCount: number;
   spacingConfidence: number;
   promotionScore: number;
+  eligible: boolean;
+  selectedPageCount: number;
+  diagnosticOnlyPageCount: number;
+  staffSummaries: StaffPreviewSummary[];
+  pageSummaries: PagePreviewSummary[];
 };
 
 const db = new DatabaseSync(workerConfig.dbFile);
@@ -900,7 +942,11 @@ function detectNoteheadsFromDiagnostics(pngBuffer: Buffer, diagnostics: OmrDiagn
 
       const staff = diagnostics.staffGroups[matchedStaffIndex];
       const aspectRatio = componentWidth / Math.max(1, componentHeight);
-      if (aspectRatio < 0.28 || aspectRatio > 3.3) {
+      const extremelyTallAndThin =
+        aspectRatio < 0.22 &&
+        componentWidth <= Math.max(4, Math.round(staff.averageSpacing * 0.26)) &&
+        area <= Math.round(staff.averageSpacing * staff.averageSpacing * 0.85);
+      if (aspectRatio > 3.3 || extremelyTallAndThin) {
         continue;
       }
 
@@ -1396,6 +1442,215 @@ function formatNumberedPreviewToken(baseToken: string, duration: DurationValue, 
   return `${accidental ?? ""}${baseToken}(${durationMap[duration]}${dotted ? "." : ""})`;
 }
 
+function detectBarlinesForStaff(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  staff: StaffGroup,
+  noteheads: AnalyzedNotehead[],
+) {
+  const spacing = staff.averageSpacing;
+  const bandTop = Math.max(0, Math.floor(staff.lines[0] - spacing * 1.6));
+  const bandBottom = Math.min(height - 1, Math.ceil(staff.lines[4] + spacing * 1.8));
+  const candidateColumns: number[] = [];
+
+  for (let x = 0; x < width; x += 1) {
+    let darkPixels = 0;
+    const darkRows: number[] = [];
+    for (let y = bandTop; y <= bandBottom; y += 1) {
+      if (!binary[y * width + x]) {
+        continue;
+      }
+      darkPixels += 1;
+      darkRows.push(y);
+    }
+
+    if (darkPixels < Math.max(10, Math.round(spacing * 2.6))) {
+      continue;
+    }
+
+    const runs = groupAdjacentNumbers(darkRows, 1);
+    const bestRun = runs.reduce((best, current) => Math.max(best, current[current.length - 1] - current[0] + 1), 0);
+    if (bestRun < Math.max(18, Math.round(spacing * 4.15))) {
+      continue;
+    }
+
+    candidateColumns.push(x);
+  }
+
+  return groupAdjacentNumbers(candidateColumns, 2)
+    .map((group) => Math.round(average(group)))
+    .filter((column) => {
+      return !noteheads.some(
+        (candidate) =>
+          Math.abs(candidate.x - column) <= Math.max(4, Math.round(spacing * 0.38)) &&
+          candidate.stemConfidence < 0.5 &&
+          Math.abs(candidate.y - average(staff.lines)) <= spacing * 2.5,
+      );
+    });
+}
+
+function buildMeasureBoundaries(width: number, staff: StaffGroup, barlineColumns: number[]) {
+  const minGap = Math.max(14, Math.round(staff.averageSpacing * 1.4));
+  const sorted = [...barlineColumns].sort((left, right) => left - right);
+  const filtered = sorted.filter((column, index) => index === 0 || column - sorted[index - 1] >= minGap);
+  return [0, ...filtered, width - 1];
+}
+
+function detectRestColumnsForStaff(
+  originalBinary: Uint8Array,
+  suppressedBinary: Uint8Array,
+  width: number,
+  height: number,
+  staff: StaffGroup,
+  noteheads: AnalyzedNotehead[],
+  barlineColumns: number[],
+) {
+  const spacing = staff.averageSpacing;
+  const bandTop = Math.max(0, Math.floor(staff.lines[0] - spacing * 1.2));
+  const bandBottom = Math.min(height - 1, Math.ceil(staff.lines[4] + spacing * 1.2));
+  const visited = new Uint8Array(width * height);
+  const restCenters: number[] = [];
+  const noteSlack = Math.max(6, Math.round(spacing * 0.45));
+  const barlineSlack = Math.max(6, Math.round(spacing * 0.35));
+  const neighborOffsets = [-1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1];
+
+  for (let y = bandTop; y <= bandBottom; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      if (!suppressedBinary[index] || visited[index]) {
+        continue;
+      }
+
+      const queue = [index];
+      visited[index] = 1;
+      let head = 0;
+      let minX = x;
+      let maxX = x;
+      let minY = y;
+      let maxY = y;
+      let area = 0;
+      let sumX = 0;
+
+      while (head < queue.length) {
+        const current = queue[head++];
+        const currentX = current % width;
+        const currentY = Math.floor(current / width);
+        area += 1;
+        sumX += currentX;
+        minX = Math.min(minX, currentX);
+        maxX = Math.max(maxX, currentX);
+        minY = Math.min(minY, currentY);
+        maxY = Math.max(maxY, currentY);
+
+        for (const offset of neighborOffsets) {
+          const next = current + offset;
+          if (next < 0 || next >= suppressedBinary.length || visited[next] || !suppressedBinary[next]) {
+            continue;
+          }
+          const nextX = next % width;
+          const nextY = Math.floor(next / width);
+          if (nextY < bandTop || nextY > bandBottom || Math.abs(nextX - currentX) > 1 || Math.abs(nextY - currentY) > 1) {
+            continue;
+          }
+          visited[next] = 1;
+          queue.push(next);
+        }
+      }
+
+      const componentWidth = maxX - minX + 1;
+      const componentHeight = maxY - minY + 1;
+      const centerX = Math.round(sumX / Math.max(1, area));
+      const centerY = Math.round((minY + maxY) / 2);
+      const overlapsNote = noteheads.some(
+        (candidate) =>
+          Math.abs(candidate.x - centerX) <= noteSlack &&
+          Math.abs(candidate.y - centerY) <= Math.max(8, Math.round(spacing * 0.9)),
+      );
+      if (overlapsNote) {
+        continue;
+      }
+
+      if (barlineColumns.some((column) => Math.abs(column - centerX) <= barlineSlack)) {
+        continue;
+      }
+
+      const nearMiddle = Math.abs(centerY - average(staff.lines)) <= spacing * 1.2;
+      const compactArea = area >= Math.max(10, Math.round(spacing * 0.45)) && area <= Math.max(90, Math.round(spacing * spacing * 0.9));
+      const restSized =
+        componentWidth >= Math.max(4, Math.round(spacing * 0.18)) &&
+        componentWidth <= Math.max(18, Math.round(spacing * 0.85)) &&
+        componentHeight >= Math.max(3, Math.round(spacing * 0.16)) &&
+        componentHeight <= Math.max(18, Math.round(spacing * 0.85));
+
+      if (nearMiddle && compactArea && restSized) {
+        restCenters.push(centerX);
+      }
+    }
+  }
+
+  const middleBandTop = Math.max(0, Math.floor(average([staff.lines[1], staff.lines[3]]) - spacing * 0.42));
+  const middleBandBottom = Math.min(height - 1, Math.ceil(average([staff.lines[1], staff.lines[3]]) + spacing * 0.42));
+  const projectionColumns: number[] = [];
+
+  for (let x = 0; x < width; x += 1) {
+    let darkSuppressed = 0;
+    let darkOriginal = 0;
+    for (let y = middleBandTop; y <= middleBandBottom; y += 1) {
+      if (suppressedBinary[y * width + x]) {
+        darkSuppressed += 1;
+      }
+      if (originalBinary[y * width + x]) {
+        darkOriginal += 1;
+      }
+    }
+
+    if (darkSuppressed >= 2 || (darkSuppressed >= 1 && darkOriginal >= 3)) {
+      projectionColumns.push(x);
+    }
+  }
+
+  const projectedCenters = groupAdjacentNumbers(projectionColumns, 2)
+    .filter((group) => {
+      const widthSpan = group[group.length - 1] - group[0] + 1;
+      return widthSpan >= Math.max(8, Math.round(spacing * 0.3)) && widthSpan <= Math.max(28, Math.round(spacing * 1.1));
+    })
+    .map((group) => Math.round(average(group)))
+    .filter((centerX) => {
+      if (noteheads.some((candidate) => Math.abs(candidate.x - centerX) <= noteSlack)) {
+        return false;
+      }
+      if (barlineColumns.some((column) => Math.abs(column - centerX) <= barlineSlack)) {
+        return false;
+      }
+
+      const horizontalRun = measureMaxDarkRun(
+        suppressedBinary,
+        width,
+        height,
+        centerX - spacing * 0.45,
+        centerX + spacing * 0.45,
+        middleBandTop,
+        middleBandBottom,
+        "horizontal",
+      );
+      return horizontalRun >= Math.max(6, Math.round(spacing * 0.28));
+    });
+
+  return groupAdjacentNumbers([...restCenters, ...projectedCenters].sort((left, right) => left - right), 4).map((group) =>
+    Math.round(average(group)),
+  );
+}
+
+function locateMeasureIndex(x: number, measureBoundaries: number[]) {
+  for (let index = 0; index < measureBoundaries.length - 1; index += 1) {
+    if (x >= measureBoundaries[index] && x <= measureBoundaries[index + 1]) {
+      return index;
+    }
+  }
+  return Math.max(0, measureBoundaries.length - 2);
+}
+
 function analyzeNoteheads(diagnostics: OmrDiagnostics, pngBuffer: Buffer, noteheads: NoteheadCandidate[]): AnalyzedNotehead[] {
   const originalImage = buildBinaryImage(pngBuffer);
   const { width, height, binary } = buildStaffSuppressedBinary(pngBuffer, diagnostics);
@@ -1453,6 +1708,9 @@ function analyzeNoteheads(diagnostics: OmrDiagnostics, pngBuffer: Buffer, notehe
       ...candidate,
       pitchStep: stepFromBottomLine,
       baseNumberedToken: baseToken,
+      measureIndex: -1,
+      accidentalSource: accidental ? "detected" : "none",
+      durationSource: "detected",
       stemDirection: stem.direction,
       stemSide: stem.side,
       stemLength: stem.length,
@@ -1554,7 +1812,12 @@ function isLikelyFragmentNoise(candidate: AnalyzedNotehead, staff: StaffGroup) {
 
 function withSequenceOverrides(
   candidate: AnalyzedNotehead,
-  overrides: Partial<Pick<AnalyzedNotehead, "pitchStep" | "duration" | "accidental" | "dotted">>,
+  overrides: Partial<
+    Pick<
+      AnalyzedNotehead,
+      "pitchStep" | "duration" | "accidental" | "dotted" | "measureIndex" | "accidentalSource" | "durationSource"
+    >
+  >,
 ) {
   const pitchStep = overrides.pitchStep ?? candidate.pitchStep;
   const duration = overrides.duration ?? candidate.duration;
@@ -1570,6 +1833,9 @@ function withSequenceOverrides(
     duration,
     accidental,
     dotted,
+    measureIndex: overrides.measureIndex ?? candidate.measureIndex,
+    accidentalSource: overrides.accidentalSource ?? (accidental ? candidate.accidentalSource : "none"),
+    durationSource: overrides.durationSource ?? candidate.durationSource,
     baseNumberedToken,
     numberedToken: formatNumberedPreviewToken(baseNumberedToken, duration, dotted, accidental),
   };
@@ -1637,6 +1903,134 @@ function smoothDurationOutliers(noteheads: AnalyzedNotehead[]) {
   return smoothed;
 }
 
+function applyMeasureContextToStaff(
+  noteheads: AnalyzedNotehead[],
+  staff: StaffGroup,
+  context: StaffMeasureContext,
+) {
+  const sorted = [...noteheads].sort((left, right) => left.x - right.x || left.y - right.y);
+  const adjusted = sorted.map((candidate) =>
+    withSequenceOverrides(candidate, {
+      measureIndex: locateMeasureIndex(candidate.x, context.measureBoundaries),
+    }),
+  );
+  const restCountsByMeasure = new Map<number, number>();
+
+  for (const column of context.restColumns) {
+    const measureIndex = locateMeasureIndex(column, context.measureBoundaries);
+    restCountsByMeasure.set(measureIndex, (restCountsByMeasure.get(measureIndex) ?? 0) + 1);
+  }
+
+  const notesByMeasure = new Map<number, AnalyzedNotehead[]>();
+  for (const candidate of adjusted) {
+    const current = notesByMeasure.get(candidate.measureIndex) ?? [];
+    current.push(candidate);
+    notesByMeasure.set(candidate.measureIndex, current);
+  }
+
+  for (const [measureIndex, group] of notesByMeasure.entries()) {
+    const accidentalState = new Map<number, "#" | "b">();
+    const restCount = restCountsByMeasure.get(measureIndex) ?? 0;
+    const symbolCount = group.length + restCount;
+
+    for (let index = 0; index < group.length; index += 1) {
+      const candidate = group[index];
+      const currentIndex = adjusted.findIndex(
+        (item) => item.pageNumber === candidate.pageNumber && item.staffIndex === candidate.staffIndex && item.x === candidate.x && item.y === candidate.y,
+      );
+      if (currentIndex < 0) {
+        continue;
+      }
+
+      if (candidate.accidental !== null && candidate.confidence >= 0.56) {
+        accidentalState.set(candidate.pitchStep, candidate.accidental);
+      } else {
+        const carried = accidentalState.get(candidate.pitchStep);
+        if (carried && candidate.confidence < 0.82 && candidate.fillKind !== "uncertain") {
+          adjusted[currentIndex] = withSequenceOverrides(candidate, {
+            accidental: carried,
+            accidentalSource: "measureCarry",
+          });
+        }
+      }
+
+      const current = adjusted[currentIndex];
+      let nextDuration = current.duration;
+      if (symbolCount >= 4) {
+        if (current.duration === "whole" && current.confidence < 0.82) {
+          nextDuration = current.stemDirection !== "none" ? "quarter" : "half";
+        } else if (current.duration === "half" && current.fillKind === "filled" && current.confidence < 0.84) {
+          nextDuration = "quarter";
+        }
+      } else if (symbolCount >= 3 && current.duration === "whole" && current.fillKind !== "open" && current.confidence < 0.76) {
+        nextDuration = current.stemDirection !== "none" ? "quarter" : "half";
+      }
+
+      if (nextDuration !== current.duration) {
+        adjusted[currentIndex] = withSequenceOverrides(current, {
+          duration: nextDuration,
+          durationSource: "measureContext",
+          dotted: nextDuration === "whole" ? false : current.dotted,
+        });
+      }
+    }
+  }
+
+  return adjusted.sort((left, right) => left.x - right.x || left.y - right.y);
+}
+
+function meetsPromotionThreshold(preview: {
+  tokens: string[];
+  noteheads: AnalyzedNotehead[];
+  averageConfidence: number;
+  stemmedCount: number;
+  certaintyCount: number;
+  spacingConfidence: number;
+  promotionScore: number;
+}, minimumNotes: number) {
+  return (
+    preview.tokens.length >= minimumNotes &&
+    preview.averageConfidence >= 0.48 &&
+    preview.stemmedCount >= Math.max(1, Math.min(2, minimumNotes - 2)) &&
+    preview.certaintyCount >= Math.max(2, Math.ceil(preview.noteheads.length * 0.45)) &&
+    preview.spacingConfidence >= 0.05 &&
+    preview.promotionScore >= (minimumNotes >= 5 ? 0.62 : 0.58)
+  );
+}
+
+function buildPreviewMetrics(noteheads: AnalyzedNotehead[]) {
+  const tokens = noteheads.map((candidate) => candidate.numberedToken);
+  const durationCounts: Record<DurationValue, number> = {
+    eighth: 0,
+    quarter: 0,
+    half: 0,
+    whole: 0,
+  };
+
+  for (const candidate of noteheads) {
+    durationCounts[candidate.duration] += 1;
+  }
+
+  const averageConfidence = noteheads.length
+    ? Number((noteheads.reduce((sum, candidate) => sum + candidate.confidence, 0) / noteheads.length).toFixed(3))
+    : 0;
+  const spacingConfidence = estimateSpacingConfidence(noteheads);
+  const promotionScore = computePromotionScore(noteheads, averageConfidence, spacingConfidence);
+
+  return {
+    tokens,
+    durationCounts,
+    averageConfidence,
+    spacingConfidence,
+    promotionScore,
+    dottedCount: noteheads.filter((candidate) => candidate.dotted).length,
+    accidentalCount: noteheads.filter((candidate) => candidate.accidental !== null).length,
+    beamCount: noteheads.filter((candidate) => candidate.hasBeamOrFlag).length,
+    stemmedCount: noteheads.filter((candidate) => candidate.stemDirection !== "none").length,
+    certaintyCount: noteheads.filter((candidate) => candidate.fillKind !== "uncertain").length,
+  };
+}
+
 function smoothStaffSequence(noteheads: AnalyzedNotehead[], staff: StaffGroup) {
   const sorted = [...noteheads].sort((left, right) => left.x - right.x || left.y - right.y);
   const minGap = Math.max(5, Math.round(staff.averageSpacing * 0.48));
@@ -1679,18 +2073,24 @@ function smoothStaffSequence(noteheads: AnalyzedNotehead[], staff: StaffGroup) {
   return smoothDurationOutliers(smoothPitchOutliers(kept));
 }
 
-function buildOmrPreviewFromDiagnostics(diagnostics: OmrDiagnostics, analyzedNoteheads: AnalyzedNotehead[]): OmrPitchPreview {
-  const filtered = analyzedNoteheads
-    .filter(
-      (candidate) =>
-        candidate.confidence >= 0.5 &&
-        candidate.roundness >= 0.42 &&
-        !(
-          candidate.stemDirection === "none" &&
-          candidate.fillKind === "uncertain" &&
-          candidate.accidental !== null
-        ),
-    );
+function buildOmrPreviewFromDiagnostics(
+  diagnostics: OmrDiagnostics,
+  pngBuffer: Buffer,
+  analyzedNoteheads: AnalyzedNotehead[],
+  pageNumber: number,
+): OmrPitchPreview {
+  const originalImage = buildBinaryImage(pngBuffer);
+  const suppressedImage = buildStaffSuppressedBinary(pngBuffer, diagnostics);
+  const filtered = analyzedNoteheads.filter(
+    (candidate) =>
+      candidate.confidence >= 0.5 &&
+      candidate.roundness >= 0.42 &&
+      !(
+        candidate.stemDirection === "none" &&
+        candidate.fillKind === "uncertain" &&
+        candidate.accidental !== null
+      ),
+  );
 
   const byStaff = new Map<number, AnalyzedNotehead[]>();
   for (const candidate of filtered) {
@@ -1699,47 +2099,111 @@ function buildOmrPreviewFromDiagnostics(diagnostics: OmrDiagnostics, analyzedNot
     byStaff.set(candidate.staffIndex, group);
   }
 
-  const sorted = [...byStaff.entries()]
-    .sort((left, right) => left[0] - right[0])
-    .flatMap(([staffIndex, group]) => smoothStaffSequence(group, diagnostics.staffGroups[staffIndex]));
-  const tokens = sorted.map((candidate) => candidate.numberedToken);
-  const durationCounts: Record<DurationValue, number> = {
-    eighth: 0,
-    quarter: 0,
-    half: 0,
-    whole: 0,
-  };
+  const staffSummaries: StaffPreviewSummary[] = [];
+  const selectedNoteheads: AnalyzedNotehead[] = [];
+  const fallbackNoteheads: AnalyzedNotehead[] = [];
+  let totalRestCount = 0;
+  let totalBarlineCount = 0;
+  let totalMeasureCount = 0;
 
-  for (const candidate of sorted) {
-    durationCounts[candidate.duration] += 1;
-  }
+  diagnostics.staffGroups.forEach((staff, staffIndex) => {
+    const group = byStaff.get(staffIndex) ?? [];
+    const smoothed = smoothStaffSequence(group, staff);
+    const barlineColumns = detectBarlinesForStaff(originalImage.binary, originalImage.width, originalImage.height, staff, smoothed);
+    const measureBoundaries = buildMeasureBoundaries(originalImage.width, staff, barlineColumns);
+    const restColumns = detectRestColumnsForStaff(
+      originalImage.binary,
+      suppressedImage.binary,
+      originalImage.width,
+      originalImage.height,
+      staff,
+      smoothed,
+      barlineColumns,
+    );
+    const context: StaffMeasureContext = {
+      staffIndex,
+      barlineColumns,
+      measureBoundaries,
+      restColumns,
+    };
+    const contextualized = applyMeasureContextToStaff(smoothed, staff, context);
+    const metrics = buildPreviewMetrics(contextualized);
+    const eligible = meetsPromotionThreshold(
+      {
+        ...metrics,
+        noteheads: contextualized,
+      },
+      3,
+    );
 
-  const averageConfidence = sorted.length
-    ? Number((sorted.reduce((sum, candidate) => sum + candidate.confidence, 0) / sorted.length).toFixed(3))
-    : 0;
-  const spacingConfidence = estimateSpacingConfidence(sorted);
-  const promotionScore = computePromotionScore(sorted, averageConfidence, spacingConfidence);
+    staffSummaries.push({
+      staffIndex,
+      noteCount: contextualized.length,
+      restCount: restColumns.length,
+      barlineCount: barlineColumns.length,
+      measureCount: Math.max(1, measureBoundaries.length - 1),
+      averageConfidence: metrics.averageConfidence,
+      spacingConfidence: metrics.spacingConfidence,
+      promotionScore: metrics.promotionScore,
+      eligible,
+    });
+
+    totalRestCount += restColumns.length;
+    totalBarlineCount += barlineColumns.length;
+    totalMeasureCount += Math.max(1, measureBoundaries.length - 1);
+    fallbackNoteheads.push(...contextualized);
+    if (eligible) {
+      selectedNoteheads.push(...contextualized);
+    }
+  });
+
+  const finalNoteheads = selectedNoteheads.length > 0 ? selectedNoteheads : fallbackNoteheads;
+  const sorted = [...finalNoteheads].sort((left, right) => left.staffIndex - right.staffIndex || left.x - right.x || left.y - right.y);
+  const metrics = buildPreviewMetrics(sorted);
+  const eligible = selectedNoteheads.length > 0 && meetsPromotionThreshold({ ...metrics, noteheads: sorted }, 5);
 
   return {
-    tokens,
-    groupedLines: groupTokens(tokens, 10),
+    tokens: metrics.tokens,
+    groupedLines: groupTokens(metrics.tokens, 10),
     noteheads: sorted,
-    pageCount: sorted.length ? new Set(sorted.map((candidate) => candidate.pageNumber)).size : 0,
+    pageCount: 1,
     staffGroupCount: diagnostics.staffGroups.length,
-    averageConfidence,
-    durationCounts,
-    dottedCount: sorted.filter((candidate) => candidate.dotted).length,
-    accidentalCount: sorted.filter((candidate) => candidate.accidental !== null).length,
-    beamCount: sorted.filter((candidate) => candidate.hasBeamOrFlag).length,
-    stemmedCount: sorted.filter((candidate) => candidate.stemDirection !== "none").length,
-    certaintyCount: sorted.filter((candidate) => candidate.fillKind !== "uncertain").length,
-    spacingConfidence,
-    promotionScore,
+    restCount: totalRestCount,
+    barlineCount: totalBarlineCount,
+    measureCount: totalMeasureCount,
+    averageConfidence: metrics.averageConfidence,
+    durationCounts: metrics.durationCounts,
+    dottedCount: metrics.dottedCount,
+    accidentalCount: metrics.accidentalCount,
+    beamCount: metrics.beamCount,
+    stemmedCount: metrics.stemmedCount,
+    certaintyCount: metrics.certaintyCount,
+    spacingConfidence: metrics.spacingConfidence,
+    promotionScore: metrics.promotionScore,
+    eligible,
+    selectedPageCount: eligible ? 1 : 0,
+    diagnosticOnlyPageCount: eligible ? 0 : 1,
+    staffSummaries,
+    pageSummaries: [
+      {
+        pageNumber,
+        noteCount: sorted.length,
+        restCount: totalRestCount,
+        averageConfidence: metrics.averageConfidence,
+        spacingConfidence: metrics.spacingConfidence,
+        promotionScore: metrics.promotionScore,
+        eligible,
+        selectedStaffCount: staffSummaries.filter((summary) => summary.eligible).length,
+        diagnosticOnlyStaffCount: staffSummaries.filter((summary) => !summary.eligible).length,
+      },
+    ],
   };
 }
 
 function combinePagePreviews(pagePreviews: OmrPitchPreview[]) {
-  const sortedNoteheads = pagePreviews
+  const eligiblePages = pagePreviews.filter((preview) => preview.eligible);
+  const selectedPreviews = eligiblePages.length > 0 ? eligiblePages : pagePreviews;
+  const sortedNoteheads = selectedPreviews
     .flatMap((preview) => preview.noteheads)
     .sort(
       (left, right) =>
@@ -1748,39 +2212,32 @@ function combinePagePreviews(pagePreviews: OmrPitchPreview[]) {
         left.x - right.x ||
         left.y - right.y,
     );
-  const tokens = sortedNoteheads.map((candidate) => candidate.numberedToken);
-  const durationCounts: Record<DurationValue, number> = {
-    eighth: 0,
-    quarter: 0,
-    half: 0,
-    whole: 0,
-  };
-
-  for (const candidate of sortedNoteheads) {
-    durationCounts[candidate.duration] += 1;
-  }
-
-  const averageConfidence = sortedNoteheads.length
-    ? Number((sortedNoteheads.reduce((sum, candidate) => sum + candidate.confidence, 0) / sortedNoteheads.length).toFixed(3))
-    : 0;
-  const spacingConfidence = estimateSpacingConfidence(sortedNoteheads);
-  const promotionScore = computePromotionScore(sortedNoteheads, averageConfidence, spacingConfidence);
+  const metrics = buildPreviewMetrics(sortedNoteheads);
+  const eligible = eligiblePages.length > 0 && meetsPromotionThreshold({ ...metrics, noteheads: sortedNoteheads }, 5);
 
   return {
-    tokens,
-    groupedLines: groupTokens(tokens, 10),
+    tokens: metrics.tokens,
+    groupedLines: groupTokens(metrics.tokens, 10),
     noteheads: sortedNoteheads,
     pageCount: pagePreviews.length,
     staffGroupCount: pagePreviews.reduce((sum, preview) => sum + preview.staffGroupCount, 0),
-    averageConfidence,
-    durationCounts,
-    dottedCount: sortedNoteheads.filter((candidate) => candidate.dotted).length,
-    accidentalCount: sortedNoteheads.filter((candidate) => candidate.accidental !== null).length,
-    beamCount: sortedNoteheads.filter((candidate) => candidate.hasBeamOrFlag).length,
-    stemmedCount: sortedNoteheads.filter((candidate) => candidate.stemDirection !== "none").length,
-    certaintyCount: sortedNoteheads.filter((candidate) => candidate.fillKind !== "uncertain").length,
-    spacingConfidence,
-    promotionScore,
+    restCount: selectedPreviews.reduce((sum, preview) => sum + preview.restCount, 0),
+    barlineCount: selectedPreviews.reduce((sum, preview) => sum + preview.barlineCount, 0),
+    measureCount: selectedPreviews.reduce((sum, preview) => sum + preview.measureCount, 0),
+    averageConfidence: metrics.averageConfidence,
+    durationCounts: metrics.durationCounts,
+    dottedCount: metrics.dottedCount,
+    accidentalCount: metrics.accidentalCount,
+    beamCount: metrics.beamCount,
+    stemmedCount: metrics.stemmedCount,
+    certaintyCount: metrics.certaintyCount,
+    spacingConfidence: metrics.spacingConfidence,
+    promotionScore: metrics.promotionScore,
+    eligible,
+    selectedPageCount: selectedPreviews.length,
+    diagnosticOnlyPageCount: pagePreviews.length - selectedPreviews.length,
+    staffSummaries: pagePreviews.flatMap((preview) => preview.staffSummaries),
+    pageSummaries: pagePreviews.flatMap((preview) => preview.pageSummaries),
   } satisfies OmrPitchPreview;
 }
 
@@ -1880,7 +2337,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     const diagnostics = detectStaffDiagnostics(screenshot.buffer);
     const noteheads = detectNoteheadsFromDiagnostics(screenshot.buffer, diagnostics, screenshot.pageNumber);
     const analyzed = analyzeNoteheads(diagnostics, screenshot.buffer, noteheads);
-    const preview = buildOmrPreviewFromDiagnostics(diagnostics, analyzed);
+    const preview = buildOmrPreviewFromDiagnostics(diagnostics, screenshot.buffer, analyzed, screenshot.pageNumber);
 
     return {
       screenshot,
@@ -1895,23 +2352,23 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     .filter((preview) => preview.noteheads.length > 0 || preview.staffGroupCount > 0);
   const diagnostics = pageAnalyses[0]?.diagnostics ?? null;
   const analyzedNoteheads = pageAnalyses.flatMap((analysis) => analysis.analyzed);
-  const omrPreview = pagePreviews.length ? combinePagePreviews(pagePreviews) : diagnostics ? buildOmrPreviewFromDiagnostics(diagnostics, analyzedNoteheads) : null;
+  const omrPreview =
+    pagePreviews.length
+      ? combinePagePreviews(pagePreviews)
+      : diagnostics && screenshots[0]
+        ? buildOmrPreviewFromDiagnostics(diagnostics, screenshots[0].buffer, analyzedNoteheads, screenshots[0].pageNumber)
+        : null;
 
   if (
     pageAnalyses.length > 0 &&
     omrPreview &&
     omrPreview.staffGroupCount >= 1 &&
-    omrPreview.tokens.length >= 5 &&
-    omrPreview.averageConfidence >= 0.48 &&
-    omrPreview.stemmedCount >= 2 &&
-    omrPreview.certaintyCount >= Math.max(3, Math.ceil(omrPreview.noteheads.length * 0.45)) &&
-    omrPreview.spacingConfidence >= 0.05 &&
-    omrPreview.promotionScore >= 0.62
+    omrPreview.eligible
   ) {
     const previewText = [
-      `OMR final | pages: ${omrPreview.pageCount} | staff groups: ${omrPreview.staffGroupCount} | notes: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence} | promotion: ${omrPreview.promotionScore}`,
+      `OMR final | pages: ${omrPreview.pageCount} | selected pages: ${omrPreview.selectedPageCount} | staff groups: ${omrPreview.staffGroupCount} | notes: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence} | promotion: ${omrPreview.promotionScore}`,
       `Durations e:${omrPreview.durationCounts.eighth} q:${omrPreview.durationCounts.quarter} h:${omrPreview.durationCounts.half} w:${omrPreview.durationCounts.whole}`,
-      `Symbols dots:${omrPreview.dottedCount} accidentals:${omrPreview.accidentalCount} flags/beams:${omrPreview.beamCount} | spacing:${omrPreview.spacingConfidence}`,
+      `Symbols dots:${omrPreview.dottedCount} accidentals:${omrPreview.accidentalCount} rests:${omrPreview.restCount} bars:${omrPreview.barlineCount} | spacing:${omrPreview.spacingConfidence}`,
       ...omrPreview.groupedLines.slice(0, 4),
     ].join(NEWLINE);
     const pdfBuffer = await buildResultPdf({
@@ -1920,14 +2377,15 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
       lines: [
         ...omrPreview.groupedLines,
         "",
-        `Processed pages: ${omrPreview.pageCount} | detected staff groups: ${omrPreview.staffGroupCount}`,
+        `Processed pages: ${omrPreview.pageCount} | selected pages: ${omrPreview.selectedPageCount} | diagnostic-only pages: ${omrPreview.diagnosticOnlyPageCount}`,
+        `Detected staff groups: ${omrPreview.staffGroupCount} | selected staff groups: ${omrPreview.staffSummaries.filter((summary) => summary.eligible).length}`,
         `Detected noteheads: ${omrPreview.noteheads.length}`,
         `Average confidence: ${omrPreview.averageConfidence}`,
         `Promotion score: ${omrPreview.promotionScore} | spacing confidence: ${omrPreview.spacingConfidence}`,
         `Durations -> eighth: ${omrPreview.durationCounts.eighth}, quarter: ${omrPreview.durationCounts.quarter}, half: ${omrPreview.durationCounts.half}, whole: ${omrPreview.durationCounts.whole}`,
-        `Symbols -> dots: ${omrPreview.dottedCount}, accidentals: ${omrPreview.accidentalCount}, flags/beams: ${omrPreview.beamCount}, certain noteheads: ${omrPreview.certaintyCount}`,
+        `Symbols -> dots: ${omrPreview.dottedCount}, accidentals: ${omrPreview.accidentalCount}, rests: ${omrPreview.restCount}, barlines: ${omrPreview.barlineCount}, flags/beams: ${omrPreview.beamCount}`,
       ],
-      footer: "Module 5E prototype: multi-page aggregation, sequence smoothing, and stronger accidental/duration stabilization were strong enough to produce a numbered preview.",
+      footer: "Module 5E prototype: page/staff confidence layering, measure-context smoothing, and stronger barline/rest-aware accidental and duration stabilization were strong enough to produce a numbered preview.",
     });
     const outputPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-numbered-omr.pdf`);
     fs.writeFileSync(outputPath, pdfBuffer);
@@ -1950,7 +2408,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
   }
 
   const previewText = omrPreview
-    ? `OMR draft | pages: ${omrPreview.pageCount} | staff groups: ${omrPreview.staffGroupCount} | noteheads: ${omrPreview.noteheads.length} | avg confidence: ${omrPreview.averageConfidence} | promotion: ${omrPreview.promotionScore} | durations e:${omrPreview.durationCounts.eighth} q:${omrPreview.durationCounts.quarter} h:${omrPreview.durationCounts.half} w:${omrPreview.durationCounts.whole}`
+    ? `OMR draft | pages: ${omrPreview.pageCount} | selected pages: ${omrPreview.selectedPageCount} | staff groups: ${omrPreview.staffGroupCount} | noteheads: ${omrPreview.noteheads.length} | rests: ${omrPreview.restCount} | bars: ${omrPreview.barlineCount} | avg confidence: ${omrPreview.averageConfidence} | promotion: ${omrPreview.promotionScore} | durations e:${omrPreview.durationCounts.eighth} q:${omrPreview.durationCounts.quarter} h:${omrPreview.durationCounts.half} w:${omrPreview.durationCounts.whole}`
     : diagnostics
       ? `OMR draft | staff groups: ${diagnostics.staffGroups.length} | candidate lines: ${diagnostics.lineCenters.length}`
       : rawText
@@ -1980,8 +2438,8 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
       ? `Duration summary: eighth ${omrPreview.durationCounts.eighth}, quarter ${omrPreview.durationCounts.quarter}, half ${omrPreview.durationCounts.half}, whole ${omrPreview.durationCounts.whole}`
       : "Duration summary: unavailable",
     omrPreview
-      ? `Accidental detections: ${omrPreview.accidentalCount} | beam/flag detections: ${omrPreview.beamCount}`
-      : "Accidental detections: unavailable",
+      ? `Accidental detections: ${omrPreview.accidentalCount} | rest detections: ${omrPreview.restCount} | barlines: ${omrPreview.barlineCount} | beam/flag detections: ${omrPreview.beamCount}`
+      : "Accidental/rest detections: unavailable",
     omrPreview
       ? `Promotion score: ${omrPreview.promotionScore} | spacing confidence: ${omrPreview.spacingConfidence} | certain noteheads: ${omrPreview.certaintyCount}`
       : "Promotion score: unavailable",
@@ -1991,6 +2449,12 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     pageAnalyses.length
       ? `Per-page staff groups: ${pageAnalyses.map((analysis) => `p${analysis.screenshot.pageNumber}:${analysis.diagnostics.staffGroups.length}`).join(", ")}`
       : "Per-page staff groups: unavailable",
+    omrPreview && omrPreview.pageSummaries.length
+      ? `Page selection: ${omrPreview.pageSummaries.map((summary) => `p${summary.pageNumber}:${summary.eligible ? "selected" : "draft-only"}`).join(", ")}`
+      : "Page selection: unavailable",
+    omrPreview && omrPreview.staffSummaries.length
+      ? `Staff selection: ${omrPreview.staffSummaries.map((summary) => `s${summary.staffIndex}:${summary.eligible ? "selected" : "draft-only"}`).join(", ")}`
+      : "Staff selection: unavailable",
     omrPreview && omrPreview.tokens.length
       ? `Heuristic numbered preview: ${omrPreview.groupedLines.slice(0, 2).join(" | ")}`
       : "Heuristic numbered preview: unavailable",
@@ -2000,7 +2464,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     title: "Numbered notation draft",
     subtitle: `Manual correction required for ${inputFile.original_name}`,
     lines: draftLines,
-    footer: "Module 5E prototype: screenshot diagnostics plus fragment filtering, sequence smoothing, multi-page aggregation, and stronger accidental/duration heuristics are attached for manual review.",
+    footer: "Module 5E prototype: screenshot diagnostics plus page/staff confidence layering, measure-context smoothing, and stronger barline/rest-aware accidental and duration heuristics are attached for manual review.",
   });
   const draftPdfPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-draft.pdf`);
   fs.writeFileSync(draftPdfPath, draftPdfBuffer);
@@ -2032,7 +2496,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
           })),
           omrPitchPreview: omrPreview,
           analyzedNoteheads: analyzedNoteheads,
-          recommendation: "Review the diagnostics and correct the draft numbered notation. Module 5E adds multi-page aggregation, fragment filtering, sequence smoothing, and stronger accidental/duration stabilization while later modules can improve delivery and editing.",
+          recommendation: "Review the diagnostics and correct the draft numbered notation. Module 5E adds page/staff confidence layering, multi-page aggregation, fragment filtering, sequence smoothing, and stronger barline/rest-aware accidental and duration stabilization while later modules can improve delivery and editing.",
         },
         null,
         2,

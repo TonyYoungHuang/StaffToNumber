@@ -91,7 +91,7 @@ Module 5 now has five iterative recognition layers for `staff_pdf_to_numbered`:
 - `5B`: first OMR preprocessing path that renders the first PDF page to an image, detects likely staff lines, finds notehead candidates, estimates pitch levels from staff spacing, and either upgrades the result to a numbered preview or packages diagnostics into a draft bundle
 - `5C`: duration and basic-symbol prototype that adds notehead fill analysis, stem direction estimation, and first-pass dot / accidental / beam-like detection to enrich the numbered preview
 - `5D`: structure-cleanup prototype that refines notehead cores, adds first-pass connected-cluster splitting plus valley-based sub-bounding-box subdivision, filters symbol noise more aggressively, and replaces the simple final-promotion rule with a structured promotion score
-- `5E`: evaluation and sequencing prototype that adds a repeatable sample framework, tracks final/draft changes after each heuristic update, aggregates up to three PDF pages, and stabilizes fragment filtering plus pitch/duration/accidental sequencing
+- `5E`: evaluation and sequencing prototype that adds a repeatable sample framework, tracks final/draft changes after each heuristic update, aggregates up to three PDF pages, layers page/staff confidence, and stabilizes fragment filtering plus pitch/duration/accidental sequencing with basic measure context
 
 Current exposure:
 
@@ -105,12 +105,14 @@ Module 5 now includes a repo-level sample set for regression checking:
 - `samples/clean`: PDFs that should stay `final`
 - `samples/draft`: PDFs that should stay `draft`
 - `samples/fail`: PDFs that must not be promoted to `final`
+- `samples/generate-fixtures.mjs`: regenerates copied and composed sample fixtures
 - `samples/reports/latest.json` and `samples/reports/latest.md`: latest evaluation snapshot
 - `samples/reports/history/`: timestamped run history to track preview/result changes after each heuristic adjustment
 
 Run the evaluator from the repo root:
 
 ```bash
+npm run generate:samples
 npm run evaluate:samples
 ```
 
