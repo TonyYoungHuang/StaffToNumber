@@ -18,7 +18,12 @@ export async function activationRoutes(app: FastifyInstance) {
       const result = redeemActivationCode(request.authUserId!, code);
 
       if (!result.ok) {
-        const errorMessage = result.reason === "not_found" ? "Activation code not found." : "Activation code already used.";
+        const errorMessage =
+          result.reason === "not_found"
+            ? "Activation code not found."
+            : result.reason === "expired"
+              ? "Activation code has expired."
+              : "Activation code already used.";
         return reply.code(409).send({ error: errorMessage });
       }
 

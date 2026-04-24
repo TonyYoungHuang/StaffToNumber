@@ -1,6 +1,5 @@
 import type { ConversionDirection } from "@score/shared";
 import type { FastifyInstance } from "fastify";
-import { getUserProfile } from "../repositories/auth-repository.js";
 import { findStoredFileById } from "../repositories/file-repository.js";
 import { createJob, findJobById, listJobsByUserId, mapJobForApi } from "../repositories/job-repository.js";
 
@@ -12,7 +11,7 @@ export async function jobRoutes(app: FastifyInstance) {
   app.get(
     "/jobs",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request) => {
       return {
@@ -24,7 +23,7 @@ export async function jobRoutes(app: FastifyInstance) {
   app.get(
     "/jobs/:id",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -41,14 +40,9 @@ export async function jobRoutes(app: FastifyInstance) {
   app.post(
     "/jobs",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request, reply) => {
-      const profile = getUserProfile(request.authUserId!);
-      if (!profile || profile.entitlement.status !== "active") {
-        return reply.code(403).send({ error: "An active entitlement is required to create jobs." });
-      }
-
       const body = (request.body ?? {}) as { inputFileId?: string; direction?: ConversionDirection };
       if (!body.inputFileId || !isDirection(body.direction)) {
         return reply.code(400).send({ error: "Only staff PDF to numbered notation is currently supported." });

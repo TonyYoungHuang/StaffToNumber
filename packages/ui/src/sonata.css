@@ -282,6 +282,33 @@ img {
   padding: 24px 0 44px;
 }
 
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(12, 14, 18, 0.75);
+  backdrop-filter: blur(16px);
+}
+
+.locale-switcher-button {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.locale-switcher-button.is-active {
+  background: linear-gradient(135deg, rgba(113, 236, 206, 0.22), rgba(255, 190, 92, 0.18));
+  color: var(--ink-strong);
+}
+
 .footer-shell {
   display: flex;
   justify-content: space-between;

@@ -14,7 +14,7 @@ export async function fileRoutes(app: FastifyInstance) {
   app.get(
     "/files",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request) => {
       return {
@@ -33,7 +33,7 @@ export async function fileRoutes(app: FastifyInstance) {
   app.post(
     "/files/upload",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request, reply) => {
       const file = await request.file();
@@ -81,7 +81,7 @@ export async function fileRoutes(app: FastifyInstance) {
   app.get(
     "/files/:id/download",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request, reply) => {
       const params = request.params as { id: string };

@@ -1,15 +1,21 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import Fastify from "fastify";
+import fastifyRawBody from "fastify-raw-body";
 import { PRODUCT_NAME } from "@score/shared";
 import { config } from "./config.js";
 import { initDb } from "./db.js";
 import { authPlugin } from "./plugins/auth.js";
 import { ensureActivationCode } from "./repositories/auth-repository.js";
+import { adminActivationRoutes } from "./routes/admin-activation.js";
 import { activationRoutes } from "./routes/activation.js";
 import { authRoutes } from "./routes/auth.js";
 import { fileRoutes } from "./routes/files.js";
 import { jobRoutes } from "./routes/jobs.js";
+import { paymentWebhookRoutes } from "./routes/payment-webhooks.js";
+import { paymentRoutes } from "./routes/payments.js";
+import { supportRoutes } from "./routes/support.js";
+import { systemRoutes } from "./routes/system.js";
 
 const app = Fastify({ logger: true });
 
@@ -24,11 +30,23 @@ await app.register(multipart, {
   },
 });
 
+await app.register(fastifyRawBody, {
+  field: "rawBody",
+  global: false,
+  encoding: false,
+  runFirst: true,
+});
+
 await app.register(authPlugin);
 await app.register(authRoutes, { prefix: "/api" });
+await app.register(adminActivationRoutes, { prefix: "/api" });
 await app.register(activationRoutes, { prefix: "/api" });
 await app.register(fileRoutes, { prefix: "/api" });
 await app.register(jobRoutes, { prefix: "/api" });
+await app.register(paymentRoutes, { prefix: "/api" });
+await app.register(paymentWebhookRoutes, { prefix: "/api" });
+await app.register(supportRoutes, { prefix: "/api" });
+await app.register(systemRoutes, { prefix: "/api" });
 
 initDb();
 for (const code of config.seedActivationCodes) {

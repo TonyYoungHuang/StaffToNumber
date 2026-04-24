@@ -165,6 +165,16 @@ type OmrPitchPreview = {
 
 const db = new DatabaseSync(workerConfig.dbFile);
 db.exec("PRAGMA busy_timeout = 5000;");
+db.exec(`
+  CREATE TABLE IF NOT EXISTS service_runtime (
+    service_name TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    message TEXT,
+    details_json TEXT,
+    last_heartbeat_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`);
 fs.mkdirSync(workerConfig.storageDir, { recursive: true });
 const NEWLINE = String.fromCharCode(10);
 
@@ -178,6 +188,28 @@ function createId() {
 function nowIso() {
   return new Date().toISOString();
 }
+
+function recordWorkerHeartbeat(status: "idle" | "processing" | "error", message: string, details?: Record<string, unknown>) {
+  const timestamp = nowIso();
+
+  db.prepare(
+    `
+      INSERT INTO service_runtime (service_name, status, message, details_json, last_heartbeat_at, updated_at)
+      VALUES ('worker', ?, ?, ?, ?, ?)
+      ON CONFLICT(service_name) DO UPDATE SET
+        status = excluded.status,
+        message = excluded.message,
+        details_json = excluded.details_json,
+        last_heartbeat_at = excluded.last_heartbeat_at,
+        updated_at = excluded.updated_at
+    `,
+  ).run(status, message, details ? JSON.stringify(details) : null, timestamp, timestamp);
+}
+
+recordWorkerHeartbeat("idle", "Worker started", {
+  storageDir: workerConfig.storageDir,
+  pollIntervalMs: workerConfig.pollIntervalMs,
+});
 
 function nextQueuedJob() {
   return db
@@ -2536,11 +2568,16 @@ async function tick() {
 
   const job = nextQueuedJob();
   if (!job) {
+    recordWorkerHeartbeat("idle", "Waiting for queued jobs");
     return;
   }
 
   busy = true;
   markProcessing(job.id);
+  recordWorkerHeartbeat("processing", `Processing job ${job.id}`, {
+    jobId: job.id,
+    direction: job.direction,
+  });
   console.log(`[worker] processing job ${job.id} (${job.direction})`);
 
   try {
@@ -2559,9 +2596,13 @@ async function tick() {
 
     await processStaffPdfJob(job, inputFile);
   } catch (error) {
+    recordWorkerHeartbeat("error", error instanceof Error ? error.message : "Worker failed to process the job.", {
+      jobId: job.id,
+    });
     markFailed(job.id, error instanceof Error ? error.message : "Worker failed to process the job.");
   } finally {
     busy = false;
+    recordWorkerHeartbeat("idle", "Waiting for queued jobs");
   }
 }
 

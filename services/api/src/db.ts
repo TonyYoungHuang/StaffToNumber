@@ -95,15 +95,126 @@ export function initDb() {
       FOREIGN KEY (draft_bundle_file_id) REFERENCES files(id)
     );
 
+    CREATE TABLE IF NOT EXISTS payment_orders (
+      id TEXT PRIMARY KEY,
+      public_token TEXT NOT NULL UNIQUE,
+      user_id TEXT,
+      provider TEXT NOT NULL,
+      status TEXT NOT NULL,
+      customer_email TEXT,
+      locale TEXT,
+      entitlement_days INTEGER NOT NULL,
+      checkout_session_id TEXT,
+      transaction_id TEXT,
+      checkout_url TEXT,
+      amount_minor INTEGER,
+      currency TEXT,
+      activation_code_id TEXT,
+      paid_at TEXT,
+      cancelled_at TEXT,
+      failure_reason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (activation_code_id) REFERENCES activation_codes(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      requested_email TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      consumed_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS service_runtime (
+      service_name TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      message TEXT,
+      details_json TEXT,
+      last_heartbeat_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS support_requests (
+      id TEXT PRIMARY KEY,
+      reference_code TEXT NOT NULL UNIQUE,
+      category TEXT NOT NULL,
+      locale TEXT NOT NULL,
+      contact_name TEXT,
+      contact_email TEXT NOT NULL,
+      account_email TEXT,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      order_reference TEXT,
+      job_reference TEXT,
+      source_page TEXT,
+      source_context TEXT,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes(code);
     CREATE INDEX IF NOT EXISTS idx_user_entitlements_user_id ON user_entitlements(user_id);
     CREATE INDEX IF NOT EXISTS idx_files_user_id ON files(user_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs(user_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_payment_orders_status ON payment_orders(status);
+    CREATE INDEX IF NOT EXISTS idx_payment_orders_provider ON payment_orders(provider);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_support_requests_status ON support_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_support_requests_contact_email ON support_requests(contact_email);
+    CREATE INDEX IF NOT EXISTS idx_support_requests_created_at ON support_requests(created_at);
   `);
 
   ensureColumn("jobs", "output_file_id", "TEXT");
   ensureColumn("jobs", "draft_bundle_file_id", "TEXT");
   ensureColumn("jobs", "preview_text", "TEXT");
+  ensureColumn("activation_codes", "batch_id", "TEXT");
+  ensureColumn("activation_codes", "note", "TEXT");
+  ensureColumn("activation_codes", "expires_at", "TEXT");
+  ensureColumn("activation_codes", "created_by", "TEXT");
+  ensureColumn("activation_codes", "disabled_at", "TEXT");
+  ensureColumn("payment_orders", "customer_email", "TEXT");
+  ensureColumn("payment_orders", "user_id", "TEXT");
+  ensureColumn("payment_orders", "locale", "TEXT");
+  ensureColumn("payment_orders", "entitlement_days", "INTEGER NOT NULL DEFAULT 365");
+  ensureColumn("payment_orders", "checkout_session_id", "TEXT");
+  ensureColumn("payment_orders", "transaction_id", "TEXT");
+  ensureColumn("payment_orders", "checkout_url", "TEXT");
+  ensureColumn("payment_orders", "amount_minor", "INTEGER");
+  ensureColumn("payment_orders", "currency", "TEXT");
+  ensureColumn("payment_orders", "activation_code_id", "TEXT");
+  ensureColumn("payment_orders", "paid_at", "TEXT");
+  ensureColumn("payment_orders", "cancelled_at", "TEXT");
+  ensureColumn("payment_orders", "failure_reason", "TEXT");
+  ensureColumn("support_requests", "reference_code", "TEXT");
+  ensureColumn("support_requests", "category", "TEXT");
+  ensureColumn("support_requests", "locale", "TEXT NOT NULL DEFAULT 'en'");
+  ensureColumn("support_requests", "contact_name", "TEXT");
+  ensureColumn("support_requests", "contact_email", "TEXT");
+  ensureColumn("support_requests", "account_email", "TEXT");
+  ensureColumn("support_requests", "subject", "TEXT");
+  ensureColumn("support_requests", "message", "TEXT");
+  ensureColumn("support_requests", "order_reference", "TEXT");
+  ensureColumn("support_requests", "job_reference", "TEXT");
+  ensureColumn("support_requests", "source_page", "TEXT");
+  ensureColumn("support_requests", "source_context", "TEXT");
+  ensureColumn("support_requests", "status", "TEXT NOT NULL DEFAULT 'open'");
+  ensureColumn("support_requests", "created_at", "TEXT");
+  ensureColumn("support_requests", "updated_at", "TEXT");
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_activation_codes_batch_id ON activation_codes(batch_id);
+    CREATE INDEX IF NOT EXISTS idx_activation_codes_status ON activation_codes(status);
+    CREATE INDEX IF NOT EXISTS idx_payment_orders_checkout_session_id ON payment_orders(checkout_session_id);
+    CREATE INDEX IF NOT EXISTS idx_payment_orders_transaction_id ON payment_orders(transaction_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_support_requests_reference_code ON support_requests(reference_code);
+  `);
 }
