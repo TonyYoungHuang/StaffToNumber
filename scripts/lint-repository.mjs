@@ -2,14 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const ignored = new Set([".git", ".next", ".tmp", ".vercel", "artifacts", "coverage", "data", "dist", "node_modules", "playwright-report", "storage", "test-results"]);
+const ignored = new Set([".git", ".next", ".tmp", ".vercel", "artifacts", "coverage", "dist", "node_modules", "playwright-report", "test-results"]);
+const ignoredAtRoot = new Set(["data", "storage"]);
 const textExtensions = new Set([".cjs", ".js", ".json", ".jsx", ".md", ".mjs", ".ts", ".tsx", ".yaml", ".yml"]);
 const failures = [];
 let checkedFiles = 0;
 
 function walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (ignored.has(entry.name)) continue;
+    if (ignored.has(entry.name) || (directory === root && ignoredAtRoot.has(entry.name))) continue;
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(absolute);
     else if (textExtensions.has(path.extname(entry.name).toLowerCase())) inspect(absolute);
@@ -36,7 +37,7 @@ function inspect(file) {
 
 walk(root);
 
-for (const packagePath of ["package.json", "apps/www/package.json", "apps/app/package.json", "services/api/package.json", "services/worker/package.json", "services/collaboration/package.json", "packages/shared/package.json", "packages/ui/package.json"]) {
+for (const packagePath of ["package.json", "apps/www/package.json", "apps/app/package.json", "services/api/package.json", "services/worker/package.json", "services/collaboration/package.json", "packages/shared/package.json", "packages/storage/package.json", "packages/ui/package.json"]) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, packagePath), "utf8"));
   if (!manifest.name || !manifest.version) failures.push(`${packagePath} must define name and version`);
 }

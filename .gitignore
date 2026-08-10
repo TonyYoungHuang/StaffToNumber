@@ -3,8 +3,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 coverage/
-data/
-storage/
+/data/
+/storage/
 *.sqlite
 .env
 .env.*
