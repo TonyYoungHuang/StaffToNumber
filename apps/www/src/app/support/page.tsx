@@ -128,12 +128,7 @@ export default async function SupportPage() {
           <Link href="/faq" className="public-button secondary">
             {isChinese ? "查看 FAQ" : "Open FAQ"}
           </Link>
-          <Link href="/operations-checklist" className="public-button tertiary">
-            {isChinese ? "运营检查清单" : "Operations checklist"}
-          </Link>
-          <a href={checkoutUrl} className="public-button tertiary">
-            {isChinese ? "查看购买路径" : "View checkout path"}
-          </a>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看购买路径" : "View checkout path"}</a> : null}
         </div>
       </Panel>
 
@@ -180,8 +175,8 @@ export default async function SupportPage() {
             eyebrow={isChinese ? "处理边界" : "Support boundary"}
             title={
               isChinese
-                ? "支持覆盖的是当前已上线流程，而不是尚未上线的未来承诺"
-                : "Support covers the current live workflow, not future scope that is not launched yet"
+                ? "支持覆盖已上线能力及其明确标注的部署条件"
+                : "Support covers live capabilities and their documented deployment requirements"
             }
             body={
               isChinese
@@ -204,8 +199,8 @@ export default async function SupportPage() {
               value={isChinese ? "未来模块" : "Later modules"}
               body={
                 isChinese
-                  ? "尚未上线的反向转换、站内编辑、复杂移调或所有谱面都完美自动处理。"
-                  : "Reverse conversion, in-browser editing, complex transposition, or perfect automatic output for every score."
+                  ? "不要承诺复杂总谱无需校对、桌面级自由排版，或未配置外部引擎时仍可使用对应功能。"
+                  : "Do not promise review-free recognition, desktop-grade free-form engraving, or engine-backed features when their external tools are not configured."
               }
             />
             <MetricCard
@@ -262,9 +257,7 @@ export default async function SupportPage() {
           <Link href="/faq" className="public-button secondary">
             {isChinese ? "常见问题" : "FAQ"}
           </Link>
-          <a href={checkoutUrl} className="public-button tertiary">
-            {isChinese ? "购买 / 开通" : "Checkout"}
-          </a>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "购买 / 开通" : "Checkout"}</a> : null}
         </div>
         <p className="helper-copy">{siteConfig.supportEmail}</p>
       </Panel>

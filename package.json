@@ -12,12 +12,36 @@
     "dev:app": "npm run dev -w @score/app",
     "dev:api": "npm run dev -w @score/api",
     "dev:worker": "npm run dev -w @score/worker",
+    "dev:collaboration": "npm run dev -w @score/collaboration",
     "generate:samples": "node samples/generate-fixtures.mjs",
     "evaluate:samples": "npm run build -w @score/worker && npm run evaluate:samples -w @score/worker",
-    "build": "npm run build -w @score/shared && npm run build -w @score/ui && npm run build -w @score/api && npm run build -w @score/worker && npm run build -w @score/www && npm run build -w @score/app",
-    "typecheck": "npm run build -w @score/shared && npm run build -w @score/ui && npm run typecheck -w @score/api && npm run typecheck -w @score/worker && npm run typecheck -w @score/www && npm run typecheck -w @score/app"
+    "audit:encoding": "node scripts/audit-text-encoding.mjs",
+    "audit:production-seo": "node scripts/audit-production-seo.mjs",
+    "verify:production-config": "node scripts/verify-production-config.mjs",
+    "lint": "npm run audit:encoding && node scripts/lint-repository.mjs",
+    "build": "npm run build -w @score/shared && npm run build -w @score/ui && npm run build -w @score/storage && npm run build -w @score/api && npm run build -w @score/worker && npm run build -w @score/collaboration && npm run build -w @score/www && npm run build -w @score/app",
+    "test:unit": "npm run test -w @score/storage && npm run test:unit -w @score/api && npm run test -w @score/worker && npm run test -w @score/www && npm run test -w @score/app",
+    "test:integration": "npm run test:integration -w @score/storage && npm run test:postgres -w @score/api && npm run test:broker -w @score/api && npm run test:integration -w @score/api && npm run test -w @score/collaboration",
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test tests/e2e/omr-candidate-review.spec.ts --grep \"pixel-stable\"",
+    "test:performance": "playwright test tests/e2e/omr-candidate-review.spec.ts --grep \"20,000-note\"",
+    "test": "npm run audit:encoding && npm run test:unit && npm run test:integration",
+    "typecheck": "npm run build -w @score/shared && npm run build -w @score/ui && npm run build -w @score/storage && npm run typecheck -w @score/api && npm run typecheck -w @score/worker && npm run typecheck -w @score/collaboration && npm run typecheck -w @score/www && npm run typecheck -w @score/app",
+    "security": "npm audit --audit-level=high",
+    "qualify:music-engines": "node scripts/qualify-music-engines.mjs",
+    "test:music-engines": "npm run qualify:music-engines && npm run test:music-engines -w @score/api && npm run test:music-engines -w @score/worker",
+    "release:manifest": "node scripts/generate-release-manifest.mjs",
+    "release:verify": "node scripts/verify-release-manifest.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "overrides": {
+    "postcss": "$postcss"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "cheerio": "^1.1.2",
+    "postcss": "^8.5.26"
   }
 }

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "fixture": "qualification.musicxml",
+  "optInEnv": "RUN_SCORE_RENDERER_REAL_INTEGRATION",
+  "environment": {
+    "museScoreCommand": "MUSESCORE_COMMAND",
+    "fluidSynthCommand": "FLUIDSYNTH_COMMAND",
+    "ffmpegCommand": "FFMPEG_COMMAND",
+    "soundFontPath": "SOUNDFONT_PATH",
+    "soundFontLicenseManifest": "SOUNDFONT_LICENSE_MANIFEST"
+  },
+  "timeoutsMs": {
+    "museScore": 120000,
+    "fluidSynth": 120000,
+    "ffmpeg": 120000,
+    "forcedFailure": 1
+  },
+  "soundFontLicensePolicy": {
+    "allowedExtensions": [".sf2", ".sf3"],
+    "allowedSpdxLicenseIds": [
+      "Apache-2.0",
+      "CC0-1.0",
+      "CC-BY-3.0",
+      "CC-BY-4.0",
+      "MIT",
+      "OFL-1.1"
+    ],
+    "licensesRequiringAttribution": ["CC-BY-3.0", "CC-BY-4.0"],
+    "requireRedistributionAllowed": true,
+    "requireSha256": true
+  },
+  "acousticGolden": {
+    "sampleRate": 48000,
+    "channels": 2,
+    "tempoBpm": 120,
+    "durationSeconds": { "target": 2.5, "tolerance": 1.25 },
+    "meanVolumeDb": { "target": -16.0, "tolerance": 6.0 },
+    "peakVolumeDb": { "target": -3.0, "tolerance": 3.0 }
+  }
+}

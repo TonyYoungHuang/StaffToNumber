@@ -1,0 +1,4 @@
+Title: Original Diagnostic Repair Study
+1=C (major)
+Meter: 3/4
+| - 1{unknown:effect} X9 0~ 2{65:2:start} |

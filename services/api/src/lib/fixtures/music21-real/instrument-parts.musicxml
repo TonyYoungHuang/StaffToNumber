@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <work><work-title>CC0 music21 instrument parts fixture</work-title></work>
+  <part-list>
+    <score-part id="P1">
+      <part-name>B-flat Clarinet</part-name><part-abbreviation>Cl.</part-abbreviation>
+      <midi-instrument id="P1-I1"><midi-program>72</midi-program></midi-instrument>
+    </score-part>
+    <score-part id="P2">
+      <part-name>Horn in F</part-name><part-abbreviation>Hn.</part-abbreviation>
+      <midi-instrument id="P2-I1"><midi-program>61</midi-program></midi-instrument>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions><key><fifths>2</fifths><mode>major</mode></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note id="clarinet-c4"><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice><type>half</type></note>
+      <note id="clarinet-e4"><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice><type>half</type></note>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions><key><fifths>1</fifths><mode>major</mode></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note id="horn-g3"><pitch><step>G</step><octave>3</octave></pitch><duration>2</duration><voice>1</voice><type>half</type></note>
+      <note id="horn-b3"><pitch><step>B</step><octave>3</octave></pitch><duration>2</duration><voice>1</voice><type>half</type></note>
+    </measure>
+  </part>
+</score-partwise>

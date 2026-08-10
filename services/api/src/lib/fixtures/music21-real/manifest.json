@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "simple",
+      "file": "simple.musicxml",
+      "title": "Simple chromatic transposition",
+      "sha256": "d6bd7b6c8f2714c3f0e64c3270100dfa90611046c28418b6f6305aaaa1d5054b",
+      "provenance": {
+        "kind": "public-domain",
+        "source": "Original integration fixture authored for this repository",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "id": "complex",
+      "file": "complex.musicxml",
+      "title": "Complex notation transposition",
+      "sha256": "b1e1b0230f97d212d84c5621dc3fca13f541213a72f409f4f36cfb9dc83d9518",
+      "provenance": {
+        "kind": "public-domain",
+        "source": "Original integration fixture authored for this repository",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    },
+    {
+      "id": "instrument-parts",
+      "file": "instrument-parts.musicxml",
+      "title": "Multi-instrument part transposition",
+      "sha256": "31e460d06c11f327145de5c2d9f24e04bdb582a21671bb7893ac25b6d905a6b3",
+      "provenance": {
+        "kind": "public-domain",
+        "source": "Original integration fixture authored for this repository",
+        "license": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+      }
+    }
+  ]
+}

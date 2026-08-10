@@ -1,0 +1,140 @@
+{
+  "score": {
+    "title": "Original Senza Misura Voices Study",
+    "parser": "jianpu-basic-v1",
+    "measureCount": 2,
+    "noteCount": 6,
+    "restCount": 1,
+    "warnings": [],
+    "measures": [
+      {
+        "number": "1",
+        "sequence": 1,
+        "implicit": false,
+        "divisions": 16,
+        "key": { "fifths": -5, "mode": "major" },
+        "time": { "beats": "4", "beatType": "4", "senzaMisura": true },
+        "events": [
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "lead",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "D", "alter": -1, "octave": 4 },
+            "chord": false,
+            "ties": [],
+            "slurs": [{ "type": "start", "number": "free" }],
+            "lyrics": [{ "number": "1", "syllabic": "single", "text": "Drift" }],
+            "ornaments": [{ "type": "mordent", "placement": "above", "value": null }]
+          },
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "shadow",
+            "staff": 2,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "A", "alter": -1, "octave": 3 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "lead",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "E", "alter": -1, "octave": 4 },
+            "chord": false,
+            "ties": ["start"],
+            "slurs": [],
+            "lyrics": [{ "number": "1", "syllabic": "single", "text": "without" }],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "shadow",
+            "staff": 2,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "B", "alter": -1, "octave": 3 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [{ "number": "1", "syllabic": "single", "text": "bars" }],
+            "ornaments": []
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "sequence": 2,
+        "implicit": false,
+        "divisions": null,
+        "key": null,
+        "time": null,
+        "events": [
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "lead",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "E", "alter": -1, "octave": 4 },
+            "chord": false,
+            "ties": ["stop"],
+            "slurs": [{ "type": "stop", "number": "free" }],
+            "lyrics": [{ "number": "1", "syllabic": "single", "text": "settle" }],
+            "ornaments": [{ "type": "tremolo", "placement": null, "value": "3" }]
+          },
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "lead",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "F", "alter": 0, "octave": 4 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          },
+          {
+            "type": "rest",
+            "duration": 32,
+            "durationType": "half",
+            "dots": 0,
+            "voice": "shadow",
+            "staff": 2,
+            "timeModification": null,
+            "tuplets": [],
+            "measureRest": false
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

@@ -1,54 +1,50 @@
 import type { Metadata } from "next";
-import { Manrope, Newsreader } from "next/font/google";
 import React from "react";
 import "@score/ui/sonata.css";
 import { PublicChrome } from "../components/PublicChrome";
 import { SiteLocaleProvider } from "../components/SiteLocaleProvider";
+import { ProductionAnalytics } from "../components/ProductionAnalytics";
 import { readSiteLocale } from "../lib/locale";
 import { siteConfig } from "../lib/site";
 
-const headlineFont = Newsreader({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-headline",
-});
-
-const uiFont = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-ui",
-});
-
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
-  const title = isChinese ? "五线谱 PDF 转简谱工具 | ScoreTransposer" : "Staff PDF to Jianpu Converter | ScoreTransposer";
-  const description = isChinese
-    ? "把五线谱 PDF 转成简谱的在线工具说明页，覆盖 staff pdf to jianpu、五线谱转简谱、简谱转换器等搜索意图，并说明开通、交付与支持路径。"
-    : siteConfig.description;
+  const title = siteConfig.title;
+  const description = siteConfig.description;
 
   return {
     metadataBase: new URL(siteConfig.siteUrl),
     title,
     description,
     applicationName: siteConfig.siteName,
-    keywords: [...siteConfig.keywords, "seo music converter", "activation code access", "buy jianpu converter"],
+    keywords: [...siteConfig.keywords],
     alternates: {
       canonical: "/",
+    },
+    robots: {
+      index: siteConfig.release.publicLaunchReady,
+      follow: siteConfig.release.publicLaunchReady,
+    },
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+      other: {
+        "msvalidate.01": process.env.BING_SITE_VERIFICATION || "",
+        "baidu-site-verification": process.env.BAIDU_SITE_VERIFICATION || "",
+      },
     },
     openGraph: {
       title,
       description,
       url: siteConfig.siteUrl,
       siteName: siteConfig.siteName,
-      locale: isChinese ? "zh_CN" : "en_US",
+      locale: "en_US",
       type: "website",
+      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: ["/product/score-preview-output-real.png"],
     },
   };
 }
@@ -58,7 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${headlineFont.variable} ${uiFont.variable}`}>
+      <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -81,6 +77,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <SiteLocaleProvider locale={locale}>
           <PublicChrome>{children}</PublicChrome>
+          <ProductionAnalytics />
         </SiteLocaleProvider>
       </body>
     </html>

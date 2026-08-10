@@ -1,0 +1,117 @@
+{
+  "score": {
+    "title": "Original Diagnostic Repair Study",
+    "parser": "jianpu-basic-v1",
+    "measureCount": 1,
+    "noteCount": 2,
+    "restCount": 0,
+    "warnings": [
+      "A standalone duration extension has no previous Jianpu event. (line 4, column 3, token \"-\") Suggestion: Attach - to a note or rest, for example 1- or 0-.",
+      "Unsupported Jianpu extension \"{unknown:effect}\" was not imported. (line 4, column 5, token \"1{unknown:effect}\") Suggestion: Use {3:2:start}, {slur:start:1}, or {orn:trill-mark:above}.",
+      "Unsupported Jianpu token member \"X9\" was not imported. (line 4, column 23, token \"X9\") Suggestion: Use 0-7, optional #/b, octave marks ' or ,, duration marks _ - ., ties ~, chords [1,3,5], and contexts such as v2: or v2@s2:.",
+      "A rest cannot be a chord member or use a tie marker. (line 4, column 26, token \"0~\") Suggestion: Place rest token 0 outside chord brackets and remove ~ markers.",
+      "The Jianpu tuplet ratio must use values from 1 to 64. (line 4, column 29, token \"2{65:2:start}\") Suggestion: Use a suffix such as {3:2:start}, {3:2}, or {3:2:stop}."
+    ],
+    "measures": [
+      {
+        "number": "1",
+        "sequence": 1,
+        "implicit": true,
+        "divisions": 16,
+        "key": { "fifths": 0, "mode": "major" },
+        "time": { "beats": "3", "beatType": "4", "senzaMisura": false },
+        "events": [
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "1",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "C", "alter": 0, "octave": 4 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "1",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "D", "alter": 0, "octave": 4 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "JIANPU_ORPHAN_EXTENSION",
+      "severity": "warning",
+      "message": "A standalone duration extension has no previous Jianpu event.",
+      "token": "-",
+      "line": 4,
+      "column": 3,
+      "start": 65,
+      "end": 66,
+      "suggestion": "Attach - to a note or rest, for example 1- or 0-."
+    },
+    {
+      "code": "JIANPU_UNSUPPORTED_EXTENSION",
+      "severity": "warning",
+      "message": "Unsupported Jianpu extension \"{unknown:effect}\" was not imported.",
+      "token": "1{unknown:effect}",
+      "line": 4,
+      "column": 5,
+      "start": 67,
+      "end": 84,
+      "suggestion": "Use {3:2:start}, {slur:start:1}, or {orn:trill-mark:above}."
+    },
+    {
+      "code": "JIANPU_UNSUPPORTED_TOKEN",
+      "severity": "warning",
+      "message": "Unsupported Jianpu token member \"X9\" was not imported.",
+      "token": "X9",
+      "line": 4,
+      "column": 23,
+      "start": 85,
+      "end": 87,
+      "suggestion": "Use 0-7, optional #/b, octave marks ' or ,, duration marks _ - ., ties ~, chords [1,3,5], and contexts such as v2: or v2@s2:."
+    },
+    {
+      "code": "JIANPU_INVALID_REST_CONTEXT",
+      "severity": "warning",
+      "message": "A rest cannot be a chord member or use a tie marker.",
+      "token": "0~",
+      "line": 4,
+      "column": 26,
+      "start": 88,
+      "end": 90,
+      "suggestion": "Place rest token 0 outside chord brackets and remove ~ markers."
+    },
+    {
+      "code": "JIANPU_INVALID_TUPLET",
+      "severity": "warning",
+      "message": "The Jianpu tuplet ratio must use values from 1 to 64.",
+      "token": "2{65:2:start}",
+      "line": 4,
+      "column": 29,
+      "start": 91,
+      "end": 104,
+      "suggestion": "Use a suffix such as {3:2:start}, {3:2}, or {3:2:stop}."
+    }
+  ]
+}

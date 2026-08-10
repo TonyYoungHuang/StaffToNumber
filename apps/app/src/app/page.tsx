@@ -18,40 +18,40 @@ export default async function AppHomePage() {
     locale === "zh-CN"
       ? [
           {
-            title: "双轨开通模型",
-            body: "海外用户注册后可直接在线支付自动开通；中国大陆用户仍可通过销售渠道获得激活码。",
+            title: "MusicXML 核心工程",
+            body: "导入 MusicXML、MIDI、简谱、Score JSON 或扫描候选后，统一进入可修订、可恢复的乐谱工程。",
             icon: VaultIcon,
             tone: "",
           },
           {
-            title: "聚焦当前上线范围",
-            body: "当前版本只开放五线谱 PDF 转简谱，避免功能承诺和实际交付脱节。",
+            title: "双向转换与专业编辑",
+            body: "支持五线谱与简谱互换、移调、谱面点选、插入删除、多声部编辑和版本历史。",
             icon: SparkIcon,
             tone: " tertiary",
           },
           {
-            title: "低置信度走草稿",
-            body: "当识别结果不够稳定时，系统会保留草稿结果，而不是过度承诺最终质量。",
+            title: "播放练习与多格式导出",
+            body: "提供循环、变速、节拍器、分声部练习，并从固定修订生成 MusicXML、MIDI、PDF、图片和音频。",
             icon: CheckSealIcon,
             tone: "",
           },
         ]
       : [
           {
-            title: "Automatic paid access",
-            body: "International users register first, then unlock access by paying online. Activation codes remain reserved for mainland-China distribution.",
+            title: "MusicXML-first projects",
+            body: "MusicXML, MIDI, Jianpu, Score JSON, and scan candidates all become versioned score projects that can be corrected and restored.",
             icon: VaultIcon,
             tone: "",
           },
           {
-            title: "Focused conversion scope",
-            body: "This release keeps the product narrow: only five-line staff PDF to numbered notation is live, so QA and user expectations stay aligned.",
+            title: "Round-trip conversion and editing",
+            body: "Convert between staff notation and Jianpu, transpose, select rendered notation, insert or delete events, edit voices, and keep revision history.",
             icon: SparkIcon,
             tone: " tertiary",
           },
           {
-            title: "Draft-safe outputs",
-            body: "The pipeline already distinguishes stronger pages from weak pages, which lets low-confidence material stay draft instead of over-promising final quality.",
+            title: "Practice and reproducible exports",
+            body: "Loop, change tempo, use a metronome, isolate parts, and queue MusicXML, MIDI, print, image, and audio exports from an immutable revision.",
             icon: CheckSealIcon,
             tone: "",
           },
@@ -63,63 +63,63 @@ export default async function AppHomePage() {
           eyebrow: "The Sonic Manuscript",
           title: (
             <>
-              一个更完整的 <em>五线谱 PDF</em> 转简谱工作台。
+              一个围绕 <em>MusicXML</em> 构建的全功能乐谱工作台。
             </>
           ),
           body:
-            "当前已登录应用已统一使用 Stitch 视觉系统，覆盖注册、激活、上传、任务创建与结果下载。现阶段产品范围刻意保持收敛：只支持五线谱 PDF 转简谱。",
-          startUpload: "从上传开始",
+            "扫描 PDF 或图片成为候选谱，校对后继续做五线谱与简谱互换、移调、图形编辑、播放练习和 MusicXML、MIDI、PDF、图片、音频导出。",
+          startUpload: "导入乐谱",
           openJobs: "打开任务队列",
           createAccount: "创建账户",
           truthTitle: "当前产品边界",
-          truthBody: "`numbered_pdf_to_staff` 仍未在界面开放，移调功能也保留到后续模块。",
+          truthBody: "Score JSON 是编辑和版本事实来源，MusicXML 是交换格式；PDF、图片和录音只作为导入素材，识别结果必须先校对再确认。",
           sequenceTitle: "当前操作顺序",
-          sequenceBody: "海外：注册账户 -> 在线支付 -> 自动开通 -> 上传 PDF -> 创建任务。中国大陆：注册账户 -> 兑换激活码 -> 使用。",
-          previewStatus: "当前上线预览",
-          previewCopy: "当 OCR 或页面置信度不足时，预览文本会保留为草稿。",
+          sequenceBody: "创建或导入乐谱工程 -> 校对候选 -> 保存正式修订 -> 转换、移调和练习 -> 按固定修订导出与分享。",
+          previewStatus: "结构化乐谱预览",
+          previewCopy: "五线谱和简谱预览来自同一份 Score JSON，避免多个转换工具之间的数据漂移。",
           step1Label: "流程步骤 1",
-          step1Title: "上传可复用的源 PDF",
+          step1Title: "导入 MusicXML、MIDI、简谱或扫描素材",
           step2Label: "流程步骤 2",
-          step2Title: "发起当前唯一开放的转换方向",
-          step2Status: "五线谱 -> 简谱",
+          step2Title: "校对、编辑、移调、练习和导出",
+          step2Status: "同一乐谱工程",
           bannerEyebrow: "当前应用能力",
-          bannerTitle: "已上线功能都已纳入这一套统一工作台外壳。",
+          bannerTitle: "从一次性转换工具进入可持续编辑的乐谱工程。",
           bannerBody:
-            "现有界面已经覆盖今天真正可用的页面：注册、登录、激活码兑换、PDF 上传、任务排队、预览展示与结果下载。",
+            "工程页集中管理正式修订、识别候选、图形编辑、简谱视图、移调诊断、播放时间线、导出任务、分享和教学流程。",
           openDashboard: "打开控制台",
           signIn: "登录",
-          bannerFootnote: "如果你后续需要，同一套视觉系统也可以继续扩展到 `apps/www` 的公网 SEO 站。",
+          bannerFootnote: "Audiveris 和 Basic Pitch 结果是待校对候选；高质量排版与音频依赖已配置的服务端渲染器。",
         }
       : {
           eyebrow: "The Sonic Manuscript",
           title: (
             <>
-              A composed studio for <em>staff PDF</em> to Jianpu conversion.
+              A MusicXML-first workspace for <em>complete score workflows</em>.
             </>
           ),
           body:
-            "This authenticated app now carries the Stitch visual system across registration, activation, uploads, job creation, and result retrieval. Current live scope is intentionally narrow: only five-line staff PDF to numbered notation.",
-          startUpload: "Start with upload",
+            "Scan PDF or image sources into reviewable candidates, then convert staff and Jianpu, transpose, edit notation, practice playback, and export MusicXML, MIDI, print, image, or audio files.",
+          startUpload: "Import a score",
           openJobs: "Open job queue",
           createAccount: "Create account",
           truthTitle: "Current product truth",
-          truthBody: "`numbered_pdf_to_staff` stays closed in the UI. Transposition is deferred to a future module on the same website.",
+          truthBody: "Score JSON is the editing and version source of truth, MusicXML is the interchange format, and PDF, images, and recordings remain import sources that require review.",
           sequenceTitle: "Operational sequence",
-          sequenceBody: "International: create account -> pay online -> access activates automatically -> upload PDF -> create job.",
-          previewStatus: "Current live preview",
-          previewCopy: "Preview text can remain draft when OCR or page confidence is weak.",
+          sequenceBody: "Create or import a project -> review candidates -> save an accepted revision -> convert, transpose, and practice -> export or share that exact revision.",
+          previewStatus: "Structured score preview",
+          previewCopy: "Staff and Jianpu previews derive from the same Score JSON so workflows do not drift between isolated converters.",
           step1Label: "Workflow step 1",
-          step1Title: "Upload reusable source PDFs",
+          step1Title: "Import MusicXML, MIDI, Jianpu, or scan sources",
           step2Label: "Workflow step 2",
-          step2Title: "Queue one locked conversion direction",
-          step2Status: "Staff -> Jianpu",
+          step2Title: "Correct, edit, transpose, practice, and export",
+          step2Status: "One score project",
           bannerEyebrow: "Current app surface",
-          bannerTitle: "All active functionality now belongs inside this Stitch-based studio shell.",
+          bannerTitle: "Move from one-off conversion into a durable score project.",
           bannerBody:
-            "The migrated interface covers the pages that already work today: account creation, sign-in, activation code redemption, PDF upload, job queuing, preview display, and result download.",
+            "The project workspace brings accepted revisions, recognition candidates, visual editing, Jianpu, transposition diagnostics, playback timelines, export jobs, sharing, and teaching workflows together.",
           openDashboard: "Open dashboard",
           signIn: "Sign in",
-          bannerFootnote: "If you later want, the same visual system can be extended into the public SEO site in `apps/www`.",
+          bannerFootnote: "Audiveris and Basic Pitch results remain review candidates; high-quality engraving and audio depend on configured server renderers.",
         };
 
   return (

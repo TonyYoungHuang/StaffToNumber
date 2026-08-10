@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:score:audiveris-real-fixtures:v1",
+  "title": "Audiveris real-engine qualification fixture manifest",
+  "description": "References external, checksum-pinned fixtures. No score images or PDFs are stored with this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "fixtures"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fixture"
+      }
+    }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "scenario", "path", "sha256", "rights", "expected"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+        },
+        "scenario": {
+          "enum": [
+            "multipage",
+            "rotation-90",
+            "rotation-180",
+            "rotation-270",
+            "crop",
+            "low-confidence",
+            "corrupted-input",
+            "timeout",
+            "cancellation"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path, or a path relative to this manifest."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classification", "statement"],
+          "properties": {
+            "classification": {
+              "enum": ["public-domain", "user-provided"]
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Source URL or a non-sensitive source identifier."
+            },
+            "statement": {
+              "type": "string",
+              "minLength": 8,
+              "description": "Why this fixture is permitted for qualification use."
+            }
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rotationDegrees": {
+              "enum": [0, 90, 180, 270]
+            },
+            "cropped": {
+              "type": "boolean"
+            }
+          }
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "minPages": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minMeasures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minNotes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "maxAverageConfidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "lowConfidenceThreshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "minSymbolsBelowThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scenario": {
+                "const": "multipage"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expected": {
+                "required": ["minPages", "minMeasures", "minNotes"],
+                "properties": {
+                  "minPages": {
+                    "minimum": 2
+                  },
+                  "minMeasures": {
+                    "minimum": 1
+                  },
+                  "minNotes": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scenario": {
+                "enum": ["rotation-90", "rotation-180", "rotation-270", "crop"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expected": {
+                "required": ["minMeasures", "minNotes"],
+                "properties": {
+                  "minMeasures": {
+                    "minimum": 1
+                  },
+                  "minNotes": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scenario": {
+                "const": "low-confidence"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expected": {
+                "required": ["lowConfidenceThreshold", "minSymbolsBelowThreshold"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

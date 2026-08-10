@@ -6,19 +6,26 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
+    "test": "node --import tsx --test src/lib/vexflow-layout.test.ts src/lib/vexflow-event-groups.test.ts src/lib/vexflow-beam-groups.test.ts src/lib/vexflow-voice-layout.test.ts src/lib/vexflow-modifier-layout.test.ts src/lib/vexflow-measure-annotations.test.ts src/lib/vexflow-key-signature.test.ts src/lib/vexflow-page-invalidation.test.ts src/lib/score-editor-clipboard.test.ts src/lib/score-collaboration-queue.test.ts src/lib/practice-performance-analysis.test.ts src/lib/score-collaboration-document.test.ts src/lib/omr-overlay-geometry.test.ts src/lib/score-review-viewport.test.ts src/lib/playback-timeline.test.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@hocuspocus/provider": "^4.3.0",
     "@score/shared": "0.1.0",
     "@score/ui": "0.1.0",
-    "next": "16.2.2",
+    "next": "^16.3.0",
+    "opensheetmusicdisplay": "^2.0.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "tone": "^15.1.22",
+    "vexflow": "^5.0.0",
+    "yjs": "^13.6.31"
   },
   "devDependencies": {
     "@types/node": "22.15.3",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
+    "tsx": "4.19.4",
     "typescript": "5.8.3"
   }
 }

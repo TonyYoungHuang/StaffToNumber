@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <work><work-title>CC0 music21 complex notation fixture</work-title></work>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Grand Piano</part-name>
+      <part-abbreviation>Pno.</part-abbreviation>
+      <midi-instrument id="P1-I1"><midi-program>1</midi-program></midi-instrument>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>12</divisions>
+        <key><fifths>-3</fifths><mode>minor</mode></key>
+        <time><beats>6</beats><beat-type>8</beat-type></time>
+        <staves>2</staves>
+        <clef number="1"><sign>G</sign><line>2</line></clef>
+        <clef number="2"><sign>F</sign><line>4</line></clef>
+      </attributes>
+      <direction placement="above">
+        <direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>88</per-minute></metronome></direction-type>
+        <sound tempo="88"/>
+      </direction>
+      <direction placement="below"><direction-type><dynamics><mf/></dynamics></direction-type></direction>
+      <harmony><root><root-step>E</root-step><root-alter>-1</root-alter></root><kind text="Ebm">minor</kind></harmony>
+      <note id="complex-grace">
+        <grace slash="yes"/><pitch><step>D</step><alter>-1</alter><octave>5</octave></pitch>
+        <voice>1</voice><type>eighth</type><staff>1</staff>
+      </note>
+      <note id="complex-triplet-1">
+        <pitch><step>E</step><alter>-1</alter><octave>4</octave></pitch>
+        <duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+        <notations><tuplet number="1" type="start" bracket="yes"/></notations>
+      </note>
+      <note id="complex-chord">
+        <chord/><pitch><step>G</step><octave>4</octave></pitch>
+        <duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+      </note>
+      <note id="complex-triplet-2">
+        <pitch><step>F</step><octave>4</octave></pitch>
+        <duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+      </note>
+      <note id="complex-triplet-3">
+        <pitch><step>G</step><alter>-1</alter><octave>4</octave></pitch>
+        <duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+        <notations><tuplet number="1" type="stop"/></notations>
+      </note>
+      <note id="complex-bass">
+        <pitch><step>E</step><alter>-1</alter><octave>3</octave></pitch>
+        <duration>12</duration><voice>2</voice><type>quarter</type><dot/><staff>2</staff>
+        <lyric number="1"><syllabic>single</syllabic><text>ground</text></lyric>
+      </note>
+      <note id="complex-rest">
+        <rest/><duration>12</duration><voice>2</voice><type>quarter</type><dot/><staff>2</staff>
+      </note>
+    </measure>
+    <measure number="2">
+      <note id="complex-tie-start">
+        <pitch><step>B</step><alter>-1</alter><octave>4</octave></pitch>
+        <duration>18</duration><voice>1</voice><type>quarter</type><dot/><staff>1</staff><tie type="start"/>
+        <notations><tied type="start"/><ornaments><trill-mark placement="above"/></ornaments></notations>
+      </note>
+      <note id="complex-tie-stop">
+        <pitch><step>B</step><alter>-1</alter><octave>4</octave></pitch>
+        <duration>18</duration><voice>1</voice><type>quarter</type><dot/><staff>1</staff><tie type="stop"/>
+        <notations><tied type="stop"/></notations>
+      </note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+</score-partwise>

@@ -1,0 +1,42 @@
+groups:
+  - name: scoretransposer-api
+    rules:
+      - alert: ScoreApiUnavailable
+        expr: up{job="score-api"} == 0
+        for: 2m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: Score API metrics target is unavailable
+          runbook_url: https://scoretransposer.com/operations-checklist#api-unavailable
+
+      - alert: ScoreApiHighServerErrorRate
+        expr: sum(rate(score_api_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(score_api_http_requests_total[5m])), 0.001) > 0.02
+        for: 10m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: Score API 5xx rate is above 2 percent for 10 minutes
+          runbook_url: https://scoretransposer.com/operations-checklist#high-5xx
+
+      - alert: ScoreApiHighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(score_api_http_request_duration_seconds_bucket[5m]))) > 2.5
+        for: 15m
+        labels:
+          severity: ticket
+          service: api
+        annotations:
+          summary: Score API p95 response time is above 2.5 seconds
+          runbook_url: https://scoretransposer.com/operations-checklist#high-latency
+
+      - alert: ScoreApiSecurityWriteFailure
+        expr: sum(rate(score_api_security_events_total{severity="error",outcome="failed"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: A persisted security-audit event has failed
+          runbook_url: https://scoretransposer.com/operations-checklist#security-audit

@@ -1,125 +1,119 @@
-# Online PDF Score Converter
+# ScoreTransposer
 
-Monorepo skeleton for the Online PDF Score Converter project.
+ScoreTransposer is a MusicXML-first music notation platform for score scanning, correction, transposition, staff/Jianpu conversion, practice playback, export, teaching, and collaboration.
 
-## Project docs
+The repository is under active pre-production development. Core product workflows run locally, but the production API, worker fleet, external music engines, storage, observability, backup, and release operations still require a unified deployment before commercial launch.
 
-- `CHANGELOG.md`: high-level delivery history
-- `docs/README.md`: docs index
-- `docs/handoffs/`: model-to-model development handoff notes
-- `docs/modules/`: module progress snapshots and implementation notes
+## Architecture
 
-## Apps and services
+MusicXML and the versioned internal Score JSON document are the source of truth. PDF, images, audio, MIDI, and Jianpu are import/export boundaries; the platform does not edit PDF geometry as the score model.
 
-- `apps/www`: SEO website
-- `apps/app`: authenticated user web app
-- `services/api`: backend API service
-- `services/worker`: async conversion worker placeholder
-- `packages/shared`: shared types and constants
+| Workspace | Purpose | Default port |
+| --- | --- | --- |
+| `apps/www` | Public website, feature pages, SEO, support, privacy, and copyright intake | 3000 |
+| `apps/app` | Authenticated score workspace, editor, jobs, classroom, student, and admin views | 3001 |
+| `services/api` | Auth, score/job APIs, storage metadata, billing, privacy, security, and operations | 4000 |
+| `services/worker` | OMR, conversion, audio, export, and external-engine job execution | background process |
+| `services/collaboration` | Yjs/Hocuspocus real-time score document service | 4001 |
+| `packages/shared` | Score JSON schema, MusicXML/Jianpu/MIDI transforms, editor and practice domain logic | library |
+| `packages/ui` | Shared UI primitives | library |
 
-## Getting started
+## Current Capabilities
 
-```bash
-npm install
-npm run build -w @score/shared
-npm run dev:www
-npm run dev:app
+- Import MusicXML/MXL, MIDI, Jianpu, PDF, images, audio, and supported remote media into a candidate-based score workflow.
+- Run Audiveris OMR jobs and retain source pages, symbol geometry, confidence evidence, engine artifacts, and review status when the engine is configured.
+- Render scores with OSMD and provide a VexFlow editing layer with measure selection, insertion/deletion, clipboard operations, keyboard entry, multiple voices, modifiers, and layout helpers.
+- Transpose and convert through structured score documents, with optional `music21` processing for complex MusicXML cases.
+- Play and practise parts with tempo, loops, metronome/count-in, repeat navigation, solo/mute, and performance-analysis foundations.
+- Export MusicXML, MIDI, PDF, WAV, and MP3 through persistent jobs; MuseScore, FluidSynth/SoundFont, and ffmpeg are used when configured.
+- Support first-stage assignments, submissions, feedback, recording practice, Yjs collaboration, sharing, billing, support, privacy, security auditing, and copyright complaint operations.
+- Publish bilingual feature metadata, sitemap/robots, canonical/hreflang, FAQ/HowTo/Breadcrumb structured data, OG images, and SEO audit/admin surfaces.
+
+## Commercial Boundaries
+
+The following are not yet production claims:
+
+- External engines must be installed in long-running Linux worker containers; Vercel cannot execute Audiveris, MuseScore, Basic Pitch, FluidSynth, or ffmpeg workloads.
+- Local SQLite and filesystem storage remain development defaults. Production requires private S3-compatible object storage with authenticated API streaming and checksum-verified Worker materialization. Verified SQLite-to-PostgreSQL migration/rollback, independent shadow parity auditing, and a transaction-outbox/BullMQ broker now exist, but runtime repositories must still move to PostgreSQL before cross-host horizontal scaling.
+- OMR and audio transcription remain probabilistic and require candidate review. They must not be presented as guaranteed-accurate conversion.
+- Full MuseScore/Flat-level engraving, mature multi-user classroom/LMS workflows, production collaboration scale, and the 200-score regression corpus are still in progress.
+- Production release, Search Console verification, backup/restore drills, centralized observability, load testing, and final legal/security sign-off remain release blockers.
+
+See [the commercial development plan](docs/music-notation-platform-development.md) for the authoritative completion criteria.
+
+## Prerequisites
+
+- Node.js 22 or later
+- npm 10 or later
+- Optional: Docker Desktop for the local infrastructure topology
+- Optional music engines: Audiveris, Python/music21, MuseScore CLI, FluidSynth plus a licensed SoundFont, ffmpeg/ffprobe, Basic Pitch, and yt-dlp
+
+Engine command paths and timeouts are configured through the API and worker environment files. Do not commit production secrets or licensed SoundFont files.
+
+## Local Setup
+
+Install the locked dependency graph:
+
+```powershell
+npm ci
+```
+
+Create local environment files from the tracked examples:
+
+```powershell
+Copy-Item apps/www/.env.example apps/www/.env.local
+Copy-Item apps/app/.env.example apps/app/.env.local
+Copy-Item services/api/.env.example services/api/.env
+Copy-Item services/worker/.env.example services/worker/.env
+Copy-Item services/collaboration/.env.example services/collaboration/.env
+```
+
+Replace all placeholder secrets before testing admin, payment, email, or metrics routes. For local development, start each process in its own terminal:
+
+```powershell
 npm run dev:api
 npm run dev:worker
+npm run dev:collaboration
+npm run dev:www
+npm run dev:app
 ```
 
-## Default ports
+Open `http://localhost:3000` for the website and `http://localhost:3001` for the product app.
 
-- `apps/www`: `http://localhost:3000`
-- `apps/app`: `http://localhost:3001`
-- `services/api`: `http://localhost:4000`
+## Quality Gates
 
-## Environment files
-
-- root: `.env.example`
-- SEO site: `apps/www/.env.example`
-- user app: `apps/app/.env.example`
-- API service: `services/api/.env.example`
-- worker: `services/worker/.env.example`
-
-## Module 1 scope
-
-This repository currently contains the Module 1 foundation:
-
-- workspace layout
-- base TypeScript configs
-- minimal Next.js shells for `www` and `app`
-- minimal Fastify API server
-- minimal worker entry
-- shared package for common constants
-
-## Module 2 status
-
-Module 2 adds the first account flow:
-
-- email registration
-- email/password sign-in
-- activation code redemption
-- local SQLite persistence for users, sessions, activation codes, and entitlements
-- app pages for register, login, activate, and dashboard
-
-## Module 3 status
-
-Module 3 adds file storage basics:
-
-- PDF upload endpoint
-- stored file metadata in SQLite
-- authenticated file listing
-- authenticated file download
-- upload page in the app
-
-## Module 4 status
-
-Module 4 adds the task framework:
-
-- jobs table and job API routes
-- authenticated job creation, listing, and detail lookup
-- worker polling and status transitions
-- jobs page in the app
-- placeholder worker outcome until Module 5 adds the real conversion engine
-
-## Module 5 status
-
-Module 5 now has five iterative recognition layers for `staff_pdf_to_numbered`:
-
-- `5A`: text-layer heuristic extraction for PDFs that contain parseable note letters
-- `5B`: first OMR preprocessing path that renders the first PDF page to an image, detects likely staff lines, finds notehead candidates, estimates pitch levels from staff spacing, and either upgrades the result to a numbered preview or packages diagnostics into a draft bundle
-- `5C`: duration and basic-symbol prototype that adds notehead fill analysis, stem direction estimation, and first-pass dot / accidental / beam-like detection to enrich the numbered preview
-- `5D`: structure-cleanup prototype that refines notehead cores, adds first-pass connected-cluster splitting plus valley-based sub-bounding-box subdivision, filters symbol noise more aggressively, and replaces the simple final-promotion rule with a structured promotion score
-- `5E`: evaluation and sequencing prototype that adds a repeatable sample framework, tracks final/draft changes after each heuristic update, aggregates up to three PDF pages, layers page/staff confidence, and stabilizes fragment filtering plus pitch/duration/accidental sequencing with basic measure context
-
-Current exposure:
-
-- only `staff_pdf_to_numbered` is available in the UI and API
-- `numbered_pdf_to_staff` is deferred to a later module and is not exposed to users yet
-
-### Sample evaluation workflow
-
-Module 5 now includes a repo-level sample set for regression checking:
-
-- `samples/clean`: PDFs that should stay `final`
-- `samples/draft`: PDFs that should stay `draft`
-- `samples/fail`: PDFs that must not be promoted to `final`
-- `samples/generate-fixtures.mjs`: regenerates copied and composed sample fixtures
-- `samples/reports/latest.json` and `samples/reports/latest.md`: latest evaluation snapshot
-- `samples/reports/history/`: timestamped run history to track preview/result changes after each heuristic adjustment
-
-Run the evaluator from the repo root:
-
-```bash
-npm run generate:samples
-npm run evaluate:samples
+```powershell
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run test:integration
+npm run build
+npm run test:e2e
+npm run security
 ```
 
-### Development seed code
+`npm test` runs encoding checks plus unit and integration suites. Browser E2E expects production builds and starts isolated services on `127.0.0.1:43100-43102`. On Windows, Docker or proxy software must not reserve those ports.
 
-The API seeds one activation code by default:
+GitHub Actions under `.github/workflows` run quality, build/release verification, browser E2E, dependency review, npm audit, and CodeQL checks. A workflow file being present is not evidence that the remote branch protection or CI run is green.
 
-- `DEMO-1YEAR-ACCESS`
+## Release Traceability
 
-You can change it in `services/api/.env.example` or your local `.env`.
+After a successful full build:
+
+```powershell
+npm run release:manifest
+npm run release:verify
+```
+
+The generated, ignored `artifacts/release-manifest.json` records the Git commit/dirty state, package versions, lockfile hash, database schema version, Score JSON schema version, and SHA-256 hashes of compiled artifacts. CI rejects a release manifest generated from a dirty checkout.
+
+## Key Documentation
+
+- [Commercial development and acceptance plan](docs/music-notation-platform-development.md)
+- [Backend deployment topology](deploy/backend/README.md)
+- [Module documentation](docs/modules/)
+- [Change log](CHANGELOG.md)
+
+## Release Policy
+
+Production deployment is intentionally deferred until the development gates in the commercial plan are complete. Do not label the platform "100% commercial-ready" until the final checklist, clean Git release, CI, production infrastructure, security, recovery, legal, and product-owner acceptance are all complete.

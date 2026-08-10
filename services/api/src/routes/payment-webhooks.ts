@@ -1,6 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { findPaymentOrderById, findPaymentOrderByCheckoutSessionId, findPaymentOrderByTransactionId, completePaymentOrder } from "../repositories/payment-repository.js";
 import { verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
+import { normalizePaddleBillingEvent, normalizeStripeBillingEvent } from "../lib/billing-events.js";
+import { processBillingWebhookEvent } from "../repositories/billing-repository.js";
+import { db } from "../db.js";
 
 type RawBodyRequest = {
   rawBody?: Buffer;
@@ -27,6 +30,9 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
 
       try {
         const event = verifyStripeWebhook(rawRequest.rawBody, signature);
+
+        const billingEvent = normalizeStripeBillingEvent(event, rawRequest.rawBody);
+        if (billingEvent) processBillingWebhookEvent(db, billingEvent);
 
         if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
           const session = event.data.object;
@@ -71,6 +77,7 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
       try {
         verifyPaddleWebhook(rawRequest.rawBody, signature);
         const payload = request.body as {
+          event_id?: string;
           event_type?: string;
           data?: {
             id?: string;
@@ -86,6 +93,9 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
             };
           };
         };
+
+        const billingEvent = normalizePaddleBillingEvent(payload, rawRequest.rawBody);
+        if (billingEvent) processBillingWebhookEvent(db, billingEvent);
 
         if (payload.event_type === "transaction.completed" || payload.event_type === "transaction.paid") {
           const transactionId = payload.data?.id;

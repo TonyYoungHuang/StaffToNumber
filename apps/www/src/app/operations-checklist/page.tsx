@@ -1,8 +1,10 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Panel, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
 import { getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
+import { canAccessInternalTools } from "../../lib/internal-access";
 
 type ChecklistGroup = {
   title: string;
@@ -98,10 +100,16 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: "/operations-checklist",
     },
+    robots: {
+      index: false,
+      follow: false,
+    },
   };
 }
 
-export default async function OperationsChecklistPage() {
+export default async function OperationsChecklistPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
+  const { token } = await searchParams;
+  if (!canAccessInternalTools(token)) notFound();
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
   const checkoutUrl = getCheckoutUrl(locale);
@@ -142,9 +150,7 @@ export default async function OperationsChecklistPage() {
           <Link href={getSupportUrl("general", "operations-checklist-top")} className="public-button secondary">
             {isChinese ? "支持流程页" : "Support page"}
           </Link>
-          <a href={checkoutUrl} className="public-button tertiary">
-            {isChinese ? "查看购买路径" : "View checkout path"}
-          </a>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看购买路径" : "View checkout path"}</a> : null}
         </div>
       </Panel>
 

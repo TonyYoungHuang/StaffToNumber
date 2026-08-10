@@ -58,7 +58,7 @@ export const authPlugin = fp(async (app) => {
     }
 
     const profile = getUserProfile(request.authUserId);
-    if (!profile || profile.entitlement.status !== "active") {
+    if (!profile || profile.accountStatus !== "active" || profile.entitlement.status !== "active") {
       reply.code(403).send({ error: "An active entitlement is required." });
     }
   });

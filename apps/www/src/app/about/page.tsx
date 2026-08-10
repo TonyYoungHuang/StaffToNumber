@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { MetricCard, Panel, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
-import { getAppHomeUrl, getAppRegisterUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
+import { getAppRegisterUrl, getCheckoutUrl, getSafeAppUrl, getSupportUrl, siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
@@ -10,12 +10,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title:
       locale === "zh-CN"
-        ? `关于五线谱 PDF 转简谱工具、联系与支持 | ${siteConfig.siteName}`
-        : `About the Staff PDF to Jianpu Tool, Contact, and Support | ${siteConfig.siteName}`,
+        ? `关于在线乐谱工作台、联系与支持 | ${siteConfig.siteName}`
+        : `About ${siteConfig.siteName}: Online Sheet Music Workspace`,
     description:
       locale === "zh-CN"
-        ? "了解这款五线谱 PDF 转简谱工具当前提供什么、适合谁、如何开通，以及遇到支付、激活码或结果问题时怎样联系支持。"
-        : "Learn what this staff PDF to Jianpu tool currently offers, who it fits, how access works, and how to contact support for payment, activation, or result issues.",
+        ? "了解这款 MusicXML 乐谱工作台的扫描校对、简谱互换、移调、编辑、播放、导出和教学能力，以及开通与支持流程。"
+        : "Learn about the MusicXML-first workspace for scan review, Jianpu conversion, transposition, editing, playback, export, teaching, access, and support.",
     keywords:
       locale === "zh-CN"
         ? ["五线谱转简谱", "乐谱 PDF 转简谱", "staff pdf to jianpu", "简谱转换器", "numbered notation converter"]
@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AboutPage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
-  const appUrl = getAppHomeUrl();
+  const appUrl = getSafeAppUrl("about");
   const registerUrl = getAppRegisterUrl();
   const checkoutUrl = getCheckoutUrl(locale);
 
@@ -37,13 +37,13 @@ export default async function AboutPage() {
     ? [
         {
           step: "01",
-          title: "这套公开范围是刻意收窄的",
-          body: "当前公开版本聚焦五线谱 PDF 转简谱，不把尚未成熟的反向转换或站内编辑能力一起打包销售。",
+          title: "从明确入口扩展为乐谱工程",
+          body: "平台以五线谱 PDF 转简谱承接主要需求，同时已经提供结构化导入、简谱互换、移调、修谱、播放练习和导出。",
         },
         {
           step: "02",
           title: "官网负责解释并承接转化",
-          body: "公开站点负责承接搜索流量、解释购买路径，并在用户真正使用工具前先把预期说清楚。",
+          body: "公开站点负责承接搜索流量、解释真实产品边界，并在用户进入工具前先把预期说清楚。",
         },
         {
           step: "03",
@@ -54,13 +54,13 @@ export default async function AboutPage() {
     : [
         {
           step: "01",
-          title: "The offer stays narrow on purpose",
-          body: "The current public release focuses on staff PDF to Jianpu and avoids bundling unfinished reverse-conversion or editing promises into the offer.",
+          title: "One clear entry point, one score workspace",
+          body: "The platform leads with staff PDF to Jianpu and now also provides structured imports, Jianpu round trips, transposition, correction, practice playback, and exports.",
         },
         {
           step: "02",
           title: "The website handles explanation and conversion",
-          body: "The public site is there to capture search traffic, explain the purchase path, and set expectations before users touch the tool.",
+          body: "The public site captures search traffic, explains verified product boundaries, and sets expectations before users enter the tool.",
         },
         {
           step: "03",
@@ -113,7 +113,7 @@ export default async function AboutPage() {
         },
         {
           title: "为什么 About 页也要写这些词",
-          body: "首页负责承接转化，About 页更适合解释这些关键词背后的真实产品边界：当前版本是受控的五线谱 PDF 转简谱流程，不是假装什么都能做的全能乐谱平台。",
+          body: "首页负责承接明确的转换意图，About 页解释它如何进入完整乐谱工程：识别结果先校对，编辑、移调、练习和导出都基于同一份结构化乐谱。",
         },
         {
           title: "这页适合回答什么搜索意图",
@@ -127,7 +127,7 @@ export default async function AboutPage() {
         },
         {
           title: "Why these phrases belong on the About page too",
-          body: "The homepage is where conversion happens, but the About page is where you explain the product boundary behind those keywords. This is a controlled staff PDF to Jianpu workflow, not a vague promise of every music-editing feature.",
+          body: "The homepage captures a clear conversion intent, while the About page explains how it enters a complete score project: recognition is reviewed first, and editing, transposition, practice, and export share one structured score.",
         },
         {
           title: "What kind of search intent this page answers",
@@ -142,21 +142,19 @@ export default async function AboutPage() {
           eyebrow={isChinese ? "关于 / 联系 / 支持" : "About / Contact / Support"}
           title={
             isChinese
-              ? "关于这款五线谱 PDF 转简谱工具：它是什么、适合谁、怎样开通。"
-              : "About ScoreTransposer: a controlled staff PDF to Jianpu workflow, support path, and activation model."
+              ? "关于 ScoreTransposer：它是什么、适合谁、怎样开通。"
+              : "About ScoreTransposer: a MusicXML-first score workspace, support path, and access model."
           }
           body={
             isChinese
-              ? "ScoreTransposer 当前不是全能乐谱编辑平台，而是一条范围明确的五线谱 PDF 转简谱路径：官网负责解释，支付或激活码负责开通，应用负责上传、任务和结果交付。"
-              : "ScoreTransposer is not positioned as a full music-notation editing suite today. It is a controlled product path built around staff PDF to Jianpu: the website explains it, checkout unlocks it, and the app executes it."
+              ? "ScoreTransposer 是以 MusicXML 和 Score JSON 为核心的在线乐谱工程平台：官网解释各项能力，应用负责导入、校对、移调、练习、教学和导出。"
+              : "ScoreTransposer is a MusicXML- and Score JSON-first online score workspace. The website explains each workflow, while the app handles import, correction, transposition, practice, teaching, and export."
           }
           titleAs="h1"
           largeBody
         />
         <div className="button-row">
-          <a href={checkoutUrl} className="public-button primary">
-            {isChinese ? "查看开通路径" : "View checkout path"}
-          </a>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button primary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
           <a href={appUrl} className="public-button secondary">
             {isChinese ? "打开应用" : "Open app"}
           </a>
@@ -170,11 +168,11 @@ export default async function AboutPage() {
         <Panel variant="surface" className="stack-lg">
           <SectionIntro
             eyebrow={isChinese ? "产品定位" : "Product position"}
-            title={isChinese ? "这是不是一个“五线谱 PDF 转简谱”网站？是，但范围是受控的。" : "What this staff PDF to Jianpu website is, and what it is not"}
+            title={isChinese ? "从五线谱转简谱入口进入完整的结构化乐谱工程。" : "From staff-to-Jianpu entry point to a complete structured score workspace"}
             body={
               isChinese
-                ? "这一页不是为了夸大功能，而是为了让从搜索结果进来的用户先看明白：你现在能买到什么、还不能期待什么，以及整条开通路径怎样运转。"
-                : "At this stage, the highest-value work is not more infrastructure. It is helping users understand what they can buy, what they should not expect yet, and how the product path actually works."
+                ? "这一页让从搜索结果进入的用户先看明白：哪些能力已在应用中可用，哪些依赖外部渲染工具，以及识别候选为什么仍要人工校对。"
+                : "This page shows search visitors which workflows are available in the app, which depend on external renderers, and why recognition candidates still require human review."
             }
           />
           <div className="workflow-grid">
@@ -247,40 +245,35 @@ export default async function AboutPage() {
             <Link href="/terms" className="public-button tertiary">
               {isChinese ? "打开服务条款" : "Open terms of service"}
             </Link>
-            <Link href="/operations-checklist" className="public-button tertiary">
-              {isChinese ? "运营检查表" : "Operations checklist"}
-            </Link>
           </div>
         </Panel>
 
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
             eyebrow={isChinese ? "开通路径" : "Commercial path"}
-            title={isChinese ? "官网、支付页和激活码路径是如何一起工作的" : "How the public site, checkout, and activation-code path work together"}
+            title={siteConfig.release.checkoutAvailable ? (isChinese ? "官网、支付页和激活码路径如何协同" : "How the public site, checkout, and activation codes work together") : (isChinese ? "支付入口将在生产交易验证后开放" : "Checkout opens after production transaction verification")}
           />
           <Panel variant="sunken" className="stack-md">
-            <StatusPill tone="cyan">{isChinese ? "国际支付" : "International checkout"}</StatusPill>
+            <StatusPill tone={siteConfig.release.checkoutAvailable ? "cyan" : "amber"}>{siteConfig.release.checkoutAvailable ? (isChinese ? "国际支付" : "International checkout") : (isChinese ? "待验证" : "Pending verification")}</StatusPill>
             <p className="body-copy">
-              {isChinese
-                ? "国际访客可以从公开官网进入托管支付页，并在支付成功后获得激活码。"
-                : "International visitors can move from the public site into hosted checkout and receive an activation code after successful payment."}
+              {siteConfig.release.checkoutAvailable
+                ? (isChinese ? "国际访客可以从公开官网进入托管支付页，并在支付成功后获得激活码。" : "International visitors can move from the public site into hosted checkout and receive an activation code after successful payment.")
+                : (isChinese ? "当前不会收款；待支付成功、失败、退款和权益发放全部验证后再启用入口。" : "No payment is collected now. The entry point stays disabled until success, failure, refund, and entitlement paths are verified.")}
             </p>
           </Panel>
           <Panel variant="sunken" className="stack-md">
             <StatusPill tone="primary">{isChinese ? "中国大陆激活码" : "Mainland-China codes"}</StatusPill>
             <p className="body-copy">
-              {isChinese
-                ? "中国大陆用户可以继续通过电商或人工分发渠道购买，再到应用内完成兑换。"
-                : "Mainland-China customers can continue buying through ecommerce or manual distribution channels, then redeem inside the app."}
+              {siteConfig.release.checkoutAvailable
+                ? (isChinese ? "中国大陆用户可以继续通过已验证渠道购买，再到应用内完成兑换。" : "Mainland-China customers can use a verified distribution channel and redeem inside the app.")
+                : (isChinese ? "激活码分发也应在订单核对和权益发放流程验证后再对外承诺。" : "Activation-code distribution should also remain unavailable until order review and entitlement delivery are verified.")}
             </p>
           </Panel>
           <div className="button-row">
             <a href={registerUrl} className="public-button secondary">
               {isChinese ? "创建账号" : "Create account"}
             </a>
-            <a href={checkoutUrl} className="public-button primary">
-              {isChinese ? "进入支付" : "Go to checkout"}
-            </a>
+            {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button primary">{isChinese ? "进入支付" : "Go to checkout"}</a> : null}
           </div>
         </Panel>
       </section>
@@ -369,9 +362,7 @@ export default async function AboutPage() {
             <Link href="/terms" className="public-button tertiary">
               {isChinese ? "查看服务条款" : "Open terms"}
             </Link>
-            <a href={checkoutUrl} className="public-button tertiary">
-              {isChinese ? "查看开通路径" : "View checkout path"}
-            </a>
+            {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
           </div>
         </Panel>
 

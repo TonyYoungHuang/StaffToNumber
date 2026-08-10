@@ -1,0 +1,979 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { APP_ROUTES } from "@score/shared";
+import { API_BASE_URL, apiRequest } from "../lib/api";
+import { getStoredToken } from "../lib/auth-storage";
+import { useAppLocale } from "./AppLocaleProvider";
+
+type ScoreDocument = {
+  id: string;
+  title: string;
+  status: "imported" | "candidate" | "needs_review" | "ready" | "archived";
+  sourceFileId: string | null;
+  currentRevisionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentRevision: {
+    id: string;
+    revisionNumber: number;
+    musicxmlFileId: string | null;
+    createdFrom: string;
+    createdAt: string;
+  } | null;
+  pendingRevision: {
+    id: string;
+    revisionNumber: number;
+    musicxmlFileId: string | null;
+    createdFrom: string;
+    createdAt: string;
+  } | null;
+};
+
+type ScoresPayload = {
+  scores: ScoreDocument[];
+};
+
+type ImportPayload = {
+  score: ScoreDocument;
+};
+
+type OmrImportPayload = ImportPayload & {
+  job: {
+    id: string;
+    jobType: string;
+    status: string;
+  };
+};
+
+export function ScoreLibraryManager() {
+  const { locale } = useAppLocale();
+  const token = useMemo(() => getStoredToken(), []);
+  const [scores, setScores] = useState<ScoreDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [scoreJsonImporting, setScoreJsonImporting] = useState(false);
+  const [midiImporting, setMidiImporting] = useState(false);
+  const [omrImporting, setOmrImporting] = useState(false);
+  const [audioImporting, setAudioImporting] = useState(false);
+  const [jianpuImporting, setJianpuImporting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedScoreJsonFile, setSelectedScoreJsonFile] = useState<File | null>(null);
+  const [selectedMidiFile, setSelectedMidiFile] = useState<File | null>(null);
+  const [selectedOmrFile, setSelectedOmrFile] = useState<File | null>(null);
+  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
+  const [jianpuTitle, setJianpuTitle] = useState("");
+  const [jianpuText, setJianpuText] = useState("1=C\n4/4\n1 2 3 4 | 5 - 5 - | 6 5 3 1 | 2 0 1 - |");
+  const [status, setStatus] = useState<string | null>(null);
+  const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
+
+  const copy =
+    locale === "zh-CN"
+      ? {
+          signInFirst: "请先登录。",
+          importFailed: "MusicXML 导入失败。",
+          chooseFile: "请选择 .musicxml、.xml 或 .mxl 文件。",
+          imported: "乐谱工程已创建。",
+          metrics: {
+            projects: ["乐谱工程", "后续移调、播放、编辑和导出都围绕工程版本展开。"],
+            format: ["核心格式", "当前第一步先接入 MusicXML，PDF/图片 OMR 后续进入同一工程模型。"],
+            revisions: ["当前版本", "每个工程至少有一个可追踪的结构化版本。"],
+          },
+          import: {
+            eyebrow: "Phase 0",
+            title: "导入 MusicXML 创建乐谱工程",
+            body: "这是全方位五线谱平台的第一块地基：先让系统拥有可计算的乐谱工程，而不是只保存一次性 PDF 任务。",
+            dropTitle: "选择 MusicXML 文件",
+            dropBody: "支持 .musicxml、.xml 和压缩 .mxl 包；PDF/图片 OMR 请从扫描导入面板进入。",
+            selected: "已选择",
+            empty: "尚未选择文件。",
+            button: "导入 MusicXML",
+            importing: "导入中...",
+            clear: "清空选择",
+          },
+          list: {
+            eyebrow: "Score documents",
+            title: "乐谱工程库",
+            body: "这些工程将成为后续 OSMD 预览、校对、移调、简谱互换、Tone.js 播放和导出的共同入口。",
+            loading: "正在加载乐谱工程...",
+            empty: "还没有乐谱工程。先导入一个 MusicXML 文件来创建第一份结构化乐谱。",
+            open: "打开工程",
+            source: "源文件",
+            revision: "版本",
+          },
+        }
+      : {
+          signInFirst: "Please sign in first.",
+          importFailed: "MusicXML import failed.",
+          chooseFile: "Please choose a .musicxml, .xml, or .mxl file.",
+          imported: "Score project created.",
+          metrics: {
+            projects: ["Score projects", "Transposition, playback, editing, and export now have a project-level home."],
+            format: ["Core format", "This first foundation accepts MusicXML while PDF/image OMR can later feed the same model."],
+            revisions: ["Current revisions", "Each project starts with a traceable structured revision."],
+          },
+          import: {
+            eyebrow: "Phase 0",
+            title: "Import MusicXML as a score project",
+            body: "This is the foundation for the full notation platform: create computable score projects instead of only one-off PDF jobs.",
+            dropTitle: "Choose a MusicXML file",
+            dropBody: "Supports .musicxml, .xml, and compressed .mxl packages. PDF/image OMR enters through the scan import panel.",
+            selected: "Selected",
+            empty: "No file selected yet.",
+            button: "Import MusicXML",
+            importing: "Importing...",
+            clear: "Clear selection",
+          },
+          list: {
+            eyebrow: "Score documents",
+            title: "Score project library",
+            body: "These projects become the common entry point for OSMD preview, correction, transposition, Jianpu conversion, Tone.js playback, and export.",
+            loading: "Loading score projects...",
+            empty: "No score projects yet. Import one MusicXML file to create the first structured score.",
+            open: "Open project",
+            source: "Source file",
+            revision: "Revision",
+          },
+        };
+  const omrCopy =
+    locale === "zh-CN"
+      ? {
+          chooseFile: "请选择 PDF 或图片文件。",
+          importFailed: "OMR 导入任务创建失败。",
+          imported: "OMR 候选工程已创建，等待 Audiveris worker 处理。",
+          eyebrow: "Phase 1",
+          title: "扫描/PDF/图片 OMR 导入",
+          body: "上传扫描件后先创建乐谱工程和 omr_import 队列任务；Audiveris worker 会在后续步骤把它转换成 MusicXML 和可校对版本。",
+          dropTitle: "选择 PDF 或图片",
+          dropBody: "支持 PDF、PNG、JPG、WEBP、TIFF。当前阶段先入队并保留诊断记录，不直接伪造识别结果。",
+          selected: "已选择",
+          empty: "尚未选择扫描件。",
+          button: "创建 OMR 任务",
+          importing: "正在创建任务...",
+          clear: "清空扫描件",
+        }
+      : {
+          chooseFile: "Please choose a PDF or image file.",
+          importFailed: "OMR import job could not be created.",
+          imported: "OMR candidate project created and queued for Audiveris worker processing.",
+          eyebrow: "Phase 1",
+          title: "Scan/PDF/image OMR import",
+          body: "Upload a scan to create a score project and omr_import queue item. The Audiveris worker will later convert it into MusicXML and a correctable revision.",
+          dropTitle: "Choose a PDF or image",
+          dropBody: "Supports PDF, PNG, JPG, WEBP, and TIFF. This stage queues the source and diagnostics instead of pretending recognition already happened.",
+          selected: "Selected",
+          empty: "No scan selected yet.",
+          button: "Create OMR job",
+          importing: "Creating job...",
+          clear: "Clear scan",
+        };
+  const scoreJsonCopy =
+    locale === "zh-CN"
+      ? {
+          chooseFile: "请选择 Score JSON 快照文件。",
+          importFailed: "Score JSON 导入失败。",
+          imported: "Score JSON 快照已恢复为乐谱工程。",
+          eyebrow: "Foundation",
+          title: "导入 Score JSON 快照",
+          body: "把之前导出的内部结构化乐谱重新恢复成工程，适合备份、迁移、排错和版本转移。",
+          dropTitle: "选择 .score.json 或 .json",
+          dropBody: "这是平台内部源格式；导入后可继续预览、校对、移调、播放、转简谱和导出。",
+          selected: "已选择",
+          empty: "尚未选择 Score JSON 快照。",
+          button: "导入 Score JSON",
+          importing: "正在导入...",
+          clear: "清空快照",
+        }
+      : {
+          chooseFile: "Please choose a Score JSON snapshot.",
+          importFailed: "Score JSON import failed.",
+          imported: "Score JSON snapshot restored as a score project.",
+          eyebrow: "Foundation",
+          title: "Import Score JSON snapshot",
+          body: "Restore an exported internal score model as a project for backups, migration, debugging, and version handoff.",
+          dropTitle: "Choose .score.json or .json",
+          dropBody: "This is the platform's internal source format; after import it can preview, correct, transpose, play, convert to Jianpu, and export.",
+          selected: "Selected",
+          empty: "No Score JSON snapshot selected yet.",
+          button: "Import Score JSON",
+          importing: "Importing...",
+          clear: "Clear snapshot",
+        };
+  const midiCopy =
+    locale === "zh-CN"
+      ? {
+          chooseFile: "请选择 MIDI 文件。",
+          importFailed: "MIDI 导入失败。",
+          imported: "MIDI 已转换为乐谱工程。",
+          eyebrow: "Foundation",
+          title: "导入 MIDI 为乐谱工程",
+          body: "上传 .mid/.midi 后，系统会提取音符、速度、拍号和轨道信息，生成可预览、播放、移调和导出的 Score JSON。",
+          dropTitle: "选择 .mid 或 .midi",
+          dropBody: "这是基础 MIDI 导入，会优先保证结构化和可播放；复杂排版可后续在校对面板修正。",
+          selected: "已选择",
+          empty: "尚未选择 MIDI 文件。",
+          button: "导入 MIDI",
+          importing: "正在导入...",
+          clear: "清空 MIDI",
+        }
+      : {
+          chooseFile: "Please choose a MIDI file.",
+          importFailed: "MIDI import failed.",
+          imported: "MIDI converted into a score project.",
+          eyebrow: "Foundation",
+          title: "Import MIDI as a score project",
+          body: "Upload .mid/.midi to extract notes, tempo, meter, and tracks into Score JSON for preview, playback, transposition, and export.",
+          dropTitle: "Choose .mid or .midi",
+          dropBody: "This first MIDI import prioritizes structure and playback; complex notation layout can be corrected later.",
+          selected: "Selected",
+          empty: "No MIDI file selected yet.",
+          button: "Import MIDI",
+          importing: "Importing...",
+          clear: "Clear MIDI",
+        };
+  const audioCopy =
+    locale === "zh-CN"
+      ? {
+          chooseFile: "请选择音频文件。",
+          importFailed: "音频转谱任务创建失败。",
+          imported: "音频转谱候选工程已创建，等待 Basic Pitch/转谱管线处理。",
+          eyebrow: "Phase 7",
+          title: "音频转五线谱候选",
+          body: "上传 MP3/WAV 等音频后，先创建 source_audio 和 audio_transcribe 任务；后续通过 Basic Pitch 生成 MIDI 候选，再清理成 MusicXML/Score JSON。",
+          dropTitle: "选择音频文件",
+          dropBody: "支持 WAV、MP3、M4A、AAC、FLAC、OGG、AIFF。当前是实验性候选入口，不承诺自动识别完全准确。",
+          selected: "已选择",
+          empty: "尚未选择音频。",
+          button: "创建音频转谱任务",
+          importing: "正在创建任务...",
+          clear: "清空音频",
+        }
+      : {
+          chooseFile: "Please choose an audio file.",
+          importFailed: "Audio transcription job could not be created.",
+          imported: "Audio transcription project created. Basic Pitch will try to create MIDI and a first-pass editable score revision.",
+          eyebrow: "Phase 7",
+          title: "Audio-to-score candidate",
+          body: "Upload MP3/WAV-like audio to create a source_audio asset and audio_transcribe job. Basic Pitch can create a MIDI candidate and the worker will try to turn it into a first-pass editable Score JSON revision.",
+          dropTitle: "Choose an audio file",
+          dropBody: "Supports WAV, MP3, M4A, AAC, FLAC, OGG, and AIFF. This is an experimental candidate import, not a promise of perfect transcription.",
+          selected: "Selected",
+          empty: "No audio selected yet.",
+          button: "Create audio job",
+          importing: "Creating job...",
+          clear: "Clear audio",
+        };
+  const jianpuCopy =
+    locale === "zh-CN"
+      ? {
+          empty: "请输入简谱文本。",
+          importFailed: "简谱导入失败。",
+          imported: "简谱工程已创建，可继续预览、移调、播放和导出 MusicXML。",
+          eyebrow: "Phase 2",
+          title: "简谱文本生成五线谱工程",
+          body: "输入 1=C、拍号、数字音符和小节线，系统会生成统一的 Score JSON；之后可转五线谱、播放、移调和导出。",
+          titleLabel: "工程标题",
+          titlePlaceholder: "例如：小星星简谱",
+          textLabel: "简谱文本",
+          textPlaceholder: "1=C\n4/4\n1 1 5 5 | 6 6 5 - |",
+          button: "导入简谱",
+          importing: "正在导入...",
+          clear: "恢复示例",
+        }
+      : {
+          empty: "Please enter Jianpu text.",
+          importFailed: "Jianpu import failed.",
+          imported: "Jianpu score project created. Preview, transpose, playback, and MusicXML export can use it now.",
+          eyebrow: "Phase 2",
+          title: "Create a staff score from Jianpu",
+          body: "Enter 1=C, meter, numbered notes, rests, and barlines. The importer turns it into the same Score JSON used by preview, playback, transposition, and export.",
+          titleLabel: "Project title",
+          titlePlaceholder: "Example: Twinkle in Jianpu",
+          textLabel: "Jianpu text",
+          textPlaceholder: "1=C\n4/4\n1 1 5 5 | 6 6 5 - |",
+          button: "Import Jianpu",
+          importing: "Importing...",
+          clear: "Restore sample",
+        };
+
+  async function loadScores() {
+    if (!token) {
+      setLoading(false);
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    setLoading(true);
+    const result = await apiRequest<ScoresPayload>("/api/scores", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    setLoading(false);
+
+    if (!result.ok) {
+      setStatus(result.error);
+      setStatusKind("error");
+      return;
+    }
+
+    setScores(result.data.scores);
+  }
+
+  useEffect(() => {
+    void loadScores();
+  }, []);
+
+  async function handleImport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!token) {
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    if (!selectedFile) {
+      setStatus(copy.chooseFile);
+      setStatusKind("error");
+      return;
+    }
+
+    setImporting(true);
+    setStatus(null);
+    setStatusKind(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/scores/import/musicxml`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as ImportPayload | { error?: string } | null;
+      if (!response.ok) {
+        setStatus(payload && "error" in payload ? payload.error ?? copy.importFailed : copy.importFailed);
+        setStatusKind("error");
+        return;
+      }
+
+      setStatus(copy.imported);
+      setStatusKind("success");
+      setSelectedFile(null);
+      const input = document.getElementById("musicxml-import-input") as HTMLInputElement | null;
+      if (input) {
+        input.value = "";
+      }
+      await loadScores();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : copy.importFailed);
+      setStatusKind("error");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleOmrImport() {
+    if (!token) {
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    if (!selectedOmrFile) {
+      setStatus(omrCopy.chooseFile);
+      setStatusKind("error");
+      return;
+    }
+
+    setOmrImporting(true);
+    setStatus(null);
+    setStatusKind(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedOmrFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/scores/import/omr`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as OmrImportPayload | { error?: string } | null;
+      if (!response.ok) {
+        setStatus(payload && "error" in payload ? payload.error ?? omrCopy.importFailed : omrCopy.importFailed);
+        setStatusKind("error");
+        return;
+      }
+
+      setStatus(omrCopy.imported);
+      setStatusKind("success");
+      setSelectedOmrFile(null);
+      const input = document.getElementById("omr-import-input") as HTMLInputElement | null;
+      if (input) {
+        input.value = "";
+      }
+      await loadScores();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : omrCopy.importFailed);
+      setStatusKind("error");
+    } finally {
+      setOmrImporting(false);
+    }
+  }
+
+  async function handleScoreJsonImport() {
+    if (!token) {
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    if (!selectedScoreJsonFile) {
+      setStatus(scoreJsonCopy.chooseFile);
+      setStatusKind("error");
+      return;
+    }
+
+    setScoreJsonImporting(true);
+    setStatus(null);
+    setStatusKind(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedScoreJsonFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/scores/import/score-json`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as ImportPayload | { error?: string } | null;
+      if (!response.ok) {
+        setStatus(payload && "error" in payload ? payload.error ?? scoreJsonCopy.importFailed : scoreJsonCopy.importFailed);
+        setStatusKind("error");
+        return;
+      }
+
+      setStatus(scoreJsonCopy.imported);
+      setStatusKind("success");
+      setSelectedScoreJsonFile(null);
+      const input = document.getElementById("score-json-import-input") as HTMLInputElement | null;
+      if (input) {
+        input.value = "";
+      }
+      await loadScores();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : scoreJsonCopy.importFailed);
+      setStatusKind("error");
+    } finally {
+      setScoreJsonImporting(false);
+    }
+  }
+
+  async function handleMidiImport() {
+    if (!token) {
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    if (!selectedMidiFile) {
+      setStatus(midiCopy.chooseFile);
+      setStatusKind("error");
+      return;
+    }
+
+    setMidiImporting(true);
+    setStatus(null);
+    setStatusKind(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedMidiFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/scores/import/midi`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as ImportPayload | { error?: string } | null;
+      if (!response.ok) {
+        setStatus(payload && "error" in payload ? payload.error ?? midiCopy.importFailed : midiCopy.importFailed);
+        setStatusKind("error");
+        return;
+      }
+
+      setStatus(midiCopy.imported);
+      setStatusKind("success");
+      setSelectedMidiFile(null);
+      const input = document.getElementById("midi-import-input") as HTMLInputElement | null;
+      if (input) {
+        input.value = "";
+      }
+      await loadScores();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : midiCopy.importFailed);
+      setStatusKind("error");
+    } finally {
+      setMidiImporting(false);
+    }
+  }
+
+  async function handleAudioImport() {
+    if (!token) {
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    if (!selectedAudioFile) {
+      setStatus(audioCopy.chooseFile);
+      setStatusKind("error");
+      return;
+    }
+
+    setAudioImporting(true);
+    setStatus(null);
+    setStatusKind(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedAudioFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/scores/import/audio`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as OmrImportPayload | { error?: string } | null;
+      if (!response.ok) {
+        setStatus(payload && "error" in payload ? payload.error ?? audioCopy.importFailed : audioCopy.importFailed);
+        setStatusKind("error");
+        return;
+      }
+
+      setStatus(audioCopy.imported);
+      setStatusKind("success");
+      setSelectedAudioFile(null);
+      const input = document.getElementById("audio-import-input") as HTMLInputElement | null;
+      if (input) {
+        input.value = "";
+      }
+      await loadScores();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : audioCopy.importFailed);
+      setStatusKind("error");
+    } finally {
+      setAudioImporting(false);
+    }
+  }
+
+  async function handleJianpuImport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!token) {
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
+      return;
+    }
+
+    if (!jianpuText.trim()) {
+      setStatus(jianpuCopy.empty);
+      setStatusKind("error");
+      return;
+    }
+
+    setJianpuImporting(true);
+    setStatus(null);
+    setStatusKind(null);
+
+    const result = await apiRequest<ImportPayload>("/api/scores/import/jianpu", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: jianpuTitle,
+        text: jianpuText,
+      }),
+    });
+
+    setJianpuImporting(false);
+
+    if (!result.ok) {
+      setStatus(result.error || jianpuCopy.importFailed);
+      setStatusKind("error");
+      return;
+    }
+
+    setStatus(jianpuCopy.imported);
+    setStatusKind("success");
+    setJianpuTitle("");
+    await loadScores();
+  }
+
+  const revisionCount = scores.filter((score) => score.pendingRevision || score.currentRevision).length;
+  const statusTone = status ? statusKind : null;
+
+  return (
+    <div className="page-stack">
+      <div className="metric-grid">
+        <div className="metric-card">
+          <p className="metric-label">{copy.metrics.projects[0]}</p>
+          <p className="metric-value">{scores.length}</p>
+          <p className="helper-copy">{copy.metrics.projects[1]}</p>
+        </div>
+        <div className="metric-card">
+          <p className="metric-label">{copy.metrics.format[0]}</p>
+          <p className="metric-value">MusicXML</p>
+          <p className="helper-copy">{copy.metrics.format[1]}</p>
+        </div>
+        <div className="metric-card">
+          <p className="metric-label">{copy.metrics.revisions[0]}</p>
+          <p className="metric-value">{revisionCount}</p>
+          <p className="helper-copy">{copy.metrics.revisions[1]}</p>
+        </div>
+      </div>
+
+      <section className="surface-panel studio-split">
+        <form id="musicxml-import" onSubmit={handleImport} className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{copy.import.eyebrow}</p>
+            <h2 className="card-title">{copy.import.title}</h2>
+            <p className="body-copy">{copy.import.body}</p>
+          </div>
+
+          <label htmlFor="musicxml-import-input" className="file-dropzone">
+            <div className="stack-xs">
+              <p className="dropzone-title">{copy.import.dropTitle}</p>
+              <p className="dropzone-copy">{copy.import.dropBody}</p>
+            </div>
+            <span className="status-chip tone-cyan">MusicXML</span>
+          </label>
+          <input
+            id="musicxml-import-input"
+            className="sr-only"
+            type="file"
+            accept=".musicxml,.xml,.mxl,application/xml,text/xml,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml"
+            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+          />
+
+          {selectedFile ? (
+            <div className="mini-card stack-sm">
+              <p className="metric-label">{copy.import.selected}</p>
+              <p className="item-title">{selectedFile.name}</p>
+              <p className="helper-copy">{formatSize(selectedFile.size)}</p>
+            </div>
+          ) : (
+            <div className="empty-state">{copy.import.empty}</div>
+          )}
+
+          <div className="button-row">
+            <button type="submit" disabled={importing} className="button button-primary">
+              {importing ? copy.import.importing : copy.import.button}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setSelectedFile(null)}>
+              {copy.import.clear}
+            </button>
+          </div>
+
+          {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+        </form>
+
+        <div id="score-json-import" className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{scoreJsonCopy.eyebrow}</p>
+            <h2 className="card-title">{scoreJsonCopy.title}</h2>
+            <p className="body-copy">{scoreJsonCopy.body}</p>
+          </div>
+
+          <label htmlFor="score-json-import-input" className="file-dropzone">
+            <div className="stack-xs">
+              <p className="dropzone-title">{scoreJsonCopy.dropTitle}</p>
+              <p className="dropzone-copy">{scoreJsonCopy.dropBody}</p>
+            </div>
+            <span className="status-chip tone-cyan">Score JSON</span>
+          </label>
+          <input
+            id="score-json-import-input"
+            className="sr-only"
+            type="file"
+            accept=".score.json,.json,application/json"
+            onChange={(event) => setSelectedScoreJsonFile(event.target.files?.[0] ?? null)}
+          />
+
+          {selectedScoreJsonFile ? (
+            <div className="mini-card stack-sm">
+              <p className="metric-label">{scoreJsonCopy.selected}</p>
+              <p className="item-title">{selectedScoreJsonFile.name}</p>
+              <p className="helper-copy">{formatSize(selectedScoreJsonFile.size)}</p>
+            </div>
+          ) : (
+            <div className="empty-state">{scoreJsonCopy.empty}</div>
+          )}
+
+          <div className="button-row">
+            <button type="button" disabled={scoreJsonImporting} className="button button-primary" onClick={() => void handleScoreJsonImport()}>
+              {scoreJsonImporting ? scoreJsonCopy.importing : scoreJsonCopy.button}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setSelectedScoreJsonFile(null)}>
+              {scoreJsonCopy.clear}
+            </button>
+          </div>
+        </div>
+
+        <div id="midi-import" className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{midiCopy.eyebrow}</p>
+            <h2 className="card-title">{midiCopy.title}</h2>
+            <p className="body-copy">{midiCopy.body}</p>
+          </div>
+
+          <label htmlFor="midi-import-input" className="file-dropzone">
+            <div className="stack-xs">
+              <p className="dropzone-title">{midiCopy.dropTitle}</p>
+              <p className="dropzone-copy">{midiCopy.dropBody}</p>
+            </div>
+            <span className="status-chip tone-primary">MIDI</span>
+          </label>
+          <input
+            id="midi-import-input"
+            className="sr-only"
+            type="file"
+            accept=".mid,.midi,audio/midi,audio/x-midi"
+            onChange={(event) => setSelectedMidiFile(event.target.files?.[0] ?? null)}
+          />
+
+          {selectedMidiFile ? (
+            <div className="mini-card stack-sm">
+              <p className="metric-label">{midiCopy.selected}</p>
+              <p className="item-title">{selectedMidiFile.name}</p>
+              <p className="helper-copy">{formatSize(selectedMidiFile.size)}</p>
+            </div>
+          ) : (
+            <div className="empty-state">{midiCopy.empty}</div>
+          )}
+
+          <div className="button-row">
+            <button type="button" disabled={midiImporting} className="button button-primary" onClick={() => void handleMidiImport()}>
+              {midiImporting ? midiCopy.importing : midiCopy.button}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setSelectedMidiFile(null)}>
+              {midiCopy.clear}
+            </button>
+          </div>
+        </div>
+
+        <div id="omr-import" className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{omrCopy.eyebrow}</p>
+            <h2 className="card-title">{omrCopy.title}</h2>
+            <p className="body-copy">{omrCopy.body}</p>
+          </div>
+
+          <label htmlFor="omr-import-input" className="file-dropzone">
+            <div className="stack-xs">
+              <p className="dropzone-title">{omrCopy.dropTitle}</p>
+              <p className="dropzone-copy">{omrCopy.dropBody}</p>
+            </div>
+            <span className="status-chip tone-amber">OMR</span>
+          </label>
+          <input
+            id="omr-import-input"
+            className="sr-only"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/*"
+            onChange={(event) => setSelectedOmrFile(event.target.files?.[0] ?? null)}
+          />
+
+          {selectedOmrFile ? (
+            <div className="mini-card stack-sm">
+              <p className="metric-label">{omrCopy.selected}</p>
+              <p className="item-title">{selectedOmrFile.name}</p>
+              <p className="helper-copy">{formatSize(selectedOmrFile.size)}</p>
+            </div>
+          ) : (
+            <div className="empty-state">{omrCopy.empty}</div>
+          )}
+
+          <div className="button-row">
+            <button type="button" disabled={omrImporting} className="button button-primary" onClick={() => void handleOmrImport()}>
+              {omrImporting ? omrCopy.importing : omrCopy.button}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setSelectedOmrFile(null)}>
+              {omrCopy.clear}
+            </button>
+          </div>
+        </div>
+
+        <div id="audio-import" className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{audioCopy.eyebrow}</p>
+            <h2 className="card-title">{audioCopy.title}</h2>
+            <p className="body-copy">{audioCopy.body}</p>
+          </div>
+
+          <label htmlFor="audio-import-input" className="file-dropzone">
+            <div className="stack-xs">
+              <p className="dropzone-title">{audioCopy.dropTitle}</p>
+              <p className="dropzone-copy">{audioCopy.dropBody}</p>
+            </div>
+            <span className="status-chip tone-primary">Audio</span>
+          </label>
+          <input
+            id="audio-import-input"
+            className="sr-only"
+            type="file"
+            accept=".wav,.mp3,.m4a,.aac,.flac,.ogg,.aif,.aiff,audio/*"
+            onChange={(event) => setSelectedAudioFile(event.target.files?.[0] ?? null)}
+          />
+
+          {selectedAudioFile ? (
+            <div className="mini-card stack-sm">
+              <p className="metric-label">{audioCopy.selected}</p>
+              <p className="item-title">{selectedAudioFile.name}</p>
+              <p className="helper-copy">{formatSize(selectedAudioFile.size)}</p>
+            </div>
+          ) : (
+            <div className="empty-state">{audioCopy.empty}</div>
+          )}
+
+          <div className="button-row">
+            <button type="button" disabled={audioImporting} className="button button-primary" onClick={() => void handleAudioImport()}>
+              {audioImporting ? audioCopy.importing : audioCopy.button}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setSelectedAudioFile(null)}>
+              {audioCopy.clear}
+            </button>
+          </div>
+        </div>
+
+        <form id="jianpu-import" onSubmit={handleJianpuImport} className="converter-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{jianpuCopy.eyebrow}</p>
+            <h2 className="card-title">{jianpuCopy.title}</h2>
+            <p className="body-copy">{jianpuCopy.body}</p>
+          </div>
+
+          <label className="field-group">
+            <span className="field-label">{jianpuCopy.titleLabel}</span>
+            <input
+              className="field-control"
+              value={jianpuTitle}
+              placeholder={jianpuCopy.titlePlaceholder}
+              onChange={(event) => setJianpuTitle(event.target.value)}
+            />
+          </label>
+
+          <label className="field-group">
+            <span className="field-label">{jianpuCopy.textLabel}</span>
+            <textarea
+              className="field-control"
+              rows={8}
+              value={jianpuText}
+              placeholder={jianpuCopy.textPlaceholder}
+              onChange={(event) => setJianpuText(event.target.value)}
+            />
+          </label>
+
+          <div className="button-row">
+            <button type="submit" disabled={jianpuImporting} className="button button-primary">
+              {jianpuImporting ? jianpuCopy.importing : jianpuCopy.button}
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => {
+                setJianpuTitle("");
+                setJianpuText("1=C\n4/4\n1 2 3 4 | 5 - 5 - | 6 5 3 1 | 2 0 1 - |");
+              }}
+            >
+              {jianpuCopy.clear}
+            </button>
+          </div>
+        </form>
+
+        <div className="preview-side">
+          <div className="stack-sm">
+            <p className="eyebrow">{copy.list.eyebrow}</p>
+            <h2 className="card-title">{copy.list.title}</h2>
+            <p className="body-copy">{copy.list.body}</p>
+          </div>
+
+          {loading ? <div className="empty-state">{copy.list.loading}</div> : null}
+          {!loading && scores.length === 0 ? <div className="empty-state">{copy.list.empty}</div> : null}
+
+          {!loading && scores.length > 0 ? (
+            <div className="list-grid">
+              {scores.map((score) => (
+                <div key={score.id} className="list-item">
+                  <div className="list-item-content">
+                    <p className="item-title">{score.title}</p>
+                    <p className="item-meta">
+                      {translateStatus(score.status, locale)} | {copy.list.revision}{" "}
+                      {(score.pendingRevision ?? score.currentRevision)?.revisionNumber ?? 0} | {formatLocal(score.updatedAt, locale)}
+                    </p>
+                  </div>
+                  <Link href={`${APP_ROUTES.scores}/${score.id}`} className="button button-secondary button-ghost">
+                    {copy.list.open}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function formatSize(sizeBytes: number) {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatLocal(value: string, locale: string) {
+  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
+}
+
+function translateStatus(status: ScoreDocument["status"], locale: string) {
+  if (locale !== "zh-CN") {
+    return status;
+  }
+
+  switch (status) {
+    case "imported":
+      return "已导入";
+    case "candidate":
+      return "待校对";
+    case "needs_review":
+      return "待确认";
+    case "ready":
+      return "可使用";
+    case "archived":
+      return "已归档";
+    default:
+      return status;
+  }
+}

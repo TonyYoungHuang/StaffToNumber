@@ -8,11 +8,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
 
   return {
-    title: locale === "zh-CN" ? `五线谱 PDF 转简谱服务条款 | ${siteConfig.siteName}` : `Terms of Service for Staff PDF to Jianpu Tool | ${siteConfig.siteName}`,
+    title: locale === "zh-CN" ? `全功能乐谱平台服务条款 | ${siteConfig.siteName}` : `Music Notation Platform Terms of Service | ${siteConfig.siteName}`,
     description:
       locale === "zh-CN"
-        ? "查看五线谱 PDF 转简谱工具当前的服务范围、激活开通、草稿结果模型、支持边界和可接受使用规则，适合购买前进一步确认。"
-        : "Review the current service scope, activation access, draft-result model, support boundary, and acceptable use rules for the staff PDF to Jianpu tool.",
+        ? "查看 MusicXML 乐谱平台的导入识别、编辑、移调、简谱、播放、导出、教学、版权和可接受使用规则。"
+        : "Review the MusicXML platform terms for import, editing, transposition, Jianpu, playback, export, education, copyright, and acceptable use.",
     alternates: {
       canonical: "/terms",
     },
@@ -23,8 +23,8 @@ const termsSections = [
   {
     title: "Service scope",
     points: [
-      "The current live service supports only five-line staff PDF to Jianpu conversion.",
-      "Reverse conversion, in-browser editing, and transposition are not included in this production release unless explicitly announced later.",
+      "The service supports score projects, structured score imports, staff/Jianpu conversion, transposition, correction, playback, teaching workflows, and configured export formats.",
+      "OMR, rendered PDF/image output, high-quality audio, and audio transcription require configured external tools and may be unavailable in a particular deployment.",
       "The website, app, and output materials may change as the service evolves, but users should rely only on the published live scope when purchasing access.",
     ],
   },
@@ -71,8 +71,8 @@ export default async function TermsPage() {
         {
           title: "服务范围",
           points: [
-            "当前公开服务只支持“五线谱 PDF 转简谱”这一条工作流。",
-            "除非后续明确公告，否则反向转换、站内编辑和移调都不包含在当前正式版本内。",
+            "服务支持乐谱工程、结构化乐谱导入、五线谱/简谱转换、移调、校对、播放练习、教学流程和已配置的导出格式。",
+            "OMR、PDF/图片渲染、高质量音频和音频转谱依赖外部工具配置，可能在特定部署环境中暂不可用。",
             "网站、应用和输出材料可能随服务演进而变化，但用户购买时应仅以当时公开发布的范围为准。",
           ],
         },
@@ -182,12 +182,13 @@ export default async function TermsPage() {
             <Link href="/privacy" className="public-button secondary">
               {isChinese ? "打开隐私政策" : "Open privacy policy"}
             </Link>
+            <Link href="/copyright-complaint" className="public-button secondary">
+              {isChinese ? "提交版权投诉" : "Submit copyright complaint"}
+            </Link>
             <Link href="/about" className="public-button tertiary">
               {isChinese ? "打开 About / 支持页" : "Open about and support"}
             </Link>
-            <a href={checkoutUrl} className="public-button tertiary">
-              {isChinese ? "查看开通路径" : "View checkout path"}
-            </a>
+            {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
           </div>
         </Panel>
 

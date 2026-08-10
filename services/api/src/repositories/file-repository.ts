@@ -1,21 +1,26 @@
 import type { StoredFileKind } from "@score/shared";
+import { createStorageObjectKey } from "@score/storage";
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
+import { objectStorage, ObjectStorageUnavailableError } from "../lib/object-storage.js";
 import { nowIso } from "../lib/time.js";
 
-type FileRow = {
+export type FileRow = {
   id: string;
   user_id: string;
   original_name: string;
   stored_name: string;
   storage_path: string;
+  storage_backend: "local" | "s3";
+  storage_key: string | null;
+  checksum_sha256: string | null;
   mime_type: string;
   size_bytes: number;
   file_kind: StoredFileKind;
   created_at: string;
 };
 
-export function createStoredFile(input: {
+export async function createStoredFile(input: {
   userId: string;
   originalName: string;
   storedName: string;
@@ -26,23 +31,54 @@ export function createStoredFile(input: {
 }) {
   const id = createId();
   const createdAt = nowIso();
+  const objectKey = createStorageObjectKey({
+    prefix: objectStorage.keyPrefix,
+    userId: input.userId,
+    fileId: id,
+    storedName: input.storedName,
+  });
+  let persisted: Awaited<ReturnType<typeof objectStorage.persistFile>>;
+  try {
+    persisted = await objectStorage.persistFile({
+      sourcePath: input.storagePath,
+      objectKey,
+      contentType: input.mimeType,
+    });
+  } catch (error) {
+    throw new ObjectStorageUnavailableError(error);
+  }
+  if (persisted.sizeBytes !== input.sizeBytes) {
+    await objectStorage.delete(persisted.ref).catch(() => undefined);
+    throw new Error("Stored file size changed before persistence completed.");
+  }
 
-  db.prepare(
-    `
-      INSERT INTO files (id, user_id, original_name, stored_name, storage_path, mime_type, size_bytes, file_kind, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-  ).run(
-    id,
-    input.userId,
-    input.originalName,
-    input.storedName,
-    input.storagePath,
-    input.mimeType,
-    input.sizeBytes,
-    input.fileKind,
-    createdAt,
-  );
+  try {
+    db.prepare(
+      `
+        INSERT INTO files (
+          id, user_id, original_name, stored_name, storage_path, storage_backend, storage_key,
+          checksum_sha256, mime_type, size_bytes, file_kind, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    ).run(
+      id,
+      input.userId,
+      input.originalName,
+      input.storedName,
+      persisted.ref.storagePath,
+      persisted.ref.backend,
+      persisted.ref.storageKey,
+      persisted.checksumSha256,
+      input.mimeType,
+      persisted.sizeBytes,
+      input.fileKind,
+      createdAt,
+    );
+  } catch (error) {
+    await objectStorage.delete(persisted.ref).catch(() => undefined);
+    throw error;
+  }
 
   return findStoredFileById(id);
 }
@@ -51,7 +87,8 @@ export function findStoredFileById(id: string) {
   return db
     .prepare(
       `
-        SELECT id, user_id, original_name, stored_name, storage_path, mime_type, size_bytes, file_kind, created_at
+        SELECT id, user_id, original_name, stored_name, storage_path, storage_backend, storage_key,
+               checksum_sha256, mime_type, size_bytes, file_kind, created_at
         FROM files
         WHERE id = ?
       `,
@@ -63,7 +100,8 @@ export function listStoredFilesByUserId(userId: string) {
   return db
     .prepare(
       `
-        SELECT id, user_id, original_name, stored_name, storage_path, mime_type, size_bytes, file_kind, created_at
+        SELECT id, user_id, original_name, stored_name, storage_path, storage_backend, storage_key,
+               checksum_sha256, mime_type, size_bytes, file_kind, created_at
         FROM files
         WHERE user_id = ?
         ORDER BY datetime(created_at) DESC

@@ -4,11 +4,14 @@ import { config } from "../config.js";
 import { getUserProfile } from "../repositories/auth-repository.js";
 import {
   createPaddleTransaction,
+  createStripeBillingPortalSession,
   createStripeCheckoutSession,
   isPaymentProviderEnabled,
   retrievePaddleTransaction,
   retrieveStripeCheckoutSession,
 } from "../lib/payments.js";
+import { db } from "../db.js";
+import { assignBillingSeat, listBillingForUser, revokeBillingSeat } from "../repositories/billing-repository.js";
 import {
   attachPaddleTransaction,
   attachStripeCheckoutSession,
@@ -30,7 +33,7 @@ export async function paymentRoutes(app: FastifyInstance) {
       preHandler: app.requireAuth,
     },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string };
+      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; organizationId?: string; seatQuantity?: number };
 
       if (!isProvider(body.provider)) {
         return reply.code(400).send({ error: "Payment provider is required." });
@@ -46,12 +49,30 @@ export async function paymentRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "A registered account is required before payment." });
       }
 
+      const organizationId = typeof body.organizationId === "string" && body.organizationId.trim() ? body.organizationId.trim() : null;
+      const seatQuantity = organizationId ? Math.max(2, Math.min(Number(body.seatQuantity) || 2, 100_000)) : 1;
+      if (organizationId) {
+        const access = db.prepare(`
+          SELECT organizations.id
+          FROM score_organizations organizations
+          LEFT JOIN score_organization_members members
+            ON members.organization_id = organizations.id AND members.user_id = ?
+              AND members.status = 'active' AND members.removed_at IS NULL AND members.role IN ('owner', 'admin')
+          WHERE organizations.id = ? AND organizations.archived_at IS NULL
+            AND (organizations.owner_user_id = ? OR members.id IS NOT NULL)
+        `).get(request.authUserId!, organizationId, request.authUserId!);
+        if (!access) return reply.code(403).send({ error: "Organization billing access is required." });
+      }
+
       const order = createPaymentOrder({
         userId: request.authUserId!,
         provider: body.provider,
         customerEmail,
         locale: body.locale?.trim() || null,
         entitlementDays: config.entitlementDays,
+        billingKind: config.paymentBillingMode === "subscription" ? "subscription" : "one_time",
+        organizationId,
+        seatQuantity,
       });
 
       if (!order) {
@@ -69,6 +90,10 @@ export async function paymentRoutes(app: FastifyInstance) {
             customerEmail,
             successUrl: `${successBase}&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: cancelBase,
+            userId: request.authUserId,
+            organizationId,
+            seatQuantity,
+            priceId: organizationId ? config.stripeSchoolPriceId || config.stripePriceId : config.stripePriceId,
           });
           attachStripeCheckoutSession(order.id, session.id, session.url ?? null);
 
@@ -85,6 +110,10 @@ export async function paymentRoutes(app: FastifyInstance) {
           publicToken: order.public_token,
           customerEmail,
           successUrl: successBase,
+          userId: request.authUserId,
+          organizationId,
+          seatQuantity,
+          priceId: organizationId ? config.paddleSchoolPriceId || config.paddlePriceId : config.paddlePriceId,
         });
         const checkoutUrl = transaction.checkout?.url ?? `${config.publicSiteUrl}/checkout/paddle?_ptxn=${transaction.id}`;
         attachPaddleTransaction(order.id, transaction.id, checkoutUrl);
@@ -119,6 +148,7 @@ export async function paymentRoutes(app: FastifyInstance) {
       customerEmail: body.email?.trim() || null,
       locale: body.locale?.trim() || null,
       entitlementDays: config.entitlementDays,
+      billingKind: config.paymentBillingMode === "subscription" ? "subscription" : "one_time",
     });
 
     if (!order) {
@@ -230,5 +260,67 @@ export async function paymentRoutes(app: FastifyInstance) {
 
     const cancelled = markPaymentOrderCancelled(order.id);
     return reply.send({ order: cancelled ? mapPaymentOrderForPublic(cancelled) : null });
+  });
+
+  app.get("/payments/billing", { preHandler: app.requireAuth }, async (request) => {
+    return listBillingForUser(db, request.authUserId!);
+  });
+
+  app.post("/payments/billing/portal", { preHandler: app.requireAuth }, async (request, reply) => {
+    const body = (request.body ?? {}) as { provider?: PaymentProvider };
+    if (body.provider !== "stripe") {
+      return reply.code(400).send({ error: "A Stripe subscription is required for this billing portal." });
+    }
+    const customer = db.prepare(`
+      SELECT provider_customer_id AS providerCustomerId FROM billing_customers
+      WHERE provider = 'stripe' AND user_id = ? ORDER BY datetime(updated_at) DESC LIMIT 1
+    `).get(request.authUserId!) as { providerCustomerId: string } | undefined;
+    if (!customer) return reply.code(404).send({ error: "Stripe billing customer not found." });
+    try {
+      const session = await createStripeBillingPortalSession(customer.providerCustomerId, `${config.publicAppUrl}/dashboard`);
+      return reply.send({ url: session.url });
+    } catch (error) {
+      return reply.code(502).send({ error: error instanceof Error ? error.message : "Unable to open billing portal." });
+    }
+  });
+
+  app.post("/payments/billing/subscriptions/:subscriptionId/seats", { preHandler: app.requireAuth }, async (request, reply) => {
+    const { subscriptionId } = request.params as { subscriptionId: string };
+    const body = (request.body ?? {}) as { email?: string };
+    const email = body.email?.trim().toLocaleLowerCase();
+    if (!email || !/^\S+@\S+\.\S+$/u.test(email)) return reply.code(400).send({ error: "A valid seat email is required." });
+    const subscription = db.prepare(`
+      SELECT subscriptions.organization_id AS organizationId
+      FROM billing_subscriptions subscriptions
+      JOIN score_organizations organizations ON organizations.id = subscriptions.organization_id
+      LEFT JOIN score_organization_members members
+        ON members.organization_id = organizations.id AND members.user_id = ? AND members.status = 'active'
+          AND members.removed_at IS NULL AND members.role IN ('owner', 'admin')
+      WHERE subscriptions.id = ? AND (organizations.owner_user_id = ? OR members.id IS NOT NULL)
+    `).get(request.authUserId!, subscriptionId, request.authUserId!) as { organizationId: string } | undefined;
+    if (!subscription) return reply.code(404).send({ error: "Organization subscription not found." });
+    const user = db.prepare("SELECT id FROM users WHERE lower(email) = ?").get(email) as { id: string } | undefined;
+    try {
+      assignBillingSeat(db, { subscriptionId, organizationId: subscription.organizationId, email, userId: user?.id });
+      return reply.code(201).send({ assigned: true });
+    } catch (error) {
+      return reply.code(409).send({ error: error instanceof Error ? error.message : "Unable to assign seat." });
+    }
+  });
+
+  app.delete("/payments/billing/subscriptions/:subscriptionId/seats/:email", { preHandler: app.requireAuth }, async (request, reply) => {
+    const { subscriptionId, email } = request.params as { subscriptionId: string; email: string };
+    const subscription = db.prepare(`
+      SELECT subscriptions.organization_id AS organizationId
+      FROM billing_subscriptions subscriptions
+      JOIN score_organizations organizations ON organizations.id = subscriptions.organization_id
+      LEFT JOIN score_organization_members members
+        ON members.organization_id = organizations.id AND members.user_id = ? AND members.status = 'active'
+          AND members.removed_at IS NULL AND members.role IN ('owner', 'admin')
+      WHERE subscriptions.id = ? AND (organizations.owner_user_id = ? OR members.id IS NOT NULL)
+    `).get(request.authUserId!, subscriptionId, request.authUserId!) as { organizationId: string } | undefined;
+    if (!subscription) return reply.code(404).send({ error: "Organization subscription not found." });
+    const revoked = revokeBillingSeat(db, { subscriptionId, organizationId: subscription.organizationId, email: decodeURIComponent(email) });
+    return revoked ? reply.code(204).send() : reply.code(404).send({ error: "Active seat not found." });
   });
 }

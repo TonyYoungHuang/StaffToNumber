@@ -8,7 +8,6 @@ import {
   GlobeIcon,
   MetricCard,
   Panel,
-  PreviewStaffGraphic,
   SectionIntro,
   SparkIcon,
   StatusPill,
@@ -18,11 +17,12 @@ import {
   sonataCopy,
 } from "@score/ui";
 import { readSiteLocale } from "../lib/locale";
+import { isFeatureAvailable, platformFeaturePages } from "../lib/platform-feature-pages";
 import {
-  getAppHomeUrl,
   getAppRegisterUrl,
   getAppStartConversionUrl,
   getCheckoutUrl,
+  getSafeAppUrl,
   siteConfig,
 } from "../lib/site";
 
@@ -63,7 +63,7 @@ type DefinitionItem = {
 export default async function HomePage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
-  const appHomeUrl = getAppHomeUrl();
+  const appHomeUrl = getSafeAppUrl("homepage");
   const appRegisterUrl = getAppRegisterUrl();
   const startConversionUrl = getAppStartConversionUrl();
   const checkoutUrl = getCheckoutUrl(locale);
@@ -72,12 +72,12 @@ export default async function HomePage() {
     ? [
         {
           title: "只承诺已正式上线的范围",
-          body: "官网当前只对外描述五线谱 PDF 转简谱，不再提前售卖尚未成熟的反向转换、移调或站内编辑能力。",
+          body: "官网以五线谱 PDF 转简谱为首要入口，同时公开结构化导入、简谱互换、移调、修谱、练习播放和导出能力；实验功能与外部工具依赖会明确标注。",
           icon: <SparkIcon width={20} height={20} />,
         },
         {
-          title: "同一站点承接搜索与开通",
-          body: "海外用户可继续进入在线支付，中国大陆用户也能沿用激活码路径，公开站点只负责把这件事讲清楚。",
+          title: "搜索入口连接真实产品",
+          body: "每个功能页都会进入对应的乐谱工程流程；尚未通过生产验证的能力只显示上线状态，不引导用户进入失效入口。",
           icon: <GlobeIcon width={20} height={20} />,
           tone: "tertiary",
         },
@@ -90,12 +90,12 @@ export default async function HomePage() {
     : [
         {
           title: "Only market what is already live",
-          body: "The site now promises only staff PDF to Jianpu, without pre-selling reverse conversion, transposition, or in-browser editing.",
+          body: "The site leads with staff PDF to Jianpu while also documenting structured imports, Jianpu round trips, transposition, correction, practice playback, and exports. Experimental and externally powered features are labeled clearly.",
           icon: <SparkIcon width={20} height={20} />,
         },
         {
-          title: "One site for discovery and conversion",
-          body: "International visitors can continue into online checkout while mainland-China users can stay on the activation-code path, all from the same public story.",
+          title: "Search pages connect to the real product",
+          body: "Each feature page opens its matching score-project workflow. Capabilities that have not passed production verification show launch status instead of a broken entry point.",
           icon: <GlobeIcon width={20} height={20} />,
           tone: "tertiary",
         },
@@ -110,45 +110,45 @@ export default async function HomePage() {
     ? [
         {
           step: "01",
-          title: "选择开通路径",
-          body: "海外用户可直接在线支付，中国大陆用户继续使用已购买的激活码开通访问权限。",
+          title: "导入结构化乐谱或扫描源",
+          body: "从 MusicXML、MIDI、简谱文本或 Score JSON 开始；Audiveris 通过生产验证后也可导入 PDF 与图片。",
         },
         {
           step: "02",
-          title: "上传五线谱 PDF",
-          body: "当前正式输入格式先收敛到 PDF，这样更容易控制上线质量、排查问题并压住支持成本。",
+          title: "校对候选谱",
+          body: "扫描识别结果先作为候选修订，结合原图、置信度和错误小节定位完成确认。",
         },
         {
           step: "03",
-          title: "获取正式结果或草稿包",
-          body: "识别质量较高的任务可提升为正式输出，低置信度页面则保留预览文本与诊断信息。",
+          title: "编辑、互换与移调",
+          body: "在同一 Score JSON 工程中修改音符与符号，进行五线谱/简谱互换、移调和练习设置。",
         },
         {
           step: "04",
-          title: "下载并人工复核",
-          body: "在教学、排练、出版或演出前，仍建议在浏览器外完成最后的乐谱校对与人工确认。",
+          title: "播放并导出",
+          body: "完成最终人工复核后，按已验证能力导出 MusicXML、MIDI、PDF、WAV 或 MP3。",
         },
       ]
     : [
         {
           step: "01",
-          title: "Choose the access path",
-          body: "International users can pay online, while mainland-China users can keep using purchased activation codes.",
+          title: "Import a structured score or scan source",
+          body: "Start with MusicXML, MIDI, Jianpu text, or Score JSON. PDF and image OMR becomes available after Audiveris passes production verification.",
         },
         {
           step: "02",
-          title: "Upload a five-line staff PDF",
-          body: "The first public release accepts PDF only so the launch surface stays narrower and easier to control.",
+          title: "Review the score candidate",
+          body: "Recognition output stays a candidate revision until the source image, confidence data, and flagged measures have been checked.",
         },
         {
           step: "03",
-          title: "Receive final output or a draft bundle",
-          body: "Higher-confidence jobs can promote to final output, while weaker pages stay draft-first with diagnostics.",
+          title: "Edit, convert, and transpose",
+          body: "Correct notation, convert between staff and Jianpu, transpose, and configure practice from the same Score JSON project.",
         },
         {
           step: "04",
-          title: "Download and review",
-          body: "Users still perform the final musical check outside the browser before teaching, rehearsal, publishing, or performance.",
+          title: "Play and export",
+          body: "After final human review, export MusicXML, MIDI, PDF, WAV, or MP3 according to the capabilities verified in production.",
         },
       ];
 
@@ -222,7 +222,7 @@ export default async function HomePage() {
     ? [
         {
           q: "现在真正上线了什么？",
-          a: "当前正式上线的范围只有五线谱 PDF 转简谱。反向转换、移调和站内手工编辑仍不在本次公开范围内。",
+          a: "当前平台已支持乐谱工程、MusicXML/MIDI/简谱导入、五线谱与简谱视图、移调、结构化修谱、练习播放和核心导出。OMR、高质量渲染与音频转谱依赖服务器工具配置，并始终采用先生成候选、再人工复核的流程。",
         },
         {
           q: "需要先注册账号吗？",
@@ -248,7 +248,7 @@ export default async function HomePage() {
     : [
         {
           q: "What is actually live right now?",
-          a: "Only five-line staff PDF to Jianpu is live in the current release. Reverse conversion, transposition, and in-browser editing are still outside scope.",
+          a: "The platform now includes score projects, MusicXML/MIDI/Jianpu imports, staff and Jianpu views, transposition, structured correction, practice playback, and core exports. OMR, high-quality rendering, and audio transcription depend on configured server tools and remain review-first workflows.",
         },
         {
           q: "Do users need an account first?",
@@ -284,7 +284,7 @@ export default async function HomePage() {
         },
         {
           title: "为什么文案要刻意保持收窄",
-          body: "首页既要匹配 Google 和中文搜索意图，也要如实反映当前能力范围。反向转换、移调和站内编辑还不会被提前包装进这些词里。",
+          body: "首页保持五线谱 PDF 转简谱这一主要搜索意图，移调、编辑、播放、扫描和教学则由独立功能页承接，避免把所有工作流混在同一组关键词里。",
         },
       ]
     : [
@@ -298,62 +298,62 @@ export default async function HomePage() {
         },
         {
           title: "Why the wording stays narrow",
-          body: "The public copy uses these phrases to match real search intent while still staying honest about scope. Reverse conversion, transposition, and in-browser editing are not being folded into those terms yet.",
+          body: "The homepage keeps staff PDF to Jianpu as its primary search intent, while dedicated pages explain transposition, editing, playback, scanning, and teaching without mixing every workflow into one keyword cluster.",
         },
       ];
 
   const definitionItems: ReadonlyArray<DefinitionItem> = isChinese
     ? [
         {
-          label: "这里的“五线谱 PDF 转简谱”是什么",
-          body: "它指把现有五线谱 PDF 导入系统，得到简谱输出、预览文本或草稿包，而不是直接承诺一套完整的站内乐谱编辑器。",
+          label: "上传后会得到什么",
+          body: "PDF 或图片先成为可校对的 MusicXML 候选谱；确认后保存为 Score JSON 修订，再用于简谱互换、移调、播放与导出。",
         },
         {
-          label: "它服务什么样的搜索意图",
-          body: "帮助搜索 staff pdf to jianpu、五线谱转简谱、numbered notation converter 或乐谱 PDF 转简谱的用户快速判断这是不是合适路径。",
+          label: "为什么不直接编辑 PDF",
+          body: "PDF 和图片只是导入源。所有可持续编辑、移调、播放和导出都基于结构化乐谱，避免对图像像素做脆弱修改。",
         },
         {
-          label: "当前公开版本不包含什么",
-          body: "反向转换、移调、站内编辑，以及对所有复杂乐谱都一键生成最终成品，仍不在当前公开范围内。",
+          label: "识别与转谱边界",
+          body: "复杂总谱的自动识别仍需人工校对；深度排版编辑、高质量音源和音频转谱也取决于谱面复杂度与服务器工具配置。",
         },
       ]
     : [
         {
-          label: "What a staff PDF to Jianpu converter means here",
-          body: "It means importing an existing five-line staff PDF and receiving Jianpu output, preview text, or a draft-safe bundle for review instead of promising full in-browser score editing.",
+          label: "What an upload creates",
+          body: "A PDF or image becomes a reviewable MusicXML candidate. Once accepted, it is stored as a Score JSON revision for Jianpu conversion, transposition, playback, and export.",
         },
         {
-          label: "What kind of search intent it serves",
-          body: "It helps visitors searching for staff PDF to Jianpu, five-line staff to Jianpu, numbered notation converter, or music score PDF to numbered notation quickly decide whether this is the right workflow.",
+          label: "Why the PDF is not edited directly",
+          body: "PDF and image files remain import sources. Durable editing, transposition, playback, and export operate on structured notation rather than page pixels.",
         },
         {
-          label: "What the current release does not include",
-          body: "Reverse conversion, transposition, in-browser editing, and universal one-click final output for every complex score are still outside the public scope.",
+          label: "Current product limits",
+          body: "Complex-score recognition still requires human review. Desktop-grade engraving, high-quality instruments, and audio transcription also depend on notation complexity and configured server tools.",
         },
       ];
 
   const copy = isChinese
     ? {
-        heroEyebrow: "五线谱 PDF 转简谱",
-        heroTitle: "把五线谱 PDF 转成简谱：先定义真实工作流，再引导购买与开通。",
-        heroBody: `${PRODUCT_NAME} 当前对外聚焦 ${sonataCopy.currentScope}。这个首页先解释这条工作流是什么、适合谁、怎样开通，再把访问者引导进实际转化。`,
+        heroEyebrow: "在线乐谱转换、编辑与移调",
+        heroTitle: "在线五线谱转换、编辑与移调工具",
+        heroBody: `${PRODUCT_NAME} 以 MusicXML 与 Score JSON 为核心，连接扫描导入、五线谱与简谱互换、移调、修谱、练习播放和多格式导出。`,
         featuredEyebrow: "定义摘要",
         featuredTitle: "什么是“五线谱 PDF 转简谱”工具？这是搜索用户最先该看到的短答案。",
-        featuredBody: "如果用户通过 staff pdf to jianpu、五线谱转简谱或 numbered notation converter 进入网站，最核心的解释应该很直接：这条流程是把现有五线谱 PDF 转成可复核的简谱输出，而不是假装自己是一套全功能乐谱编辑平台。",
+        featuredBody: "如果用户通过 staff pdf to jianpu、五线谱转简谱或 numbered notation converter 进入网站，最核心的解释应该很直接：扫描结果会成为可校对的结构化候选，确认后可继续做简谱互换、移调、编辑、练习和导出。",
         start: "开始转换",
         createAccount: "注册账号",
         buyAccess: "购买或开通权限",
-        scope: "只展示已上线范围",
-        scopeBody: "今天真正能卖的是一条受控的单向转换流程，而不是完整的乐谱编辑套件；官网文案现在也保持在这个边界内。",
+        scope: "能力状态清晰可见",
+        scopeBody: "结构化乐谱工具已进入可用阶段；需要 Audiveris、MuseScore、SoundFont 或 Basic Pitch 的能力会显示部署条件，识别结果始终建议人工校对。",
         previewChip: "当前转换预览",
         previewLabel: "简谱预览概念",
-        previewBody: "源 PDF 足够清晰时可以推进到正式输出；置信度不足的页面会留在草稿包，避免制造错误信心。",
-        methodsEyebrow: "内容策略",
-        methodsTitle: "面向真实搜索需求的五线谱 PDF 转简谱落地页，而不是空泛承诺。",
-        methodsBody: "这个首页现在按搜索落地页方式组织内容：承接 Google 与中文搜索意图，把用户导向支付或激活路径，并在支持成本扩大前先把当前范围讲清楚。",
+        previewBody: "源 PDF 足够清晰时可进入候选校对；置信度不足的符号和小节会保留诊断，避免未经确认就成为正式修订。",
+        methodsEyebrow: "核心能力",
+        methodsTitle: "一份结构化乐谱贯穿识别、校对、转换、练习和导出。",
+        methodsBody: "每项功能都回到同一个 MusicXML 与 Score JSON 工程，避免把用户文件送进互不相通的一次性转换器。",
         deliverEyebrow: "交付结果",
-        deliverTitle: "上传五线谱 PDF 后，可能拿到的是预览文本、正式 PDF，或草稿包。",
-        deliverBody: "在购买前先说明三种结果层级，可以同时降低售前误解与售后支持压力。",
+        deliverTitle: "上传五线谱 PDF 后，得到可校对候选、正式修订与按需导出。",
+        deliverBody: "源文件、识别候选、确认后的 Score JSON 修订和导出资产分层保存，识别失败不会覆盖已有正式版本。",
         fitEyebrow: "上线适配",
         fitTitle: "适合受控发布，但还不适合对所有乐谱场景都做强承诺。",
         fitBody: "在官网上先预筛用户预期，通常比付款后再解释边界更省成本。",
@@ -400,26 +400,26 @@ export default async function HomePage() {
         termsButton: "查看服务条款",
       }
     : {
-        heroEyebrow: "Staff PDF to Jianpu landing page",
-        heroTitle: "Convert staff PDF to Jianpu with a landing page that defines the workflow before it sells it.",
-        heroBody: `${PRODUCT_NAME} is currently presented as a narrow first release: ${sonataCopy.currentScope}. This homepage explains what the workflow means, who it is for, and how access works before it pushes visitors into conversion.`,
+        heroEyebrow: "Online sheet music converter, editor, and transposer",
+        heroTitle: "Online Sheet Music Converter, Editor & Transposer",
+        heroBody: `${PRODUCT_NAME} connects score scanning, staff and Jianpu conversion, transposition, correction, practice playback, and export around MusicXML and Score JSON.`,
         featuredEyebrow: "Definition snippet",
         featuredTitle: "What is a staff PDF to Jianpu converter? This is the short answer a search visitor should see first.",
-        featuredBody: "If someone arrives here from queries like staff PDF to Jianpu, five-line staff to Jianpu, or numbered notation converter, the core answer is simple: this workflow takes an existing staff PDF and turns it into reviewable Jianpu output instead of pretending to be a full score-editing suite.",
+        featuredBody: "If someone arrives from staff PDF to Jianpu or numbered-notation searches, the answer is direct: a scan becomes a reviewable structured candidate that can continue into Jianpu, transposition, editing, practice, and export.",
         start: "Start conversion",
         createAccount: "Create account",
         buyAccess: "Buy or unlock access",
-        scope: "Only the live scope is shown",
-        scopeBody: "What you can sell today is a controlled one-way conversion workflow, not a full music-notation editing suite. The website now stays inside that boundary.",
+        scope: "Capability status stays visible",
+        scopeBody: "Structured score tools are available today. Features powered by Audiveris, MuseScore, SoundFonts, or Basic Pitch show their deployment requirements, and recognition output remains review-first.",
         previewChip: "Current conversion preview",
         previewLabel: "Jianpu preview concept",
-        previewBody: "Clear PDFs can move toward final output. Lower-confidence pages stay in a draft bundle to reduce false confidence.",
-        methodsEyebrow: "Content strategy",
-        methodsTitle: "Staff PDF to Jianpu conversion for people who need a real workflow, not a placeholder promise.",
-        methodsBody: "This landing page is structured to capture search traffic for staff PDF to Jianpu and numbered-notation intent, route users into checkout or activation, and explain the live scope before support debt builds up.",
+        previewBody: "Clear PDFs can move into candidate review. Lower-confidence symbols and measures retain diagnostics instead of becoming accepted revisions without confirmation.",
+        methodsEyebrow: "Core capabilities",
+        methodsTitle: "One structured score connects recognition, correction, conversion, practice, and export.",
+        methodsBody: "Every workflow returns to the same MusicXML and Score JSON project instead of sending user files through disconnected one-off converters.",
         deliverEyebrow: "Deliverables",
-        deliverTitle: "What a staff PDF to Jianpu upload can return: preview text, final PDF, or a draft bundle.",
-        deliverBody: "That lowers both presale and support overhead because the landing page explains the difference between preview text, promoted final output, and draft-safe fallback bundles before purchase.",
+        deliverTitle: "What a staff PDF upload creates: a review candidate, an accepted revision, and derived exports.",
+        deliverBody: "Source files, recognition candidates, accepted Score JSON revisions, and export assets remain separate so failed recognition cannot replace accepted work.",
         fitEyebrow: "Launch fit",
         fitTitle: "Good for a controlled release, not yet for every notation scenario.",
         fitBody: "Pre-qualifying expectations on the site is cheaper than explaining the gaps after payment.",
@@ -429,11 +429,11 @@ export default async function HomePage() {
           "They accept a final manual review after export.",
           "They want a faster route into teaching, rehearsal, or internal circulation materials.",
         ],
-        fitWait: "Not ready to promise yet",
+        fitWait: "Still being productized",
         fitWaitPoints: [
-          "Reverse conversion or more complex bi-directional workflows.",
-          "In-browser editing, transposition, or layout repair.",
-          "Very poor scans or highly complex pages that still expect one-click final output.",
+          "Desktop-grade free-form engraving and complex layout repair.",
+          "Production OMR and audio transcription when external engines are not configured.",
+          "Very poor scans or highly complex pages that expect one-click publication-ready output.",
         ],
         useCasesEyebrow: "Use cases",
         useCasesTitle: "Who needs a staff PDF to Jianpu or numbered-notation converter most",
@@ -479,7 +479,7 @@ export default async function HomePage() {
             operatingSystem: "Web",
             description: copy.heroBody,
             url: siteConfig.siteUrl,
-            offers: siteConfig.priceAmount
+            offers: siteConfig.release.checkoutAvailable && siteConfig.priceAmount
               ? {
                   "@type": "Offer",
                   price: siteConfig.priceAmount,
@@ -508,32 +508,22 @@ export default async function HomePage() {
             <a href={appRegisterUrl} className="public-button secondary">
               {copy.createAccount}
             </a>
-            <a href={checkoutUrl} className="public-button tertiary">
-              {copy.buyAccess}
-            </a>
+            {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{copy.buyAccess}</a> : null}
           </div>
-          <Panel variant="sunken" className="stack-md">
-            <StatusPill tone="cyan">{copy.scope}</StatusPill>
-            <p className="body-copy">{copy.scopeBody}</p>
-          </Panel>
         </div>
 
         <div className="preview-shell">
           <div className="button-row">
             <span className="live-chip">{copy.previewChip}</span>
           </div>
-          <PreviewStaffGraphic />
-          <Panel variant="sunken" className="stack-md">
-            <p className="metric-label">{copy.previewLabel}</p>
-            <div className="kianpu-line">
-              <span>1</span>
-              <span>.</span>
-              <span>3</span>
-              <span>5</span>
-              <span>6</span>
-            </div>
-            <p className="helper-copy">{copy.previewBody}</p>
-          </Panel>
+          <img
+            className="feature-product-screenshot"
+            src="/product/score-preview-output-real.png"
+            width={1265}
+            height={712}
+            alt={isChinese ? "ScoreTransposer 乐谱工程中的真实五线谱输出预览" : "Real rendered score output in the ScoreTransposer project workspace"}
+          />
+          <p className="helper-copy">{copy.previewBody}</p>
         </div>
       </div>
 
@@ -566,6 +556,35 @@ export default async function HomePage() {
           {featureCards.map((card) => (
             <FeatureCard key={card.title} icon={card.icon} title={card.title} body={card.body} tone={card.tone} />
           ))}
+        </div>
+      </Panel>
+
+      <Panel className="stack-xl" variant="glass">
+        <SectionIntro
+          eyebrow={isChinese ? "平台功能页" : "Platform feature pages"}
+          title={isChinese ? "从单一 PDF 转简谱入口，扩展到完整五线谱项目工作流。" : "From one conversion entry point into a full score-project workflow."}
+          body={
+            isChinese
+              ? "这些页面分别承接扫描、简谱互换、移调、编辑、播放音频、MusicXML/MIDI、教学和开通意图，并把用户带回同一套 Score JSON / MusicXML 项目模型。"
+              : "These pages catch scanner, Jianpu, transposition, editing, playback, MusicXML/MIDI, teaching, and access intent, then route visitors back into the same Score JSON / MusicXML project model."
+          }
+          largeBody
+        />
+        <div className="feature-grid">
+          {platformFeaturePages
+            .filter((page) => page.slug !== "pricing")
+            .map((page) => (
+              <Panel key={page.slug} variant="sunken" className="stack-sm">
+                <StatusPill tone={!isFeatureAvailable(page) || page.status === "Preview" ? "amber" : page.status === "Available" ? "cyan" : "green"}>
+                  {isFeatureAvailable(page) ? page.status : isChinese ? "待生产验证" : "Pending production verification"}
+                </StatusPill>
+                <h3 className="item-title">{page.title}</h3>
+                <p className="item-meta">{page.description}</p>
+                <a href={page.canonical} className="public-button tertiary">
+                  {isChinese ? "查看功能" : "View feature"}
+                </a>
+              </Panel>
+            ))}
         </div>
       </Panel>
 
@@ -651,7 +670,7 @@ export default async function HomePage() {
         </div>
       </Panel>
 
-      <section id="pricing" className="access-grid">
+      {siteConfig.release.checkoutAvailable ? <section id="pricing" className="access-grid">
         <Panel variant="surface" className="stack-lg">
           <SectionIntro
             eyebrow={copy.pricingEyebrow}
@@ -730,7 +749,7 @@ export default async function HomePage() {
             }
           />
         </Panel>
-      </section>
+      </section> : null}
 
       <section id="faq" className="preview-grid">
         <Panel variant="surface" className="stack-lg">
@@ -755,8 +774,8 @@ export default async function HomePage() {
             />
             <MetricCard
               label={isChinese ? "方向" : "Direction"}
-              value={isChinese ? "单向" : "One way"}
-              body={isChinese ? "仅支持五线谱 PDF -> 简谱。" : "Staff PDF -> Jianpu only."}
+              value={isChinese ? "结构化双向" : "Structured round trip"}
+              body={isChinese ? "五线谱、简谱、MusicXML 与 Score JSON 共用同一工程模型。" : "Staff notation, Jianpu, MusicXML, and Score JSON share one project model."}
             />
             <MetricCard
               label={isChinese ? "回退" : "Fallback"}
