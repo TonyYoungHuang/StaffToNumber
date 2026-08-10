@@ -4807,12 +4807,12 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid Jianpu import payload." });
       }
 
-      const userDir = path.join(config.storageDir, request.authUserId!, "scores", "jianpu-imports");
-      fs.mkdirSync(userDir, { recursive: true });
+      const importDir = path.join(config.storageDir, "scores", "jianpu-imports");
+      fs.mkdirSync(importDir, { recursive: true });
 
       const originalName = `${deriveExportBaseName(body.title)}.jianpu.txt`;
       const storedName = `${createId()}-${originalName}`;
-      const targetPath = path.join(userDir, storedName);
+      const targetPath = path.join(importDir, storedName);
       fs.writeFileSync(targetPath, body.text, "utf8");
       const stats = fs.statSync(targetPath);
 
