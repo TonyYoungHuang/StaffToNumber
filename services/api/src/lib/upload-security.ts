@@ -82,7 +82,8 @@ export class UploadSecurityError extends Error {
       | "MEDIA_PROBE_FAILED"
       | "MEDIA_STREAM_INVALID"
       | "MEDIA_TOO_LONG"
-      | "MEDIA_TRANSCODE_FAILED",
+      | "MEDIA_TRANSCODE_FAILED"
+      | "UNSAFE_STORAGE_PATH",
     public readonly statusCode: 400 | 413 | 422 | 503 = 400,
   ) {
     super(message);
@@ -437,7 +438,9 @@ export async function storeVerifiedUpload(input: {
   mediaSafety?: MediaSafetyPolicy;
   processMedia?: typeof sanitizeMediaUpload;
 }) {
-  const quarantineDir = input.quarantineDir ?? path.join(config.storageDir, ".quarantine");
+  const storageRoot = path.resolve(input.quarantineDir ? path.dirname(input.quarantineDir) : config.storageDir);
+  const quarantineDir = resolveUploadPath(storageRoot, input.quarantineDir ?? path.join(storageRoot, ".quarantine"));
+  const targetPath = resolveUploadPath(storageRoot, input.targetPath);
   await fs.promises.mkdir(quarantineDir, { recursive: true });
   const quarantinePath = path.join(quarantineDir, `${randomUUID()}.upload`);
   const sanitizedPath = path.join(quarantineDir, `${randomUUID()}.safe`);
@@ -466,10 +469,10 @@ export async function storeVerifiedUpload(input: {
       : null;
     const promotedPath = mediaResult?.status === "sanitized" ? sanitizedPath : quarantinePath;
     if (mediaResult?.status === "sanitized") await scan(sanitizedPath);
-    await fs.promises.mkdir(path.dirname(input.targetPath), { recursive: true });
-    await fs.promises.rename(promotedPath, input.targetPath);
+    await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.promises.rename(promotedPath, targetPath);
     if (promotedPath !== quarantinePath) await fs.promises.rm(quarantinePath, { force: true });
-    const promotedStats = await fs.promises.stat(input.targetPath);
+    const promotedStats = await fs.promises.stat(targetPath);
 
     return {
       detectedKind,
@@ -484,6 +487,15 @@ export async function storeVerifiedUpload(input: {
     await fs.promises.rm(sanitizedPath, { force: true }).catch(() => undefined);
     throw error;
   }
+}
+
+function resolveUploadPath(root: string, candidate: string) {
+  const resolved = path.resolve(candidate);
+  const relative = path.relative(root, resolved);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new UploadSecurityError("The upload target escaped the configured storage directory.", "UNSAFE_STORAGE_PATH");
+  }
+  return resolved;
 }
 
 export function uploadErrorResponse(error: unknown) {

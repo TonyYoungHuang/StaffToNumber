@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import { useAppLocale } from "./AppLocaleProvider";
 
-const storageKey = "score_admin_api_key";
 const statuses = ["received", "validating", "info_required", "reviewing", "actioned", "rejected", "closed"] as const;
 type ComplaintStatus = (typeof statuses)[number];
 
@@ -66,7 +65,6 @@ export function AdminCopyrightManager() {
   const [message, setMessage] = useState<string | null>(null);
   const [messageKind, setMessageKind] = useState<"success" | "error">("success");
 
-  useEffect(() => setAdminKey(window.localStorage.getItem(storageKey) ?? ""), []);
   const overdue = useMemo(() => items.filter((item) => !["actioned", "rejected", "closed"].includes(item.status) && Date.parse(item.responseDueAt) < Date.now()).length, [items]);
 
   function requireKey() {
@@ -126,7 +124,8 @@ export function AdminCopyrightManager() {
           <label className="field-group" style={{ flex: 2 }}><span className="field-label">{isChinese ? "管理员密钥" : "Admin API key"}</span><input className="field-control" type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} /></label>
           <label className="field-group" style={{ flex: 1 }}><span className="field-label">{isChinese ? "状态" : "Status"}</span><select className="field-select" value={filter} onChange={(event) => setFilter(event.target.value)}><option value="">{isChinese ? "全部" : "All"}</option>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>
         </div>
-        <div className="button-row"><button className="button button-secondary" type="button" onClick={() => { if (requireKey()) { window.localStorage.setItem(storageKey, adminKey.trim()); setMessage(isChinese ? "密钥已保存在当前浏览器。" : "Key saved in this browser."); } }}>{isChinese ? "保存密钥" : "Save key"}</button><button className="button button-primary" type="button" disabled={loading} onClick={() => void loadList()}>{isChinese ? "刷新队列" : "Refresh queue"}</button></div>
+        <p className="micro-copy">{isChinese ? "管理员密钥仅保留在当前页面内存中，刷新或关闭页面后清除。" : "The admin key stays only in this page's memory and is cleared on refresh or close."}</p>
+        <div className="button-row"><button className="button button-primary" type="button" disabled={loading} onClick={() => void loadList()}>{isChinese ? "刷新队列" : "Refresh queue"}</button></div>
         {message ? <p className={`form-status ${messageKind}`}>{message}</p> : null}
       </section>
 

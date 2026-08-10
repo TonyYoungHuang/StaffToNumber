@@ -142,6 +142,27 @@ test("storeVerifiedUpload promotes a clean file out of quarantine", async () => 
   }
 });
 
+test("storeVerifiedUpload rejects a target outside the quarantine storage root", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-upload-boundary-"));
+  const outsidePath = path.join(path.dirname(root), `${path.basename(root)}-outside.pdf`);
+
+  try {
+    await assert.rejects(
+      storeVerifiedUpload({
+        stream: Readable.from(Buffer.from("%PDF-1.7\nclean")),
+        targetPath: outsidePath,
+        allowedKinds: uploadKinds.pdf,
+        scan: async () => "clean",
+        quarantineDir: path.join(root, ".quarantine"),
+      }),
+      (error: unknown) => error instanceof UploadSecurityError && error.code === "UNSAFE_STORAGE_PATH",
+    );
+    assert.equal(fs.existsSync(outsidePath), false);
+  } finally {
+    await fs.promises.rm(root, { recursive: true, force: true });
+  }
+});
+
 test("storeVerifiedUpload promotes only the sanitized media result and scans both inputs", async () => {
   const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-media-upload-"));
   const targetPath = path.join(root, "stored", "recording.wav");

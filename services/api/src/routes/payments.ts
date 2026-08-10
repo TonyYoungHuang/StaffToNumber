@@ -26,6 +26,19 @@ function isProvider(value: unknown): value is PaymentProvider {
   return value === "stripe" || value === "paddle";
 }
 
+function isSeatEmail(value: string) {
+  if (value.length < 3 || value.length > 254) return false;
+  const separator = value.indexOf("@");
+  if (separator < 1 || separator !== value.lastIndexOf("@") || separator > 64) return false;
+  const domain = value.slice(separator + 1);
+  if (domain.length < 3 || domain.startsWith(".") || domain.endsWith(".") || !domain.includes(".")) return false;
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 32 || code === 127) return false;
+  }
+  return true;
+}
+
 export async function paymentRoutes(app: FastifyInstance) {
   app.post(
     "/payments/checkout/authenticated",
@@ -288,7 +301,7 @@ export async function paymentRoutes(app: FastifyInstance) {
     const { subscriptionId } = request.params as { subscriptionId: string };
     const body = (request.body ?? {}) as { email?: string };
     const email = body.email?.trim().toLocaleLowerCase();
-    if (!email || !/^\S+@\S+\.\S+$/u.test(email)) return reply.code(400).send({ error: "A valid seat email is required." });
+    if (!email || !isSeatEmail(email)) return reply.code(400).send({ error: "A valid seat email is required." });
     const subscription = db.prepare(`
       SELECT subscriptions.organization_id AS organizationId
       FROM billing_subscriptions subscriptions

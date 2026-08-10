@@ -26,6 +26,19 @@ type PaddleTransactionResponse = {
 const stripeClient = config.stripeSecretKey ? new Stripe(config.stripeSecretKey) : null;
 const paddleApiBase = config.paddleEnvironment === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
 
+function normalizePaddleTransactionId(value: string) {
+  const transactionId = value.trim();
+  if (!transactionId.startsWith("txn_") || transactionId.length < 5 || transactionId.length > 80) {
+    throw new Error("Invalid Paddle transaction id.");
+  }
+  for (const character of transactionId.slice(4)) {
+    const code = character.charCodeAt(0);
+    const allowed = (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+    if (!allowed) throw new Error("Invalid Paddle transaction id.");
+  }
+  return transactionId;
+}
+
 export function listEnabledPaymentProviders() {
   return config.paymentProviders.filter((provider): provider is PaymentProvider => provider === "stripe" || provider === "paddle");
 }
@@ -152,7 +165,9 @@ export async function retrievePaddleTransaction(transactionId: string) {
     throw new Error("Paddle is not configured.");
   }
 
-  const response = await fetch(`${paddleApiBase}/transactions/${transactionId}`, {
+  const safeTransactionId = normalizePaddleTransactionId(transactionId);
+  const endpoint = new URL(`/transactions/${encodeURIComponent(safeTransactionId)}`, paddleApiBase);
+  const response = await fetch(endpoint, {
     headers: {
       Authorization: `Bearer ${config.paddleApiKey}`,
       "Content-Type": "application/json",

@@ -4250,7 +4250,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       fs.mkdirSync(exportDir, { recursive: true });
 
       const originalName = `${deriveExportBaseName(scoreJson.title)}-v${revision.revision_number}.mid`;
-      const storedName = `${createId()}-${originalName}`;
+      const storedName = `${createId()}.jianpu.txt`;
       const targetPath = path.join(exportDir, storedName);
       fs.writeFileSync(targetPath, Buffer.from(midiFile));
       const stats = fs.statSync(targetPath);

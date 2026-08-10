@@ -193,7 +193,18 @@ if (args["require-analytics"]) {
   const homepage = pages.find((page) => new URL(page.url).pathname === "/");
   const htmlResponse = await request(baseUrl);
   const html = await htmlResponse.text();
-  if (!homepage || (!html.includes("googletagmanager.com") && !html.includes("clarity.ms"))) {
+  const $ = cheerio.load(html);
+  const analyticsHosts = new Set(["googletagmanager.com", "www.googletagmanager.com", "clarity.ms", "www.clarity.ms"]);
+  const hasAnalyticsScript = $("script[src]").toArray().some((element) => {
+    const src = $(element).attr("src");
+    if (!src) return false;
+    try {
+      return analyticsHosts.has(new URL(src, baseUrl).hostname.toLowerCase());
+    } catch {
+      return false;
+    }
+  });
+  if (!homepage || !hasAnalyticsScript) {
     issue("warning", "/", "Analytics scripts are consent-gated and were not visible in the server response; verify them after granting consent in a real browser.");
   }
 }

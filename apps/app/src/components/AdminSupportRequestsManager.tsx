@@ -1,11 +1,10 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { PUBLIC_SITE_URL } from "../lib/support";
 import { useAppLocale } from "./AppLocaleProvider";
 
-const storageKey = "score_admin_api_key";
 const statusOptions = ["all", "open", "in_review", "resolved", "closed"] as const;
 
 type StatusFilter = (typeof statusOptions)[number];
@@ -54,13 +53,11 @@ export function AdminSupportRequestsManager() {
     locale === "zh-CN"
       ? {
           keyLabel: "管理员密钥",
-          keyHint: "继续使用 services/api 中配置的 `ADMIN_API_KEY`。",
-          saveKey: "保存密钥",
+          keyHint: "继续使用 services/api 中配置的 `ADMIN_API_KEY`；密钥仅保留在当前页面内存中。",
           load: "读取工单",
           filterLabel: "状态筛选",
           empty: "暂无工单。你可以先到官网提交一条 Support 请求再回来查看。",
           invalidKey: "请先输入管理员密钥。",
-          saved: "管理员密钥已保存到当前浏览器。",
           loaded: (count: number) => `已加载 ${count} 条支持工单。`,
           updated: "工单状态已更新。",
           requestsTitle: "支持工单列表",
@@ -81,13 +78,11 @@ export function AdminSupportRequestsManager() {
         }
       : {
           keyLabel: "Admin API key",
-          keyHint: "Reuse the `ADMIN_API_KEY` configured in services/api.",
-          saveKey: "Save key",
+          keyHint: "Reuse the `ADMIN_API_KEY` configured in services/api. The key stays only in this page's memory.",
           load: "Load requests",
           filterLabel: "Status filter",
           empty: "No support requests yet. Submit one on the public support page first if you want to test the flow.",
           invalidKey: "Enter the admin API key first.",
-          saved: "Admin API key saved in this browser.",
           loaded: (count: number) => `Loaded ${count} support request(s).`,
           updated: "Support request status updated.",
           requestsTitle: "Support request list",
@@ -106,13 +101,6 @@ export function AdminSupportRequestsManager() {
           category: "Category",
           statusLabel: "Status",
         };
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey);
-    if (stored) {
-      setAdminKey(stored);
-    }
-  }, []);
 
   const querySuffix = useMemo(() => {
     const params = new URLSearchParams({ limit: "80" });
@@ -153,18 +141,6 @@ export function AdminSupportRequestsManager() {
 
     setItems(result.data.items);
     setStatus(copy.loaded(result.data.items.length));
-    setStatusKind("success");
-  }
-
-  function saveKey() {
-    if (!adminKey.trim()) {
-      setStatus(copy.invalidKey);
-      setStatusKind("error");
-      return;
-    }
-
-    window.localStorage.setItem(storageKey, adminKey.trim());
-    setStatus(copy.saved);
     setStatusKind("success");
   }
 
@@ -228,9 +204,6 @@ export function AdminSupportRequestsManager() {
             </select>
           </label>
           <div className="button-row">
-            <button type="button" className="button button-secondary" onClick={saveKey}>
-              {copy.saveKey}
-            </button>
             <button type="button" className="button button-primary" disabled={loading} onClick={() => void loadRequests()}>
               {copy.load}
             </button>

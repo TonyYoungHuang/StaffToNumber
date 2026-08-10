@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import { useAppLocale } from "./AppLocaleProvider";
-
-const storageKey = "score_admin_api_key";
 
 type Snapshot = {
   id: string;
@@ -84,10 +82,6 @@ export function AdminSeoManager() {
   const [message, setMessage] = useState<string | null>(null);
   const [messageKind, setMessageKind] = useState<"success" | "error">("success");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setAdminKey(window.localStorage.getItem(storageKey) ?? "");
-  }, []);
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams({ limit: "50" });
@@ -223,13 +217,6 @@ export function AdminSeoManager() {
     setManifestText(await file.text());
   }
 
-  function saveKey() {
-    if (!requireKey()) return;
-    window.localStorage.setItem(storageKey, adminKey.trim());
-    setMessage(isChinese ? "管理员密钥已保存在当前浏览器。" : "Admin key saved in this browser.");
-    setMessageKind("success");
-  }
-
   return (
     <div className="page-stack">
       <section className="surface-panel stack-lg">
@@ -248,9 +235,9 @@ export function AdminSeoManager() {
             </select>
           </label>
           <div className="button-row">
-            <button type="button" className="button button-secondary" onClick={saveKey}>{isChinese ? "保存密钥" : "Save key"}</button>
             <button type="button" className="button button-primary" disabled={loading} onClick={() => void load()}>{isChinese ? "刷新数据" : "Refresh data"}</button>
           </div>
+          <p className="micro-copy">{isChinese ? "管理员密钥仅保留在当前页面内存中。" : "The admin key stays only in this page's memory."}</p>
           <p className="micro-copy">{endpoint}</p>
         </div>
         {message ? <p className={`form-status ${messageKind}`}>{message}</p> : null}

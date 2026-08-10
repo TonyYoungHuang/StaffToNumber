@@ -384,8 +384,8 @@ export async function educationRoutes(app: FastifyInstance) {
         title: query.title || file.filename,
         resourceType: query.resourceType || "document",
       }, classroomId);
-      const userDir = path.join(config.storageDir, request.authUserId!, "classroom-resources", classroomId);
-      const storedName = `${createId()}-${sanitizeFilename(file.filename || "classroom-resource")}`;
+      const userDir = path.join(config.storageDir, request.authUserId!, "classroom-resources");
+      const storedName = `${createId()}.resource`;
       const targetPath = path.join(userDir, storedName);
       const verified = await storeVerifiedUpload({
         stream: file.file,
@@ -464,8 +464,8 @@ export async function educationRoutes(app: FastifyInstance) {
     try {
       const query = request.query as Record<string, unknown>;
       const metadata = resourceMetadataInput({ ...query, title: query.title || file.filename, resourceType: query.resourceType || "document" }, classroomId);
-      const userDir = path.join(config.storageDir, request.authUserId!, "classroom-resources", classroomId);
-      const storedName = `${createId()}-${sanitizeFilename(file.filename || "classroom-resource")}`;
+      const userDir = path.join(config.storageDir, request.authUserId!, "classroom-resources");
+      const storedName = `${createId()}.resource`;
       const targetPath = path.join(userDir, storedName);
       const verified = await storeVerifiedUpload({
         stream: file.file, targetPath, allowedKinds: uploadKinds.classroomResource,

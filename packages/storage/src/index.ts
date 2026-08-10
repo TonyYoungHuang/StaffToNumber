@@ -58,12 +58,44 @@ export type ResumableUploadPart = {
 type S3Sender = Pick<S3Client, "send">;
 
 function safeSegment(value: string) {
-  const normalized = value.trim().replace(/[^a-zA-Z0-9._-]/gu, "-").replace(/^-+|-+$/gu, "");
-  return normalized || "object";
+  let normalized = "";
+  for (const character of value.trim().slice(0, 240)) {
+    const code = character.charCodeAt(0);
+    const allowed = (code >= 48 && code <= 57)
+      || (code >= 65 && code <= 90)
+      || (code >= 97 && code <= 122)
+      || character === "."
+      || character === "_"
+      || character === "-";
+    normalized += allowed ? character : "-";
+  }
+  let start = 0;
+  let end = normalized.length;
+  while (start < end && normalized[start] === "-") start += 1;
+  while (end > start && normalized[end - 1] === "-") end -= 1;
+  return normalized.slice(start, end) || "object";
 }
 
 function normalizePrefix(value: string | undefined) {
-  return (value ?? "").split("/").map(safeSegment).filter(Boolean).join("/");
+  return (value ?? "").slice(0, 1_024).split("/").map(safeSegment).filter(Boolean).join("/");
+}
+
+function trimObjectKey(value: string) {
+  const bounded = value.trim().slice(0, 2_048);
+  let start = 0;
+  let end = bounded.length;
+  while (start < end && bounded[start] === "/") start += 1;
+  while (end > start && bounded[end - 1] === "/") end -= 1;
+  return bounded.slice(start, end);
+}
+
+function resolveInside(root: string, candidate: string, allowRoot = false) {
+  const resolved = path.resolve(candidate);
+  const relative = path.relative(root, resolved);
+  if ((!allowRoot && relative === "") || relative.startsWith(`..${path.sep}`) || relative === ".." || path.isAbsolute(relative)) {
+    throw new Error("Local storage path must remain inside STORAGE_DIR.");
+  }
+  return resolved;
 }
 
 function isMissingObject(error: unknown) {
@@ -125,28 +157,25 @@ export class ObjectStorage {
   }
 
   async persistFile(input: { sourcePath: string; objectKey: string; contentType: string; removeSource?: boolean }) {
-    const stats = await fs.promises.stat(input.sourcePath);
-    const checksumSha256 = await sha256File(input.sourcePath);
+    const sourcePath = resolveInside(this.localRoot, input.sourcePath);
+    const stats = await fs.promises.stat(sourcePath);
+    const checksumSha256 = await sha256File(sourcePath);
 
     if (this.backend === "local") {
-      const resolved = path.resolve(input.sourcePath);
-      if (resolved !== this.localRoot && !resolved.startsWith(`${this.localRoot}${path.sep}`)) {
-        throw new Error("Local storage target must remain inside STORAGE_DIR.");
-      }
       return {
-        ref: { backend: "local", storagePath: resolved, storageKey: null } satisfies StoredObjectRef,
+        ref: { backend: "local", storagePath: sourcePath, storageKey: null } satisfies StoredObjectRef,
         sizeBytes: stats.size,
         checksumSha256,
       };
     }
 
-    const key = input.objectKey.replace(/^\/+|\/+$/gu, "");
+    const key = trimObjectKey(input.objectKey);
     if (!key) throw new Error("Object storage key cannot be empty.");
     const checksumBase64 = Buffer.from(checksumSha256, "hex").toString("base64");
     await this.s3!.send(new PutObjectCommand({
       Bucket: this.bucket!,
       Key: key,
-      Body: fs.createReadStream(input.sourcePath),
+      Body: fs.createReadStream(sourcePath),
       ContentLength: stats.size,
       ContentType: input.contentType,
       ChecksumSHA256: checksumBase64,
@@ -154,7 +183,7 @@ export class ObjectStorage {
       ServerSideEncryption: this.config.serverSideEncryption,
       SSEKMSKeyId: this.config.serverSideEncryption === "aws:kms" ? this.config.kmsKeyId : undefined,
     }));
-    if (input.removeSource !== false) await fs.promises.rm(input.sourcePath, { force: true });
+    if (input.removeSource !== false) await fs.promises.rm(sourcePath, { force: true });
     return {
       ref: { backend: "s3", storagePath: `s3://${this.bucket}/${key}`, storageKey: key } satisfies StoredObjectRef,
       sizeBytes: stats.size,
@@ -163,7 +192,7 @@ export class ObjectStorage {
   }
 
   async beginResumableUpload(input: { objectKey: string; contentType: string }): Promise<ResumableUploadSession> {
-    const objectKey = input.objectKey.replace(/^\/+|\/+$/gu, "");
+    const objectKey = trimObjectKey(input.objectKey);
     if (!objectKey) throw new Error("Object storage key cannot be empty.");
     const createdAt = new Date().toISOString();
     if (this.backend === "s3") {
@@ -280,8 +309,9 @@ export class ObjectStorage {
 
   async openReadStream(ref: StoredObjectRef) {
     if (ref.backend === "local") {
-      await fs.promises.access(ref.storagePath, fs.constants.R_OK);
-      return fs.createReadStream(ref.storagePath);
+      const storagePath = resolveInside(this.localRoot, ref.storagePath);
+      await fs.promises.access(storagePath, fs.constants.R_OK);
+      return fs.createReadStream(storagePath);
     }
     if (!ref.storageKey) throw new Error("Stored S3 object is missing its key.");
     const response = await this.s3!.send(new GetObjectCommand({ Bucket: this.bucket!, Key: ref.storageKey }));
@@ -292,7 +322,13 @@ export class ObjectStorage {
 
   async exists(ref: StoredObjectRef) {
     if (ref.backend === "local") {
-      return fs.promises.access(ref.storagePath, fs.constants.R_OK).then(() => true, () => false);
+      let storagePath: string;
+      try {
+        storagePath = resolveInside(this.localRoot, ref.storagePath);
+      } catch {
+        return false;
+      }
+      return fs.promises.access(storagePath, fs.constants.R_OK).then(() => true, () => false);
     }
     if (!ref.storageKey) return false;
     try {
@@ -316,10 +352,11 @@ export class ObjectStorage {
 
   async materialize(ref: StoredObjectRef, targetPath: string, expectedChecksumSha256?: string | null) {
     if (ref.backend === "local") {
-      if (expectedChecksumSha256 && await sha256File(ref.storagePath) !== expectedChecksumSha256) {
+      const storagePath = resolveInside(this.localRoot, ref.storagePath);
+      if (expectedChecksumSha256 && await sha256File(storagePath) !== expectedChecksumSha256) {
         throw new Error("Stored local file checksum verification failed.");
       }
-      return ref.storagePath;
+      return storagePath;
     }
     await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
     const stream = await this.openReadStream(ref);
@@ -337,9 +374,13 @@ export class ObjectStorage {
 
   async delete(ref: StoredObjectRef) {
     if (ref.backend === "local") {
-      const resolved = path.resolve(ref.storagePath);
-      if (resolved !== this.localRoot && !resolved.startsWith(`${this.localRoot}${path.sep}`)) return false;
-      await fs.promises.rm(resolved, { force: true });
+      let storagePath: string;
+      try {
+        storagePath = resolveInside(this.localRoot, ref.storagePath);
+      } catch {
+        return false;
+      }
+      await fs.promises.rm(storagePath, { force: true });
       return true;
     }
     if (!ref.storageKey) return false;

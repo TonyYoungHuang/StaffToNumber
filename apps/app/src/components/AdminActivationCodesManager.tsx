@@ -1,10 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { useAppLocale } from "./AppLocaleProvider";
-
-const storageKey = "score_admin_api_key";
 
 type ActivationCodeItem = {
   id: string;
@@ -41,8 +39,7 @@ export function AdminActivationCodesManager() {
     locale === "zh-CN"
       ? {
           keyLabel: "管理员密钥",
-          keyHint: "使用 services/api 中配置的 `ADMIN_API_KEY`。",
-          saveKey: "保存密钥",
+          keyHint: "使用 services/api 中配置的 `ADMIN_API_KEY`；密钥仅保留在当前页面内存中。",
           loadCodes: "读取最近激活码",
           quantity: "生成数量",
           days: "有效天数",
@@ -56,7 +53,6 @@ export function AdminActivationCodesManager() {
           copyBatch: "复制本批激活码",
           empty: "暂无数据，请先输入管理员密钥并读取或生成激活码。",
           invalidKey: "请先输入管理员密钥。",
-          saved: "管理员密钥已保存到当前浏览器。",
           loaded: "已加载最近激活码。",
           generated: (count: number) => `已生成 ${count} 个激活码。`,
           copied: "本批激活码已复制。",
@@ -69,8 +65,7 @@ export function AdminActivationCodesManager() {
         }
       : {
           keyLabel: "Admin API key",
-          keyHint: "Use the `ADMIN_API_KEY` configured in services/api.",
-          saveKey: "Save key",
+          keyHint: "Use the `ADMIN_API_KEY` configured in services/api. The key stays only in this page's memory.",
           loadCodes: "Load recent codes",
           quantity: "Quantity",
           days: "Entitlement days",
@@ -84,7 +79,6 @@ export function AdminActivationCodesManager() {
           copyBatch: "Copy latest batch",
           empty: "No data yet. Enter the admin API key, then load or generate activation codes.",
           invalidKey: "Enter the admin API key first.",
-          saved: "Admin API key saved in this browser.",
           loaded: "Recent activation codes loaded.",
           generated: (count: number) => `Generated ${count} activation codes.`,
           copied: "Latest batch copied.",
@@ -95,13 +89,6 @@ export function AdminActivationCodesManager() {
           batch: "Batch",
           daysColumn: "Days",
         };
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey);
-    if (stored) {
-      setAdminKey(stored);
-    }
-  }, []);
 
   const latestBatchText = useMemo(() => latestBatch.map((item) => item.code).join("\n"), [latestBatch]);
 
@@ -169,18 +156,6 @@ export function AdminActivationCodesManager() {
     setStatusKind("success");
   }
 
-  function saveKey() {
-    if (!adminKey.trim()) {
-      setStatus(copy.invalidKey);
-      setStatusKind("error");
-      return;
-    }
-
-    window.localStorage.setItem(storageKey, adminKey.trim());
-    setStatus(copy.saved);
-    setStatusKind("success");
-  }
-
   async function copyLatestBatch() {
     if (!latestBatchText) {
       return;
@@ -201,9 +176,6 @@ export function AdminActivationCodesManager() {
             <span className="micro-copy">{copy.keyHint}</span>
           </label>
           <div className="button-row">
-            <button type="button" className="button button-secondary" onClick={saveKey}>
-              {copy.saveKey}
-            </button>
             <button type="button" className="button button-primary" disabled={loading} onClick={() => void loadCodes()}>
               {copy.loadCodes}
             </button>
