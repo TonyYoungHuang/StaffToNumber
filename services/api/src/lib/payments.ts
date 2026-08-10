@@ -39,6 +39,11 @@ function normalizePaddleTransactionId(value: string) {
   return transactionId;
 }
 
+export function buildPaddleTransactionEndpoint(transactionId: string) {
+  const safeTransactionId = normalizePaddleTransactionId(transactionId);
+  return new URL(`/transactions/${encodeURIComponent(safeTransactionId)}`, paddleApiBase);
+}
+
 export function listEnabledPaymentProviders() {
   return config.paymentProviders.filter((provider): provider is PaymentProvider => provider === "stripe" || provider === "paddle");
 }
@@ -165,8 +170,7 @@ export async function retrievePaddleTransaction(transactionId: string) {
     throw new Error("Paddle is not configured.");
   }
 
-  const safeTransactionId = normalizePaddleTransactionId(transactionId);
-  const endpoint = new URL(`/transactions/${encodeURIComponent(safeTransactionId)}`, paddleApiBase);
+  const endpoint = buildPaddleTransactionEndpoint(transactionId);
   const response = await fetch(endpoint, {
     headers: {
       Authorization: `Bearer ${config.paddleApiKey}`,
