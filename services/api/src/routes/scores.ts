@@ -29,6 +29,7 @@ import { createId } from "../lib/auth.js";
 import { openStoredFile, storedFileExists } from "../lib/object-storage.js";
 import { storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
 import { scoreJsonToJianpu } from "../lib/jianpu-converter.js";
+import { storeJianpuSourceText } from "../lib/jianpu-source-storage.js";
 import { applyScoreClefRecommendations, recommendScoreClefs } from "../lib/score-clef-recommendation.js";
 import {
   applyScoreBarlinePatch,
@@ -4807,22 +4808,16 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid Jianpu import payload." });
       }
 
-      const importDir = path.join(config.storageDir, "scores", "jianpu-imports");
-      fs.mkdirSync(importDir, { recursive: true });
-
       const originalName = `${deriveExportBaseName(body.title)}.jianpu.txt`;
-      const storedName = `${createId()}-${originalName}`;
-      const targetPath = path.join(importDir, storedName);
-      fs.writeFileSync(targetPath, body.text, "utf8");
-      const stats = fs.statSync(targetPath);
+      const source = await storeJianpuSourceText(body.text);
 
       const storedFile = await createStoredFile({
         userId: request.authUserId!,
         originalName,
-        storedName,
-        storagePath: targetPath,
+        storedName: source.storedName,
+        storagePath: source.storagePath,
         mimeType: "text/plain; charset=utf-8",
-        sizeBytes: stats.size,
+        sizeBytes: source.sizeBytes,
         fileKind: "source_jianpu",
       });
 
