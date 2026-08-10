@@ -444,5 +444,6 @@ export function isFeatureAvailable(page: PlatformFeaturePage) {
 }
 
 export function isFeatureIndexable(page: PlatformFeaturePage) {
-  return siteConfig.release.publicLaunchReady && isFeatureAvailable(page);
+  if (!siteConfig.release.publicLaunchReady) return false;
+  return page.releaseRequirement === "core" || isFeatureAvailable(page);
 }
