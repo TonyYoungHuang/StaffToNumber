@@ -1,0 +1,25 @@
+{
+  "name": "@score/collaboration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env --watch --import tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file=.env dist/index.js",
+    "test": "node --import tsx --test src/access.test.ts src/redis-config.test.ts src/redis.integration.test.ts src/server.integration.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-redis": "^3.4.4",
+    "@hocuspocus/server": "^3.4.0",
+    "@score/shared": "0.1.0",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "@hocuspocus/provider": "^4.4.0",
+    "@types/node": "22.15.3",
+    "tsx": "4.19.4",
+    "typescript": "5.8.3"
+  }
+}

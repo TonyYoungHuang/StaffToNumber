@@ -1,0 +1,8 @@
+Title: Original Senza Misura Voices Study
+1=Db (major)
+Meter: free
+Lyrics 1: | Drift _ without bars | settle _ |
+| vlead:1{slur:start:free}{orn:mordent:above} vshadow@s2:5,
+  vlead:2_~ vshadow@s2:6, |
+| vlead:~2{slur:stop:free}{orn:tremolo:-:3}
+  vlead:3 vshadow@s2:0- |

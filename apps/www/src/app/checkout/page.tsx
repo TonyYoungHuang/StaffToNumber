@@ -15,6 +15,25 @@ export default async function CheckoutPage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
 
+  if (!siteConfig.release.checkoutAvailable) {
+    return (
+      <section className="public-container public-page stack-xl">
+        <Panel variant="surface" className="stack-lg">
+          <SectionIntro
+            eyebrow={isChinese ? "支付状态" : "Checkout status"}
+            title={isChinese ? "在线支付仍在完成生产交易验证。" : "Online checkout is pending production transaction verification."}
+            body={isChinese ? "在 Stripe 或 Paddle 的成功、失败、退款和权益发放路径全部验证前，本站不会开始收款。" : "This site will not accept payment until Stripe or Paddle success, failure, refund, and entitlement paths have all passed production verification."}
+            titleAs="h1"
+            largeBody
+          />
+          <div className="button-row">
+            <a href="/support?category=payment&source=checkout-disabled" className="public-button primary">{isChinese ? "联系支持" : "Contact support"}</a>
+          </div>
+        </Panel>
+      </section>
+    );
+  }
+
   const flow = isChinese
     ? [
         {

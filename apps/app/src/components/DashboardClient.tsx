@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
-import { CheckSealIcon, ClockPulseIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
-import { apiRequest } from "../lib/api";
+import { CheckSealIcon, ClockPulseIcon, DownloadIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
+import { API_BASE_URL, apiRequest } from "../lib/api";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
 import { OperationsPanel } from "./OperationsPanel";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -14,6 +14,9 @@ type MePayload = {
     id: string;
     email: string;
     createdAt: string;
+    accountStatus: "active" | "deletion_pending";
+    deletionRequestedAt: string | null;
+    scheduledDeletionAt: string | null;
     entitlement: {
       status: "inactive" | "active" | "expired";
       startsAt: string | null;
@@ -27,6 +30,10 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<MePayload["user"] | null>(null);
+  const [privacyBusy, setPrivacyBusy] = useState<"export" | "delete" | "cancel" | null>(null);
+  const [privacyMessage, setPrivacyMessage] = useState<string | null>(null);
+  const [privacyPassword, setPrivacyPassword] = useState("");
+  const [deletionConfirmation, setDeletionConfirmation] = useState("");
 
   const copy =
     locale === "zh-CN"
@@ -45,9 +52,9 @@ export function DashboardClient() {
             emailBody: "当前已登录，可以继续上传文件或创建任务。",
             entitlement: "授权状态",
             entitlementBody: "一年期访问权限由激活码统一管理。",
-            route: "当前转换方向",
-            routeValue: "五线谱 -> 简谱",
-            routeBody: "当前版本不提供反向转换或移调。",
+            route: "乐谱工作台",
+            routeValue: "扫描、编辑、互换与移调",
+            routeBody: "所有流程统一基于 MusicXML 与 Score JSON，并支持播放、练习和多格式导出。",
           },
           profile: { eyebrow: "资料", title: "账户概览", email: "邮箱", created: "创建时间" },
           entitlement: {
@@ -61,12 +68,12 @@ export function DashboardClient() {
           workflow: {
             eyebrow: "工作流",
             title: "下一步操作建议",
-            step1Title: "1. 上传五线谱 PDF",
-            step1Body: "当前版本只接收 PDF 作为进入转换管线的源文件。",
-            step2Title: "2. 创建转换任务",
-            step2Body: "系统会跟踪 queued、processing、completed 和 failed 四种状态。",
-            step3Title: "3. 下载正式结果或草稿包",
-            step3Body: "低置信度页面会保留在草稿包中，而不会拖累更高质量页面。",
+            step1Title: "1. 导入或创建乐谱",
+            step1Body: "可从 PDF、图片、MusicXML、MIDI、简谱或音频进入结构化乐谱流程。",
+            step2Title: "2. 校对、编辑与练习",
+            step2Body: "在统一修订历史中完成识别校对、图形编辑、移调、播放和分声部练习。",
+            step3Title: "3. 导出交付版本",
+            step3Body: "按当前正式修订生成 MusicXML、MIDI、PDF、图片或高质量音频。",
           },
           actions: {
             eyebrow: "操作",
@@ -77,6 +84,25 @@ export function DashboardClient() {
             redeem: "兑换新的激活码",
             supportAdmin: "打开工单后台",
             signOut: "退出登录",
+          },
+          privacy: {
+            eyebrow: "隐私与数据",
+            title: "管理你的数据副本和账户生命周期",
+            body: "数据导出不包含密码、会话令牌、重置令牌或分享密钥。账户删除有 14 天宽限期，到期后删除乐谱、课堂和文件，并对必须保留的支付审计记录去标识化。",
+            export: "下载数据副本",
+            exporting: "正在生成数据副本...",
+            password: "当前密码",
+            confirmation: "输入 DELETE 确认",
+            schedule: "申请删除账户",
+            scheduling: "正在提交删除申请...",
+            pending: "账户删除已进入宽限期",
+            pendingBody: "计划删除时间",
+            cancel: "取消账户删除",
+            cancelling: "正在取消...",
+            required: "请输入当前密码，并准确输入 DELETE。",
+            scheduled: "删除申请已提交。当前会话已退出，可在宽限期内重新登录取消。",
+            cancelled: "账户删除申请已取消。",
+            exportReady: "数据副本已下载。",
           },
         }
       : {
@@ -94,9 +120,9 @@ export function DashboardClient() {
             emailBody: "Signed in and ready for upload or job creation.",
             entitlement: "Entitlement",
             entitlementBody: "One-year access is managed through activation codes.",
-            route: "Current route",
-            routeValue: "Staff -> Jianpu",
-            routeBody: "No reverse conversion or transposition in this release.",
+            route: "Score studio",
+            routeValue: "Scan, edit, convert, transpose",
+            routeBody: "MusicXML and Score JSON power notation, playback, practice, and multi-format export.",
           },
           profile: { eyebrow: "Profile", title: "Account overview", email: "Email", created: "Created" },
           entitlement: {
@@ -110,12 +136,12 @@ export function DashboardClient() {
           workflow: {
             eyebrow: "Workflow",
             title: "Next operational steps",
-            step1Title: "1. Upload staff PDF",
-            step1Body: "Source material enters the pipeline only as PDF in the current build.",
-            step2Title: "2. Queue conversion job",
-            step2Body: "The app tracks queued, processing, completed, and failed states.",
-            step3Title: "3. Download final or draft package",
-            step3Body: "Weak pages can stay in draft bundles instead of degrading stronger pages.",
+            step1Title: "1. Import or create a score",
+            step1Body: "Start from PDF, images, MusicXML, MIDI, Jianpu, or audio and enter the structured score workflow.",
+            step2Title: "2. Correct, edit, and practice",
+            step2Body: "Use one revision history for OMR correction, visual editing, transposition, playback, and part practice.",
+            step3Title: "3. Export a delivery version",
+            step3Body: "Render the accepted revision as MusicXML, MIDI, PDF, images, or high-quality audio.",
           },
           actions: {
             eyebrow: "Actions",
@@ -126,6 +152,25 @@ export function DashboardClient() {
             redeem: "Redeem another code",
             supportAdmin: "Open support admin",
             signOut: "Sign out",
+          },
+          privacy: {
+            eyebrow: "Privacy and data",
+            title: "Manage your data copy and account lifecycle",
+            body: "Exports exclude passwords, session tokens, reset tokens, and share secrets. Account deletion has a 14-day grace period, then removes scores, classroom data, and files while de-identifying payment audit records that must be retained.",
+            export: "Download my data",
+            exporting: "Preparing data export...",
+            password: "Current password",
+            confirmation: "Type DELETE to confirm",
+            schedule: "Request account deletion",
+            scheduling: "Scheduling deletion...",
+            pending: "Account deletion is in its grace period",
+            pendingBody: "Scheduled deletion",
+            cancel: "Cancel account deletion",
+            cancelling: "Cancelling...",
+            required: "Enter your current password and type DELETE exactly.",
+            scheduled: "Deletion is scheduled. This session is signed out; sign in again during the grace period to cancel.",
+            cancelled: "Account deletion has been cancelled.",
+            exportReady: "Your data copy has been downloaded.",
           },
         };
 
@@ -152,6 +197,88 @@ export function DashboardClient() {
       setProfile(result.data.user);
     });
   }, [copy.signInFirst]);
+
+  async function downloadDataExport() {
+    const token = getStoredToken();
+    if (!token) return setPrivacyMessage(copy.signInFirst);
+    setPrivacyBusy("export");
+    setPrivacyMessage(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/account/data-export`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Data export failed.");
+      }
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.download = `scoretransposer-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(href);
+      setPrivacyMessage(copy.privacy.exportReady);
+    } catch (error) {
+      setPrivacyMessage(error instanceof Error ? error.message : "Data export failed.");
+    } finally {
+      setPrivacyBusy(null);
+    }
+  }
+
+  async function scheduleDeletion() {
+    const token = getStoredToken();
+    if (!token) return setPrivacyMessage(copy.signInFirst);
+    if (!privacyPassword || deletionConfirmation !== "DELETE") {
+      setPrivacyMessage(copy.privacy.required);
+      return;
+    }
+    setPrivacyBusy("delete");
+    setPrivacyMessage(null);
+    const result = await apiRequest<{ lifecycle: { scheduledDeletionAt: string | null } }>("/api/account/deletion", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ password: privacyPassword, confirmation: deletionConfirmation }),
+    });
+    setPrivacyBusy(null);
+    if (!result.ok) return setPrivacyMessage(result.error);
+    setProfile((current) => current ? {
+      ...current,
+      accountStatus: "deletion_pending",
+      scheduledDeletionAt: result.data.lifecycle.scheduledDeletionAt,
+      deletionRequestedAt: new Date().toISOString(),
+    } : current);
+    setPrivacyPassword("");
+    setDeletionConfirmation("");
+    clearStoredToken();
+    setPrivacyMessage(copy.privacy.scheduled);
+  }
+
+  async function cancelDeletion() {
+    const token = getStoredToken();
+    if (!token) return setPrivacyMessage(copy.signInFirst);
+    if (!privacyPassword) return setPrivacyMessage(copy.privacy.required);
+    setPrivacyBusy("cancel");
+    setPrivacyMessage(null);
+    const result = await apiRequest<{ lifecycle: { status: "active" } }>("/api/account/deletion/cancel", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ password: privacyPassword }),
+    });
+    setPrivacyBusy(null);
+    if (!result.ok) return setPrivacyMessage(result.error);
+    setProfile((current) => current ? {
+      ...current,
+      accountStatus: "active",
+      scheduledDeletionAt: null,
+      deletionRequestedAt: null,
+    } : current);
+    setPrivacyPassword("");
+    setPrivacyMessage(copy.privacy.cancelled);
+  }
 
   const entitlementTone = useMemo(() => {
     if (!profile) return "tone-neutral";
@@ -338,6 +465,82 @@ export function DashboardClient() {
             {copy.actions.signOut}
           </button>
         </div>
+      </div>
+
+      <div className="surface-panel stack-lg">
+        <div className="inline-meta">
+          <span className="info-icon tertiary">
+            <VaultIcon width={20} height={20} />
+          </span>
+          <div className="stack-xs">
+            <p className="eyebrow">{copy.privacy.eyebrow}</p>
+            <h2 className="card-title">{copy.privacy.title}</h2>
+          </div>
+        </div>
+        <p className="body-copy">{copy.privacy.body}</p>
+        <div className="button-row">
+          <button type="button" className="button button-secondary" onClick={() => void downloadDataExport()} disabled={privacyBusy !== null}>
+            <DownloadIcon width={18} height={18} />
+            {privacyBusy === "export" ? copy.privacy.exporting : copy.privacy.export}
+          </button>
+        </div>
+
+        {profile.accountStatus === "deletion_pending" ? (
+          <div className="mini-card stack-md">
+            <div className="stack-xs">
+              <span className="status-chip tone-amber">{copy.privacy.pending}</span>
+              <p className="helper-copy">
+                {copy.privacy.pendingBody}: {profile.scheduledDeletionAt ? formatLocal(profile.scheduledDeletionAt, locale) : "-"}
+              </p>
+            </div>
+            <label className="field-group">
+              <span className="field-label">{copy.privacy.password}</span>
+              <input
+                className="field-control"
+                type="password"
+                value={privacyPassword}
+                onChange={(event) => setPrivacyPassword(event.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            <div className="button-row">
+              <button type="button" className="button button-primary" onClick={() => void cancelDeletion()} disabled={privacyBusy !== null}>
+                {privacyBusy === "cancel" ? copy.privacy.cancelling : copy.privacy.cancel}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mini-card stack-md">
+            <div className="field-row">
+              <label className="field-group">
+                <span className="field-label">{copy.privacy.password}</span>
+                <input
+                  className="field-control"
+                  type="password"
+                  value={privacyPassword}
+                  onChange={(event) => setPrivacyPassword(event.target.value)}
+                  autoComplete="current-password"
+                />
+              </label>
+              <label className="field-group">
+                <span className="field-label">{copy.privacy.confirmation}</span>
+                <input
+                  className="field-control"
+                  value={deletionConfirmation}
+                  onChange={(event) => setDeletionConfirmation(event.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+            </div>
+            <div className="button-row">
+              <button type="button" className="button button-secondary" onClick={() => void scheduleDeletion()} disabled={privacyBusy !== null}>
+                {privacyBusy === "delete" ? copy.privacy.scheduling : copy.privacy.schedule}
+              </button>
+            </div>
+          </div>
+        )}
+        {privacyMessage ? <p className="helper-copy" role="status">{privacyMessage}</p> : null}
       </div>
 
       <OperationsPanel email={profile.email} />

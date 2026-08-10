@@ -30,7 +30,7 @@ export const sonataTokens = {
 
 export const sonataCopy = {
   productTitle: "ScoreTransposer",
-  currentScope: "Five-line staff PDF to Jianpu",
+  currentScope: "MusicXML-first sheet music workspace",
 } as const;
 
 export type SonataTone = "primary" | "cyan" | "green" | "amber" | "red" | "neutral";

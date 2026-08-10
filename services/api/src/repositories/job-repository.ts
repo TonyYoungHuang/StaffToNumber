@@ -2,6 +2,7 @@ import type { ConversionDirection, JobResultKind, JobStatus } from "@score/share
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
+import { currentRequestContext } from "../lib/request-context.js";
 
 type JobRow = {
   id: string;
@@ -18,21 +19,24 @@ type JobRow = {
   output_file_id: string | null;
   draft_bundle_file_id: string | null;
   preview_text: string | null;
+  request_id: string | null;
+  trace_id: string | null;
 };
 
 export function createJob(input: { userId: string; inputFileId: string; direction: ConversionDirection }) {
   const timestamp = nowIso();
   const id = createId();
+  const context = currentRequestContext();
 
   db.prepare(
     `
       INSERT INTO jobs (
         id, user_id, input_file_id, direction, status, result_kind, error_message,
-        created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
+        request_id, trace_id, created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
       )
-      VALUES (?, ?, ?, ?, 'queued', 'none', NULL, ?, ?, NULL, NULL, NULL, NULL, NULL)
+      VALUES (?, ?, ?, ?, 'queued', 'none', NULL, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)
     `,
-  ).run(id, input.userId, input.inputFileId, input.direction, timestamp, timestamp);
+  ).run(id, input.userId, input.inputFileId, input.direction, context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
 
   return findJobById(id);
 }
@@ -42,7 +46,7 @@ export function findJobById(id: string) {
     .prepare(
       `
         SELECT id, user_id, input_file_id, direction, status, result_kind, error_message,
-               created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
+               request_id, trace_id, created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
         FROM jobs
         WHERE id = ?
       `,
@@ -55,7 +59,7 @@ export function listJobsByUserId(userId: string) {
     .prepare(
       `
         SELECT id, user_id, input_file_id, direction, status, result_kind, error_message,
-               created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
+               request_id, trace_id, created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
         FROM jobs
         WHERE user_id = ?
         ORDER BY datetime(created_at) DESC
@@ -80,5 +84,7 @@ export function mapJobForApi(job: JobRow) {
     outputFileId: job.output_file_id,
     draftBundleFileId: job.draft_bundle_file_id,
     previewText: job.preview_text,
+    requestId: job.request_id,
+    traceId: job.trace_id,
   };
 }

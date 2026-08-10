@@ -1,0 +1,208 @@
+{
+  "score": {
+    "title": "Original Pickup Polyphony Study",
+    "parser": "jianpu-basic-v1",
+    "measureCount": 2,
+    "noteCount": 10,
+    "restCount": 0,
+    "warnings": [],
+    "measures": [
+      {
+        "number": "1",
+        "sequence": 1,
+        "implicit": true,
+        "divisions": 16,
+        "key": { "fifths": 1, "mode": "major" },
+        "time": { "beats": "4", "beatType": "4", "senzaMisura": false },
+        "events": [
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "upper",
+            "staff": 1,
+            "timeModification": { "actualNotes": 3, "normalNotes": 2 },
+            "tuplets": [{ "type": "start", "number": "1" }],
+            "pitch": { "step": "D", "alter": 0, "octave": 5 },
+            "chord": false,
+            "ties": [],
+            "slurs": [{ "type": "start", "number": "arc" }],
+            "lyrics": [
+              { "number": "1", "syllabic": "single", "text": "New" },
+              { "number": "2", "syllabic": "single", "text": "One" }
+            ],
+            "ornaments": [{ "type": "trill-mark", "placement": "above", "value": null }]
+          },
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "lower",
+            "staff": 2,
+            "timeModification": { "actualNotes": 3, "normalNotes": 2 },
+            "tuplets": [{ "type": "start", "number": "1" }],
+            "pitch": { "step": "G", "alter": 0, "octave": 3 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "upper",
+            "staff": 1,
+            "timeModification": { "actualNotes": 3, "normalNotes": 2 },
+            "tuplets": [],
+            "pitch": { "step": "E", "alter": 0, "octave": 5 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [
+              { "number": "1", "syllabic": "single", "text": "light" },
+              { "number": "2", "syllabic": "single", "text": "two" }
+            ],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "lower",
+            "staff": 2,
+            "timeModification": { "actualNotes": 3, "normalNotes": 2 },
+            "tuplets": [],
+            "pitch": { "step": "A", "alter": 0, "octave": 3 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "upper",
+            "staff": 1,
+            "timeModification": { "actualNotes": 3, "normalNotes": 2 },
+            "tuplets": [{ "type": "stop", "number": "1" }],
+            "pitch": { "step": "F", "alter": 1, "octave": 5 },
+            "chord": false,
+            "ties": ["start"],
+            "slurs": [],
+            "lyrics": [
+              { "number": "1", "syllabic": "single", "text": "wings" },
+              { "number": "2", "syllabic": "single", "text": "three" }
+            ],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 8,
+            "durationType": "eighth",
+            "dots": 0,
+            "voice": "lower",
+            "staff": 2,
+            "timeModification": { "actualNotes": 3, "normalNotes": 2 },
+            "tuplets": [{ "type": "stop", "number": "1" }],
+            "pitch": { "step": "B", "alter": 0, "octave": 3 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "sequence": 2,
+        "implicit": false,
+        "divisions": null,
+        "key": null,
+        "time": null,
+        "events": [
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "upper",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "F", "alter": 1, "octave": 5 },
+            "chord": false,
+            "ties": ["stop"],
+            "slurs": [{ "type": "stop", "number": "arc" }],
+            "lyrics": [
+              { "number": "1", "syllabic": "single", "text": "carry" },
+              { "number": "2", "syllabic": "single", "text": "four" }
+            ],
+            "ornaments": [{ "type": "turn", "placement": "below", "value": null }]
+          },
+          {
+            "type": "note",
+            "duration": 32,
+            "durationType": "half",
+            "dots": 0,
+            "voice": "lower",
+            "staff": 2,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "C", "alter": 0, "octave": 4 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "upper",
+            "staff": 1,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "G", "alter": 0, "octave": 5 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [
+              { "number": "1", "syllabic": "single", "text": "on" },
+              { "number": "2", "syllabic": "single", "text": "five" }
+            ],
+            "ornaments": []
+          },
+          {
+            "type": "note",
+            "duration": 16,
+            "durationType": "quarter",
+            "dots": 0,
+            "voice": "lower",
+            "staff": 2,
+            "timeModification": null,
+            "tuplets": [],
+            "pitch": { "step": "D", "alter": 0, "octave": 4 },
+            "chord": false,
+            "ties": [],
+            "slurs": [],
+            "lyrics": [],
+            "ornaments": []
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

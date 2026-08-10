@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "soundFonts": [
+    {
+      "name": "Replace with reviewed production SoundFont",
+      "path": "./licensed-production.sf2",
+      "sha256": "replace-with-the-reviewed-file-sha256",
+      "licenseId": "replace-with-SPDX-or-contract-reference",
+      "sourceUrl": "https://example.com/replace-with-authoritative-license-source",
+      "commercialUseApproved": false,
+      "reviewedAt": "2026-07-17T00:00:00.000Z",
+      "reviewedBy": "replace-with-reviewer"
+    }
+  ]
+}

@@ -14,7 +14,7 @@ type FaqGroup = {
   items: FaqItem[];
 };
 
-function buildFaqGroups(isChinese: boolean): FaqGroup[] {
+function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGroup[] {
   if (isChinese) {
     return [
       {
@@ -23,17 +23,19 @@ function buildFaqGroups(isChinese: boolean): FaqGroup[] {
           {
             question: "当前真正上线的能力是什么？",
             answer:
-              "当前公开版本聚焦于五线谱 PDF 转简谱工作流。注册、支付、激活码、上传、任务跟踪和结果下载已经上线；反向转换、复杂移调和站内编辑仍不属于当前公开承诺。",
+              "当前产品以 MusicXML 和 Score JSON 为核心，提供 PDF/图片扫描候选校对、五线谱与简谱互换、移调、图形编辑、播放练习、多格式导出、分享和第一版教学流程。OMR、音频转谱和高质量渲染仍依赖后端工具并需要人工复核。",
           },
           {
             question: "国际用户和中国大陆用户的购买路径一样吗？",
-            answer:
-              "不完全一样。国际用户可以直接走在线支付；中国大陆用户也可以继续通过激活码路径开通，然后进入应用内兑换使用。",
+            answer: checkoutAvailable
+              ? "不完全一样。国际用户可以直接走在线支付；中国大陆用户也可以继续通过激活码路径开通，然后进入应用内兑换使用。"
+              : "在线支付尚未开放。Stripe/Paddle 生产交易、退款和权益发放全部通过验证后，网站才会启用购买入口。",
           },
           {
             question: "支付后会得到什么？",
-            answer:
-              "支付成功后系统会确认订单并生成激活码；你可以在成功页保存激活码，再进入应用内完成兑换。",
+            answer: checkoutAvailable
+              ? "支付成功后系统会确认订单并生成激活码；你可以在成功页保存激活码，再进入应用内完成兑换。"
+              : "当前不会收款。购买开放后，订单确认、激活码和应用内权益发放会按已验证流程执行。",
           },
         ],
       },
@@ -43,7 +45,7 @@ function buildFaqGroups(isChinese: boolean): FaqGroup[] {
           {
             question: "现在支持什么输入格式？",
             answer:
-              "当前版本只接收 PDF 作为公开入口。这样更容易控制上传质量、任务排队和结果交付，也更符合现在的商用边界。",
+              "乐谱工程支持 MusicXML/MXL、MIDI、结构化简谱和 Score JSON；PDF/图片进入 Audiveris OMR 候选流程，音频进入 Basic Pitch 候选流程。",
           },
           {
             question: "为什么有时会出现 draft，而不是 final？",
@@ -87,17 +89,19 @@ function buildFaqGroups(isChinese: boolean): FaqGroup[] {
         {
           question: "What is actually live today?",
           answer:
-            "The public release focuses on staff PDF to Jianpu. Registration, checkout, activation codes, uploads, job tracking, and result delivery are live; reverse conversion, complex transposition, and in-browser editing are not part of the current promise.",
+            "The product uses MusicXML and Score JSON for PDF/image scan review, staff and Jianpu round trips, transposition, visual editing, practice playback, multi-format export, sharing, and first-pass teaching workflows. OMR, audio transcription, and high-quality rendering still require configured backend tools and human review.",
         },
         {
           question: "Do international and mainland-China users follow the same path?",
-          answer:
-            "Not exactly. International customers can pay online directly, while mainland-China customers can also continue through activation-code distribution and redeem inside the app.",
+          answer: checkoutAvailable
+            ? "Not exactly. International customers can pay online directly, while mainland-China customers can also continue through activation-code distribution and redeem inside the app."
+            : "Online checkout is not open yet. Purchase links will be enabled only after Stripe or Paddle production payments, refunds, and entitlement delivery pass verification.",
         },
         {
           question: "What do I receive after payment?",
-          answer:
-            "After a successful payment, the system confirms the order and issues an activation code. Save the code on the success page, then redeem it inside the app.",
+          answer: checkoutAvailable
+            ? "After a successful payment, the system confirms the order and issues an activation code. Save the code on the success page, then redeem it inside the app."
+            : "No payment is collected right now. Once checkout opens, order confirmation, activation codes, and in-app entitlements will follow the verified production flow.",
         },
       ],
     },
@@ -107,7 +111,7 @@ function buildFaqGroups(isChinese: boolean): FaqGroup[] {
         {
           question: "What input format is supported right now?",
           answer:
-            "The current public workflow accepts PDF as the input entry point. That keeps upload quality, job handling, and result delivery easier to control at commercial-launch stage.",
+            "Score projects accept MusicXML/MXL, MIDI, structured Jianpu, and Score JSON. PDF/images enter an Audiveris OMR candidate workflow, while audio enters a Basic Pitch candidate workflow.",
         },
         {
           question: "Why might I get a draft instead of a final result?",
@@ -150,12 +154,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title:
       locale === "zh-CN"
-        ? `常见问题 / 五线谱转简谱 / 支持说明 | ${siteConfig.siteName}`
-        : `FAQ for Staff PDF to Jianpu, Checkout, and Support | ${siteConfig.siteName}`,
+        ? `乐谱扫描、简谱互换、移调与导出常见问题 | ${siteConfig.siteName}`
+        : `Sheet Music Converter and Editor FAQ | ${siteConfig.siteName}`,
     description:
       locale === "zh-CN"
-        ? "查看五线谱 PDF 转简谱工具的购买、支付、激活码、上传结果和 Support 表单常见问题。"
-        : "Read common questions about the staff PDF to Jianpu workflow, payment, activation codes, upload results, and the on-site support form.",
+        ? "查看乐谱扫描校对、五线谱与简谱互换、移调、编辑、播放、导出、购买和支持流程的常见问题。"
+        : "Read common questions about score scanning, Jianpu conversion, transposition, editing, playback, exports, access, and support.",
     alternates: {
       canonical: "/faq",
     },
@@ -166,7 +170,7 @@ export default async function FaqPage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
   const checkoutUrl = getCheckoutUrl(locale);
-  const faqGroups = buildFaqGroups(isChinese);
+  const faqGroups = buildFaqGroups(isChinese, siteConfig.release.checkoutAvailable);
 
   const verificationSteps = isChinese
     ? [
@@ -223,9 +227,7 @@ export default async function FaqPage() {
           largeBody
         />
         <div className="button-row">
-          <a href={checkoutUrl} className="public-button primary">
-            {isChinese ? "查看开通路径" : "View checkout path"}
-          </a>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button primary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
           <Link href={getSupportUrl("general", "faq-top")} className="public-button secondary">
             {isChinese ? "打开支持页" : "Open support"}
           </Link>
@@ -310,9 +312,7 @@ export default async function FaqPage() {
             <Link href="/about" className="public-button tertiary">
               {isChinese ? "查看 About" : "Open about"}
             </Link>
-            <a href={checkoutUrl} className="public-button tertiary">
-              {isChinese ? "查看购买路径" : "Checkout"}
-            </a>
+            {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看购买路径" : "Checkout"}</a> : null}
           </div>
         </Panel>
 

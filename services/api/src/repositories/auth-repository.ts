@@ -3,6 +3,7 @@ import type { ActivationCodeStatus, EntitlementStatus } from "@score/shared";
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { addDays, nowIso } from "../lib/time.js";
+import { findActiveSubscriptionEntitlement } from "./billing-repository.js";
 
 type UserRow = {
   id: string;
@@ -11,6 +12,9 @@ type UserRow = {
   password_salt: string;
   created_at: string;
   updated_at: string;
+  account_status: "active" | "deletion_pending";
+  deletion_requested_at: string | null;
+  scheduled_deletion_at: string | null;
 };
 
 type SessionRow = {
@@ -72,13 +76,13 @@ export function createUser(email: string, passwordHash: string, passwordSalt: st
 
 export function findUserByEmail(email: string) {
   return db
-    .prepare("SELECT id, email, password_hash, password_salt, created_at, updated_at FROM users WHERE email = ?")
+    .prepare("SELECT id, email, password_hash, password_salt, created_at, updated_at, account_status, deletion_requested_at, scheduled_deletion_at FROM users WHERE email = ?")
     .get(email) as UserRow | undefined;
 }
 
 export function findUserById(id: string) {
   return db
-    .prepare("SELECT id, email, password_hash, password_salt, created_at, updated_at FROM users WHERE id = ?")
+    .prepare("SELECT id, email, password_hash, password_salt, created_at, updated_at, account_status, deletion_requested_at, scheduled_deletion_at FROM users WHERE id = ?")
     .get(id) as UserRow | undefined;
 }
 
@@ -318,28 +322,51 @@ export function getUserProfile(userId: string) {
   }
 
   const entitlement = findLatestEntitlementByUserId(userId);
+  const subscriptionEntitlement = findActiveSubscriptionEntitlement(db, userId);
   const now = new Date();
   let entitlementStatus: EntitlementStatus = "inactive";
 
-  if (entitlement) {
+  if (subscriptionEntitlement) {
+    entitlementStatus = "active";
+  } else if (entitlement) {
     entitlementStatus = new Date(entitlement.ends_at) > now ? "active" : "expired";
   }
 
-  return {
-    id: user.id,
-    email: user.email,
-    createdAt: user.created_at,
-    entitlement: entitlement
+  const effectiveEntitlement = subscriptionEntitlement
+    ? {
+        status: entitlementStatus,
+        startsAt: subscriptionEntitlement.startsAt,
+        endsAt: subscriptionEntitlement.endsAt,
+        source: "subscription" as const,
+        provider: subscriptionEntitlement.provider,
+        organizationId: subscriptionEntitlement.organizationId,
+      }
+    : entitlement
       ? {
           status: entitlementStatus,
           startsAt: entitlement.starts_at,
           endsAt: entitlement.ends_at,
+          source: "activation_code" as const,
+          provider: null,
+          organizationId: null,
         }
       : {
           status: entitlementStatus,
           startsAt: null,
           endsAt: null,
-        },
+          source: null,
+          provider: null,
+          organizationId: null,
+        };
+
+  return {
+    id: user.id,
+    email: user.email,
+    createdAt: user.created_at,
+    accountStatus: user.account_status,
+    deletionRequestedAt: user.deletion_requested_at,
+    scheduledDeletionAt: user.scheduled_deletion_at,
+    entitlement: effectiveEntitlement,
   };
 }
 

@@ -4,15 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node --env-file=.env --watch --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "node --env-file=.env dist/index.js",
+    "test": "node --import tsx --test src/audio-transcription-cleanup.test.ts src/omr-confidence.test.ts src/audiveris-omr-diagnostics.test.ts src/audiveris-runner.test.ts src/score-job-claim.test.ts src/legacy-job-claim.test.ts src/job-broker-consumer.test.ts src/job-broker-consumer.integration.test.ts src/omr-candidate-commit.test.ts src/musicxml-professional-symbols.test.ts src/score-export-renderer.test.ts src/notification-delivery.test.ts",
+    "test:music-engines": "node --import tsx --test src/audiveris-real.integration.test.ts src/score-renderer-real.integration.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "evaluate:samples": "tsx src/evaluate-samples.ts"
   },
   "dependencies": {
     "@score/shared": "0.1.0",
-    "adm-zip": "^0.5.17",
+    "@score/storage": "0.1.0",
+    "adm-zip": "^0.6.0",
+    "bullmq": "^5.80.4",
+    "fast-xml-parser": "^5.10.1",
+    "ioredis": "^5.11.1",
+    "midi-writer-js": "^3.2.1",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pngjs": "^7.0.0"

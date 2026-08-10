@@ -1,27 +1,54 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { spawn } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import AdmZip from "adm-zip";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { PDFParse } from "pdf-parse";
 import { PNG } from "pngjs";
-import { PRODUCT_NAME } from "@score/shared";
+import { Worker as BullWorker } from "bullmq";
+import { Redis } from "ioredis";
+import {
+  PRODUCT_NAME,
+  SCORE_PROCESSING_QUEUE,
+  type JobBrokerPayload,
+  type ScoreExportSnapshot,
+  type ScoreJobType,
+  type ScoreJson,
+  type StoredFileKind,
+} from "@score/shared";
+import { createStorageObjectKey, ObjectStorage, type StoredObjectRef } from "@score/storage";
 import { workerConfig } from "./config.js";
-
-type JobRow = {
-  id: string;
-  user_id: string;
-  input_file_id: string;
-  direction: string;
-};
+import { parseMidiToScoreJson } from "./midi-score-parser.js";
+import { parseAudiverisMusicXmlToScoreJson } from "./musicxml-score-parser.js";
+import { applyAudiverisOmrDiagnostics } from "./audiveris-omr-diagnostics.js";
+import { summarizeAudiverisConfidence } from "./omr-confidence.js";
+import { renderScoreExport } from "./score-export-renderer.js";
+import { AudiverisProcessError, runAudiverisCommand } from "./audiveris-runner.js";
+import { claimNextScoreJob, type ClaimedScoreJob } from "./score-job-claim.js";
+import { claimNextLegacyJob, type ClaimedLegacyJob } from "./legacy-job-claim.js";
+import { consumeBrokerJob } from "./job-broker-consumer.js";
+import { commitOmrCandidate } from "./omr-candidate-commit.js";
+import {
+  claimNextNotificationDelivery,
+  markNotificationDeliveryFailed,
+  markNotificationDeliverySent,
+  materializeDueNotificationDeliveries,
+  sendNotificationEmail,
+} from "./notification-delivery.js";
 
 type FileRow = {
   id: string;
   user_id: string;
   original_name: string;
   storage_path: string;
+  storage_backend: "local" | "s3";
+  storage_key: string | null;
+  checksum_sha256: string | null;
 };
+
+type ScoreJobRow = ClaimedScoreJob;
 
 type PageScreenshot = {
   buffer: Buffer;
@@ -164,6 +191,23 @@ type OmrPitchPreview = {
 };
 
 const db = new DatabaseSync(workerConfig.dbFile);
+if (workerConfig.nodeEnv === "production" && workerConfig.storageBackend !== "s3") {
+  throw new Error("STORAGE_BACKEND=s3 is required for the production worker.");
+}
+const objectStorage = new ObjectStorage({
+  backend: workerConfig.storageBackend,
+  localRoot: workerConfig.storageDir,
+  bucket: workerConfig.s3Bucket,
+  region: workerConfig.s3Region,
+  endpoint: workerConfig.s3Endpoint,
+  forcePathStyle: workerConfig.s3ForcePathStyle,
+  accessKeyId: workerConfig.s3AccessKeyId,
+  secretAccessKey: workerConfig.s3SecretAccessKey,
+  keyPrefix: workerConfig.s3KeyPrefix,
+  maxAttempts: workerConfig.s3MaxAttempts,
+  serverSideEncryption: workerConfig.s3ServerSideEncryption,
+  kmsKeyId: workerConfig.s3KmsKeyId,
+});
 db.exec("PRAGMA busy_timeout = 5000;");
 db.exec(`
   CREATE TABLE IF NOT EXISTS service_runtime (
@@ -178,8 +222,11 @@ db.exec(`
 fs.mkdirSync(workerConfig.storageDir, { recursive: true });
 const NEWLINE = String.fromCharCode(10);
 
-console.log(`[worker] ${PRODUCT_NAME} worker started`);
-console.log(`[worker] using db ${workerConfig.dbFile}`);
+function workerLog(event: string, details: Record<string, unknown> = {}) {
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), service: "worker", event, ...details }));
+}
+
+workerLog("worker.started", { product: PRODUCT_NAME, dbFile: workerConfig.dbFile });
 
 function createId() {
   return crypto.randomUUID();
@@ -208,35 +255,9 @@ function recordWorkerHeartbeat(status: "idle" | "processing" | "error", message:
 
 recordWorkerHeartbeat("idle", "Worker started", {
   storageDir: workerConfig.storageDir,
+  storageBackend: workerConfig.storageBackend,
   pollIntervalMs: workerConfig.pollIntervalMs,
 });
-
-function nextQueuedJob() {
-  return db
-    .prepare(
-      `
-        SELECT id, user_id, input_file_id, direction
-        FROM jobs
-        WHERE status = 'queued'
-        ORDER BY datetime(created_at) ASC
-        LIMIT 1
-      `,
-    )
-    .get() as JobRow | undefined;
-}
-
-function markProcessing(jobId: string) {
-  const timestamp = nowIso();
-  db.prepare(
-    `
-      UPDATE jobs
-      SET status = 'processing',
-          started_at = ?,
-          updated_at = ?
-      WHERE id = ? AND status = 'queued'
-    `,
-  ).run(timestamp, timestamp, jobId);
-}
 
 function markFailed(jobId: string, message: string) {
   const timestamp = nowIso();
@@ -288,7 +309,7 @@ function findInputFile(fileId: string) {
   return db
     .prepare(
       `
-        SELECT id, user_id, original_name, storage_path
+        SELECT id, user_id, original_name, storage_path, storage_backend, storage_key, checksum_sha256
         FROM files
         WHERE id = ?
       `,
@@ -296,26 +317,397 @@ function findInputFile(fileId: string) {
     .get(fileId) as FileRow | undefined;
 }
 
-function insertStoredFile(input: {
+async function insertStoredFile(input: {
   userId: string;
   originalName: string;
   storagePath: string;
   mimeType: string;
-  fileKind: "output_pdf" | "draft_bundle";
+  fileKind: StoredFileKind;
 }) {
   const id = createId();
   const createdAt = nowIso();
   const storedName = path.basename(input.storagePath);
-  const sizeBytes = fs.statSync(input.storagePath).size;
+  const objectKey = createStorageObjectKey({
+    prefix: objectStorage.keyPrefix,
+    userId: input.userId,
+    fileId: id,
+    storedName,
+  });
+  const persisted = await objectStorage.persistFile({
+    sourcePath: input.storagePath,
+    objectKey,
+    contentType: input.mimeType,
+    removeSource: false,
+  });
 
-  db.prepare(
-    `
-      INSERT INTO files (id, user_id, original_name, stored_name, storage_path, mime_type, size_bytes, file_kind, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-  ).run(id, input.userId, input.originalName, storedName, input.storagePath, input.mimeType, sizeBytes, input.fileKind, createdAt);
+  try {
+    db.prepare(
+      `
+        INSERT INTO files (
+          id, user_id, original_name, stored_name, storage_path, storage_backend, storage_key,
+          checksum_sha256, mime_type, size_bytes, file_kind, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    ).run(
+      id,
+      input.userId,
+      input.originalName,
+      storedName,
+      persisted.ref.storagePath,
+      persisted.ref.backend,
+      persisted.ref.storageKey,
+      persisted.checksumSha256,
+      input.mimeType,
+      persisted.sizeBytes,
+      input.fileKind,
+      createdAt,
+    );
+  } catch (error) {
+    await objectStorage.delete(persisted.ref).catch(() => undefined);
+    throw error;
+  }
 
   return id;
+}
+
+function storedObjectRef(file: FileRow): StoredObjectRef {
+  return {
+    backend: file.storage_backend === "s3" ? "s3" : "local",
+    storagePath: file.storage_path,
+    storageKey: file.storage_key,
+  };
+}
+
+async function materializeInputFile(file: FileRow, workDir: string) {
+  if (file.storage_backend !== "s3") {
+    if (!fs.existsSync(file.storage_path)) throw new Error("Stored local file is missing.");
+    return file;
+  }
+  const inputDir = path.join(workDir, "materialized-inputs");
+  const targetPath = path.join(inputDir, `${file.id}-${sanitizeFilename(path.basename(file.original_name))}`);
+  await fs.promises.rm(targetPath, { force: true });
+  await objectStorage.materialize(storedObjectRef(file), targetPath, file.checksum_sha256);
+  return { ...file, storage_path: targetPath };
+}
+
+function markScoreJobFailed(jobId: string, message: string) {
+  const timestamp = nowIso();
+  db.prepare(
+    `
+      UPDATE score_jobs
+      SET status = 'failed',
+          error_message = ?,
+          updated_at = ?,
+          completed_at = ?
+      WHERE id = ? AND status = 'processing'
+    `,
+  ).run(message, timestamp, timestamp, jobId);
+}
+
+function markScoreJobCompleted(input: {
+  jobId: string;
+  resultRevisionId: string | null;
+  outputFileIds: string[];
+}) {
+  const timestamp = nowIso();
+  db.prepare(
+    `
+      UPDATE score_jobs
+      SET status = 'completed',
+          result_revision_id = ?,
+          output_file_ids_json = ?,
+          error_message = NULL,
+          progress_percent = 100,
+          updated_at = ?,
+          completed_at = ?
+      WHERE id = ? AND status = 'processing'
+    `,
+  ).run(input.resultRevisionId, JSON.stringify(input.outputFileIds), timestamp, timestamp, input.jobId);
+}
+
+function insertOmrDiagnostic(input: {
+  jobId: string;
+  documentId: string;
+  diagnostics: Record<string, unknown>;
+  confidence?: number | null;
+  sourcePageCount?: number | null;
+}) {
+  db.prepare(
+    `
+      INSERT INTO omr_diagnostics (
+        id, job_id, document_id, diagnostics_json, confidence, source_page_count, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+  ).run(
+    createId(),
+    input.jobId,
+    input.documentId,
+    JSON.stringify(input.diagnostics),
+    input.confidence ?? null,
+    input.sourcePageCount ?? null,
+    nowIso(),
+  );
+}
+
+function createScoreAsset(input: {
+  documentId: string;
+  fileId: string;
+  assetKind: StoredFileKind;
+  revisionId?: string | null;
+  params?: Record<string, unknown> | null;
+  engine?: Record<string, unknown> | null;
+  checksumSha256?: string | null;
+}) {
+  db.prepare(
+    `
+      INSERT INTO score_assets (
+        id, document_id, file_id, asset_kind, revision_id, params_json, engine_json, checksum_sha256, stale_at, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+    `,
+  ).run(
+    createId(),
+    input.documentId,
+    input.fileId,
+    input.assetKind,
+    input.revisionId ?? null,
+    input.params ? JSON.stringify(input.params) : null,
+    input.engine ? JSON.stringify(input.engine) : null,
+    input.checksumSha256 ?? null,
+    nowIso(),
+  );
+}
+
+function isScoreJobCancelled(jobId: string) {
+  const row = db.prepare("SELECT status FROM score_jobs WHERE id = ?").get(jobId) as { status: string } | undefined;
+  return row?.status === "cancelled";
+}
+
+function updateScoreJobProgress(jobId: string, progressPercent: number) {
+  db.prepare(
+    `
+      UPDATE score_jobs
+      SET progress_percent = ?, updated_at = ?
+      WHERE id = ? AND status = 'processing'
+    `,
+  ).run(Math.max(1, Math.min(99, Math.round(progressPercent))), nowIso(), jobId);
+}
+
+function createScoreRevisionFromAudioTranscribe(input: {
+  documentId: string;
+  scoreJson: ScoreJson;
+}) {
+  const timestamp = nowIso();
+  const revisionId = createId();
+  const nextRevisionNumber =
+    (db
+      .prepare(
+        `
+          SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number
+          FROM score_revisions
+          WHERE document_id = ?
+        `,
+      )
+      .get(input.documentId) as { next_revision_number: number }).next_revision_number ?? 1;
+
+  db.exec("BEGIN");
+  try {
+    db.prepare(
+      `
+        UPDATE score_revisions
+        SET status = 'superseded'
+        WHERE id = (SELECT pending_revision_id FROM score_documents WHERE id = ?)
+          AND status = 'candidate'
+      `,
+    ).run(input.documentId);
+    db.prepare(
+      `
+        INSERT INTO score_revisions (
+          id, document_id, revision_number, score_json, musicxml_file_id, created_from, status, created_at
+        )
+        VALUES (?, ?, ?, ?, NULL, 'audio_transcribe', 'candidate', ?)
+      `,
+    ).run(revisionId, input.documentId, nextRevisionNumber, JSON.stringify(input.scoreJson), timestamp);
+
+    db.prepare(
+      `
+        UPDATE score_documents
+        SET pending_revision_id = ?, status = 'needs_review', updated_at = ?
+        WHERE id = ?
+      `,
+    ).run(revisionId, timestamp, input.documentId);
+
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+
+  return revisionId;
+}
+
+function findMusicXmlOutput(outputDir: string) {
+  const candidates: string[] = [];
+
+  function walk(dir: string) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (/\.(musicxml|xml)$/i.test(entry.name)) {
+        candidates.push(fullPath);
+      }
+    }
+  }
+
+  if (fs.existsSync(outputDir)) {
+    walk(outputDir);
+  }
+
+  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
+}
+
+function findAudiverisProjectOutput(outputDir: string) {
+  const candidates: string[] = [];
+  function walk(dir: string) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(fullPath);
+      else if (/\.omr$/i.test(entry.name)) candidates.push(fullPath);
+    }
+  }
+  if (fs.existsSync(outputDir)) walk(outputDir);
+  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
+}
+
+function runBasicPitch(inputPath: string, outputDir: string) {
+  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    if (!workerConfig.basicPitchCommand) {
+      reject(new Error("BASIC_PITCH_COMMAND is not configured for the worker."));
+      return;
+    }
+
+    const args = [outputDir, inputPath];
+    const child = spawn(workerConfig.basicPitchCommand, args, {
+      shell: true,
+      windowsHide: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error(`Basic Pitch timed out after ${workerConfig.basicPitchTimeoutMs} ms.`));
+    }, workerConfig.basicPitchTimeoutMs);
+
+    child.stdout?.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      reject(new Error(`Basic Pitch exited with code ${code}. ${stderr || stdout}`.trim()));
+    });
+  });
+}
+
+function runYtDlp(inputUrl: string, outputTemplate: string) {
+  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    if (!workerConfig.ytDlpCommand) {
+      reject(new Error("YT_DLP_COMMAND is not configured for the worker."));
+      return;
+    }
+
+    const args = ["-x", "--audio-format", "wav", "-o", outputTemplate, inputUrl];
+    const child = spawn(workerConfig.ytDlpCommand, args, {
+      shell: true,
+      windowsHide: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error(`yt-dlp timed out after ${workerConfig.ytDlpTimeoutMs} ms.`));
+    }, workerConfig.ytDlpTimeoutMs);
+
+    child.stdout?.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      reject(new Error(`yt-dlp exited with code ${code}. ${stderr || stdout}`.trim()));
+    });
+  });
+}
+
+function findAudioOutput(outputDir: string) {
+  const candidates: string[] = [];
+
+  function walk(dir: string) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (/\.(wav|mp3|m4a|flac|ogg|aac|aiff?)$/i.test(entry.name)) {
+        candidates.push(fullPath);
+      }
+    }
+  }
+
+  if (fs.existsSync(outputDir)) {
+    walk(outputDir);
+  }
+
+  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
+}
+
+function findMidiOutput(outputDir: string) {
+  const candidates: string[] = [];
+
+  function walk(dir: string) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (/\.(mid|midi)$/i.test(entry.name)) {
+        candidates.push(fullPath);
+      }
+    }
+  }
+
+  if (fs.existsSync(outputDir)) {
+    walk(outputDir);
+  }
+
+  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
 }
 
 function sanitizeFilename(filename: string) {
@@ -2330,7 +2722,7 @@ async function buildResultPdf(params: {
   return Buffer.from(await pdfDoc.save());
 }
 
-async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
+async function processStaffPdfJob(job: ClaimedLegacyJob, inputFile: FileRow) {
   const rawText = await extractPdfText(inputFile.storage_path);
   const notation = deriveNumberedNotation(rawText);
   const jobDir = path.join(workerConfig.storageDir, job.user_id, "jobs", job.id);
@@ -2346,7 +2738,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     });
     const outputPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-numbered.pdf`);
     fs.writeFileSync(outputPath, pdfBuffer);
-    const outputFileId = insertStoredFile({
+    const outputFileId = await insertStoredFile({
       userId: job.user_id,
       originalName: path.basename(outputPath),
       storagePath: outputPath,
@@ -2421,7 +2813,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
     });
     const outputPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-numbered-omr.pdf`);
     fs.writeFileSync(outputPath, pdfBuffer);
-    const outputFileId = insertStoredFile({
+    const outputFileId = await insertStoredFile({
       userId: job.user_id,
       originalName: path.basename(outputPath),
       storagePath: outputPath,
@@ -2500,7 +2892,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
   });
   const draftPdfPath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-draft.pdf`);
   fs.writeFileSync(draftPdfPath, draftPdfBuffer);
-  const outputFileId = insertStoredFile({
+  const outputFileId = await insertStoredFile({
     userId: job.user_id,
     originalName: path.basename(draftPdfPath),
     storagePath: draftPdfPath,
@@ -2541,7 +2933,7 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
   }
   const draftBundlePath = path.join(jobDir, `${sanitizeFilename(inputFile.original_name.replace(/\.pdf$/i, ""))}-draft-bundle.zip`);
   zip.writeZip(draftBundlePath);
-  const draftBundleFileId = insertStoredFile({
+  const draftBundleFileId = await insertStoredFile({
     userId: job.user_id,
     originalName: path.basename(draftBundlePath),
     storagePath: draftBundlePath,
@@ -2559,26 +2951,720 @@ async function processStaffPdfJob(job: JobRow, inputFile: FileRow) {
   console.log(`[worker] job ${job.id} completed with draft bundle`);
 }
 
-let busy = false;
-
-async function tick() {
-  if (busy) {
+async function processScoreOmrJob(job: ScoreJobRow) {
+  if (!job.document_id || !job.input_file_id) {
+    markScoreJobFailed(job.id, "OMR job is missing its score document or input file.");
     return;
   }
 
-  const job = nextQueuedJob();
+  const jobDir = path.join(workerConfig.storageDir, job.user_id, "scores", "omr-jobs", job.id);
+  const storedInputFile = findInputFile(job.input_file_id);
+  let inputFile: FileRow;
+  try {
+    if (!storedInputFile) throw new Error("Stored OMR input was not found.");
+    inputFile = await materializeInputFile(storedInputFile, jobDir);
+  } catch {
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "failed",
+        engine: "audiveris",
+        message: "The OMR source file is missing from storage.",
+      },
+    });
+    markScoreJobFailed(job.id, "OMR source file is missing from storage.");
+    return;
+  }
+
+  const outputDir = path.join(jobDir, "audiveris-output");
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  if (!workerConfig.audiverisCommand) {
+    const message = "AUDIVERIS_COMMAND is not configured. Install Audiveris and set AUDIVERIS_COMMAND so omr_import jobs can produce MusicXML.";
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "failed",
+        engine: "audiveris",
+        message,
+        sourceOriginalName: inputFile.original_name,
+      },
+    });
+    markScoreJobFailed(job.id, message);
+    return;
+  }
+
+  insertOmrDiagnostic({
+    jobId: job.id,
+    documentId: job.document_id,
+    diagnostics: {
+      status: "processing",
+      engine: "audiveris",
+      message: "Audiveris processing started.",
+      command: workerConfig.audiverisCommand,
+      sourceOriginalName: inputFile.original_name,
+    },
+  });
+
+  let audiverisResult: { stdout: string; stderr: string };
+  try {
+    audiverisResult = await runAudiverisCommand({
+      command: workerConfig.audiverisCommand,
+      inputPath: inputFile.storage_path,
+      outputDir,
+      timeoutMs: workerConfig.audiverisTimeoutMs,
+      isCancelled: () => isScoreJobCancelled(job.id),
+    });
+  } catch (error) {
+    if (error instanceof AudiverisProcessError && error.reason === "cancelled") {
+      insertOmrDiagnostic({
+        jobId: job.id,
+        documentId: job.document_id,
+        diagnostics: {
+          status: "cancelled",
+          engine: "audiveris",
+          message: "Audiveris processing was cancelled before a candidate revision was created.",
+        },
+      });
+      return;
+    }
+    throw error;
+  }
+  if (isScoreJobCancelled(job.id)) {
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "cancelled",
+        engine: "audiveris",
+        message: "The completed Audiveris output was discarded because cancellation won the job-state race.",
+      },
+    });
+    return;
+  }
+  const musicXmlPath = findMusicXmlOutput(outputDir);
+  if (!musicXmlPath) {
+    const message = "Audiveris finished but no .musicxml or .xml output was found.";
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "failed",
+        engine: "audiveris",
+        message,
+        stdout: audiverisResult.stdout.slice(-4000),
+        stderr: audiverisResult.stderr.slice(-4000),
+      },
+    });
+    markScoreJobFailed(job.id, message);
+    return;
+  }
+
+  const musicXml = fs.readFileSync(musicXmlPath, "utf8");
+  const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris.musicxml`;
+  const storedMusicXmlPath = path.join(jobDir, originalName);
+  fs.copyFileSync(musicXmlPath, storedMusicXmlPath);
+  const musicXmlFileId = await insertStoredFile({
+    userId: job.user_id,
+    originalName,
+    storagePath: storedMusicXmlPath,
+    mimeType: "application/vnd.recordare.musicxml+xml",
+    fileKind: "score_musicxml",
+  });
+
+  const structuralScoreJson = addStructuralOmrDiagnostics(parseAudiverisMusicXmlToScoreJson({
+    musicXml,
+    title: inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""),
+    sourceFileId: musicXmlFileId,
+    sourceOriginalName: originalName,
+    importedAt: nowIso(),
+  }));
+  const omrProjectPath = findAudiverisProjectOutput(outputDir);
+  const scoreJson = omrProjectPath ? applyAudiverisOmrDiagnostics(structuralScoreJson, omrProjectPath) : structuralScoreJson;
+  let omrBundleFileId: string | null = null;
+  const omrPageImageFileIds: string[] = [];
+  if (omrProjectPath) {
+    const omrBundleName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris.omr`;
+    const storedOmrPath = path.join(jobDir, omrBundleName);
+    fs.copyFileSync(omrProjectPath, storedOmrPath);
+    omrBundleFileId = await insertStoredFile({
+      userId: job.user_id,
+      originalName: omrBundleName,
+      storagePath: storedOmrPath,
+      mimeType: "application/zip",
+      fileKind: "omr_bundle",
+    });
+    const omrArchive = new AdmZip(omrProjectPath);
+    const pageEntries = omrArchive
+      .getEntries()
+      .map((entry) => ({ entry, match: /^sheet#(\d+)\/BINARY\.png$/i.exec(entry.entryName) }))
+      .filter((item): item is { entry: AdmZip.IZipEntry; match: RegExpExecArray } => Boolean(item.match))
+      .sort((left, right) => Number(left.match[1]) - Number(right.match[1]));
+    for (const { entry, match } of pageEntries) {
+      const pageImage = omrArchive.readFile(entry);
+      if (!pageImage) continue;
+      const pageNumber = Number(match[1]);
+      const pageImageName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris-page-${String(pageNumber).padStart(3, "0")}.png`;
+      const pageImagePath = path.join(jobDir, pageImageName);
+      fs.writeFileSync(pageImagePath, pageImage);
+      const pageImageFileId = await insertStoredFile({
+        userId: job.user_id,
+        originalName: pageImageName,
+        storagePath: pageImagePath,
+        mimeType: "image/png",
+        fileKind: "omr_page_image",
+      });
+      omrPageImageFileIds.push(pageImageFileId);
+    }
+  }
+  const confidenceSummary = summarizeAudiverisConfidence(scoreJson);
+  const outputFileIds = [musicXmlFileId, ...(omrBundleFileId ? [omrBundleFileId] : []), ...omrPageImageFileIds];
+  const revisionId = commitOmrCandidate(db, {
+    jobId: job.id,
+    documentId: job.document_id,
+    scoreJson,
+    musicXmlFileId,
+    outputFileIds,
+    assets: [
+      { fileId: musicXmlFileId, assetKind: "score_musicxml" },
+      ...(omrBundleFileId ? [{ fileId: omrBundleFileId, assetKind: "omr_bundle" as const }] : []),
+      ...omrPageImageFileIds.map((fileId) => ({ fileId, assetKind: "omr_page_image" as const })),
+    ],
+  });
+  if (!revisionId) {
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "cancelled",
+        engine: "audiveris",
+        message: "Audiveris output was retained for cleanup but no candidate was created because the job was no longer processing.",
+      },
+    });
+    return;
+  }
+  insertOmrDiagnostic({
+    jobId: job.id,
+    documentId: job.document_id,
+    diagnostics: {
+      status: "completed",
+      engine: "audiveris",
+      message: "Audiveris MusicXML was imported as a candidate revision awaiting explicit review.",
+      musicXmlFileId,
+      omrBundleFileId,
+      omrPageImageFileIds,
+      revisionId,
+      noteCount: scoreJson.metadata.noteCount,
+      measureCount: scoreJson.metadata.measureCount,
+      warnings: scoreJson.metadata.warnings,
+      problemMeasureCount: scoreJson.measures.filter((measure) => measure.events.some((event) => (event.recognition?.issues.length ?? 0) > 0)).length,
+      symbolDiagnosticCount: confidenceSummary.symbolCount,
+      stdout: audiverisResult.stdout.slice(-4000),
+      stderr: audiverisResult.stderr.slice(-4000),
+    },
+    confidence: confidenceSummary.confidence,
+    sourcePageCount: confidenceSummary.sourcePageCount,
+  });
+  console.log(`[worker] score job ${job.id} completed with Audiveris MusicXML revision ${revisionId}`);
+}
+
+function addStructuralOmrDiagnostics(scoreJson: ScoreJson): ScoreJson {
+  const activeDivisions = new Map<string, number>();
+
+  return {
+    ...scoreJson,
+    measures: scoreJson.measures.map((measure) => {
+      const divisions = measure.attributes?.divisions ?? activeDivisions.get(measure.partId) ?? 1;
+      activeDivisions.set(measure.partId, divisions);
+      const beats = Number(measure.attributes?.time?.beats ?? "4");
+      const beatType = Number(measure.attributes?.time?.beatType ?? "4");
+      const expectedDuration = Number.isFinite(beats) && Number.isFinite(beatType) && beatType > 0 ? divisions * beats * (4 / beatType) : null;
+      const durationsByVoice = new Map<string, number>();
+
+      for (const event of measure.events) {
+        if (event.type === "note" && event.chord) continue;
+        const voice = event.voice ?? "1";
+        durationsByVoice.set(voice, (durationsByVoice.get(voice) ?? 0) + Math.max(0, event.duration));
+      }
+
+      const measureIssues = expectedDuration === null
+        ? ["Time signature could not be validated."]
+        : Array.from(durationsByVoice.entries())
+            .filter(([, duration]) => Math.abs(duration - expectedDuration) > 0.01)
+            .map(([voice, duration]) => `Voice ${voice} totals ${duration}/${expectedDuration} duration units.`);
+
+      return {
+        ...measure,
+        events: measure.events.map((event) => {
+          const issues = [...measureIssues];
+          if (event.duration <= 0) issues.push("Event duration is zero or invalid.");
+          if (!event.durationType) issues.push("Printed duration type is missing.");
+          const confidence = Math.max(0.25, Math.min(0.95, 0.94 - measureIssues.length * 0.12 - (event.duration <= 0 ? 0.35 : 0) - (!event.durationType ? 0.08 : 0)));
+          return { ...event, recognition: { confidence, source: "structural" as const, issues } };
+        }),
+      };
+    }),
+  };
+}
+
+async function processAudioTranscribeJob(job: ScoreJobRow) {
+  if (!job.document_id) {
+    markScoreJobFailed(job.id, "Audio transcription job is missing its score document.");
+    return;
+  }
+
+  if (!workerConfig.basicPitchCommand) {
+    markScoreJobFailed(
+      job.id,
+      "BASIC_PITCH_COMMAND is not configured. Install Basic Pitch or an equivalent audio-to-MIDI tool before audio_transcribe jobs can create MIDI candidates.",
+    );
+    return;
+  }
+
+  const jobDir = path.join(workerConfig.storageDir, job.user_id, "scores", "audio-transcribe", job.id);
+  const outputDir = path.join(jobDir, "basic-pitch-output");
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  const params = job.params_json
+    ? (JSON.parse(job.params_json) as { sourceUrl?: string; sourceKind?: string; transcriptionProfile?: "monophonic" | "polyphonic-balanced" })
+    : {};
+  let inputFile: FileRow | undefined;
+  const storedInputFile = job.input_file_id ? findInputFile(job.input_file_id) : undefined;
+  if (storedInputFile) {
+    try {
+      inputFile = await materializeInputFile(storedInputFile, jobDir);
+    } catch {
+      markScoreJobFailed(job.id, "Audio source file is missing from storage.");
+      return;
+    }
+  }
+
+  if (!inputFile && params.sourceUrl) {
+    if (!workerConfig.ytDlpCommand) {
+      markScoreJobFailed(job.id, "YT_DLP_COMMAND is not configured. Audio URL imports need yt-dlp before Basic Pitch can run.");
+      return;
+    }
+
+    const downloadDir = path.join(jobDir, "url-source");
+    fs.mkdirSync(downloadDir, { recursive: true });
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "processing",
+        engine: "yt_dlp",
+        message: "Downloading audio source from URL before Basic Pitch transcription.",
+      },
+    });
+
+    let ytDlpResult: { stdout: string; stderr: string };
+    try {
+      ytDlpResult = await runYtDlp(params.sourceUrl, path.join(downloadDir, "source.%(ext)s"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "yt-dlp audio download failed.";
+      insertOmrDiagnostic({
+        jobId: job.id,
+        documentId: job.document_id,
+        diagnostics: {
+          status: "failed",
+          engine: "yt_dlp",
+          message,
+        },
+      });
+      markScoreJobFailed(job.id, message);
+      return;
+    }
+
+    const audioPath = findAudioOutput(downloadDir);
+    if (!audioPath) {
+      const message = "yt-dlp finished but no audio output was found.";
+      insertOmrDiagnostic({
+        jobId: job.id,
+        documentId: job.document_id,
+        diagnostics: {
+          status: "failed",
+          engine: "yt_dlp",
+          message,
+          stdout: ytDlpResult.stdout.slice(-4000),
+          stderr: ytDlpResult.stderr.slice(-4000),
+        },
+      });
+      markScoreJobFailed(job.id, message);
+      return;
+    }
+
+    const audioFileId = await insertStoredFile({
+      userId: job.user_id,
+      originalName: `url-audio-source${path.extname(audioPath) || ".wav"}`,
+      storagePath: audioPath,
+      mimeType: "audio/wav",
+      fileKind: "source_audio",
+    });
+    createScoreAsset({
+      documentId: job.document_id,
+      fileId: audioFileId,
+      assetKind: "source_audio",
+    });
+    const storedAudioFile = findInputFile(audioFileId);
+    if (!storedAudioFile) throw new Error("Stored URL audio metadata could not be reloaded.");
+    inputFile = await materializeInputFile(storedAudioFile, jobDir);
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "completed",
+        engine: "yt_dlp",
+        message: "Audio URL was downloaded and stored as a source audio asset.",
+        sourceAudioFileId: audioFileId,
+        stdout: ytDlpResult.stdout.slice(-4000),
+        stderr: ytDlpResult.stderr.slice(-4000),
+      },
+    });
+  }
+
+  if (!inputFile || !fs.existsSync(inputFile.storage_path)) {
+    markScoreJobFailed(job.id, "Audio transcription job is missing its uploaded source file or downloadable source URL.");
+    return;
+  }
+
+  insertOmrDiagnostic({
+    jobId: job.id,
+    documentId: job.document_id,
+    diagnostics: {
+      status: "processing",
+      engine: "basic_pitch",
+      message: "Basic Pitch audio-to-MIDI candidate generation started.",
+      inputFileId: inputFile.id,
+    },
+  });
+
+  let basicPitchResult: { stdout: string; stderr: string };
+  try {
+    basicPitchResult = await runBasicPitch(inputFile.storage_path, outputDir);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Basic Pitch audio-to-MIDI generation failed.";
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "failed",
+        engine: "basic_pitch",
+        message,
+      },
+    });
+    markScoreJobFailed(job.id, message);
+    return;
+  }
+
+  const midiPath = findMidiOutput(outputDir);
+  if (!midiPath) {
+    const message = "Basic Pitch finished but no .mid or .midi output was found.";
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "failed",
+        engine: "basic_pitch",
+        message,
+        stdout: basicPitchResult.stdout.slice(-4000),
+        stderr: basicPitchResult.stderr.slice(-4000),
+      },
+    });
+    markScoreJobFailed(job.id, message);
+    return;
+  }
+
+  const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(mp3|wav|m4a|flac|ogg|aiff?)$/i, ""))}-basic-pitch.mid`;
+  const storedMidiPath = path.join(jobDir, originalName);
+  fs.copyFileSync(midiPath, storedMidiPath);
+  const midiFileId = await insertStoredFile({
+    userId: job.user_id,
+    originalName,
+    storagePath: storedMidiPath,
+    mimeType: "audio/midi",
+    fileKind: "output_midi",
+  });
+  createScoreAsset({
+    documentId: job.document_id,
+    fileId: midiFileId,
+    assetKind: "output_midi",
+  });
+  let revisionId: string | null = null;
+  let scoreWarnings: string[] = [];
+  try {
+    const scoreJson = parseMidiToScoreJson({
+      midi: fs.readFileSync(storedMidiPath),
+      title: inputFile.original_name.replace(/\.(mp3|wav|m4a|flac|ogg|aiff?)$/i, ""),
+      sourceFileId: midiFileId,
+      sourceOriginalName: originalName,
+      importedAt: nowIso(),
+      cleanupProfile: params.transcriptionProfile,
+    });
+    revisionId = createScoreRevisionFromAudioTranscribe({
+      documentId: job.document_id,
+      scoreJson: {
+        ...scoreJson,
+        metadata: {
+          ...scoreJson.metadata,
+          warnings: [
+            "Created from a Basic Pitch MIDI candidate. Review and correct the notation before relying on it for performance or export.",
+            ...scoreJson.metadata.warnings,
+          ],
+        },
+      },
+    });
+    scoreWarnings = scoreJson.metadata.warnings;
+  } catch (error) {
+    scoreWarnings = [error instanceof Error ? error.message : "MIDI candidate could not be converted into Score JSON."];
+  }
+  insertOmrDiagnostic({
+    jobId: job.id,
+    documentId: job.document_id,
+    diagnostics: {
+      status: "completed",
+      engine: "basic_pitch",
+      message: revisionId
+        ? "Basic Pitch produced a MIDI candidate and a first-pass editable Score JSON revision."
+        : "Basic Pitch produced a MIDI candidate, but MIDI-to-Score JSON cleanup needs manual follow-up.",
+      midiFileId,
+      revisionId,
+      warnings: scoreWarnings,
+      stdout: basicPitchResult.stdout.slice(-4000),
+      stderr: basicPitchResult.stderr.slice(-4000),
+    },
+    confidence: revisionId ? 0.55 : 0.35,
+  });
+  markScoreJobCompleted({
+    jobId: job.id,
+    resultRevisionId: revisionId,
+    outputFileIds: [midiFileId],
+  });
+  console.log(`[worker] score job ${job.id} completed with Basic Pitch MIDI candidate ${midiFileId}${revisionId ? ` and revision ${revisionId}` : ""}`);
+}
+
+function parseScoreExportSnapshot(job: ScoreJobRow): ScoreExportSnapshot {
+  if (!job.params_json) {
+    throw new Error("Export job is missing its immutable render snapshot.");
+  }
+  const snapshot = JSON.parse(job.params_json) as Partial<ScoreExportSnapshot>;
+  if (snapshot.schemaVersion !== 1 || !snapshot.format || !snapshot.revisionId || !snapshot.title || !snapshot.options) {
+    throw new Error("Export job snapshot is invalid or uses an unsupported schema version.");
+  }
+  return snapshot as ScoreExportSnapshot;
+}
+
+async function processScoreExportJob(job: ScoreJobRow) {
+  if (!job.document_id) {
+    throw new Error("Export job is missing its score document.");
+  }
+  const snapshot = parseScoreExportSnapshot(job);
+  const revision = db.prepare("SELECT id, document_id FROM score_revisions WHERE id = ?").get(snapshot.revisionId) as
+    | { id: string; document_id: string }
+    | undefined;
+  if (!revision || revision.document_id !== job.document_id) {
+    throw new Error("The export source revision no longer belongs to this score document.");
+  }
+  if (isScoreJobCancelled(job.id)) return;
+
+  const workDir = path.join(workerConfig.storageDir, job.user_id, "scores", "exports", job.id);
+  const result = await renderScoreExport({
+    snapshot,
+    workDir,
+    config: {
+      museScoreCommand: workerConfig.museScoreCommand,
+      museScoreTimeoutMs: workerConfig.museScoreTimeoutMs,
+      fluidSynthCommand: workerConfig.fluidSynthCommand,
+      fluidSynthTimeoutMs: workerConfig.fluidSynthTimeoutMs,
+      soundFontPath: workerConfig.soundFontPath,
+      ffmpegCommand: workerConfig.ffmpegCommand,
+      ffmpegTimeoutMs: workerConfig.ffmpegTimeoutMs,
+    },
+    isCancelled: () => isScoreJobCancelled(job.id),
+    onProgress: (progress) => updateScoreJobProgress(job.id, progress),
+  });
+  if (isScoreJobCancelled(job.id)) return;
+
+  const outputFileIds: string[] = [];
+  for (const output of result.files) {
+    if (isScoreJobCancelled(job.id)) return;
+    const checksumSha256 = crypto.createHash("sha256").update(fs.readFileSync(output.path)).digest("hex");
+    const fileId = await insertStoredFile({
+      userId: job.user_id,
+      originalName: output.originalName,
+      storagePath: output.path,
+      mimeType: output.mimeType,
+      fileKind: output.assetKind,
+    });
+    createScoreAsset({
+      documentId: job.document_id,
+      fileId,
+      assetKind: output.assetKind,
+      revisionId: snapshot.revisionId,
+      params: {
+        format: snapshot.format,
+        revisionNumber: snapshot.revisionNumber,
+        options: snapshot.options,
+        metrics: result.metrics,
+      },
+      engine: result.engine,
+      checksumSha256,
+    });
+    outputFileIds.push(fileId);
+  }
+
+  if (snapshot.format === "musicxml" && outputFileIds[0]) {
+    db.prepare("UPDATE score_revisions SET musicxml_file_id = ? WHERE id = ?").run(outputFileIds[0], snapshot.revisionId);
+  }
+  for (const entry of fs.readdirSync(workDir)) {
+    if (entry.endsWith(".source.musicxml") || entry.endsWith(".source.mid") || entry.endsWith(".raw.wav")) {
+      fs.rmSync(path.join(workDir, entry), { force: true });
+    }
+  }
+  markScoreJobCompleted({ jobId: job.id, resultRevisionId: snapshot.revisionId, outputFileIds });
+  console.log(`[worker] score export job ${job.id} completed (${snapshot.format}, ${outputFileIds.length} file(s))`);
+}
+
+async function processScoreJob(job: ScoreJobRow) {
+  if (job.job_type === "omr_import") {
+    await processScoreOmrJob(job);
+    return;
+  }
+
+  if (job.job_type === "audio_transcribe") {
+    await processAudioTranscribeJob(job);
+    return;
+  }
+
+  if (job.job_type === "render_export") {
+    await processScoreExportJob(job);
+    return;
+  }
+
+  markScoreJobFailed(job.id, `Score worker currently supports omr_import, audio_transcribe, and render_export jobs, not ${job.job_type}.`);
+}
+
+let busy = false;
+let notificationBusy = false;
+
+async function notificationTick() {
+  if (notificationBusy) return;
+  notificationBusy = true;
+  try {
+    const now = nowIso();
+    materializeDueNotificationDeliveries(db, now);
+    if (!workerConfig.resendApiKey || !workerConfig.emailFromAddress) return;
+    const staleBefore = new Date(Date.now() - workerConfig.notificationLockTimeoutMs).toISOString();
+    const delivery = claimNextNotificationDelivery(db, now, staleBefore);
+    if (!delivery) return;
+    try {
+      const sent = await sendNotificationEmail({
+        delivery,
+        apiKey: workerConfig.resendApiKey,
+        from: workerConfig.emailFromAddress,
+        replyTo: workerConfig.emailReplyTo,
+        appUrl: workerConfig.appPublicUrl,
+      });
+      markNotificationDeliverySent(db, { id: delivery.id, providerMessageId: sent.providerMessageId, now: nowIso() });
+      console.log(`[worker] sent classroom notification delivery ${delivery.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Notification delivery failed.";
+      const retry = markNotificationDeliveryFailed(db, {
+        id: delivery.id,
+        attempts: delivery.attempts,
+        error: message,
+        now: nowIso(),
+        maxAttempts: workerConfig.notificationMaxAttempts,
+        baseDelayMs: workerConfig.notificationRetryBaseMs,
+      });
+      console.error(`[worker] classroom notification delivery ${delivery.id} ${retry.terminal ? "failed" : "will retry"}: ${message}`);
+    }
+  } catch (error) {
+    console.error("[worker] notification outbox tick failed", error);
+  } finally {
+    notificationBusy = false;
+  }
+}
+
+async function tick() {
+  if (busy) return;
+
+  const scoreJob = claimNextScoreJob(db, nowIso());
+  if (scoreJob) {
+    busy = true;
+    try {
+      await processClaimedScoreJob(scoreJob);
+    } finally {
+      busy = false;
+    }
+    return;
+  }
+
+  const job = claimNextLegacyJob(db, nowIso());
   if (!job) {
     recordWorkerHeartbeat("idle", "Waiting for queued jobs");
     return;
   }
-
   busy = true;
-  markProcessing(job.id);
+  try {
+    await processClaimedLegacyJob(job);
+  } finally {
+    busy = false;
+  }
+}
+
+async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
+  recordWorkerHeartbeat("processing", `Processing score job ${scoreJob.id}`, {
+    jobId: scoreJob.id,
+    jobType: scoreJob.job_type,
+    documentId: scoreJob.document_id,
+    requestId: scoreJob.request_id,
+    traceId: scoreJob.trace_id,
+  });
+  workerLog("score_job.processing", { jobId: scoreJob.id, jobType: scoreJob.job_type, requestId: scoreJob.request_id, traceId: scoreJob.trace_id });
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, workerConfig.processingDelayMs));
+    await processScoreJob(scoreJob);
+  } catch (error) {
+    recordWorkerHeartbeat("error", error instanceof Error ? error.message : "Worker failed to process the score job.", {
+      jobId: scoreJob.id,
+      requestId: scoreJob.request_id,
+      traceId: scoreJob.trace_id,
+    });
+    workerLog("score_job.failed", {
+      jobId: scoreJob.id,
+      jobType: scoreJob.job_type,
+      requestId: scoreJob.request_id,
+      traceId: scoreJob.trace_id,
+      error: error instanceof Error ? error.message : "Worker failed to process the score job.",
+    });
+    if (scoreJob.document_id && scoreJob.job_type === "omr_import") {
+      insertOmrDiagnostic({
+        jobId: scoreJob.id,
+        documentId: scoreJob.document_id,
+        diagnostics: {
+          status: "failed",
+          engine: "audiveris",
+          message: error instanceof Error ? error.message : "Worker failed to process the score job.",
+        },
+      });
+    }
+    markScoreJobFailed(scoreJob.id, error instanceof Error ? error.message : "Worker failed to process the score job.");
+  } finally {
+    recordWorkerHeartbeat("idle", "Waiting for queued jobs");
+  }
+}
+
+async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
   recordWorkerHeartbeat("processing", `Processing job ${job.id}`, {
     jobId: job.id,
     direction: job.direction,
+    requestId: job.request_id,
+    traceId: job.trace_id,
   });
-  console.log(`[worker] processing job ${job.id} (${job.direction})`);
+  workerLog("legacy_job.processing", { jobId: job.id, direction: job.direction, requestId: job.request_id, traceId: job.trace_id });
 
   try {
     await new Promise((resolve) => setTimeout(resolve, workerConfig.processingDelayMs));
@@ -2588,8 +3674,19 @@ async function tick() {
       return;
     }
 
-    const inputFile = findInputFile(job.input_file_id);
-    if (!inputFile || !fs.existsSync(inputFile.storage_path)) {
+    const storedInputFile = findInputFile(job.input_file_id);
+    if (!storedInputFile) {
+      markFailed(job.id, "Input file is missing for this job.");
+      return;
+    }
+
+    let inputFile: FileRow;
+    try {
+      inputFile = await materializeInputFile(
+        storedInputFile,
+        path.join(workerConfig.storageDir, job.user_id, "jobs", job.id),
+      );
+    } catch {
       markFailed(job.id, "Input file is missing for this job.");
       return;
     }
@@ -2598,14 +3695,78 @@ async function tick() {
   } catch (error) {
     recordWorkerHeartbeat("error", error instanceof Error ? error.message : "Worker failed to process the job.", {
       jobId: job.id,
+      requestId: job.request_id,
+      traceId: job.trace_id,
+    });
+    workerLog("legacy_job.failed", {
+      jobId: job.id,
+      direction: job.direction,
+      requestId: job.request_id,
+      traceId: job.trace_id,
+      error: error instanceof Error ? error.message : "Worker failed to process the job.",
     });
     markFailed(job.id, error instanceof Error ? error.message : "Worker failed to process the job.");
   } finally {
-    busy = false;
     recordWorkerHeartbeat("idle", "Waiting for queued jobs");
   }
 }
 
-setInterval(() => {
-  void tick();
-}, workerConfig.pollIntervalMs);
+let pollingTimer: NodeJS.Timeout | null = null;
+let brokerWorker: BullWorker<JobBrokerPayload> | null = null;
+let brokerConnection: Redis | null = null;
+if (workerConfig.jobBrokerBackend === "bullmq") {
+  if (!workerConfig.jobBrokerRedisUrl) throw new Error("JOB_BROKER_REDIS_URL or REDIS_URL is required for BullMQ.");
+  brokerConnection = new Redis(workerConfig.jobBrokerRedisUrl, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: true,
+    lazyConnect: true,
+  });
+  await brokerConnection.connect();
+  brokerWorker = new BullWorker<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, async (brokerJob) => consumeBrokerJob({
+    db,
+    brokerJob,
+    now: nowIso,
+    processScoreJob: processClaimedScoreJob,
+    processLegacyJob: processClaimedLegacyJob,
+  }), {
+    connection: brokerConnection,
+    prefix: workerConfig.jobBrokerPrefix,
+    concurrency: workerConfig.jobBrokerConcurrency,
+  });
+  brokerWorker.on("error", (error) => {
+    console.error("[worker] BullMQ worker error", error);
+    recordWorkerHeartbeat("error", error.message, { broker: "bullmq" });
+  });
+  await brokerWorker.waitUntilReady();
+  console.log(`[worker] BullMQ consumer ready (${SCORE_PROCESSING_QUEUE}, concurrency ${workerConfig.jobBrokerConcurrency})`);
+} else {
+  const safeTick = async () => {
+    try {
+      await tick();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Database polling tick failed.";
+      console.error("[worker] database polling tick failed", error);
+      recordWorkerHeartbeat("error", message, { broker: "database" });
+    }
+  };
+  pollingTimer = setInterval(() => void safeTick(), workerConfig.pollIntervalMs);
+  void safeTick();
+}
+
+const notificationTimer = setInterval(() => void notificationTick(), workerConfig.pollIntervalMs);
+void notificationTick();
+
+let shuttingDown = false;
+async function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[worker] shutting down after ${signal}`);
+  if (pollingTimer) clearInterval(pollingTimer);
+  clearInterval(notificationTimer);
+  if (brokerWorker) await brokerWorker.close();
+  if (brokerConnection) await brokerConnection.quit();
+  db.close();
+}
+
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));

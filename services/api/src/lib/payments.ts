@@ -24,7 +24,25 @@ type PaddleTransactionResponse = {
 };
 
 const stripeClient = config.stripeSecretKey ? new Stripe(config.stripeSecretKey) : null;
-const paddleApiBase = "https://api.paddle.com";
+const paddleApiBase = config.paddleEnvironment === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
+
+function normalizePaddleTransactionId(value: string) {
+  const transactionId = value.trim();
+  if (!transactionId.startsWith("txn_") || transactionId.length < 5 || transactionId.length > 80) {
+    throw new Error("Invalid Paddle transaction id.");
+  }
+  for (const character of transactionId.slice(4)) {
+    const code = character.charCodeAt(0);
+    const allowed = (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+    if (!allowed) throw new Error("Invalid Paddle transaction id.");
+  }
+  return transactionId;
+}
+
+export function buildPaddleTransactionEndpoint(transactionId: string) {
+  const safeTransactionId = normalizePaddleTransactionId(transactionId);
+  return new URL(`/transactions/${encodeURIComponent(safeTransactionId)}`, paddleApiBase);
+}
 
 export function listEnabledPaymentProviders() {
   return config.paymentProviders.filter((provider): provider is PaymentProvider => provider === "stripe" || provider === "paddle");
@@ -44,31 +62,42 @@ export async function createStripeCheckoutSession(input: {
   customerEmail?: string | null;
   successUrl?: string;
   cancelUrl?: string;
+  userId?: string | null;
+  organizationId?: string | null;
+  seatQuantity?: number;
+  priceId?: string;
 }) {
-  if (!stripeClient || !config.stripePriceId) {
+  const priceId = input.priceId ?? config.stripePriceId;
+  if (!stripeClient || !priceId) {
     throw new Error("Stripe is not configured.");
   }
 
-  const session = await stripeClient.checkout.sessions.create({
-    mode: "payment",
+  const metadata = {
+    orderId: input.orderId,
+    ...(input.userId ? { userId: input.userId } : {}),
+    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+    seatQuantity: String(Math.max(1, input.seatQuantity ?? 1)),
+  };
+  const params: Stripe.Checkout.SessionCreateParams = {
+    mode: config.paymentBillingMode,
     billing_address_collection: "auto",
     allow_promotion_codes: true,
     line_items: [
       {
-        price: config.stripePriceId,
-        quantity: 1,
+        price: priceId,
+        quantity: Math.max(1, input.seatQuantity ?? 1),
       },
     ],
     customer_email: input.customerEmail ?? undefined,
-    metadata: {
-      orderId: input.orderId,
-    },
+    metadata,
     success_url:
       input.successUrl ??
       `${config.publicSiteUrl}/checkout/success?provider=stripe&order_id=${input.orderId}&token=${input.publicToken}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:
       input.cancelUrl ?? `${config.publicSiteUrl}/checkout/cancel?provider=stripe&order_id=${input.orderId}&token=${input.publicToken}`,
-  });
+  };
+  if (config.paymentBillingMode === "subscription") params.subscription_data = { metadata };
+  const session = await stripeClient.checkout.sessions.create(params);
 
   return session;
 }
@@ -94,8 +123,13 @@ export async function createPaddleTransaction(input: {
   publicToken: string;
   customerEmail?: string | null;
   successUrl?: string;
+  userId?: string | null;
+  organizationId?: string | null;
+  seatQuantity?: number;
+  priceId?: string;
 }) {
-  if (!config.paddleApiKey || !config.paddlePriceId || !config.paddleDefaultPaymentLink) {
+  const priceId = input.priceId ?? config.paddlePriceId;
+  if (!config.paddleApiKey || !priceId || !config.paddleDefaultPaymentLink) {
     throw new Error("Paddle is not configured.");
   }
 
@@ -106,10 +140,13 @@ export async function createPaddleTransaction(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      items: [{ price_id: config.paddlePriceId, quantity: 1 }],
+      items: [{ price_id: priceId, quantity: Math.max(1, input.seatQuantity ?? 1) }],
       collection_mode: "automatic",
       custom_data: {
         orderId: input.orderId,
+        userId: input.userId ?? undefined,
+        organizationId: input.organizationId ?? undefined,
+        seatQuantity: Math.max(1, input.seatQuantity ?? 1),
       },
       checkout: {
         url: config.paddleDefaultPaymentLink,
@@ -133,7 +170,8 @@ export async function retrievePaddleTransaction(transactionId: string) {
     throw new Error("Paddle is not configured.");
   }
 
-  const response = await fetch(`${paddleApiBase}/transactions/${transactionId}`, {
+  const endpoint = buildPaddleTransactionEndpoint(transactionId);
+  const response = await fetch(endpoint, {
     headers: {
       Authorization: `Bearer ${config.paddleApiKey}`,
       "Content-Type": "application/json",
@@ -167,6 +205,10 @@ export function verifyPaddleWebhook(rawBody: Buffer, signatureHeader: string) {
   if (!timestamp || !signature) {
     throw new Error("Invalid Paddle signature header.");
   }
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds) || Math.abs(Date.now() / 1000 - timestampSeconds) > 300) {
+    throw new Error("Paddle webhook timestamp is outside the allowed tolerance.");
+  }
 
   const signedPayload = `${timestamp}:${rawBody.toString("utf8")}`;
   const expectedSignature = createHmac("sha256", config.paddleWebhookSecret).update(signedPayload).digest("hex");
@@ -176,4 +218,9 @@ export function verifyPaddleWebhook(rawBody: Buffer, signatureHeader: string) {
   if (expectedBuffer.length !== providedBuffer.length || !timingSafeEqual(expectedBuffer, providedBuffer)) {
     throw new Error("Invalid Paddle webhook signature.");
   }
+}
+
+export async function createStripeBillingPortalSession(customerId: string, returnUrl: string) {
+  if (!stripeClient) throw new Error("Stripe is not configured.");
+  return stripeClient.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
 }

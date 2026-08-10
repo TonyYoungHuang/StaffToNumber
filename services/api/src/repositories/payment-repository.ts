@@ -14,6 +14,9 @@ type PaymentOrderRow = {
   customer_email: string | null;
   locale: string | null;
   entitlement_days: number;
+  billing_kind: "one_time" | "subscription";
+  organization_id: string | null;
+  seat_quantity: number;
   checkout_session_id: string | null;
   transaction_id: string | null;
   checkout_url: string | null;
@@ -30,6 +33,7 @@ type PaymentOrderRow = {
 
 const paymentOrderSelect = `
   SELECT po.id, po.public_token, po.user_id, po.provider, po.status, po.customer_email, po.locale, po.entitlement_days,
+         po.billing_kind, po.organization_id, po.seat_quantity,
          po.checkout_session_id, po.transaction_id, po.checkout_url, po.amount_minor, po.currency,
          po.activation_code_id, po.paid_at, po.cancelled_at, po.failure_reason, po.created_at, po.updated_at,
          ac.code AS activation_code
@@ -43,6 +47,9 @@ export function createPaymentOrder(input: {
   customerEmail?: string | null;
   locale?: string | null;
   entitlementDays: number;
+  billingKind?: "one_time" | "subscription";
+  organizationId?: string | null;
+  seatQuantity?: number;
 }) {
   const id = createId();
   const publicToken = randomBytes(18).toString("hex");
@@ -52,10 +59,11 @@ export function createPaymentOrder(input: {
     `
       INSERT INTO payment_orders (
         id, public_token, user_id, provider, status, customer_email, locale, entitlement_days,
+        billing_kind, organization_id, seat_quantity,
         checkout_session_id, transaction_id, checkout_url, amount_minor, currency,
         activation_code_id, paid_at, cancelled_at, failure_reason, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)
     `,
   ).run(
     id,
@@ -65,6 +73,9 @@ export function createPaymentOrder(input: {
     input.customerEmail ?? null,
     input.locale ?? null,
     input.entitlementDays,
+    input.billingKind ?? "one_time",
+    input.organizationId ?? null,
+    Math.max(1, Math.min(input.seatQuantity ?? 1, 100_000)),
     timestamp,
     timestamp,
   );
@@ -148,8 +159,18 @@ export function completePaymentOrder(input: {
     return undefined;
   }
 
-  if (existing.status === "paid" && existing.activation_code_id) {
+  if (existing.status === "paid") {
     return existing;
+  }
+
+  if (existing.billing_kind === "subscription") {
+    const timestamp = nowIso();
+    db.prepare(`
+      UPDATE payment_orders
+      SET status = 'paid', amount_minor = ?, currency = ?, paid_at = ?, failure_reason = NULL, updated_at = ?
+      WHERE id = ?
+    `).run(input.amountMinor ?? existing.amount_minor, input.currency ?? existing.currency, timestamp, timestamp, existing.id);
+    return findPaymentOrderById(existing.id);
   }
 
   const targetUserId = existing.user_id ?? (existing.customer_email ? findUserByEmail(existing.customer_email)?.id ?? null : null);
@@ -206,6 +227,9 @@ export function mapPaymentOrderForPublic(order: PaymentOrderRow) {
       customerEmail: order.customer_email,
       locale: order.locale,
       entitlementDays: order.entitlement_days,
+      billingKind: order.billing_kind,
+      organizationId: order.organization_id,
+      seatQuantity: order.seat_quantity,
       userId: order.user_id,
       checkoutSessionId: order.checkout_session_id,
       transactionId: order.transaction_id,

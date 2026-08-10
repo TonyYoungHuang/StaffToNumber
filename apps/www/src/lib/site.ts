@@ -3,6 +3,10 @@ import { APP_ROUTES, type SupportedLocale } from "@score/shared";
 const defaultSiteUrl = "https://scoretransposer.com";
 const defaultAppUrl = "https://app.scoretransposer.com";
 
+function enabled(value: string | undefined) {
+  return value?.trim().toLowerCase() === "true";
+}
+
 function stripTrailingSlash(value: string) {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
@@ -42,9 +46,9 @@ export const siteConfig = {
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@scoretransposer.com",
   priceAmount: process.env.NEXT_PUBLIC_PRICE_AMOUNT ?? "",
   priceCurrency: process.env.NEXT_PUBLIC_PRICE_CURRENCY ?? "USD",
-  title: "ScoreTransposer | Staff PDF to Jianpu",
+  title: "Sheet Music Converter, Editor & Transposer | ScoreTransposer",
   description:
-    "Convert five-line staff PDFs into Jianpu with a focused production workflow, activation-gated access, and draft-safe delivery.",
+    "Convert, correct, transpose, play, and export staff notation and Jianpu in a MusicXML-first online sheet music workspace.",
   keywords: [
     "score transposer",
     "staff pdf to jianpu",
@@ -55,14 +59,31 @@ export const siteConfig = {
     "numbered notation converter",
     "numbered notation",
     "five-line staff pdf",
+    "online sheet music editor",
+    "transpose sheet music",
+    "musicxml editor",
+    "score to audio",
     "五线谱转简谱",
     "乐谱 pdf 转简谱",
   ],
+  release: {
+    publicLaunchReady: enabled(process.env.NEXT_PUBLIC_PUBLIC_LAUNCH_READY),
+    productAppAvailable: enabled(process.env.NEXT_PUBLIC_PRODUCT_APP_AVAILABLE),
+    checkoutAvailable: enabled(process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE),
+    omrAvailable: enabled(process.env.NEXT_PUBLIC_OMR_AVAILABLE),
+    audioTranscriptionAvailable: enabled(process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE),
+    teachingAvailable: enabled(process.env.NEXT_PUBLIC_TEACHING_AVAILABLE),
+  },
 } as const;
 
-export const legalLastUpdated = "2026-04-22";
+export const publicContentLastUpdated = "2026-08-10";
+export const legalLastUpdated = "2026-08-10";
 
 export function getCheckoutUrl(locale: SupportedLocale) {
+  if (!siteConfig.release.checkoutAvailable) {
+    return getSupportUrl("payment", "checkout-unavailable");
+  }
+
   return locale === "zh-CN" ? siteConfig.chinaCheckoutUrl : siteConfig.checkoutUrl;
 }
 
@@ -70,7 +91,19 @@ export function getAppHomeUrl() {
   return siteConfig.appUrl;
 }
 
+export function getSafeAppUrl(source = "site") {
+  if (siteConfig.release.productAppAvailable) {
+    return siteConfig.appUrl;
+  }
+
+  return getSupportUrl("general", `${source}-launch-access`);
+}
+
 export function getAppRegisterUrl() {
+  if (!siteConfig.release.productAppAvailable) {
+    return getSupportUrl("general", "registration-launch-access");
+  }
+
   return buildUrl(siteConfig.appUrl, APP_ROUTES.register);
 }
 
@@ -79,7 +112,11 @@ export function getAppActivateUrl() {
 }
 
 export function getAppStartConversionUrl() {
-  return buildUrl(siteConfig.appUrl, APP_ROUTES.upload);
+  if (siteConfig.release.productAppAvailable) {
+    return buildUrl(siteConfig.appUrl, APP_ROUTES.upload);
+  }
+
+  return getSupportUrl("general", "upload-launch-access");
 }
 
 export function getSupportUrl(category: "payment" | "activation" | "job" | "privacy" | "general", source = "site") {

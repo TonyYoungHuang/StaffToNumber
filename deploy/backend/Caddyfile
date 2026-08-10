@@ -1,0 +1,8 @@
+{$API_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy api:4000
+}
+
+{$COLLABORATION_DOMAIN} {
+  reverse_proxy collaboration:4001
+}

@@ -1,0 +1,139 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "1gb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "clamdscan --ping=1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/backend/Dockerfile
+    command: ["node", "services/api/dist/index.js"]
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4000
+    volumes:
+      - score_data:/data
+    secrets:
+      - source: soundfont-license-manifest
+        target: soundfont-license-manifest.json
+        mode: 0444
+    depends_on:
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/backend/Dockerfile
+    command: ["node", "services/worker/dist/index.js"]
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+    volumes:
+      - score_data:/data
+    secrets:
+      - source: soundfont-license-manifest
+        target: soundfont-license-manifest.json
+        mode: 0444
+    depends_on:
+      api:
+        condition: service_healthy
+
+  collaboration:
+    build:
+      context: ../..
+      dockerfile: deploy/backend/Dockerfile
+    command: ["node", "services/collaboration/dist/index.js"]
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      COLLABORATION_PORT: 4001
+      COLLABORATION_MAX_OPERATIONS: ${COLLABORATION_MAX_OPERATIONS:-500}
+      COLLABORATION_MAX_CONFLICTS: ${COLLABORATION_MAX_CONFLICTS:-500}
+      COLLABORATION_REDIS_PREFIX: ${COLLABORATION_REDIS_PREFIX:-score-collaboration}
+    volumes:
+      - score_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres-mirror:
+    profiles: ["postgres-mirror"]
+    build:
+      context: ../..
+      dockerfile: deploy/backend/Dockerfile
+    command: ["node", "--import", "tsx", "services/api/scripts/mirror-postgres.ts", "--watch"]
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+    volumes:
+      - score_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      COLLABORATION_DOMAIN: ${COLLABORATION_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+      collaboration:
+        condition: service_started
+
+volumes:
+  score_data:
+  redis_data:
+  clamav_db:
+  caddy_data:
+
+secrets:
+  soundfont-license-manifest:
+    file: ./secrets/soundfont-license-manifest.json

@@ -1,0 +1,11 @@
+Title: Original Pickup Polyphony Study
+1=G (major)
+Meter: 4/4
+Pickup: yes
+Lyrics 1: | New _ light _ wings _ | carry _ on _ |
+Lyrics 2: | One _ two _ three _ | four _ five _ |
+| vupper:5_{3:2:start}{slur:start:arc}{orn:trill-mark:above} vlower@s2:1,_{3:2:start}
+  vupper:6_{3:2} vlower@s2:2,_{3:2}
+  vupper:7_~{3:2:stop} vlower@s2:3,_{3:2:stop} |
+| vupper:~7{slur:stop:arc}{orn:turn:below} vlower@s2:4,-
+  vupper:1' vlower@s2:5, |

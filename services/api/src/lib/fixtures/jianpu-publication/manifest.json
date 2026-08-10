@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "corpus": {
+    "id": "wuxianpu-jianpu-publication-benchmark",
+    "version": "1.0.0",
+    "publishedAt": "2026-07-17",
+    "description": "Original Jianpu fixtures and browser-neutral semantic expectations for publication-quality parser regression testing.",
+    "assertionModel": "score-json-semantics-without-renderer-or-generated-ids"
+  },
+  "policy": {
+    "acceptedOrigins": ["original", "public-domain"],
+    "acceptedLicenses": ["CC0-1.0", "PDM-1.0", "CC-BY-4.0"],
+    "commercialScoreContent": "prohibited",
+    "checksum": {
+      "algorithm": "sha256",
+      "encoding": "lowercase-hex",
+      "covers": "exact-file-bytes"
+    },
+    "requiredProvenanceFields": [
+      "origin",
+      "authoringEntity",
+      "createdAt",
+      "method",
+      "sourceReference",
+      "originalityStatement"
+    ]
+  },
+  "requiredCoverage": [
+    "complex-voices",
+    "cross-line-tie",
+    "cross-line-slur",
+    "lyrics",
+    "tuplets",
+    "ornaments",
+    "pickup",
+    "senza-misura",
+    "diagnostics"
+  ],
+  "fixtures": [
+    {
+      "id": "original-pickup-polyphony",
+      "title": "Original Pickup Polyphony Study",
+      "capabilities": [
+        "complex-voices",
+        "cross-line-tie",
+        "cross-line-slur",
+        "lyrics",
+        "tuplets",
+        "ornaments",
+        "pickup"
+      ],
+      "source": {
+        "path": "original-pickup-polyphony.jianpu.txt",
+        "mediaType": "text/plain; charset=utf-8",
+        "checksum": "aa5ffd447d4068264018522e4e4f8fd288dba7d7af5a40750bf4d09a8e1cfd75"
+      },
+      "expectation": {
+        "path": "original-pickup-polyphony.expected.json",
+        "mediaType": "application/json",
+        "checksum": "698ac5d38a91cc33721be88fc406b52fbb2542c8ac38b9e137a6cb30e491fae4"
+      },
+      "provenance": {
+        "origin": "original",
+        "authoringEntity": "Wuxianpu benchmark contributors",
+        "createdAt": "2026-07-17",
+        "method": "Purpose-written synthetic melody, counter-voice, and lyrics designed to exercise independent Jianpu semantics.",
+        "sourceReference": null,
+        "originalityStatement": "Created for this benchmark; the melody and lyrics were not copied, transcribed, or adapted from any existing score."
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "name": "Creative Commons CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "scope": "source-and-expectation"
+      },
+      "commercialScoreContent": false
+    },
+    {
+      "id": "original-senza-misura-voices",
+      "title": "Original Senza Misura Voices Study",
+      "capabilities": [
+        "complex-voices",
+        "cross-line-tie",
+        "cross-line-slur",
+        "lyrics",
+        "ornaments",
+        "senza-misura"
+      ],
+      "source": {
+        "path": "original-senza-misura-voices.jianpu.txt",
+        "mediaType": "text/plain; charset=utf-8",
+        "checksum": "5ff24d009139eaea29abec8450dc35888faf1969894d630e241a0c460821af5e"
+      },
+      "expectation": {
+        "path": "original-senza-misura-voices.expected.json",
+        "mediaType": "application/json",
+        "checksum": "345386511c5cc85434663c068ea127c0812b79e8b5e416663b4e805dd509d4a3"
+      },
+      "provenance": {
+        "origin": "original",
+        "authoringEntity": "Wuxianpu benchmark contributors",
+        "createdAt": "2026-07-17",
+        "method": "Purpose-written synthetic free-meter study with independent voices, original lyric text, and cross-measure notation.",
+        "sourceReference": null,
+        "originalityStatement": "Created for this benchmark; the melody and lyrics were not copied, transcribed, or adapted from any existing score."
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "name": "Creative Commons CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "scope": "source-and-expectation"
+      },
+      "commercialScoreContent": false
+    },
+    {
+      "id": "original-diagnostic-repair",
+      "title": "Original Diagnostic Repair Study",
+      "capabilities": ["diagnostics"],
+      "source": {
+        "path": "original-diagnostic-repair.jianpu.txt",
+        "mediaType": "text/plain; charset=utf-8",
+        "checksum": "85aed3252c43356b0373193655ff9d0938e17ae334cf253d8335c8ae34e0d849"
+      },
+      "expectation": {
+        "path": "original-diagnostic-repair.expected.json",
+        "mediaType": "application/json",
+        "checksum": "6e8b94549154c7cad2a1cf0da80ca473838fa8edcc76de324cb162bb38baeee6"
+      },
+      "provenance": {
+        "origin": "original",
+        "authoringEntity": "Wuxianpu benchmark contributors",
+        "createdAt": "2026-07-17",
+        "method": "Purpose-written synthetic invalid-token sequence designed solely to verify deterministic repair diagnostics.",
+        "sourceReference": null,
+        "originalityStatement": "Created for this benchmark and not copied, transcribed, or adapted from any existing score."
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "name": "Creative Commons CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "scope": "source-and-expectation"
+      },
+      "commercialScoreContent": false
+    }
+  ]
+}

@@ -8,11 +8,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
 
   return {
-    title: locale === "zh-CN" ? `五线谱 PDF 转简谱服务隐私政策 | ${siteConfig.siteName}` : `Privacy Policy for Staff PDF to Jianpu Service | ${siteConfig.siteName}`,
+    title: locale === "zh-CN" ? `在线乐谱平台隐私政策 | ${siteConfig.siteName}` : `Music Notation Platform Privacy Policy | ${siteConfig.siteName}`,
     description:
       locale === "zh-CN"
-        ? "查看五线谱 PDF 转简谱服务如何处理账号信息、上传文件、结果文件和支持记录，适合从搜索结果进入后继续核对数据处理方式的用户。"
-        : "Learn how the staff PDF to Jianpu service handles account data, uploaded files, generated outputs, and support records in the current release.",
+        ? "查看在线乐谱平台如何处理账号信息、上传乐谱、音频视频、生成结果和支持记录，以及数据导出、删除宽限期与文件保留规则。"
+        : "Learn how the music notation platform handles account data, uploaded scores and media, generated outputs, exports, deletion grace periods, and retention.",
     alternates: {
       canonical: "/privacy",
     },
@@ -24,14 +24,14 @@ const privacySections = [
     title: "Information collected",
     points: [
       "Account data such as email address, password hash, activation status, and entitlement dates.",
-      "Uploaded PDF files, generated preview text, output PDFs, and draft bundles required to fulfill conversions.",
+      "Uploaded scores, scans, audio or video, structured MusicXML and Score JSON, generated exports, and correction history.",
       "Operational metadata such as upload timestamps, job status, file names, and support contact records.",
     ],
   },
   {
     title: "How data is used",
     points: [
-      "To authenticate users, verify paid access, and deliver the requested staff PDF to Jianpu workflow.",
+      "To authenticate users, verify paid access, and deliver score scanning, editing, conversion, transposition, playback, practice, and export workflows.",
       "To retain source files and generated results for the signed-in user to review and download inside the app.",
       "To investigate failed jobs, respond to support requests, and improve heuristic conversion quality.",
     ],
@@ -41,7 +41,8 @@ const privacySections = [
     points: [
       "Account and entitlement records are retained while the account remains active and for follow-up support when needed.",
       "Uploaded source files and generated outputs are retained to support download, review, and service troubleshooting.",
-      "Deletion requests should be handled through manual support review until a self-service deletion flow is released.",
+      "Signed-in users can download a structured data copy and request deletion after password verification. Deletion has a 14-day cancellation window.",
+      "After the grace period, user scores, classroom data, support records, and stored files are removed; payment records required for audit are de-identified.",
     ],
   },
   {
@@ -50,6 +51,14 @@ const privacySections = [
       "Customer files are not sold.",
       "Operational vendors may process traffic, hosting, DNS, storage, logging, and deployment data as part of delivering the service.",
       "Data may be disclosed when required by law or to protect the service from abuse, fraud, or security incidents.",
+    ],
+  },
+  {
+    title: "Cookies and analytics",
+    points: [
+      "A functional locale cookie remembers the selected interface language.",
+      "GA4 or Microsoft Clarity loads only after explicit consent and only when production analytics is enabled.",
+      "Visitors can decline analytics without losing access to public content or product workflows.",
     ],
   },
   {
@@ -72,14 +81,14 @@ export default async function PrivacyPage() {
           title: "收集哪些信息",
           points: [
             "账号数据，例如邮箱、密码哈希、激活状态和授权期限。",
-            "为完成转换流程而上传的 PDF、生成的预览文本、输出 PDF 和草稿包。",
+            "上传的乐谱、扫描件、音频或视频、结构化 MusicXML 与 Score JSON、生成的导出文件和校对修订历史。",
             "运行元数据，例如上传时间、任务状态、文件名和支持联系记录。",
           ],
         },
         {
           title: "如何使用这些数据",
           points: [
-            "用于认证用户、校验付费权限，并交付请求的“五线谱 PDF 转简谱”工作流。",
+            "用于认证用户、校验付费权限，并交付乐谱扫描、编辑、互换、移调、播放、练习和导出流程。",
             "用于为已登录用户保留源文件和生成结果，方便其在应用内查看和下载。",
             "用于排查失败任务、响应支持请求，并持续改进启发式识别质量。",
           ],
@@ -89,7 +98,8 @@ export default async function PrivacyPage() {
           points: [
             "账号和授权记录会在账号活跃期间保留，并在需要时用于后续支持。",
             "上传源文件和生成结果会被保留，以支持下载、复核和服务排障。",
-            "在自助删除功能上线前，删除请求会通过人工支持流程处理。",
+            "登录用户可下载结构化数据副本，并在再次验证密码后申请删除账户；删除申请有 14 天可取消宽限期。",
+            "宽限期结束后会删除用户乐谱、课堂数据、支持记录和存储文件；依法需要保留的支付审计记录会去标识化。",
           ],
         },
         {
@@ -98,6 +108,14 @@ export default async function PrivacyPage() {
             "客户文件不会被出售。",
             "为了交付服务，托管、DNS、存储、日志和部署供应商可能处理必要的运行数据。",
             "在法律要求或为防止滥用、欺诈和安全事件时，数据可能被依法披露。",
+          ],
+        },
+        {
+          title: "Cookie 与访问分析",
+          points: [
+            "功能性语言 Cookie 用于记住用户选择的界面语言。",
+            "只有在用户明确同意且生产分析配置已启用时，才会加载 GA4 或 Microsoft Clarity。",
+            "拒绝访问分析不会影响公开内容或产品功能的使用。",
           ],
         },
         {
@@ -119,8 +137,8 @@ export default async function PrivacyPage() {
           title={isChinese ? "scoretransposer.com 当前隐私基线" : "Current privacy baseline for scoretransposer.com"}
           body={
             isChinese
-              ? "这份政策说明 ScoreTransposer 在当前公开版本中如何处理账号数据、上传乐谱 PDF、生成的简谱结果以及支持记录。"
-              : "This policy describes how ScoreTransposer handles account data, uploaded music PDFs, generated Jianpu outputs, and support records for the current production release."
+              ? "这份政策说明 ScoreTransposer 如何处理账号数据、上传乐谱和媒体、结构化修订、生成结果以及支持记录。"
+              : "This policy describes how ScoreTransposer handles account data, uploaded scores and media, structured revisions, generated outputs, and support records."
           }
           titleAs="h1"
           largeBody
@@ -152,8 +170,8 @@ export default async function PrivacyPage() {
         <h2 className="card-title">{isChinese ? "联系与政策更新" : "Contact and policy changes"}</h2>
         <p className="body-copy">
           {isChinese
-            ? "如果你需要账号删除、数据导出或政策解释，请通过公开支持渠道提交请求，并在处理前确认账号身份。"
-            : "If you need account deletion, data export, or policy clarification, route the request through your published support channel and confirm account identity before taking action."}
+            ? "数据导出和账号删除可在登录后的账户控制台自助完成；如果无法登录或需要政策解释，请通过公开支持渠道提交请求并确认账号身份。"
+            : "Data export and account deletion are available in the signed-in dashboard. If you cannot sign in or need policy clarification, use the public support channel and confirm account identity."}
         </p>
         <p className="helper-copy">
           {isChinese
@@ -185,9 +203,7 @@ export default async function PrivacyPage() {
             <Link href="/terms" className="public-button tertiary">
               {isChinese ? "打开服务条款" : "Open terms"}
             </Link>
-            <a href={checkoutUrl} className="public-button tertiary">
-              {isChinese ? "查看开通路径" : "View checkout path"}
-            </a>
+            {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
           </div>
         </Panel>
 

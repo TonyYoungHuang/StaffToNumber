@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
-import { siteConfig } from "../lib/site";
+import { isFeatureIndexable, platformFeaturePages } from "../lib/platform-feature-pages";
+import { publicContentLastUpdated, siteConfig } from "../lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date("2026-04-22T00:00:00.000Z");
+  const lastModified = new Date(`${publicContentLastUpdated}T00:00:00.000Z`);
 
-  return [
+  const staticPages: MetadataRoute.Sitemap = [
     {
       url: siteConfig.siteUrl,
       lastModified,
@@ -30,12 +31,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: `${siteConfig.siteUrl}/operations-checklist`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
       url: `${siteConfig.siteUrl}/privacy`,
       lastModified,
       changeFrequency: "monthly",
@@ -47,5 +42,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.4,
     },
+    {
+      url: `${siteConfig.siteUrl}/copyright-complaint`,
+      lastModified,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+  ];
+
+  return [
+    ...staticPages,
+    ...platformFeaturePages.filter(isFeatureIndexable).map((page) => ({
+      url: `${siteConfig.siteUrl}${page.canonical}`,
+      lastModified: new Date(`${page.updatedAt}T00:00:00.000Z`),
+      changeFrequency: "weekly" as const,
+      priority: page.slug === "pricing" ? 0.8 : 0.75,
+    })),
   ];
 }

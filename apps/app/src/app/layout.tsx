@@ -1,23 +1,9 @@
 import type { Metadata } from "next";
-import { Manrope, Newsreader } from "next/font/google";
 import React from "react";
 import "@score/ui/sonata.css";
 import { AppChrome } from "../components/AppChrome";
 import { AppLocaleProvider } from "../components/AppLocaleProvider";
 import { readAppLocale } from "../lib/locale";
-
-const headlineFont = Newsreader({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-headline",
-});
-
-const uiFont = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-ui",
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readAppLocale();
@@ -25,13 +11,13 @@ export async function generateMetadata(): Promise<Metadata> {
   if (locale === "zh-CN") {
     return {
       title: "ScoreTransposer Studio | 简体中文",
-      description: "已登录工作台，支持激活码兑换、PDF 上传、转换任务管理与结果下载。",
+      description: "基于 MusicXML 与 Score JSON 的乐谱工作台，支持扫描校对、简谱互换、移调、图形编辑、播放练习和多格式导出。",
     };
   }
 
   return {
     title: "ScoreTransposer Studio",
-    description: "Authenticated studio for staff PDF to Jianpu conversion, activation codes, uploads, and job tracking.",
+    description: "MusicXML-first score workspace for scanning, correction, Jianpu conversion, transposition, visual editing, practice playback, and multi-format export.",
   };
 }
 
@@ -40,7 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${headlineFont.variable} ${uiFont.variable}`}>
+      <body>
         <AppLocaleProvider locale={locale}>
           <AppChrome>{children}</AppChrome>
         </AppLocaleProvider>
