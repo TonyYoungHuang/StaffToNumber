@@ -3,8 +3,9 @@ import { APP_ROUTES, type SupportedLocale } from "@score/shared";
 const defaultSiteUrl = "https://scoretransposer.com";
 const defaultAppUrl = "https://app.scoretransposer.com";
 
-function enabled(value: string | undefined) {
-  return value?.trim().toLowerCase() === "true";
+function enabled(value: string | undefined, fallback = false) {
+  if (value === undefined || value.trim() === "") return fallback;
+  return value.trim().toLowerCase() === "true";
 }
 
 function stripTrailingSlash(value: string) {
@@ -67,7 +68,7 @@ export const siteConfig = {
     "乐谱 pdf 转简谱",
   ],
   release: {
-    publicLaunchReady: enabled(process.env.NEXT_PUBLIC_PUBLIC_LAUNCH_READY),
+    publicLaunchReady: enabled(process.env.NEXT_PUBLIC_PUBLIC_LAUNCH_READY, true),
     productAppAvailable: enabled(process.env.NEXT_PUBLIC_PRODUCT_APP_AVAILABLE),
     checkoutAvailable: enabled(process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE),
     omrAvailable: enabled(process.env.NEXT_PUBLIC_OMR_AVAILABLE),
