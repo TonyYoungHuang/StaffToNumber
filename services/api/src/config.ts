@@ -1,4 +1,5 @@
 import path from "node:path";
+import { runtimeDatabasePrimary } from "@score/runtime-database";
 
 const rootDir = process.cwd();
 
@@ -37,6 +38,9 @@ export const config = {
   host: process.env.HOST ?? "0.0.0.0",
   port: Number(process.env.PORT ?? 4000),
   dbFile: process.env.DB_FILE ?? path.join(rootDir, "data", "app.sqlite"),
+  postgresUrl: process.env.POSTGRES_URL ?? "",
+  postgresSchema: process.env.POSTGRES_SCHEMA?.trim() || "public",
+  runtimeDatabasePrimary: runtimeDatabasePrimary(process.env.RUNTIME_DATABASE_PRIMARY, process.env.NODE_ENV),
   storageDir: process.env.STORAGE_DIR ?? path.join(rootDir, "storage"),
   storageBackend: storageBackend(process.env.STORAGE_BACKEND),
   s3Bucket: process.env.S3_BUCKET ?? "",
@@ -61,7 +65,7 @@ export const config = {
   rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== "false",
   rateLimitMax: positiveInteger(process.env.RATE_LIMIT_MAX, 300),
   rateLimitTimeWindowMs: positiveInteger(process.env.RATE_LIMIT_TIME_WINDOW_MS, 60000),
-  redisUrl: process.env.REDIS_URL ?? "",
+  redisUrl: process.env.RATE_LIMIT_REDIS_URL ?? process.env.REDIS_URL ?? "",
   redisConnectTimeoutMs: positiveInteger(process.env.REDIS_CONNECT_TIMEOUT_MS, 2000),
   redisKeyPrefix: (process.env.REDIS_RATE_LIMIT_PREFIX ?? "score-rate-limit:").replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80) || "score-rate-limit:",
   jobBrokerBackend: process.env.JOB_BROKER_BACKEND?.trim().toLowerCase() === "bullmq" ? "bullmq" as const : "database" as const,
@@ -118,6 +122,7 @@ export const config = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   stripePriceId: process.env.STRIPE_PRICE_ID ?? "",
   stripeSchoolPriceId: process.env.STRIPE_SCHOOL_PRICE_ID ?? "",
+  stripeManagedPaymentsEnabled: process.env.STRIPE_MANAGED_PAYMENTS_ENABLED === "true",
   paddleApiKey: process.env.PADDLE_API_KEY ?? "",
   paddleWebhookSecret: process.env.PADDLE_WEBHOOK_SECRET ?? "",
   paddlePriceId: process.env.PADDLE_PRICE_ID ?? "",
@@ -125,6 +130,12 @@ export const config = {
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT ?? "sandbox",
   paddleDefaultPaymentLink: process.env.PADDLE_DEFAULT_PAYMENT_LINK ?? "",
   paymentBillingMode: process.env.PAYMENT_BILLING_MODE === "one_time" ? "payment" as const : "subscription" as const,
+  quotaLegacyJobsPerMonth: positiveInteger(process.env.QUOTA_LEGACY_JOBS_PER_MONTH, 25),
+  quotaProJobsPerMonth: positiveInteger(process.env.QUOTA_PRO_JOBS_PER_MONTH, 100),
+  quotaEducationJobsPerMonth: positiveInteger(process.env.QUOTA_EDUCATION_JOBS_PER_MONTH, 500),
+  quotaLegacyStorageBytes: positiveInteger(process.env.QUOTA_LEGACY_STORAGE_BYTES, 1024 * 1024 * 1024),
+  quotaProStorageBytes: positiveInteger(process.env.QUOTA_PRO_STORAGE_BYTES, 10 * 1024 * 1024 * 1024),
+  quotaEducationStorageBytes: positiveInteger(process.env.QUOTA_EDUCATION_STORAGE_BYTES, 50 * 1024 * 1024 * 1024),
   ltiEnabled: process.env.LTI_ENABLED === "true",
   ltiPrivateKeyBase64: process.env.LTI_PRIVATE_KEY_BASE64 ?? "",
   ltiKeyId: process.env.LTI_KEY_ID ?? "score-lti-1",
@@ -135,6 +146,12 @@ export const config = {
 };
 
 export function validateRuntimeConfig() {
+  if ((config.nodeEnv === "production" || config.nodeEnv === "staging") && config.runtimeDatabasePrimary !== "postgres") {
+    throw new Error(`${config.nodeEnv} API requires RUNTIME_DATABASE_PRIMARY=postgres; SQLite fallback is disabled.`);
+  }
+  if (config.runtimeDatabasePrimary === "postgres" && !config.postgresUrl) {
+    throw new Error("POSTGRES_URL is required when RUNTIME_DATABASE_PRIMARY=postgres.");
+  }
   if (config.nodeEnv !== "production") return;
   const failures: string[] = [];
   if (config.securityAuditHashSalt.length < 32) failures.push("SECURITY_AUDIT_HASH_SALT must contain at least 32 characters");

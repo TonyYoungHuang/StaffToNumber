@@ -13,6 +13,7 @@
   "dependencies": {
     "@hocuspocus/extension-redis": "^3.4.4",
     "@hocuspocus/server": "^3.4.0",
+    "@score/runtime-database": "0.1.0",
     "@score/shared": "0.1.0",
     "yjs": "^13.6.27"
   },

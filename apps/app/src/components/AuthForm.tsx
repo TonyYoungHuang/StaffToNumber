@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { setStoredToken } from "../lib/auth-storage";
+import { accountActivationRoute } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type AuthPayload = {
@@ -100,7 +101,7 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
     setStoredToken(result.data.token);
     setStatus(mode === "register" ? copy.registerSuccess : copy.loginSuccess);
     setStatusKind("success");
-    const nextRoute = locale === "zh-CN" ? APP_ROUTES.activate : APP_ROUTES.checkout;
+    const nextRoute = locale === "zh-CN" ? APP_ROUTES.activate : accountActivationRoute;
     router.push(nextRoute);
     router.refresh();
   }

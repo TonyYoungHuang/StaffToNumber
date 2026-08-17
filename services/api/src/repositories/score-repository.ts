@@ -31,6 +31,7 @@ import {
 } from "../lib/score-collaboration-history.js";
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
+import { assertProcessingQuota } from "../lib/plan-quotas.js";
 
 type ScoreDocumentRow = {
   id: string;
@@ -613,6 +614,7 @@ export function createOmrImportScoreDocument(input: {
   sourceFileKind: Extract<StoredFileKind, "source_pdf" | "source_image">;
   sourceOriginalName: string;
 }) {
+  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const documentId = createId();
   const jobId = createId();
@@ -700,6 +702,7 @@ export function createAudioTranscribeScoreDocument(input: {
   sourceFileId: string;
   sourceOriginalName: string;
 }) {
+  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const documentId = createId();
   const jobId = createId();
@@ -769,6 +772,7 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
   rightsConfirmedAt: string;
   transcriptionProfile: "monophonic" | "polyphonic-balanced";
 }) {
+  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const documentId = createId();
   const jobId = createId();
@@ -2346,6 +2350,7 @@ export function createScoreExportJob(input: {
   documentId: string;
   params: Record<string, unknown>;
 }) {
+  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const jobId = createId();
   const context = currentRequestContext();

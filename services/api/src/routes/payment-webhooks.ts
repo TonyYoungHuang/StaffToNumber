@@ -1,9 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { findPaymentOrderById, findPaymentOrderByCheckoutSessionId, findPaymentOrderByTransactionId, completePaymentOrder } from "../repositories/payment-repository.js";
-import { verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
+import { cancelPaddleSubscription, cancelStripeSubscription, verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
 import { normalizePaddleBillingEvent, normalizeStripeBillingEvent } from "../lib/billing-events.js";
-import { processBillingWebhookEvent } from "../repositories/billing-repository.js";
+import { findBillingSubscriptionForRefund, processBillingWebhookEvent } from "../repositories/billing-repository.js";
 import { db } from "../db.js";
+import {
+  completeDurablePaymentOrder,
+  findDurablePaymentOrderByCheckoutSessionId,
+  findDurablePaymentOrderById,
+  saveDurablePaymentOrder,
+} from "../lib/payment-order-durable-store.js";
 
 type RawBodyRequest = {
   rawBody?: Buffer;
@@ -32,21 +38,40 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
         const event = verifyStripeWebhook(rawRequest.rawBody, signature);
 
         const billingEvent = normalizeStripeBillingEvent(event, rawRequest.rawBody);
+        if (billingEvent?.refund?.fullyRefunded) {
+          const subscription = findBillingSubscriptionForRefund(db, "stripe", billingEvent.refund.providerInvoiceId);
+          if (subscription && subscription.status !== "cancelled") {
+            await cancelStripeSubscription(subscription.providerSubscriptionId, false);
+          }
+        }
         if (billingEvent) processBillingWebhookEvent(db, billingEvent);
 
         if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
           const session = event.data.object;
           const orderId = session.metadata?.orderId;
-          const order = (session.id ? findPaymentOrderByCheckoutSessionId(session.id) : undefined) ?? (orderId ? findPaymentOrderById(orderId) : undefined);
+          const localOrder = (session.id ? findPaymentOrderByCheckoutSessionId(session.id) : undefined)
+            ?? (orderId ? findPaymentOrderById(orderId) : undefined);
+          const order = localOrder
+            ?? (session.id ? await findDurablePaymentOrderByCheckoutSessionId(session.id) : undefined)
+            ?? (orderId ? await findDurablePaymentOrderById(orderId) : undefined);
 
           if (order && session.payment_status === "paid") {
-            completePaymentOrder({
-              orderId: order.id,
-              amountMinor: session.amount_total ?? null,
-              currency: session.currency ?? null,
-              codePrefix: "STR",
-              createdBy: "stripe-webhook",
-            });
+            if (localOrder) {
+              const completed = completePaymentOrder({
+                orderId: order.id,
+                amountMinor: session.amount_total ?? null,
+                currency: session.currency ?? null,
+                codePrefix: "STR",
+                createdBy: "stripe-webhook",
+              });
+              if (completed) await saveDurablePaymentOrder(completed);
+            } else {
+              await completeDurablePaymentOrder({
+                orderId: order.id,
+                amountMinor: session.amount_total ?? null,
+                currency: session.currency ?? null,
+              });
+            }
           }
         }
 
@@ -95,6 +120,12 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
         };
 
         const billingEvent = normalizePaddleBillingEvent(payload, rawRequest.rawBody);
+        if (billingEvent?.refund?.fullyRefunded) {
+          const subscription = findBillingSubscriptionForRefund(db, "paddle", billingEvent.refund.providerInvoiceId);
+          if (subscription && subscription.status !== "cancelled") {
+            await cancelPaddleSubscription(subscription.providerSubscriptionId, false);
+          }
+        }
         if (billingEvent) processBillingWebhookEvent(db, billingEvent);
 
         if (payload.event_type === "transaction.completed" || payload.event_type === "transaction.paid") {

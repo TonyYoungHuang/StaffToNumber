@@ -8,6 +8,7 @@ import { DownloadIcon, FileStackIcon, PreviewStaffGraphic, UploadIcon } from "@s
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
+import { accountActivationRoute } from "../lib/release";
 
 type FileItem = {
   id: string;
@@ -159,7 +160,7 @@ export function UploadManager() {
 
     if (!result.ok) {
       if (result.error === "An active entitlement is required.") {
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
       setStatus(result.error);
@@ -209,7 +210,7 @@ export function UploadManager() {
       if (!response.ok) {
         const nextError = payload && "error" in payload ? payload.error ?? copy.uploadFailed : copy.uploadFailed;
         if (nextError === "An active entitlement is required.") {
-          router.replace(APP_ROUTES.checkout);
+          router.replace(accountActivationRoute);
           setUploading(false);
           return;
         }
@@ -250,10 +251,10 @@ export function UploadManager() {
     });
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
       const nextError = payload?.error ?? copy.downloadFailed;
       if (nextError === "An active entitlement is required.") {
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
       setStatus(nextError);

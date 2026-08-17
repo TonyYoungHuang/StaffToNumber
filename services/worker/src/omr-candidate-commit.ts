@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { ScoreJson, StoredFileKind } from "@score/shared";
 
 type CommitOmrCandidateInput = {
@@ -14,7 +14,7 @@ type CommitOmrCandidateInput = {
   manageTransaction?: boolean;
 };
 
-export function commitOmrCandidate(db: DatabaseSync, input: CommitOmrCandidateInput): string | null {
+export function commitOmrCandidate(db: RuntimeDatabaseLike, input: CommitOmrCandidateInput): string | null {
   const timestamp = input.timestamp ?? new Date().toISOString();
   const revisionId = input.revisionId ?? randomUUID();
   const manageTransaction = input.manageTransaction ?? true;

@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { Queue } from "bullmq";
 import type { JobBrokerPayload } from "@score/shared";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../repositories/job-dispatch-outbox.js";
 
 export async function dispatchJobOutboxBatch(input: {
-  db: DatabaseSync;
+  db: RuntimeDatabaseLike;
   queue: Pick<Queue<JobBrokerPayload>, "add"> | null;
   now: () => Date;
   staleMs: number;

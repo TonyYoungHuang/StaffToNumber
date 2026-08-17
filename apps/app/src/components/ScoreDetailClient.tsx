@@ -2977,7 +2977,7 @@ export function ScoreDetailClient() {
     });
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
       setDownloadError(payload?.error ?? copy.downloadFailed);
       return;
     }

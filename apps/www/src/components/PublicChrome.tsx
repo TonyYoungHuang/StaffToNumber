@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowNorthEastIcon, BrandIcon, sonataCopy } from "@score/ui";
-import { platformFeaturePages } from "../lib/platform-feature-pages";
 import { getCheckoutUrl, getSafeAppUrl, siteConfig } from "../lib/site";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
@@ -12,23 +11,14 @@ export function PublicChrome({ children }: { children: ReactNode }) {
   const { locale } = useSiteLocale();
   const appUrl = getSafeAppUrl("public-navigation");
   const checkoutUrl = getCheckoutUrl(locale);
-  const homeSections = {
-    workflow: "/#workflow",
-    useCases: "/#use-cases",
-  } as const;
-  const primaryFeatureLinks = platformFeaturePages.filter((page) => ["staff-to-jianpu", "pdf-score-scanner", "transpose-score"].includes(page.slug));
-  const primaryFeatureLabel = (slug: string) => {
-    if (slug === "staff-to-jianpu") return "Jianpu";
-    if (slug === "pdf-score-scanner") return "Scanner";
-    if (slug === "transpose-score") return "Transpose";
-    return "Feature";
-  };
+  const homeSections = { workflow: "/#workflow", useCases: "/#use-cases" } as const;
   const copy =
     locale === "zh-CN"
       ? {
-          workflow: "使用流程",
-          useCases: "使用场景",
-          features: "功能",
+          scanner: "扫描识谱",
+          editor: "在线编辑",
+          transpose: "移调",
+          education: "教学",
           pricing: "开通",
           faq: "问答",
           about: "关于 / 支持",
@@ -37,14 +27,15 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           privacy: "隐私",
           copyright: "版权投诉",
           app: siteConfig.release.productAppAvailable ? "打开应用" : "上线状态",
-          buy: "购买访问",
+          buy: "升级套餐",
           brandCaption: "MusicXML 全功能乐谱工作台",
           footerCopy: "这是以 MusicXML 和 Score JSON 为核心的乐谱工作台官网，覆盖导入识别、校对编辑、简谱互换、移调、练习播放、导出与教学流程。",
         }
       : {
-          workflow: "How it works",
-          useCases: "Use cases",
-          features: "Features",
+          scanner: "Scanner",
+          editor: "Editor",
+          transpose: "Transpose",
+          education: "Education",
           pricing: "Pricing",
           faq: "FAQ",
           about: "About",
@@ -53,17 +44,13 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           privacy: "Privacy",
           copyright: "Copyright",
           app: siteConfig.release.productAppAvailable ? "Open app" : "Launch status",
-          buy: "Buy access",
+          buy: "Upgrade",
           brandCaption: "MusicXML-first score workspace",
           footerCopy: `A public site for the current ${sonataCopy.currentScope.toLowerCase()} release, built to support search discovery, payment routing, activation guidance, and support clarity.`,
         };
 
   return (
     <div className="public-frame">
-      <div className="public-ambient app-ambient-primary" />
-      <div className="public-ambient app-ambient-secondary" />
-      <div className="public-ambient app-ambient-tertiary" />
-
       <header className="public-header">
         <div className="public-container header-inner">
           <Link href="/" className="public-brand">
@@ -71,33 +58,17 @@ export function PublicChrome({ children }: { children: ReactNode }) {
               <BrandIcon width={22} height={22} />
             </span>
             <span className="brand-copy">
-              <span className="brand-title">{sonataCopy.productTitle}</span>
+              <span className="brand-title">ScoreTransposer</span>
               <span className="brand-caption">{copy.brandCaption}</span>
             </span>
           </Link>
 
           <nav className="public-nav" aria-label="Public">
-            <a href={homeSections.workflow} className="nav-link">
-              {copy.workflow}
-            </a>
-            <a href={homeSections.useCases} className="nav-link">
-              {copy.useCases}
-            </a>
-            {primaryFeatureLinks.map((page) => (
-              <Link key={page.slug} href={page.canonical} className="nav-link">
-                {primaryFeatureLabel(page.slug)}
-              </Link>
-            ))}
+            <Link href="/pdf-score-scanner" className="nav-link">{copy.scanner}</Link>
+            <Link href="/score-editor" className="nav-link">{copy.editor}</Link>
+            <Link href="/transpose-score" className="nav-link">{copy.transpose}</Link>
             {siteConfig.release.checkoutAvailable ? <Link href="/pricing" className="nav-link">{copy.pricing}</Link> : null}
-            <Link href="/faq" className="nav-link">
-              {copy.faq}
-            </Link>
-            <Link href="/about" className="nav-link">
-              {copy.about}
-            </Link>
-            <Link href="/support" className="nav-link">
-              {copy.support}
-            </Link>
+            <Link href="/teaching" className="nav-link">{copy.education}</Link>
           </nav>
 
           <div className="header-actions">
@@ -120,16 +91,9 @@ export function PublicChrome({ children }: { children: ReactNode }) {
             <p className="footer-copy">{copy.footerCopy}</p>
           </div>
           <div className="footer-links">
-            <a href={homeSections.workflow}>{copy.workflow}</a>
-            <a href={homeSections.useCases}>{copy.useCases}</a>
+            <a href={homeSections.workflow}>{locale === "zh-CN" ? "使用流程" : "How it works"}</a>
+            <a href={homeSections.useCases}>{locale === "zh-CN" ? "使用场景" : "Use cases"}</a>
             {siteConfig.release.checkoutAvailable ? <Link href="/pricing">{copy.pricing}</Link> : null}
-            {platformFeaturePages
-              .filter((page) => page.slug !== "pricing")
-              .map((page) => (
-                <Link key={page.slug} href={page.canonical}>
-                  {page.title}
-                </Link>
-              ))}
             <Link href="/faq">{copy.faq}</Link>
             <Link href="/about">{copy.about}</Link>
             <Link href="/support">{copy.support}</Link>

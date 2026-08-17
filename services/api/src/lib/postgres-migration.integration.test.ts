@@ -38,6 +38,7 @@ test("real PostgreSQL migration preserves rows, bytes, partial uniqueness, and f
     assert.equal(report.verified, true);
     assert.equal(report.totalRows, 3);
     assert.equal(report.tables.length, 2);
+    assert.equal(report.runtimeTriggers, 0);
     const parity = await verifySqlitePostgresParity({ source, target: client, targetSchema: schema });
     assert.equal(parity.verified, true);
     assert.equal(parity.sourceRows, 3);
@@ -75,6 +76,66 @@ test("real PostgreSQL migration preserves rows, bytes, partial uniqueness, and f
       [schema],
     );
     assert.equal(remaining.rows[0]?.count, "0");
+  } finally {
+    await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    client.release();
+    await pool.end();
+    source.close();
+  }
+});
+
+test("real PostgreSQL migration installs functional job dispatch triggers", { skip: !connectionString }, async () => {
+  const source = new DatabaseSync(":memory:");
+  source.exec(`
+    CREATE TABLE job_dispatch_outbox (
+      id TEXT PRIMARY KEY,
+      queue_name TEXT NOT NULL,
+      job_family TEXT NOT NULL,
+      job_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      next_attempt_at TEXT NOT NULL,
+      locked_at TEXT,
+      dispatched_at TEXT,
+      acknowledged_at TEXT,
+      broker_job_id TEXT,
+      last_error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE score_jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL, updated_at TEXT NOT NULL);
+  `);
+  const pool = new Pool({ connectionString, max: 1 });
+  const client = await pool.connect();
+  const schema = `score_triggers_${randomUUID().replace(/-/gu, "").slice(0, 16)}`;
+  try {
+    const report = await migrateSqliteToPostgres({ source, target: client, targetSchema: schema });
+    assert.equal(report.runtimeTriggers, 6);
+
+    await client.query(`INSERT INTO "${schema}".jobs (id, status, updated_at) VALUES ('legacy-1', 'queued', '2026-08-16T00:00:00.000Z')`);
+    await client.query(`INSERT INTO "${schema}".score_jobs (id, status, updated_at) VALUES ('score-1', 'queued', '2026-08-16T00:00:00.000Z')`);
+    const queued = await client.query<{ job_family: string; job_id: string; status: string }>(`
+      SELECT job_family, job_id, status FROM "${schema}".job_dispatch_outbox ORDER BY job_family
+    `);
+    assert.deepEqual(queued.rows, [
+      { job_family: "legacy", job_id: "legacy-1", status: "queued" },
+      { job_family: "score", job_id: "score-1", status: "queued" },
+    ]);
+
+    await client.query(`UPDATE "${schema}".jobs SET status = 'processing', updated_at = '2026-08-16T00:01:00.000Z' WHERE id = 'legacy-1'`);
+    await client.query(`UPDATE "${schema}".score_jobs SET status = 'processing', updated_at = '2026-08-16T00:01:00.000Z' WHERE id = 'score-1'`);
+    const acknowledged = await client.query<{ count: string }>(`
+      SELECT COUNT(*)::text AS count FROM "${schema}".job_dispatch_outbox WHERE status = 'acknowledged'
+    `);
+    assert.equal(acknowledged.rows[0]?.count, "2");
+
+    await client.query(`UPDATE "${schema}".jobs SET status = 'failed' WHERE id = 'legacy-1'`);
+    await client.query(`UPDATE "${schema}".jobs SET status = 'queued', updated_at = '2026-08-16T00:02:00.000Z' WHERE id = 'legacy-1'`);
+    const retried = await client.query<{ count: string }>(`
+      SELECT COUNT(*)::text AS count FROM "${schema}".job_dispatch_outbox WHERE job_family = 'legacy' AND job_id = 'legacy-1'
+    `);
+    assert.equal(retried.rows[0]?.count, "2");
   } finally {
     await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
     client.release();

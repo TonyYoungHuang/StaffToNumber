@@ -365,8 +365,8 @@ export default async function HomePage() {
         ],
         fitWait: "暂不建议承诺",
         fitWaitPoints: [
-          "反向转换或更复杂的双向工作流。",
-          "站内编辑、移调或版面修复。",
+          "MuseScore 级自由拖拽排版与复杂出版级制谱。",
+          "复音录音的一键转谱，或无需校对的自动出版。",
           "扫描质量很差却仍期待一键得到最终成品的复杂 PDF。",
         ],
         useCasesEyebrow: "适用场景",
@@ -698,12 +698,12 @@ export default async function HomePage() {
               }
             />
             <MetricCard
-              label={isChinese ? "权限周期" : "Access term"}
-              value={isChinese ? "1 年" : "1 year"}
+              label={isChinese ? "套餐周期" : "Plan term"}
+              value={isChinese ? "按月" : "Monthly"}
               body={
                 isChinese
-                  ? "当前支付与激活模型以一年访问权限为主。"
-                  : "The current payment and activation flow is positioned around one year of access."
+                  ? "Pro 为每月 9.99 美元，Education 为每席位每月 4.99 美元，可在账单中心管理。"
+                  : "Pro is $9.99/month and Education is $4.99/seat/month, managed from Billing."
               }
             />
           </div>

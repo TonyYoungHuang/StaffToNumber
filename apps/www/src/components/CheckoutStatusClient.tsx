@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PaymentProvider, PaymentOrderStatus } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
-import { getAppActivateUrl, getSupportUrl, siteConfig } from "../lib/site";
+import { getAppActivateUrl, getAppHomeUrl, getAppRegisterUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 type PublicOrder = {
@@ -12,6 +12,8 @@ type PublicOrder = {
   provider: PaymentProvider;
   status: PaymentOrderStatus;
   activationCode: string | null;
+  billingKind: "one_time" | "subscription";
+  userId: string | null;
   customerEmail: string | null;
   paidAt: string | null;
 };
@@ -33,6 +35,7 @@ export function CheckoutStatusClient({
 }) {
   const { locale } = useSiteLocale();
   const activateUrl = getAppActivateUrl();
+  const checkoutUrl = getCheckoutUrl(locale);
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +51,8 @@ export function CheckoutStatusClient({
             pendingBody: "如果你刚刚完成支付，系统正在核对支付渠道返回并自动发放激活码。请先保留此页面。",
             paidTitle: "支付成功，激活码已发放",
             paidBody: "你的订单已确认。请先保存激活码，然后到应用内完成兑换。",
+            subscriptionPaidTitle: "订阅已成功开通",
+            subscriptionPaidBody: "Stripe 已确认首期付款。请登录现有账号，或使用付款邮箱注册账号来使用订阅权益。",
             stalledTitle: "这笔订单暂未自动确认",
             stalledBody: "这不一定代表扣款失败。有时支付回跳信息不完整，需要再次校验或人工处理。",
             missingTitle: "暂时没有找到可确认的订单",
@@ -59,14 +64,21 @@ export function CheckoutStatusClient({
             provider: "支付渠道",
             email: "联系邮箱",
             redeem: "前往应用兑换",
+            openSubscription: "进入产品",
+            registerSubscription: "注册并使用订阅",
             retry: "返回重新支付",
             home: "返回首页",
             contact: "联系支持",
             nextTitle: "建议的下一步",
             paidSteps: [
               "先复制并保存激活码，再离开当前页面。",
-              "打开应用并兑换激活码，即可开通一年访问权限。",
+              "打开应用并兑换激活码，即可开通对应的预付访问权限。",
               "如果兑换失败，请把激活码和订单信息一起发给支持团队。",
+            ],
+            subscriptionPaidSteps: [
+              "使用付款时填写的邮箱登录或注册 ScoreTransposer。",
+              "订阅会通过该邮箱与账号关联，无需输入激活码。",
+              "如账号内暂未显示权益，请保留订单信息并联系支持。",
             ],
             pendingSteps: [
               "先不要立刻发起第二次付款。",
@@ -87,6 +99,8 @@ export function CheckoutStatusClient({
             pendingBody: "If you just paid, we are checking the provider response and issuing your activation code automatically. Keep this page open for a moment.",
             paidTitle: "Payment successful and activation code issued",
             paidBody: "Your order is confirmed. Save the activation code first, then redeem it inside the app.",
+            subscriptionPaidTitle: "Your subscription is active",
+            subscriptionPaidBody: "Stripe confirmed the first payment. Sign in, or create an account with the payment email, to use your subscription.",
             stalledTitle: "This order was not auto-confirmed yet",
             stalledBody: "That does not always mean the charge failed. Sometimes the provider return is incomplete and needs another check or manual review.",
             missingTitle: "We could not find a confirmed order yet",
@@ -98,14 +112,21 @@ export function CheckoutStatusClient({
             provider: "Payment provider",
             email: "Contact email",
             redeem: "Redeem in app",
+            openSubscription: "Open the app",
+            registerSubscription: "Create account and continue",
             retry: "Return to checkout",
             home: "Back to homepage",
             contact: "Contact support",
             nextTitle: "Recommended next steps",
             paidSteps: [
               "Copy and save the activation code before leaving this page.",
-              "Open the app and redeem the code to unlock one year of access.",
+              "Open the app and redeem the code to unlock the prepaid access attached to it.",
               "If redemption fails, send the code and order details to support.",
+            ],
+            subscriptionPaidSteps: [
+              "Sign in or register with the email used at checkout.",
+              "Your subscription is linked by email, so no activation code is required.",
+              "If access is not visible yet, keep the order details and contact support.",
             ],
             pendingSteps: [
               "Do not start a second payment yet.",
@@ -162,12 +183,19 @@ export function CheckoutStatusClient({
     };
   }, [orderId, provider, sessionId, token]);
 
-  const isPaid = order?.status === "paid" && Boolean(order.activationCode);
+  const isPaid = order?.status === "paid";
+  const isSubscriptionPaid = isPaid && order?.billingKind === "subscription";
   const isStalled = order?.status === "cancelled" || order?.status === "failed";
   const badge = isPaid ? copy.paidBadge : isStalled ? copy.stalledBadge : copy.pendingBadge;
-  const title = isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
-  const body = isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
-  const steps = isPaid ? copy.paidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
+  const title = isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
+  const body = isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
+  const steps = isSubscriptionPaid ? copy.subscriptionPaidSteps : isPaid ? copy.paidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
+  const paidActionUrl = isSubscriptionPaid
+    ? order?.userId ? getAppHomeUrl() : getAppRegisterUrl()
+    : activateUrl;
+  const paidActionLabel = isSubscriptionPaid
+    ? order?.userId ? copy.openSubscription : copy.registerSubscription
+    : copy.redeem;
 
   return (
     <div className="surface-panel stack-xl">
@@ -213,11 +241,11 @@ export function CheckoutStatusClient({
           ))}
           <div className="button-row">
             {isPaid ? (
-              <a href={activateUrl} className="public-button primary">
-                {copy.redeem}
+              <a href={paidActionUrl} className="public-button primary">
+                {paidActionLabel}
               </a>
             ) : (
-              <a href="/checkout" className="public-button primary">
+              <a href={checkoutUrl} className="public-button primary">
                 {copy.retry}
               </a>
             )}

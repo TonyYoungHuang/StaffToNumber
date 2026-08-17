@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 export type JobDispatchFamily = "legacy" | "score";
 
@@ -15,7 +15,7 @@ export type JobDispatchTrace = {
   traceId: string | null;
 };
 
-export function findJobDispatchTrace(db: DatabaseSync, dispatch: Pick<JobDispatch, "job_family" | "job_id">): JobDispatchTrace {
+export function findJobDispatchTrace(db: RuntimeDatabaseLike, dispatch: Pick<JobDispatch, "job_family" | "job_id">): JobDispatchTrace {
   const table = dispatch.job_family === "score" ? "score_jobs" : "jobs";
   try {
     const row = db.prepare(`SELECT request_id, trace_id FROM ${table} WHERE id = ?`).get(dispatch.job_id) as {
@@ -28,8 +28,7 @@ export function findJobDispatchTrace(db: DatabaseSync, dispatch: Pick<JobDispatc
     return { requestId: null, traceId: null };
   }
 }
-
-export function claimNextJobDispatch(db: DatabaseSync, input: { now: string; staleBefore: string }) {
+export function claimNextJobDispatch(db: RuntimeDatabaseLike, input: { now: string; staleBefore: string }) {
   return db.prepare(`
     UPDATE job_dispatch_outbox
     SET status = 'processing', attempts = attempts + 1, locked_at = ?, updated_at = ?
@@ -57,7 +56,7 @@ export function claimNextJobDispatch(db: DatabaseSync, input: { now: string; sta
   `).get(input.now, input.now, input.now, input.staleBefore, input.staleBefore) as JobDispatch | undefined;
 }
 
-export function markJobDispatchPublished(db: DatabaseSync, input: { id: string; brokerJobId: string; now: string }) {
+export function markJobDispatchPublished(db: RuntimeDatabaseLike, input: { id: string; brokerJobId: string; now: string }) {
   const result = db.prepare(`
     UPDATE job_dispatch_outbox
     SET status = 'dispatched', broker_job_id = ?, dispatched_at = ?, locked_at = NULL,
@@ -67,7 +66,7 @@ export function markJobDispatchPublished(db: DatabaseSync, input: { id: string; 
   return result.changes === 1;
 }
 
-export function markJobDispatchFailed(db: DatabaseSync, input: {
+export function markJobDispatchFailed(db: RuntimeDatabaseLike, input: {
   id: string;
   error: string;
   now: string;
@@ -84,7 +83,7 @@ export function markJobDispatchFailed(db: DatabaseSync, input: {
   return { updated: result.changes === 1, nextAttemptAt };
 }
 
-export function acknowledgeJobDispatch(db: DatabaseSync, input: { id: string; now: string }) {
+export function acknowledgeJobDispatch(db: RuntimeDatabaseLike, input: { id: string; now: string }) {
   const result = db.prepare(`
     UPDATE job_dispatch_outbox
     SET status = 'acknowledged', acknowledged_at = ?, locked_at = NULL, last_error = NULL, updated_at = ?
@@ -93,7 +92,7 @@ export function acknowledgeJobDispatch(db: DatabaseSync, input: { id: string; no
   return result.changes === 1;
 }
 
-export function jobDispatchOutboxStatus(db: DatabaseSync) {
+export function jobDispatchOutboxStatus(db: RuntimeDatabaseLike) {
   return db.prepare(`
     SELECT
       SUM(CASE WHEN status IN ('queued', 'processing', 'dispatched') THEN 1 ELSE 0 END) AS pending,

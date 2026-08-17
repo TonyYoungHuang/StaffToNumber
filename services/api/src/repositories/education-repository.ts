@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import { createId } from "../lib/auth.js";
 
 type ClassroomResourceRow = {
@@ -60,8 +60,7 @@ function mapClassroomResource(row: ClassroomResourceRow, selectedStudentIds: str
     archivedAt: row.archived_at,
   };
 }
-
-export function listClassroomResources(db: DatabaseSync, input: { classroomId: string; query?: string; folderPath?: string | null; audience?: "staff" | "student"; studentId?: string | null; includeArchived?: boolean }) {
+export function listClassroomResources(db: RuntimeDatabaseLike, input: { classroomId: string; query?: string; folderPath?: string | null; audience?: "staff" | "student"; studentId?: string | null; includeArchived?: boolean }) {
   const query = input.query?.trim().toLocaleLowerCase() ?? "";
   const rows = db.prepare(`
     SELECT resources.id, resources.classroom_id, resources.folder_id, resources.file_id, resources.source_type,
@@ -116,14 +115,14 @@ export function listClassroomResources(db: DatabaseSync, input: { classroomId: s
   return rows.map((row) => mapClassroomResource(row, row.visibility === "selected" ? studentIdsByGroup.get(row.version_group_id) ?? [] : []));
 }
 
-function resourceGrantCreator(db: DatabaseSync, classroomId: string, createdByUserId?: string) {
+function resourceGrantCreator(db: RuntimeDatabaseLike, classroomId: string, createdByUserId?: string) {
   if (createdByUserId) return createdByUserId;
   const classroom = db.prepare("SELECT owner_user_id AS ownerUserId FROM score_classrooms WHERE id = ?").get(classroomId) as { ownerUserId: string } | undefined;
   if (!classroom) throw new Error("Classroom not found.");
   return classroom.ownerUserId;
 }
 
-function replaceClassroomResourceStudentGrants(db: DatabaseSync, input: {
+function replaceClassroomResourceStudentGrants(db: RuntimeDatabaseLike, input: {
   classroomId: string;
   versionGroupId: string;
   visibility: ClassroomResourceVisibility;
@@ -154,7 +153,7 @@ function replaceClassroomResourceStudentGrants(db: DatabaseSync, input: {
   for (const studentId of studentIds) insert.run(createId(), input.classroomId, input.versionGroupId, studentId, creator, now);
 }
 
-export function createClassroomResource(db: DatabaseSync, input: { classroomId: string; title: string; resourceType: string; url?: string | null; fileId?: string | null; sourceType?: "external" | "file"; folderId?: string | null; folderPath?: string | null; tags?: string[]; visibility?: ClassroomResourceVisibility; selectedStudentIds?: string[]; createdByUserId?: string; reusedFromResourceId?: string | null }) {
+export function createClassroomResource(db: RuntimeDatabaseLike, input: { classroomId: string; title: string; resourceType: string; url?: string | null; fileId?: string | null; sourceType?: "external" | "file"; folderId?: string | null; folderPath?: string | null; tags?: string[]; visibility?: ClassroomResourceVisibility; selectedStudentIds?: string[]; createdByUserId?: string; reusedFromResourceId?: string | null }) {
   const id = createId();
   const now = new Date().toISOString();
   const visibility = input.visibility ?? "classroom";
@@ -175,7 +174,7 @@ export function createClassroomResource(db: DatabaseSync, input: { classroomId: 
   return listClassroomResources(db, { classroomId: input.classroomId, includeArchived: true }).find((resource) => resource.id === id)!;
 }
 
-export function createClassroomResourceVersion(db: DatabaseSync, input: { classroomId: string; resourceId: string; title: string; resourceType: string; url?: string | null; fileId?: string | null; sourceType?: "external" | "file"; folderId?: string | null; folderPath?: string | null; tags?: string[]; visibility?: ClassroomResourceVisibility; selectedStudentIds?: string[]; createdByUserId?: string }) {
+export function createClassroomResourceVersion(db: RuntimeDatabaseLike, input: { classroomId: string; resourceId: string; title: string; resourceType: string; url?: string | null; fileId?: string | null; sourceType?: "external" | "file"; folderId?: string | null; folderPath?: string | null; tags?: string[]; visibility?: ClassroomResourceVisibility; selectedStudentIds?: string[]; createdByUserId?: string }) {
   const current = db.prepare(`
     SELECT resources.id, resources.classroom_id, resources.folder_id, resources.file_id, resources.source_type,
            resources.title, resources.resource_type, resources.url, resources.folder_path,
@@ -219,7 +218,7 @@ export function createClassroomResourceVersion(db: DatabaseSync, input: { classr
   return listClassroomResources(db, { classroomId: input.classroomId, includeArchived: true }).find((resource) => resource.id === id)!;
 }
 
-export function listClassroomResourceVersions(db: DatabaseSync, input: { classroomId: string; resourceId: string }) {
+export function listClassroomResourceVersions(db: RuntimeDatabaseLike, input: { classroomId: string; resourceId: string }) {
   const group = db.prepare("SELECT version_group_id AS versionGroupId FROM score_classroom_resources WHERE id = ? AND classroom_id = ?")
     .get(input.resourceId, input.classroomId) as { versionGroupId: string } | undefined;
   if (!group) return null;
@@ -228,7 +227,7 @@ export function listClassroomResourceVersions(db: DatabaseSync, input: { classro
     .sort((left, right) => right.versionNumber - left.versionNumber);
 }
 
-export function restoreClassroomResourceVersion(db: DatabaseSync, input: { classroomId: string; resourceId: string }) {
+export function restoreClassroomResourceVersion(db: RuntimeDatabaseLike, input: { classroomId: string; resourceId: string }) {
   const target = db.prepare(`
     SELECT resources.id, resources.classroom_id, resources.folder_id, resources.file_id, resources.source_type,
            resources.title, resources.resource_type, resources.url, resources.folder_path,
@@ -273,7 +272,7 @@ export function restoreClassroomResourceVersion(db: DatabaseSync, input: { class
 
 type ResourceFolderRow = { id: string; classroom_id: string; parent_id: string | null; name: string; created_at: string; updated_at: string; archived_at: string | null };
 
-export function listClassroomResourceFolders(db: DatabaseSync, classroomId: string, includeArchived = false) {
+export function listClassroomResourceFolders(db: RuntimeDatabaseLike, classroomId: string, includeArchived = false) {
   const folders = db.prepare(`
     SELECT id, classroom_id, parent_id, name, created_at, updated_at, archived_at
     FROM score_classroom_resource_folders WHERE classroom_id = ? AND (? = 1 OR archived_at IS NULL)
@@ -303,7 +302,7 @@ function validateResourceFolderName(value: string) {
   return name;
 }
 
-export function createClassroomResourceFolder(db: DatabaseSync, input: { classroomId: string; parentId?: string | null; name: string; createdByUserId: string }) {
+export function createClassroomResourceFolder(db: RuntimeDatabaseLike, input: { classroomId: string; parentId?: string | null; name: string; createdByUserId: string }) {
   const name = validateResourceFolderName(input.name);
   const normalized = name.toLocaleLowerCase();
   if (input.parentId) {
@@ -326,7 +325,7 @@ export function createClassroomResourceFolder(db: DatabaseSync, input: { classro
   return listClassroomResourceFolders(db, input.classroomId).find((folder) => folder.id === id)!;
 }
 
-export function updateClassroomResourceFolder(db: DatabaseSync, input: { classroomId: string; folderId: string; parentId?: string | null; name: string }) {
+export function updateClassroomResourceFolder(db: RuntimeDatabaseLike, input: { classroomId: string; folderId: string; parentId?: string | null; name: string }) {
   const name = validateResourceFolderName(input.name);
   const normalized = name.toLocaleLowerCase();
   const parentId = input.parentId ?? null;
@@ -416,7 +415,7 @@ export function updateClassroomResourceFolder(db: DatabaseSync, input: { classro
   }
 }
 
-export function archiveClassroomResourceFolder(db: DatabaseSync, input: { classroomId: string; folderId: string }) {
+export function archiveClassroomResourceFolder(db: RuntimeDatabaseLike, input: { classroomId: string; folderId: string }) {
   const folder = db.prepare("SELECT id FROM score_classroom_resource_folders WHERE id = ? AND classroom_id = ? AND archived_at IS NULL").get(input.folderId, input.classroomId);
   if (!folder) return false;
   const child = db.prepare("SELECT id FROM score_classroom_resource_folders WHERE parent_id = ? AND archived_at IS NULL LIMIT 1").get(input.folderId);
@@ -427,7 +426,7 @@ export function archiveClassroomResourceFolder(db: DatabaseSync, input: { classr
     .run(now, now, input.folderId, input.classroomId).changes > 0;
 }
 
-export function reuseClassroomResource(db: DatabaseSync, input: { sourceClassroomId: string; sourceResourceId: string; targetClassroomId: string; folderId?: string | null; folderPath?: string | null; createdByUserId?: string }) {
+export function reuseClassroomResource(db: RuntimeDatabaseLike, input: { sourceClassroomId: string; sourceResourceId: string; targetClassroomId: string; folderId?: string | null; folderPath?: string | null; createdByUserId?: string }) {
   const source = listClassroomResources(db, { classroomId: input.sourceClassroomId }).find((resource) => resource.id === input.sourceResourceId);
   if (!source) return null;
   return createClassroomResource(db, {
@@ -439,7 +438,7 @@ export function reuseClassroomResource(db: DatabaseSync, input: { sourceClassroo
   });
 }
 
-export function moveClassroomResourceToFolder(db: DatabaseSync, input: { classroomId: string; resourceId: string; folderId?: string | null; folderPath?: string | null }) {
+export function moveClassroomResourceToFolder(db: RuntimeDatabaseLike, input: { classroomId: string; resourceId: string; folderId?: string | null; folderPath?: string | null }) {
   const current = listClassroomResources(db, { classroomId: input.classroomId }).find((resource) => resource.id === input.resourceId);
   if (!current) return null;
   return createClassroomResourceVersion(db, {
@@ -449,13 +448,13 @@ export function moveClassroomResourceToFolder(db: DatabaseSync, input: { classro
   });
 }
 
-export function archiveClassroomResource(db: DatabaseSync, input: { classroomId: string; resourceId: string }) {
+export function archiveClassroomResource(db: RuntimeDatabaseLike, input: { classroomId: string; resourceId: string }) {
   const now = new Date().toISOString();
   return db.prepare("UPDATE score_classroom_resources SET archived_at = ?, updated_at = ? WHERE id = ? AND classroom_id = ? AND archived_at IS NULL")
     .run(now, now, input.resourceId, input.classroomId).changes > 0;
 }
 
-export function canReadClassroomResource(db: DatabaseSync, input: { resourceId: string; userId: string }) {
+export function canReadClassroomResource(db: RuntimeDatabaseLike, input: { resourceId: string; userId: string }) {
   const resource = db.prepare(`
     SELECT resources.classroom_id AS classroomId, resources.visibility,
            resources.version_group_id AS versionGroupId, resources.archived_at AS archivedAt,
@@ -507,12 +506,12 @@ export function canReadClassroomResource(db: DatabaseSync, input: { resourceId: 
   `).get(resource.classroomId, resource.versionGroupId, ...memberships.map((membership) => membership.id)));
 }
 
-export function linkStudentMembershipsByEmail(db: DatabaseSync, userId: string, email: string) {
+export function linkStudentMembershipsByEmail(db: RuntimeDatabaseLike, userId: string, email: string) {
   return db.prepare("UPDATE score_classroom_students SET user_id = ?, status = 'active', updated_at = ? WHERE lower(contact_email) = lower(?) AND status IN ('invited', 'active')")
     .run(userId, new Date().toISOString(), email).changes;
 }
 
-export function listStudentGuardians(db: DatabaseSync, studentId: string) {
+export function listStudentGuardians(db: RuntimeDatabaseLike, studentId: string) {
   return db.prepare(`
     SELECT id, student_id AS studentId, user_id AS userId, invited_email AS invitedEmail,
            display_name AS displayName, relationship, status, created_at AS createdAt, accepted_at AS acceptedAt
@@ -522,7 +521,7 @@ export function listStudentGuardians(db: DatabaseSync, studentId: string) {
   `).all(studentId);
 }
 
-export function inviteStudentGuardian(db: DatabaseSync, input: { studentId: string; invitedByUserId: string; email: string; displayName: string; relationship?: string | null }) {
+export function inviteStudentGuardian(db: RuntimeDatabaseLike, input: { studentId: string; invitedByUserId: string; email: string; displayName: string; relationship?: string | null }) {
   const email = input.email.trim().toLocaleLowerCase();
   const student = db.prepare("SELECT contact_email AS contactEmail FROM score_classroom_students WHERE id = ? AND status != 'archived'")
     .get(input.studentId) as { contactEmail: string | null } | undefined;
@@ -543,10 +542,10 @@ export function inviteStudentGuardian(db: DatabaseSync, input: { studentId: stri
     createId(), input.studentId, user?.id ?? null, email, input.displayName, input.relationship ?? null,
     user ? "active" : "invited", input.invitedByUserId, now, now, user ? now : null,
   );
-  return listStudentGuardians(db, input.studentId).find((guardian) => (guardian as { invitedEmail: string }).invitedEmail === email)!;
+  return listStudentGuardians(db, input.studentId).find((guardian: unknown) => (guardian as { invitedEmail: string }).invitedEmail === email)!;
 }
 
-export function removeStudentGuardian(db: DatabaseSync, input: { studentId: string; guardianId: string }) {
+export function removeStudentGuardian(db: RuntimeDatabaseLike, input: { studentId: string; guardianId: string }) {
   const now = new Date().toISOString();
   return db.prepare("UPDATE score_student_guardians SET status = 'removed', removed_at = ?, updated_at = ? WHERE id = ? AND student_id = ? AND removed_at IS NULL")
     .run(now, now, input.guardianId, input.studentId).changes > 0;
@@ -582,7 +581,7 @@ function mapStudentExitRequest(row: StudentExitRequestRow) {
   };
 }
 
-export function findLatestStudentExitRequest(db: DatabaseSync, studentId: string) {
+export function findLatestStudentExitRequest(db: RuntimeDatabaseLike, studentId: string) {
   const request = db.prepare(`
     SELECT id, classroom_id, student_id, requested_by_user_id, status, reason, requested_at,
            updated_at, decided_by_guardian_id, decided_at, cancelled_at
@@ -593,7 +592,7 @@ export function findLatestStudentExitRequest(db: DatabaseSync, studentId: string
   return request ? mapStudentExitRequest(request) : null;
 }
 
-function findStudentExitRequestById(db: DatabaseSync, requestId: string) {
+function findStudentExitRequestById(db: RuntimeDatabaseLike, requestId: string) {
   const request = db.prepare(`
     SELECT id, classroom_id, student_id, requested_by_user_id, status, reason, requested_at,
            updated_at, decided_by_guardian_id, decided_at, cancelled_at
@@ -602,7 +601,7 @@ function findStudentExitRequestById(db: DatabaseSync, requestId: string) {
   return request ? mapStudentExitRequest(request) : null;
 }
 
-export function createStudentExitRequest(db: DatabaseSync, input: { classroomId: string; userId: string; reason?: string | null }) {
+export function createStudentExitRequest(db: RuntimeDatabaseLike, input: { classroomId: string; userId: string; reason?: string | null }) {
   const now = new Date().toISOString();
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -636,7 +635,7 @@ export function createStudentExitRequest(db: DatabaseSync, input: { classroomId:
   }
 }
 
-export function cancelStudentExitRequest(db: DatabaseSync, input: { requestId: string; userId: string }) {
+export function cancelStudentExitRequest(db: RuntimeDatabaseLike, input: { requestId: string; userId: string }) {
   const now = new Date().toISOString();
   const request = db.prepare(`
     SELECT requests.student_id AS studentId
@@ -654,7 +653,7 @@ export function cancelStudentExitRequest(db: DatabaseSync, input: { requestId: s
   return updated.changes === 1 ? findStudentExitRequestById(db, input.requestId) : null;
 }
 
-export function decideStudentExitRequest(db: DatabaseSync, input: { requestId: string; guardianUserId: string; decision: "approve" | "reject" }) {
+export function decideStudentExitRequest(db: RuntimeDatabaseLike, input: { requestId: string; guardianUserId: string; decision: "approve" | "reject" }) {
   const now = new Date().toISOString();
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -689,7 +688,7 @@ export function decideStudentExitRequest(db: DatabaseSync, input: { requestId: s
   }
 }
 
-export function linkGuardianMembershipsByEmail(db: DatabaseSync, userId: string, email: string) {
+export function linkGuardianMembershipsByEmail(db: RuntimeDatabaseLike, userId: string, email: string) {
   const now = new Date().toISOString();
   return db.prepare(`
     UPDATE score_student_guardians
@@ -707,7 +706,7 @@ type EducationHomeMembership = {
   guardian_id: string | null;
 };
 
-function listEducationNotifications(db: DatabaseSync, classroom: EducationHomeMembership) {
+function listEducationNotifications(db: RuntimeDatabaseLike, classroom: EducationHomeMembership) {
   if (classroom.role === "guardian") {
     return db.prepare(`
       SELECT notifications.id, notifications.title, notifications.body, notifications.published_at AS publishedAt,
@@ -732,7 +731,7 @@ function listEducationNotifications(db: DatabaseSync, classroom: EducationHomeMe
   `).all(classroom.student_id, classroom.id);
 }
 
-export function getStudentEducationHome(db: DatabaseSync, userId: string) {
+export function getStudentEducationHome(db: RuntimeDatabaseLike, userId: string) {
   const memberships = db.prepare(`
     SELECT students.id AS student_id, classrooms.id, classrooms.name,
            students.display_name AS subject_student_name, 'student' AS role, NULL AS guardian_id
@@ -781,7 +780,7 @@ export function getStudentEducationHome(db: DatabaseSync, userId: string) {
   };
 }
 
-export function markStudentNotificationRead(db: DatabaseSync, userId: string, notificationId: string) {
+export function markStudentNotificationRead(db: RuntimeDatabaseLike, userId: string, notificationId: string) {
   const membership = db.prepare(`
     SELECT students.id AS student_id
     FROM score_classroom_notifications notifications

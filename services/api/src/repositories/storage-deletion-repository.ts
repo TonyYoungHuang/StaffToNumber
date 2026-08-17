@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import { objectStorage } from "../lib/object-storage.js";
 
 export type StorageDeletionSource = {
@@ -9,7 +9,7 @@ export type StorageDeletionSource = {
   storage_key: string | null;
 };
 
-export function enqueueStorageDeletion(db: DatabaseSync, file: StorageDeletionSource, timestamp = new Date().toISOString()) {
+export function enqueueStorageDeletion(db: RuntimeDatabaseLike, file: StorageDeletionSource, timestamp = new Date().toISOString()) {
   db.prepare(`
     INSERT INTO storage_deletion_queue (
       id, source_file_id, storage_backend, storage_path, storage_key, status, attempts,
@@ -17,7 +17,6 @@ export function enqueueStorageDeletion(db: DatabaseSync, file: StorageDeletionSo
     ) VALUES (?, ?, ?, ?, ?, 'queued', 0, ?, NULL, NULL, ?, ?)
   `).run(randomUUID(), file.id, file.storage_backend, file.storage_path, file.storage_key, timestamp, timestamp, timestamp);
 }
-
 type ClaimedDeletion = {
   id: string;
   storage_backend: "local" | "s3";
@@ -26,7 +25,7 @@ type ClaimedDeletion = {
   attempts: number;
 };
 
-export async function processStorageDeletionQueue(db: DatabaseSync, input?: {
+export async function processStorageDeletionQueue(db: RuntimeDatabaseLike, input?: {
   limit?: number;
   lockTimeoutMs?: number;
   retryBaseMs?: number;

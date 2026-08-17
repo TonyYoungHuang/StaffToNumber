@@ -1,0 +1,13 @@
+{
+  "domain": "scoretransposer.com",
+  "releaseCommit": "replace-with-full-git-commit",
+  "approvedAt": "2026-08-11T00:00:00.000Z",
+  "approvedBy": "replace-with-product-owner",
+  "postgresRuntimePrimary": true,
+  "backupRestoreDrillPassed": true,
+  "paymentMode": "disabled-until-stripe-live",
+  "paymentProductionDisabled": true,
+  "paymentProductionDrillPassed": false,
+  "musicEngineQualificationPassed": true,
+  "sevenDaySoakPassed": true
+}

@@ -120,6 +120,27 @@ test("authenticates, persists, audits, and reloads a Yjs score operation over We
   db.close();
 });
 
+test("reports database readiness instead of the Hocuspocus welcome page", async () => {
+  const db = database();
+  const port = await freePort();
+  const server = createCollaborationServer(db, { port, address: "127.0.0.1" });
+  await server.listen();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/health`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      status: "ready",
+      service: "collaboration",
+      databasePrimary: "unknown",
+      databaseSchema: "main",
+      dependencies: { database: "ready", redis: "disabled" },
+    });
+  } finally {
+    await server.destroy();
+    db.close();
+  }
+});
+
 test("compacts operation history into a bounded restart-safe Yjs snapshot", async () => {
   const db = database();
   const firstPort = await freePort();

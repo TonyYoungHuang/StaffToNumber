@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { ScoreJobType } from "@score/shared";
 
 export type ClaimedScoreJob = {
@@ -12,7 +12,7 @@ export type ClaimedScoreJob = {
   trace_id: string | null;
 };
 
-export function claimNextScoreJob(db: DatabaseSync, timestamp: string): ClaimedScoreJob | undefined {
+export function claimNextScoreJob(db: RuntimeDatabaseLike, timestamp: string): ClaimedScoreJob | undefined {
   return db.prepare(
     `
       UPDATE score_jobs
@@ -34,8 +34,7 @@ export function claimNextScoreJob(db: DatabaseSync, timestamp: string): ClaimedS
     `,
   ).get(timestamp, timestamp) as ClaimedScoreJob | undefined;
 }
-
-export function claimScoreJobById(db: DatabaseSync, input: { timestamp: string; jobId: string; brokerJobId: string }) {
+export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: string; jobId: string; brokerJobId: string }) {
   return db.prepare(`
     UPDATE score_jobs
     SET status = 'processing',

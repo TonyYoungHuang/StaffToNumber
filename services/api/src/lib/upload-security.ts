@@ -499,6 +499,11 @@ function resolveUploadPath(root: string, candidate: string) {
 }
 
 export function uploadErrorResponse(error: unknown) {
+  if (error && typeof error === "object" && "code" in error && "statusCode" in error
+    && (error.code === "PLAN_STORAGE_QUOTA_EXCEEDED" || error.code === "PLAN_JOB_QUOTA_EXCEEDED")) {
+    const quotaError = error as { message: string; code: string; statusCode: number; quota?: unknown };
+    return { statusCode: quotaError.statusCode, body: { error: quotaError.message, code: quotaError.code, quota: quotaError.quota } };
+  }
   if (error instanceof ObjectStorageUnavailableError) {
     return { statusCode: 503 as const, body: { error: error.message, code: error.code } };
   }

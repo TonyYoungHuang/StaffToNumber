@@ -16,10 +16,10 @@
 - 简谱增加 CC0 原创出版级基准清单、来源/许可证/SHA-256 门禁和复调、连音、歌词、装饰音、弱起、散板诊断；真实合法出版谱抽样规模仍未达到商用金标要求。
 - 音频转谱候选增加按场景量化、短音/低力度清理、同音起点去重、和弦归一、声部分配、人工复核警告和链接版权依据；复音分离模型、钢琴/多乐器分场景质量报告仍未完成。
 - 文件上传已支持本地及 S3 原生 multipart 的创建、分片校验、重复分片、断点续传、乱序完成和中止；API 完成后仍执行原有魔数、病毒和媒体安全检查。生产 bucket 生命周期、版本化、跨区复制和恢复演练仍未完成。
-- PostgreSQL 已从一次性迁移/核对扩展为 SQLite trigger outbox 持续镜像，支持租约、幂等 upsert/delete、重试和 dead 状态；它仍是 SQLite 主库加 PostgreSQL 热镜像，不是分域原生 PostgreSQL 仓储，尚不能执行无维护窗口流量切换。
+- PostgreSQL 已成为 API、Worker、Collaboration 在 staging/production 的强制运行时主仓储：统一 adapter 绑定显式 schema 与事务连接，三个服务启动时校验依赖表，Worker 具备不消费任务的事务 readiness 模式；SQLite 仅保留本地开发、测试和历史迁移来源。真实 Neon staging 已通过 61 表目录核对以及写入/读取/回滚探针，后续仍需完成备份恢复、连接预算、多副本和故障切换演练。
 - Stripe/Paddle 已建立签名 Webhook 幂等账本、订阅/发票/退款/续费失败/取消状态、个人订阅权益、学校席位容量与分配、Stripe Billing Portal、账单页和隐私生命周期。真实 Stripe/Paddle 沙箱与生产小额交易、Paddle 门户和税务/发票运营仍是外部验收项。
 - LMS 已从静态 draft 提升为 LTI 1.3：OIDC login、一次性 state/nonce、平台 JWKS 签名、issuer/audience/deployment/target-link/version 校验、verified 状态、工具 JWKS、OAuth2 client assertion、NRPS 名单同步和 AGS 成绩写回均已实现并有本地签名测试。Deep Linking、作业发布、token 轮换以及至少一个真实 Canvas/Moodle 沙箱全流程仍未验收。
-- 当前仍不得标记“商用完成”：Prometheus/Alertmanager/Grafana/Loki/Alloy 集中指标、日志、基础告警和运行手册已落地为私有 Compose 覆盖层，但未在 staging 验收。API 请求、任务 outbox/BullMQ、Worker 和协作更新现已持久化可关联的 request/trace ID；仍未接入跨服务 OpenTelemetry collector 与值班平台升级策略。真实工具服务器、原生 PostgreSQL 切换、对象存储跨区灾备、真实设备与生产 soak、SoundFont 商用许可、真实支付/LMS 沙箱、官网/App/API/SEO 统一生产发布仍未闭合。
+- 当前仍不得标记“商用完成”：Prometheus/Alertmanager/Grafana/Loki/Alloy 集中指标、日志、基础告警和运行手册已落地为私有 Compose 覆盖层，但未在 staging 验收。API 请求、任务 outbox/BullMQ、Worker 和协作更新现已持久化可关联的 request/trace ID；仍未接入跨服务 OpenTelemetry collector 与值班平台升级策略。PostgreSQL 运行时阻断已解除，但真实工具 Container、对象存储跨区灾备、数据库备份恢复/故障切换、真实设备与生产 soak、SoundFont 商用许可、真实支付/LMS 沙箱、官网/App/API/SEO 统一生产发布仍未闭合。
 
 ## 1. 产品目标
 
@@ -87,11 +87,11 @@
 | 移调 | 93% | 开发中 | 已有目标调/音程/八度、七种常用调式、异名同音策略、12 类移调乐器双向模式、引擎诊断、谱号舒适度建议和 music21 成功/超时/损坏输出测试合同；当前主机未安装 music21，真实分声部工具矩阵尚未执行。 |
 | 播放与练习 | 92% | 开发中 | 已有嵌套反复、任意次数/多结尾、D.C./D.S./Fine/Coda、谱面双向定位、小节内 tempo event、MIDI tempo map 和 30 分钟积分无算术漂移门禁；仍缺真实 AudioContext 长时漂移、休眠恢复和目标设备矩阵。 |
 | 导出和高质量音频 | 85% | 本地可用 | 不可变版本快照、MIDI/WAV/MP3 队列、FluidSynth/SoundFont/ffmpeg 参数、许可证清单门禁、声学 golden 合同及 PDF/SVG/PNG 格式校验已实现；真实 MuseScore/FluidSynth 工具矩阵、商用 SoundFont 法务批准和跨平台 PDF 回开仍未完成。 |
-| 实时协作与教学 | 97% | 开发中 | 协作层已完成 canonical command、离线队列、冲突解决、共享撤销/重做、20 人并发和 Redis 双实例同步；教学层已有角色、学生/监护人中心、资源库、通知，并实现 LTI 1.3 OIDC/JWKS、NRPS 名单同步和 AGS 成绩写回。仍缺真实 Canvas/Moodle 沙箱、Deep Linking、短信/推送、跨主机持久数据库和生产故障演练。 |
+| 实时协作与教学 | 97% | 开发中 | 协作层已完成 canonical command、离线队列、冲突解决、共享撤销/重做、20 人并发、Redis 双实例同步和 PostgreSQL 持久仓储；教学层已有角色、学生/监护人中心、资源库、通知，并实现 LTI 1.3 OIDC/JWKS、NRPS 名单同步和 AGS 成绩写回。仍缺真实 Canvas/Moodle 沙箱、Deep Linking、短信/推送和生产故障演练。 |
 | 音频转谱 | 55% | 开发中 | 已有版权依据、私网阻断、场景量化、短音/低力度清理、同音去重、和弦归一、声部分配和人工复核警告；仍缺复音分离模型、真实 Basic Pitch 工具矩阵和分场景质量金标。 |
 | SEO 本地实现 | 93% | 本地可用 | 10 个功能页已有独立真实截图、20 个原生格式案例、完整 schema/内链审计、站长快照与内容哈希审批；仍缺稳定 zh-CN URL/hreflang、站长 API 直连和真人最终批准。 |
 | SEO 线上状态 | 40% | 待统一部署 | 本地官网口径、sitemap 和功能页已更新，但按用户要求尚未重新生产发布，也未完成 Search Console 生产验证。 |
-| 生产运维 | 68% | 开发中 | S3 兼容存储、可恢复 multipart、SQLite -> PostgreSQL 全库迁移/核对/受保护回滚与持续镜像、事务 outbox + BullMQ、健康检查和删除 outbox已具备；Prometheus/Alertmanager/Grafana/Loki/Alloy 与值班手册已配置。API/Worker/协作业务仓储仍以 SQLite 为主，且缺 staging 观测演练、完整 trace、跨区对象存储恢复、真实设备 soak 和统一生产发布。 |
+| 生产运维 | 76% | 开发中 | S3 兼容存储、可恢复 multipart、SQLite -> PostgreSQL 迁移/核对/受保护回滚、PostgreSQL 强制运行时主仓储、事务 outbox + BullMQ、健康检查和删除 outbox 已具备；Prometheus/Alertmanager/Grafana/Loki/Alloy 与值班手册已配置。仍缺 staging 观测演练、数据库与跨区对象存储恢复、完整 trace、真实设备 soak 和统一生产发布。 |
 
 ### 4.1 已有且应保留的基础
 
@@ -216,7 +216,7 @@ P0 未全部完成前，不进入公开商业推广。
 
 验收：双写或迁移演练零丢失；随机抽样文件校验和一致；API/Worker 可水平扩展；备份恢复演练通过。
 
-当前进度（2026-07-17）：**对象存储、可恢复分片上传、SQLite -> PostgreSQL 一次性迁移/持续核对/持续镜像和 BullMQ 持久任务 broker 已本地闭合，P0-03 整体约 86%；PostgreSQL 原生分域仓储、流量切换和生产恢复演练尚未完成**。
+当前进度（2026-08-15）：**对象存储、可恢复分片上传、SQLite -> PostgreSQL 迁移/核对/回滚、API/Worker/Collaboration PostgreSQL 运行时主仓储和 BullMQ 持久任务 broker 已闭合，P0-03 整体约 93%；生产 bucket 生命周期/跨区备份、数据库恢复/故障切换和多副本 soak 尚未完成**。
 
 - 已完成：数据库 schema v15 为文件增加 `storage_backend`、`storage_key` 和 SHA-256，新增共享 `@score/storage` 包；本地开发保持文件系统后端，生产 API/Worker 强制 `STORAGE_BACKEND=s3`，支持 AWS S3、MinIO 和兼容服务的 endpoint、path-style、IAM/静态凭据、SSE-S3 或 KMS 配置。
 - 已完成：所有新上传在本地隔离区完成魔数、杀毒和媒体净化后才进入私有对象存储；API 保留服务端鉴权流式下载，不暴露公开 bucket 或对象直链。Worker 按任务把输入物化到隔离工作目录并校验 SHA-256，Audiveris、Basic Pitch、MuseScore、FluidSynth 和 ffmpeg 仍只接收真实本地路径，产物完成后回传对象存储。
@@ -228,7 +228,8 @@ P0 未全部完成前，不进入公开商业推广。
 - 自动化证据：本地/S3 mock 覆盖私有上传、加密选项、流读取、存在检查、校验和物化、安全删除和租户对象键；真实 MinIO 覆盖建桶、健康检查、上传、Head、下载、SHA-256 物化和删除全生命周期。真实 PostgreSQL 17 集成用例覆盖 BLOB、部分唯一索引、外键、错误回滚确认拒绝、成功回滚与迁移后 parity；最新 schema v16 official online backup 的 53 张表、205 行已通过命令级迁移和独立 shadow 核对，人为修改 `users` 一行时核对器正确失败，恢复后再次全绿，证据保存在 `artifacts/postgres-runtime-shadow-migration.json`、`artifacts/postgres-runtime-shadow-parity.json` 和 `artifacts/postgres-runtime-shadow-drift.json`。真实 Redis 7.4 覆盖 outbox 发布、稳定 broker job ID、首次处理崩溃后的 BullMQ 重投、同一 dispatch 恢复、数据库单次尝试计数，以及 AOF 重启后数据保留。
 - 已完成：SQLite trigger outbox 持续捕获带主键业务表的 insert/update/delete，镜像进程采用租约、幂等 PostgreSQL upsert/delete、指数重试和 dead 状态；Compose 提供独立 `postgres-mirror` profile。该模式用于热镜像和迁移核对，不伪装成 PostgreSQL 已成为主库。
 - 已完成：API 提供可恢复上传会话、分片状态、重复分片覆盖、连续性/总大小校验、完成和中止；`@score/storage` 在本地和 S3 原生 multipart 上实现同一合同，并覆盖乱序完成、校验和与 S3 command 测试。
-- 未完成：API、Worker 和 Collaboration 的同步 SQLite 仓储尚未逐域迁移为异步 PostgreSQL 仓储，尚无分域流量切换和业务级回退。生产 bucket 创建、最小权限 IAM、版本化/生命周期/跨区备份、历史数据实迁、备份恢复演练，以及大文件、供应商限流、网络抖动和多 Worker 并发 soak 仍待部署阶段执行。部署完成前不得将 P0-03 标记为预发布通过或商用完成。
+- 已完成：新增共享 `@score/runtime-database`，在单事务连接上把现有同步仓储合同运行于 PostgreSQL；staging/production 强制 PostgreSQL 且无 SQLite 回退，API/Collaboration 启动门禁和 Worker 无消费 readiness 事务已在 Neon `scoretransposer` schema 通过。该兼容层会同步等待数据库响应，生产并发上限必须由连接预算和 Container 压测确定，后续可逐域演进为原生异步仓储但不再阻断本次主库切换。
+- 未完成：生产 bucket 版本化/生命周期/跨区备份、历史数据实迁、PostgreSQL 备份恢复与故障切换演练，以及大文件、供应商限流、网络抖动和多 Worker/多 API 并发 soak 仍待部署阶段执行。完成这些证据前不得将 P0-03 标记为商用完成。
 
 ### P0-04 OMR 候选修订安全模型
 
@@ -584,7 +585,7 @@ P0 未全部完成前，不进入公开商业推广。
 - 已完成：comment-share 和 edit-share 拥有独立谱面批注工作区，可在 OSMD 中点选音符后把评论绑定到当前 Score JSON 的稳定 event ID，也可评论整份谱；服务端拒绝不存在的小节/音符目标。view-share 不读取或写入评论；所有者端显示账号/链接身份、反向定位目标，并可标记解决或重新打开，历史批注不保存或暴露 share token。
 - 自动化证据：App 5 个 Yjs 用例覆盖共享类型、重复幂等、离线双端合并、在线/离线冲突和当前修订操作选择，另有 2 个离线队列用例覆盖无 token 范围哈希、去重、顺序和重基线；API 有 3 个 command 单元测试、4 个历史逆向单元测试和 7 个 command/history 仓储与路由集成测试，覆盖保留他人无关修改、重做、重复请求、越权、同事件冲突、edit/view 分享权限；Collaboration 6 个用例覆盖角色解析、真实 WebSocket 同步/持久化/重载/审计、只读客户端写入阻断、有界快照、冲突保留和畸形值清理；Playwright 覆盖 owner 正式编辑、edit/view 分享权限、同目标冲突的两种处置、真实断网入队、恢复网络同步、owner 多人撤销/重做和 edit-share 撤销/重做。
 - P2-02 最新门禁：全仓 252 项测试通过（Storage 3、API 160、Worker 26、Collaboration 10、WWW 6、App 47），另有 5 项外部依赖门禁在未配置时显式跳过、19 项 Playwright E2E、全 workspace typecheck、生产 build、363 文件 lint、365 文件 encoding audit、`npm audit` 和 741 产物 release manifest 校验通过；当前数据库 schema 16、Score JSON schema 2，官网生成 27 个页面，应用生成 21 个页面，后端 Compose 配置展开通过。
-- 未完成：不可变协作更新审计表的长期归档、保留策略和清理作业；SQLite 和本地任务队列迁移至可跨主机的 PostgreSQL 与持久 broker；生产 S3 历史数据实迁与恢复演练；真实浏览器休眠/唤醒、移动网络切换、Redis 故障/恢复、协作节点滚动重启和跨可用区延迟的生产级 soak/failover 演练。Redis 只负责跨实例同步和锁，不替代持久数据库。
+- 未完成：不可变协作更新审计表的长期归档、保留策略和清理作业；生产 R2/S3 历史数据实迁与恢复演练；PostgreSQL/Redis 故障恢复；真实浏览器休眠/唤醒、移动网络切换、协作节点滚动重启和跨可用区延迟的生产级 soak/failover 演练。协作持久数据现由 PostgreSQL 保存，Redis 只负责跨实例同步和锁，不替代持久数据库。
 
 ### P2-03 完整课堂和机构权限
 

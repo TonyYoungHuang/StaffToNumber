@@ -51,6 +51,7 @@ export type PostgresMigrationReport = {
   targetSchema: string;
   tables: PostgresMigrationTableReport[];
   totalRows: number;
+  runtimeTriggers: number;
   verified: boolean;
 };
 
@@ -254,6 +255,107 @@ async function createForeignKeys(client: PoolClient, db: DatabaseSync, table: st
   return grouped.size;
 }
 
+async function createRuntimeTriggers(client: PoolClient, targetSchema: string, tables: Set<string>) {
+  const required = ["job_dispatch_outbox", "jobs", "score_jobs"];
+  const present = required.filter((table) => tables.has(table));
+  if (present.length === 0) return 0;
+  if (present.length !== required.length) {
+    throw new Error(`PostgreSQL runtime triggers require all tables: ${required.join(", ")}.`);
+  }
+
+  const schema = quoteIdentifier(targetSchema);
+  const outbox = `${schema}.${quoteIdentifier("job_dispatch_outbox")}`;
+  const enqueueFunction = `${schema}.${quoteIdentifier("scoretransposer_enqueue_job_dispatch")}`;
+  const acknowledgeFunction = `${schema}.${quoteIdentifier("scoretransposer_acknowledge_job_dispatch")}`;
+
+  await client.query(`
+    CREATE OR REPLACE FUNCTION ${enqueueFunction}()
+    RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path = pg_catalog
+    AS $function$
+    BEGIN
+      INSERT INTO ${outbox} (
+        id, queue_name, job_family, job_id, status, attempts, next_attempt_at,
+        locked_at, dispatched_at, acknowledged_at, broker_job_id, last_error, created_at, updated_at
+      ) VALUES (
+        md5(random()::text || clock_timestamp()::text || NEW.id || TG_ARGV[0]),
+        'score-processing', TG_ARGV[0], NEW.id, 'queued', 0, NEW.updated_at,
+        NULL, NULL, NULL, NULL, NULL, NEW.updated_at, NEW.updated_at
+      );
+      RETURN NEW;
+    END;
+    $function$
+  `);
+  await client.query(`
+    CREATE OR REPLACE FUNCTION ${acknowledgeFunction}()
+    RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path = pg_catalog
+    AS $function$
+    BEGIN
+      UPDATE ${outbox}
+      SET status = 'acknowledged', acknowledged_at = NEW.updated_at, locked_at = NULL,
+          last_error = NULL, updated_at = NEW.updated_at
+      WHERE job_family = TG_ARGV[0] AND job_id = NEW.id
+        AND status IN ('queued', 'processing', 'dispatched');
+      RETURN NEW;
+    END;
+    $function$
+  `);
+
+  const definitions = [
+    ["trg_jobs_dispatch_insert", "jobs", "AFTER INSERT", "NEW.status = 'queued'", enqueueFunction, "legacy"],
+    ["trg_jobs_dispatch_retry", "jobs", "AFTER UPDATE OF status", "NEW.status = 'queued' AND OLD.status <> 'queued'", enqueueFunction, "legacy"],
+    ["trg_jobs_dispatch_ack", "jobs", "AFTER UPDATE OF status", "NEW.status = 'processing' AND OLD.status = 'queued'", acknowledgeFunction, "legacy"],
+    ["trg_score_jobs_dispatch_insert", "score_jobs", "AFTER INSERT", "NEW.status = 'queued'", enqueueFunction, "score"],
+    ["trg_score_jobs_dispatch_retry", "score_jobs", "AFTER UPDATE OF status", "NEW.status = 'queued' AND OLD.status <> 'queued'", enqueueFunction, "score"],
+    ["trg_score_jobs_dispatch_ack", "score_jobs", "AFTER UPDATE OF status", "NEW.status = 'processing' AND OLD.status = 'queued'", acknowledgeFunction, "score"],
+  ] as const;
+
+  for (const [name, table, timing, condition, triggerFunction, family] of definitions) {
+    await client.query(
+      `DROP TRIGGER IF EXISTS ${quoteIdentifier(name)} ON ${schema}.${quoteIdentifier(table)}`,
+    );
+    await client.query(`
+      CREATE TRIGGER ${quoteIdentifier(name)}
+      ${timing} ON ${schema}.${quoteIdentifier(table)}
+      FOR EACH ROW WHEN (${condition})
+      EXECUTE FUNCTION ${triggerFunction}('${family}')
+    `);
+  }
+  return definitions.length;
+}
+
+export async function ensurePostgresRuntimeTriggers(input: {
+  target: PoolClient;
+  targetSchema: string;
+}) {
+  assertSchemaName(input.targetSchema);
+  await input.target.query("BEGIN");
+  try {
+    await input.target.query(
+      "SELECT pg_advisory_xact_lock(hashtext($1))",
+      [`score-runtime-triggers:${input.targetSchema}`],
+    );
+    const tableResult = await input.target.query<{ table_name: string }>(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = $1 AND table_type = 'BASE TABLE'
+    `, [input.targetSchema]);
+    const runtimeTriggers = await createRuntimeTriggers(
+      input.target,
+      input.targetSchema,
+      new Set(tableResult.rows.map((row) => row.table_name)),
+    );
+    await input.target.query("COMMIT");
+    return { targetSchema: input.targetSchema, runtimeTriggers };
+  } catch (error) {
+    await input.target.query("ROLLBACK");
+    throw error;
+  }
+}
+
 async function insertTableRows(input: {
   source: DatabaseSync;
   target: PoolClient;
@@ -303,7 +405,9 @@ async function checksumTarget(client: PoolClient, table: string, columns: Sqlite
 function checksumSource(db: DatabaseSync, table: string, columns: SqliteColumn[]) {
   const names = columns.map((column) => quoteIdentifier(column.name));
   const checksum = createChecksumAccumulator();
-  for (const row of db.prepare(`SELECT ${names.join(", ")} FROM ${quoteIdentifier(table)}`).iterate() as Iterable<Record<string, unknown>>) {
+  // Keep the statement alive while async PostgreSQL verification yields between tables.
+  const statement = db.prepare(`SELECT ${names.join(", ")} FROM ${quoteIdentifier(table)}`);
+  for (const row of statement.iterate() as Iterable<Record<string, unknown>>) {
     checksum.add(row, columns);
   }
   return checksum.result();
@@ -445,6 +549,11 @@ export async function migrateSqliteToPostgres(input: {
         throw new Error(`PostgreSQL verification failed for ${report.table}: source ${report.rows}/${report.sourceChecksum}, target ${target.rows}/${target.checksum}.`);
       }
     }
+    const runtimeTriggers = await createRuntimeTriggers(
+      input.target,
+      input.targetSchema,
+      new Set(tables.map((table) => table.name)),
+    );
     input.source.exec("COMMIT");
     sourceTransactionOpen = false;
     await input.target.query("COMMIT");
@@ -454,6 +563,7 @@ export async function migrateSqliteToPostgres(input: {
       targetSchema: input.targetSchema,
       tables: reports,
       totalRows: reports.reduce((sum, report) => sum + report.rows, 0),
+      runtimeTriggers,
       verified: true,
     } satisfies PostgresMigrationReport;
   } catch (error) {

@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { JobBrokerPayload } from "@score/shared";
 import { claimLegacyJobById, type ClaimedLegacyJob } from "./legacy-job-claim.js";
 import { claimScoreJobById, type ClaimedScoreJob } from "./score-job-claim.js";
@@ -9,7 +9,7 @@ export type BrokerJobLike = {
 };
 
 export async function consumeBrokerJob(input: {
-  db: DatabaseSync;
+  db: RuntimeDatabaseLike;
   brokerJob: BrokerJobLike;
   now: () => string;
   processScoreJob: (job: ClaimedScoreJob) => Promise<void>;

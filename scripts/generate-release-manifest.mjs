@@ -38,7 +38,7 @@ function collectFiles(directory, base = directory) {
 }
 
 const rootPackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
-const packagePaths = ["apps/www", "apps/app", "services/api", "services/worker", "services/collaboration", "packages/shared", "packages/ui"];
+const packagePaths = ["apps/www", "apps/app", "services/api", "services/worker", "services/collaboration", "services/cloudflare-gateway", "packages/shared", "packages/ui"];
 const packages = Object.fromEntries(packagePaths.map((directory) => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, directory, "package.json"), "utf8"));
   return [manifest.name, manifest.version];

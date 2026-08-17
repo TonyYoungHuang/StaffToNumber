@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "soundFonts": [
+    {
+      "name": "FluidR3 General MIDI",
+      "path": "/usr/share/sounds/sf2/FluidR3_GM.sf2",
+      "sha256": "74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0",
+      "licenseId": "MIT",
+      "licenseNoticePath": "/srv/scoretransposer/deploy/backend/licenses/FluidR3_GM-LICENSE.txt",
+      "sourceUrl": "https://sources.debian.org/src/fluid-soundfont/3.1-5.2/debian/copyright/",
+      "commercialUseApproved": true,
+      "reviewedAt": "2026-08-17T00:00:00.000Z",
+      "reviewedBy": "ScoreTransposer engineering open-source license review",
+      "reviewNote": "MIT terms permit commercial use when the copyright and permission notice are preserved. This is an engineering license review, not external legal advice."
+    }
+  ]
+}

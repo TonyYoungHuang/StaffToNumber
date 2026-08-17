@@ -4,6 +4,7 @@ import { db, initDb } from "../db.js";
 import {
   assignBillingSeat,
   findActiveSubscriptionEntitlement,
+  markBillingSubscriptionCancellation,
   listBillingForUser,
   processBillingWebhookEvent,
   revokeBillingSeat,
@@ -151,4 +152,17 @@ test("school subscription enforces seat capacity and grants active members acces
   assert.equal(findActiveSubscriptionEntitlement(db, firstId), undefined);
   assignBillingSeat(db, { subscriptionId: subscription.id, organizationId, email: `third-${suffix}@example.test`, userId: thirdId });
   assert.ok(findActiveSubscriptionEntitlement(db, thirdId));
+  assert.throws(() => assignBillingSeat(db, {
+    subscriptionId: subscription.id,
+    organizationId,
+    email: `first-${suffix}@example.test`,
+    userId: firstId,
+  }), /No subscription seats/u);
+  assert.equal(markBillingSubscriptionCancellation(db, subscription.id, true), true);
+  const scheduled = db.prepare("SELECT status, cancel_at_period_end AS cancelAtPeriodEnd FROM billing_subscriptions WHERE id = ?")
+    .get(subscription.id) as { status: string; cancelAtPeriodEnd: number };
+  assert.equal(scheduled.status, "active");
+  assert.equal(scheduled.cancelAtPeriodEnd, 1);
+  assert.equal(markBillingSubscriptionCancellation(db, subscription.id, false), true);
+  assert.equal((db.prepare("SELECT status FROM billing_subscriptions WHERE id = ?").get(subscription.id) as { status: string }).status, "cancelled");
 });

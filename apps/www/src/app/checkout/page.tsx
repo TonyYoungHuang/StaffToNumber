@@ -43,13 +43,13 @@ export default async function CheckoutPage() {
         },
         {
           step: "02",
-          title: "系统确认订单并发放激活码",
-          body: "付款成功后，成功页会校验支付结果，并展示为这笔订单生成的一年期激活码。",
+          title: "系统确认订阅并绑定账户",
+          body: "付款成功后，系统校验 Stripe 事件，并按付款邮箱把订阅权益绑定到已注册账户。",
         },
         {
           step: "03",
-          title: "到应用内兑换并开始使用",
-          body: "把激活码带到应用内兑换，后续上传、任务和结果下载也都在应用里完成。",
+          title: "登录应用并开始使用",
+          body: "使用付款邮箱登录应用，后续上传、任务、用量与订阅管理都在账户中完成。",
         },
       ]
     : [
@@ -60,13 +60,13 @@ export default async function CheckoutPage() {
         },
         {
           step: "02",
-          title: "The system confirms the order and issues a code",
-          body: "After payment, the success page checks the provider response and shows the one-year activation code issued for the order.",
+          title: "The system confirms and links the subscription",
+          body: "After payment, Stripe events are verified and the subscription is linked to the registered checkout email.",
         },
         {
           step: "03",
-          title: "Redeem in the app and start using the tool",
-          body: "Bring the activation code into the app, then continue with uploads, jobs, and result downloads there.",
+          title: "Sign in and start using the tool",
+          body: "Sign in with the checkout email, then manage uploads, jobs, usage, and billing in the app.",
         },
       ];
 
@@ -81,8 +81,8 @@ export default async function CheckoutPage() {
             title={isChinese ? "付款之后的路径被刻意设计得很简单。" : "The path after payment is intentionally simple."}
             body={
               isChinese
-                ? "你在这里购买的是一年访问权限，而不是把整套工作流都塞进公开官网。支付确认、发码和应用内兑换是分开的步骤。"
-                : "What you buy here is one year of access, not the entire workflow inside the public site. Payment confirmation, code issuance, and in-app redemption happen as separate steps."
+                ? "你在这里开通的是按月订阅。支付确认、账户归属和应用内使用是连贯的自动化流程。"
+                : "You start a monthly subscription here. Payment confirmation, account attribution, and in-app access form one automated flow."
             }
             largeBody
           />
@@ -101,11 +101,11 @@ export default async function CheckoutPage() {
           <div className="metric-grid">
             <MetricCard
               label={isChinese ? "购买结果" : "Purchase result"}
-              value={isChinese ? "激活码" : "Activation code"}
+              value={isChinese ? "账户订阅" : "Account subscription"}
               body={
                 isChinese
-                  ? "支付成功后会发放一枚激活码，用户可在应用内兑换为一年访问权限。"
-                  : "Successful payment issues a code that can be redeemed inside the app for one year of access."
+                  ? "支付成功后，订阅按付款邮箱归属到已注册账户，无需额外兑换。"
+                  : "After payment, the subscription is attributed to the registered checkout email without an extra redemption step."
               }
             />
             <MetricCard

@@ -6,6 +6,7 @@ import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
+import { accountActivationRoute } from "../lib/release";
 
 type MePayload = {
   user: {
@@ -55,7 +56,7 @@ export function EntitlementGate({ children }: { children: ReactNode }) {
 
       if (result.data.user.entitlement.status !== "active") {
         setStatus("redirecting");
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "scoretransposer-www-staging",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "upload_source_maps": true,
+  "routes": [
+    {
+      "pattern": "staging.scoretransposer.com",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "scoretransposer-www-staging"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

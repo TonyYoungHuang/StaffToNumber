@@ -3,6 +3,7 @@ import { createStorageObjectKey } from "@score/storage";
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { objectStorage, ObjectStorageUnavailableError } from "../lib/object-storage.js";
+import { assertStorageQuota } from "../lib/plan-quotas.js";
 import { nowIso } from "../lib/time.js";
 
 export type FileRow = {
@@ -29,6 +30,7 @@ export async function createStoredFile(input: {
   sizeBytes: number;
   fileKind: StoredFileKind;
 }) {
+  assertStorageQuota(input.userId, input.sizeBytes);
   const id = createId();
   const createdAt = nowIso();
   const objectKey = createStorageObjectKey({

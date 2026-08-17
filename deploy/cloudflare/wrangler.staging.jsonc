@@ -1,0 +1,104 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "scoretransposer-edge-staging",
+  "main": "../../services/cloudflare-gateway/src/index.ts",
+  "compatibility_date": "2026-08-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "upload_source_maps": true,
+  "routes": [
+    { "pattern": "api-staging.scoretransposer.com", "custom_domain": true },
+    { "pattern": "collab-staging.scoretransposer.com", "custom_domain": true }
+  ],
+  "vars": {
+    "DEPLOYMENT_ENV": "staging",
+    "API_CONTAINER_NAME": "api-primary-v4",
+    "COLLABORATION_CONTAINER_NAME": "collaboration-primary",
+    "MUSIC_WORKER_CONTAINER_NAME": "music-worker-primary-v3",
+    "RUNTIME_DATABASE_PRIMARY": "postgres",
+    "POSTGRES_SCHEMA": "scoretransposer",
+    "PUBLIC_SITE_URL": "https://staging.scoretransposer.com",
+    "PUBLIC_APP_URL": "https://app-staging.scoretransposer.com",
+    "PUBLIC_API_URL": "https://api-staging.scoretransposer.com",
+    "PUBLIC_COLLABORATION_URL": "https://collab-staging.scoretransposer.com",
+    "ALLOWED_ORIGINS": "https://staging.scoretransposer.com,https://app-staging.scoretransposer.com",
+    "S3_BUCKET": "scoretransposer-staging",
+    "S3_KEY_PREFIX": "staging",
+    "EMAIL_DELIVERY_ENABLED": "false",
+    "PAYMENT_PROVIDERS": "stripe",
+    "STRIPE_MANAGED_PAYMENTS_ENABLED": "true"
+  },
+  "secrets": {
+    "required": [
+      "POSTGRES_URL",
+      "REDIS_URL",
+      "S3_ENDPOINT",
+      "S3_ACCESS_KEY_ID",
+      "S3_SECRET_ACCESS_KEY",
+      "SECURITY_AUDIT_HASH_SALT",
+      "METRICS_BEARER_TOKEN",
+      "ADMIN_API_KEY",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_PRICE_ID",
+      "STRIPE_SCHOOL_PRICE_ID"
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "SCORE_ASSETS",
+      "bucket_name": "scoretransposer-staging"
+    }
+  ],
+  "containers": [
+    {
+      "name": "scoretransposer-api-staging",
+      "class_name": "ApiContainer",
+      "image": "./Dockerfile.api",
+      "image_build_context": "../../.tmp/cloudflare-build-context",
+      "instance_type": "standard-2",
+      "max_instances": 1,
+      "rollout_active_grace_period": 60,
+      "rollout_step_percentage": [100],
+      "constraints": { "regions": ["ENAM"] }
+    },
+    {
+      "name": "scoretransposer-collaboration-staging",
+      "class_name": "CollaborationContainer",
+      "image": "./Dockerfile.collaboration",
+      "image_build_context": "../../.tmp/cloudflare-build-context",
+      "instance_type": "standard-1",
+      "max_instances": 1,
+      "rollout_active_grace_period": 60,
+      "rollout_step_percentage": [100],
+      "constraints": { "regions": ["ENAM"] }
+    },
+    {
+      "name": "scoretransposer-music-worker-staging",
+      "class_name": "MusicWorkerContainer",
+      "image": "../backend/Dockerfile",
+      "image_build_context": "../../.tmp/cloudflare-build-context",
+      "instance_type": "standard-4",
+      "max_instances": 1,
+      "rollout_active_grace_period": 300,
+      "rollout_step_percentage": [100],
+      "constraints": { "regions": ["ENAM"] }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "API_CONTAINER", "class_name": "ApiContainer" },
+      { "name": "COLLABORATION_CONTAINER", "class_name": "CollaborationContainer" },
+      { "name": "MUSIC_WORKER_CONTAINER", "class_name": "MusicWorkerContainer" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ApiContainer", "CollaborationContainer", "MusicWorkerContainer"]
+    }
+  ],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "dev": { "port": 8787, "ip": "127.0.0.1", "enable_containers": true }
+}

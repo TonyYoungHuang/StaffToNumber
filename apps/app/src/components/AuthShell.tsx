@@ -5,6 +5,7 @@ import React from "react";
 import { APP_ROUTES } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, VaultIcon } from "@score/ui";
 import { useAppLocale } from "./AppLocaleProvider";
+import { accountActivationRoute } from "../lib/release";
 
 export function AuthShell({
   title,
@@ -85,7 +86,7 @@ export function AuthShell({
             <Link href={APP_ROUTES.home} className="button button-secondary">
               {copy.back}
             </Link>
-            <Link href={locale === "zh-CN" ? APP_ROUTES.upload : APP_ROUTES.checkout} className="button button-tertiary">
+            <Link href={locale === "zh-CN" ? APP_ROUTES.upload : accountActivationRoute} className="button button-tertiary">
               {copy.preview}
               <ArrowNorthEastIcon width={16} height={16} />
             </Link>

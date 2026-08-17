@@ -11,6 +11,7 @@ import {
   VaultIcon,
 } from "@score/ui";
 import { readAppLocale } from "../lib/locale";
+import { accountActivationRoute } from "../lib/release";
 
 export default async function AppHomePage() {
   const locale = await readAppLocale();
@@ -70,7 +71,7 @@ export default async function AppHomePage() {
             "扫描 PDF 或图片成为候选谱，校对后继续做五线谱与简谱互换、移调、图形编辑、播放练习和 MusicXML、MIDI、PDF、图片、音频导出。",
           startUpload: "导入乐谱",
           openJobs: "打开任务队列",
-          createAccount: "创建账户",
+          createAccount: "查看套餐",
           truthTitle: "当前产品边界",
           truthBody: "Score JSON 是编辑和版本事实来源，MusicXML 是交换格式；PDF、图片和录音只作为导入素材，识别结果必须先校对再确认。",
           sequenceTitle: "当前操作顺序",
@@ -101,7 +102,7 @@ export default async function AppHomePage() {
             "Scan PDF or image sources into reviewable candidates, then convert staff and Jianpu, transpose, edit notation, practice playback, and export MusicXML, MIDI, print, image, or audio files.",
           startUpload: "Import a score",
           openJobs: "Open job queue",
-          createAccount: "Create account",
+          createAccount: "View plans",
           truthTitle: "Current product truth",
           truthBody: "Score JSON is the editing and version source of truth, MusicXML is the interchange format, and PDF, images, and recordings remain import sources that require review.",
           sequenceTitle: "Operational sequence",
@@ -137,7 +138,7 @@ export default async function AppHomePage() {
             <Link href={APP_ROUTES.jobs} className="button button-secondary">
               {copy.openJobs}
             </Link>
-            <Link href={APP_ROUTES.register} className="button button-tertiary">
+            <Link href={accountActivationRoute} className="button button-tertiary">
               {copy.createAccount}
             </Link>
           </div>

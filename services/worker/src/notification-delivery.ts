@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import { PRODUCT_NAME } from "@score/shared";
 
 export type ClaimedNotificationDelivery = {
@@ -15,7 +15,7 @@ export type ClaimedNotificationDelivery = {
 
 type RecipientRow = { user_id: string; email: string };
 
-export function materializeDueNotificationDeliveries(db: DatabaseSync, now: string, limit = 20) {
+export function materializeDueNotificationDeliveries(db: RuntimeDatabaseLike, now: string, limit = 20) {
   const notifications = db.prepare(`
     SELECT id, classroom_id
     FROM score_classroom_notifications
@@ -76,8 +76,7 @@ export function materializeDueNotificationDeliveries(db: DatabaseSync, now: stri
   }
   return { notificationsPrepared: notifications.length, deliveriesCreated };
 }
-
-export function claimNextNotificationDelivery(db: DatabaseSync, now: string, staleBefore: string) {
+export function claimNextNotificationDelivery(db: RuntimeDatabaseLike, now: string, staleBefore: string) {
   return db.prepare(`
     UPDATE score_notification_deliveries
     SET status = 'processing', attempts = attempts + 1, locked_at = ?, updated_at = ?
@@ -142,7 +141,7 @@ export async function sendNotificationEmail(input: {
   return { providerMessageId: payload.id ?? null };
 }
 
-export function markNotificationDeliverySent(db: DatabaseSync, input: { id: string; providerMessageId: string | null; now: string }) {
+export function markNotificationDeliverySent(db: RuntimeDatabaseLike, input: { id: string; providerMessageId: string | null; now: string }) {
   db.prepare(`
     UPDATE score_notification_deliveries
     SET status = 'sent', provider_message_id = ?, sent_at = ?, locked_at = NULL,
@@ -151,7 +150,7 @@ export function markNotificationDeliverySent(db: DatabaseSync, input: { id: stri
   `).run(input.providerMessageId, input.now, input.now, input.id);
 }
 
-export function markNotificationDeliveryFailed(db: DatabaseSync, input: {
+export function markNotificationDeliveryFailed(db: RuntimeDatabaseLike, input: {
   id: string;
   attempts: number;
   error: string;

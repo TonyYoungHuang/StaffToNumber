@@ -2,7 +2,7 @@
 
 ScoreTransposer is a MusicXML-first music notation platform for score scanning, correction, transposition, staff/Jianpu conversion, practice playback, export, teaching, and collaboration.
 
-The repository is under active pre-production development. Core product workflows run locally, but the production API, worker fleet, external music engines, storage, observability, backup, and release operations still require a unified deployment before commercial launch.
+The repository is under active pre-production development. The target production platform is Cloudflare with an ENAM-first deployment for the US market: Cloudflare ingress, R2, and Containers for the API, collaboration, and native music-engine workers, backed by managed PostgreSQL and Redis in the US East. Core product workflows run locally, but the production runtime, storage, observability, backup, and release operations still require a unified staging deployment before commercial launch.
 
 ## Architecture
 
@@ -33,8 +33,8 @@ MusicXML and the versioned internal Score JSON document are the source of truth.
 
 The following are not yet production claims:
 
-- External engines must be installed in long-running Linux worker containers; Vercel cannot execute Audiveris, MuseScore, Basic Pitch, FluidSynth, or ffmpeg workloads.
-- Local SQLite and filesystem storage remain development defaults. Production requires private S3-compatible object storage with authenticated API streaming and checksum-verified Worker materialization. Verified SQLite-to-PostgreSQL migration/rollback, independent shadow parity auditing, and a transaction-outbox/BullMQ broker now exist, but runtime repositories must still move to PostgreSQL before cross-host horizontal scaling.
+- External engines must run in dedicated `linux/amd64` Cloudflare Containers; ordinary Workers and Vercel functions cannot execute Audiveris, MuseScore, Basic Pitch, FluidSynth, or long ffmpeg workloads.
+- Local SQLite and filesystem storage remain development defaults. Staging and production now fail closed unless API, Worker, and Collaboration all use the shared PostgreSQL runtime against an explicitly selected schema; startup validates the required tables before serving or consuming work. Verified SQLite-to-PostgreSQL migration/rollback and shadow-parity tools remain available for controlled data migration. Production still requires private S3-compatible object storage, authenticated streaming, checksum-verified Worker materialization, and completed recovery/scale rehearsals.
 - OMR and audio transcription remain probabilistic and require candidate review. They must not be presented as guaranteed-accurate conversion.
 - Full MuseScore/Flat-level engraving, mature multi-user classroom/LMS workflows, production collaboration scale, and the 200-score regression corpus are still in progress.
 - Production release, Search Console verification, backup/restore drills, centralized observability, load testing, and final legal/security sign-off remain release blockers.
@@ -110,6 +110,8 @@ The generated, ignored `artifacts/release-manifest.json` records the Git commit/
 ## Key Documentation
 
 - [Commercial development and acceptance plan](docs/music-notation-platform-development.md)
+- [US-first Cloudflare production plan](docs/deployment/cloudflare-us-first.md)
+- [Executable Cloudflare deployment runbook](deploy/cloudflare/README.md)
 - [Backend deployment topology](deploy/backend/README.md)
 - [Module documentation](docs/modules/)
 - [Change log](CHANGELOG.md)

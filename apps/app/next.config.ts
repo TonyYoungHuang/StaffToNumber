@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS ?? "")
     .split(",")
-    .map((origin) => origin.trim())
+    .map((origin: string) => origin.trim())
     .filter(Boolean),
 };
 

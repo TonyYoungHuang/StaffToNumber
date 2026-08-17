@@ -9,6 +9,7 @@ import { DotIcon, DownloadIcon, FileStackIcon, SparkIcon, StatusPill } from "@sc
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
+import { accountActivationRoute } from "../lib/release";
 
 type FileItem = {
   id: string;
@@ -188,7 +189,7 @@ export function JobsManager() {
 
     if (!filesResult.ok) {
       if (filesResult.error === "An active entitlement is required.") {
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
       setStatus(filesResult.error);
@@ -197,7 +198,7 @@ export function JobsManager() {
 
     if (!jobsResult.ok) {
       if (jobsResult.error === "An active entitlement is required.") {
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
       setStatus(jobsResult.error);
@@ -262,7 +263,7 @@ export function JobsManager() {
 
     if (!result.ok) {
       if (result.error === "An active entitlement is required.") {
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
       setStatus(result.error);
@@ -286,10 +287,10 @@ export function JobsManager() {
     });
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
       const nextError = payload?.error ?? copy.downloadFailed;
       if (nextError === "An active entitlement is required.") {
-        router.replace(APP_ROUTES.checkout);
+        router.replace(accountActivationRoute);
         return;
       }
       setStatus(nextError);

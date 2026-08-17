@@ -20,6 +20,27 @@ test("Stripe invoice lifecycle never downgrades an active subscription for infor
   assert.equal(failed?.subscription?.status, "past_due");
 });
 
+test("Stripe Checkout assigns a subscription to the registered customer identity", () => {
+  const normalized = normalizeStripeBillingEvent({
+    id: "evt-checkout",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_test_1",
+        customer: "cus-1",
+        subscription: "sub-1",
+        customer_details: { email: "MEMBER@EXAMPLE.TEST" },
+        metadata: { userId: "user-1", priceId: "price-pro", seatQuantity: "3" },
+      },
+    },
+  }, Buffer.from("checkout"));
+  assert.equal(normalized?.customer?.email, "MEMBER@EXAMPLE.TEST");
+  assert.equal(normalized?.subscription?.userId, "user-1");
+  assert.equal(normalized?.subscription?.planRef, "price-pro");
+  assert.equal(normalized?.subscription?.seatQuantity, 3);
+  assert.equal(normalized?.subscription?.status, "active");
+});
+
 test("Paddle full and partial adjustments preserve the intended subscription downgrade policy", () => {
   const partial = normalizePaddleBillingEvent({
     event_id: "evt-partial",

@@ -39,10 +39,11 @@ function metadataOf(object: JsonRecord) {
 
 function billingIdentity(object: JsonRecord) {
   const metadata = metadataOf(object);
+  const customerDetails = record(object.customer_details);
   return {
     userId: text(metadata.userId),
     organizationId: text(metadata.organizationId),
-    email: text(object.customer_email ?? object.email),
+    email: text(object.customer_email ?? customerDetails.email ?? object.email),
   };
 }
 
@@ -85,6 +86,25 @@ export function normalizeStripeBillingEvent(event: {
   const object = record(event.data.object);
   const identity = billingIdentity(object);
   const base = { provider: "stripe" as const, eventId: event.id, eventType: event.type, rawPayload };
+
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+    const providerSubscriptionId = identifier(object.subscription);
+    const providerCustomerId = identifier(object.customer);
+    if (!providerSubscriptionId || !providerCustomerId) return null;
+    const metadata = metadataOf(object);
+    return {
+      ...base,
+      customer: { providerCustomerId, ...identity },
+      subscription: {
+        providerSubscriptionId,
+        providerCustomerId,
+        ...identity,
+        status: "active",
+        planRef: text(metadata.priceId),
+        seatQuantity: integer(metadata.seatQuantity) ?? 1,
+      },
+    };
+  }
 
   if (event.type.startsWith("customer.subscription.")) {
     const providerSubscriptionId = identifier(object.id);

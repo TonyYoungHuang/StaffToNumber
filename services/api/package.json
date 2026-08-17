@@ -18,7 +18,7 @@
     "test:broker": "node --import tsx --test src/lib/job-broker-dispatch.integration.test.ts",
     "test:unit": "node --import tsx scripts/run-tests.ts unit src/lib/billing-events.test.ts src/lib/payments-security.test.ts src/lib/lti-service-client.test.ts src/lib/audio-url-import.test.ts src/lib/postgres-mirror.test.ts src/lib/score-musicxml-roundtrip.test.ts src/lib/jianpu-roundtrip.test.ts src/lib/jianpu-publication-benchmark.test.ts src/lib/score-transpose.test.ts src/lib/score-playback.test.ts src/lib/score-collaboration-command.test.ts src/lib/score-collaboration-history.test.ts src/lib/practice-performance-analysis-validation.test.ts src/lib/rate-limit.test.ts src/lib/upload-security.test.ts src/lib/observability.test.ts src/lib/education-access.test.ts src/lib/storage-migration.test.ts",
     "test:music-engines": "node --import tsx --test src/lib/score-music21-transpose.integration.test.ts",
-    "test:integration": "node --import tsx scripts/run-tests.ts integration src/lib/lti-launch.integration.test.ts src/repositories/billing-repository.test.ts src/repositories/account-lifecycle-repository.test.ts src/repositories/copyright-complaint-repository.test.ts src/repositories/score-candidate-lifecycle.test.ts src/repositories/score-export-job-lifecycle.test.ts src/repositories/score-collaboration-command.test.ts src/repositories/seo-repository.test.ts src/repositories/education-repository.test.ts src/repositories/education-organization-repository.test.ts src/repositories/notification-preferences-repository.test.ts src/repositories/classroom-resource-retention-repository.test.ts src/repositories/storage-deletion-repository.test.ts src/repositories/job-dispatch-outbox.test.ts src/repositories/job-dispatch-schema.test.ts",
+    "test:integration": "node --import tsx scripts/run-tests.ts integration src/lib/lti-launch.integration.test.ts src/lib/plan-quotas.test.ts src/repositories/billing-repository.test.ts src/repositories/account-lifecycle-repository.test.ts src/repositories/copyright-complaint-repository.test.ts src/repositories/score-candidate-lifecycle.test.ts src/repositories/score-export-job-lifecycle.test.ts src/repositories/score-collaboration-command.test.ts src/repositories/seo-repository.test.ts src/repositories/education-repository.test.ts src/repositories/education-organization-repository.test.ts src/repositories/notification-preferences-repository.test.ts src/repositories/classroom-resource-retention-repository.test.ts src/repositories/storage-deletion-repository.test.ts src/repositories/job-dispatch-outbox.test.ts src/repositories/job-dispatch-schema.test.ts",
     "test": "npm run test:unit && npm run test:integration",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
@@ -28,6 +28,7 @@
     "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^11.1.0",
     "@score/shared": "0.1.0",
+    "@score/runtime-database": "0.1.0",
     "@score/storage": "0.1.0",
     "adm-zip": "^0.6.0",
     "bullmq": "^5.80.4",

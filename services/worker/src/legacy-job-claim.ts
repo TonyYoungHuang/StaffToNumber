@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 export type ClaimedLegacyJob = {
   id: string;
@@ -9,7 +9,7 @@ export type ClaimedLegacyJob = {
   trace_id: string | null;
 };
 
-export function claimNextLegacyJob(db: DatabaseSync, timestamp: string) {
+export function claimNextLegacyJob(db: RuntimeDatabaseLike, timestamp: string) {
   return db.prepare(`
     UPDATE jobs
     SET status = 'processing', started_at = ?, updated_at = ?
@@ -22,8 +22,7 @@ export function claimNextLegacyJob(db: DatabaseSync, timestamp: string) {
     RETURNING id, user_id, input_file_id, direction, request_id, trace_id
   `).get(timestamp, timestamp) as ClaimedLegacyJob | undefined;
 }
-
-export function claimLegacyJobById(db: DatabaseSync, input: { timestamp: string; jobId: string; brokerJobId: string }) {
+export function claimLegacyJobById(db: RuntimeDatabaseLike, input: { timestamp: string; jobId: string; brokerJobId: string }) {
   return db.prepare(`
     UPDATE jobs
     SET status = 'processing',

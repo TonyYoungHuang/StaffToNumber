@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
 import type { PaymentProvider } from "@score/shared";
 import { config } from "../config.js";
@@ -23,8 +23,27 @@ type PaddleTransactionResponse = {
   };
 };
 
-const stripeClient = config.stripeSecretKey ? new Stripe(config.stripeSecretKey) : null;
+const stripeClient = config.stripeSecretKey
+  ? new Stripe(normalizeStripeCredential(config.stripeSecretKey))
+  : null;
 const paddleApiBase = config.paddleEnvironment === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
+const stripeManagedPaymentsApiVersion = "2026-03-04.preview";
+
+type StripeCheckoutSessionInput = {
+  orderId: string;
+  publicToken: string;
+  customerEmail?: string | null;
+  successUrl?: string;
+  cancelUrl?: string;
+  userId?: string | null;
+  organizationId?: string | null;
+  seatQuantity?: number;
+  priceId?: string;
+};
+
+type ManagedPaymentsCheckoutParams = Stripe.Checkout.SessionCreateParams & {
+  managed_payments?: { enabled: true };
+};
 
 function normalizePaddleTransactionId(value: string) {
   const transactionId = value.trim();
@@ -56,29 +75,24 @@ export function getPaddleClientEnvironment() {
   return config.paddleEnvironment === "production" ? "production" : "sandbox";
 }
 
-export async function createStripeCheckoutSession(input: {
-  orderId: string;
-  publicToken: string;
-  customerEmail?: string | null;
-  successUrl?: string;
-  cancelUrl?: string;
-  userId?: string | null;
-  organizationId?: string | null;
-  seatQuantity?: number;
-  priceId?: string;
-}) {
-  const priceId = input.priceId ?? config.stripePriceId;
-  if (!stripeClient || !priceId) {
+export function buildStripeCheckoutSessionParams(
+  input: StripeCheckoutSessionInput,
+  options: { managedPaymentsEnabled?: boolean } = {},
+) {
+  const priceId = normalizeStripeCredential(input.priceId ?? config.stripePriceId);
+  if (!priceId) {
     throw new Error("Stripe is not configured.");
   }
 
   const metadata = {
     orderId: input.orderId,
+    orderTokenHash: hashPaymentOrderToken(input.publicToken),
+    priceId,
     ...(input.userId ? { userId: input.userId } : {}),
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     seatQuantity: String(Math.max(1, input.seatQuantity ?? 1)),
   };
-  const params: Stripe.Checkout.SessionCreateParams = {
+  const params: ManagedPaymentsCheckoutParams = {
     mode: config.paymentBillingMode,
     billing_address_collection: "auto",
     allow_promotion_codes: true,
@@ -95,9 +109,67 @@ export async function createStripeCheckoutSession(input: {
       `${config.publicSiteUrl}/checkout/success?provider=stripe&order_id=${input.orderId}&token=${input.publicToken}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:
       input.cancelUrl ?? `${config.publicSiteUrl}/checkout/cancel?provider=stripe&order_id=${input.orderId}&token=${input.publicToken}`,
+    ...((options.managedPaymentsEnabled ?? config.stripeManagedPaymentsEnabled)
+      ? { managed_payments: { enabled: true as const } }
+      : {}),
   };
   if (config.paymentBillingMode === "subscription") params.subscription_data = { metadata };
-  const session = await stripeClient.checkout.sessions.create(params);
+  return params;
+}
+
+export function hashPaymentOrderToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export function stripeSessionMatchesPaymentOrder(
+  session: Pick<Stripe.Checkout.Session, "id" | "metadata" | "success_url">,
+  input: { orderId: string; publicToken: string; sessionId: string },
+) {
+  if (session.id !== input.sessionId || session.metadata?.orderId !== input.orderId) return false;
+  const expectedHash = hashPaymentOrderToken(input.publicToken);
+  const metadataHash = session.metadata?.orderTokenHash;
+  if (metadataHash) {
+    const expected = Buffer.from(expectedHash, "hex");
+    const provided = Buffer.from(metadataHash, "hex");
+    return expected.length === provided.length && timingSafeEqual(expected, provided);
+  }
+
+  if (!session.success_url) return false;
+  try {
+    const successUrl = new URL(session.success_url);
+    const returnSessionId = successUrl.searchParams.get("session_id");
+    return successUrl.searchParams.get("order_id") === input.orderId
+      && successUrl.searchParams.get("token") === input.publicToken
+      && (returnSessionId === "{CHECKOUT_SESSION_ID}" || returnSessionId === input.sessionId);
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeStripeCredential(value: string) {
+  return value.replace(/\s+/gu, "");
+}
+
+export const normalizeWebhookSigningSecret = normalizeStripeCredential;
+
+export function buildStripeCheckoutRequestOptions(orderId: string, managedPaymentsEnabled = config.stripeManagedPaymentsEnabled) {
+  const requestOptions: Stripe.RequestOptions = {
+    idempotencyKey: `scoretransposer-checkout-${orderId}`,
+  };
+  if (managedPaymentsEnabled) requestOptions.apiVersion = stripeManagedPaymentsApiVersion;
+  return requestOptions;
+}
+
+export async function createStripeCheckoutSession(input: StripeCheckoutSessionInput) {
+  if (!stripeClient) {
+    throw new Error("Stripe is not configured.");
+  }
+
+  const params = buildStripeCheckoutSessionParams(input);
+  const session = await stripeClient.checkout.sessions.create(
+    params,
+    buildStripeCheckoutRequestOptions(input.orderId),
+  );
 
   return session;
 }
@@ -111,11 +183,26 @@ export async function retrieveStripeCheckoutSession(sessionId: string) {
 }
 
 export function verifyStripeWebhook(rawBody: Buffer, signature: string) {
-  if (!stripeClient || !config.stripeWebhookSecret) {
+  const webhookSecret = normalizeWebhookSigningSecret(config.stripeWebhookSecret);
+  if (!stripeClient || !webhookSecret) {
     throw new Error("Stripe webhook is not configured.");
   }
 
-  return stripeClient.webhooks.constructEvent(rawBody, signature, config.stripeWebhookSecret);
+  return stripeClient.webhooks.constructEvent(rawBody, signature, webhookSecret);
+}
+
+export async function expireStripeCheckoutSession(sessionId: string) {
+  if (!stripeClient) throw new Error("Stripe is not configured.");
+  return stripeClient.checkout.sessions.expire(sessionId);
+}
+
+export async function cancelStripeSubscription(subscriptionId: string, atPeriodEnd: boolean) {
+  if (!stripeClient) throw new Error("Stripe is not configured.");
+  const current = await stripeClient.subscriptions.retrieve(subscriptionId);
+  if (current.status === "canceled" || (atPeriodEnd && current.cancel_at_period_end)) return current;
+  return atPeriodEnd
+    ? stripeClient.subscriptions.update(subscriptionId, { cancel_at_period_end: true })
+    : stripeClient.subscriptions.cancel(subscriptionId);
 }
 
 export async function createPaddleTransaction(input: {
@@ -187,8 +274,40 @@ export async function retrievePaddleTransaction(transactionId: string) {
   return payload.data;
 }
 
+export async function cancelPaddleSubscription(subscriptionId: string, atPeriodEnd: boolean) {
+  if (!config.paddleApiKey) throw new Error("Paddle is not configured.");
+  const normalized = subscriptionId.trim();
+  if (!/^sub_[A-Za-z0-9]+$/u.test(normalized)) throw new Error("Invalid Paddle subscription id.");
+  const subscriptionResponse = await fetch(`${paddleApiBase}/subscriptions/${encodeURIComponent(normalized)}`, {
+    headers: {
+      Authorization: `Bearer ${config.paddleApiKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const current = await subscriptionResponse.json().catch(() => null) as {
+    data?: { status?: string; scheduled_change?: { action?: string } | null };
+    error?: { detail?: string };
+  } | null;
+  if (!subscriptionResponse.ok) throw new Error(current?.error?.detail ?? "Unable to retrieve Paddle subscription.");
+  if (current?.data?.status === "canceled" || (atPeriodEnd && current?.data?.scheduled_change?.action === "cancel")) {
+    return current.data;
+  }
+  const response = await fetch(`${paddleApiBase}/subscriptions/${encodeURIComponent(normalized)}/cancel`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.paddleApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ effective_from: atPeriodEnd ? "next_billing_period" : "immediately" }),
+  });
+  const payload = await response.json().catch(() => null) as { data?: unknown; error?: { detail?: string } } | null;
+  if (!response.ok) throw new Error(payload?.error?.detail ?? "Unable to cancel Paddle subscription.");
+  return payload?.data;
+}
+
 export function verifyPaddleWebhook(rawBody: Buffer, signatureHeader: string) {
-  if (!config.paddleWebhookSecret) {
+  const webhookSecret = normalizeWebhookSigningSecret(config.paddleWebhookSecret);
+  if (!webhookSecret) {
     throw new Error("Paddle webhook is not configured.");
   }
 
@@ -211,7 +330,7 @@ export function verifyPaddleWebhook(rawBody: Buffer, signatureHeader: string) {
   }
 
   const signedPayload = `${timestamp}:${rawBody.toString("utf8")}`;
-  const expectedSignature = createHmac("sha256", config.paddleWebhookSecret).update(signedPayload).digest("hex");
+  const expectedSignature = createHmac("sha256", webhookSecret).update(signedPayload).digest("hex");
   const expectedBuffer = Buffer.from(expectedSignature, "hex");
   const providedBuffer = Buffer.from(signature, "hex");
 

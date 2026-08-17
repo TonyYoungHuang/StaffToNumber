@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-17T06:53:28.001Z",
+  "required": true,
+  "complete": true,
+  "timeoutMs": 60000,
+  "platform": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v22.23.2"
+  },
+  "tools": [
+    {
+      "id": "audiveris",
+      "label": "Audiveris",
+      "envName": "AUDIVERIS_COMMAND",
+      "command": "Audiveris",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 419,
+      "output": "INFO  []              TesseractOCR 137  | Creating OCR folder /home/node/.config/AudiverisLtd/audiveris/tessdata\nAudiveris\n- Version:      5.10.2\n- Commit:       1b7cf44088c68f4168801822a613751d1bb1b584\n- OS:           Linux 6.6.87.2-microsoft-standard-WSL2\n- Architecture: amd64\n- Java VM:      OpenJDK 64-Bit Server VM (build 25.0.2+10-LTS, mixed mode)\n- OCR Engine:   Tesseract OCR, version 5.5.1"
+    },
+    {
+      "id": "music21",
+      "label": "music21",
+      "envName": "MUSIC21_COMMAND",
+      "command": "python",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 163,
+      "output": "{\"version\": \"10.5.0\"}"
+    },
+    {
+      "id": "musescore",
+      "label": "MuseScore",
+      "envName": "MUSESCORE_COMMAND",
+      "command": "musescore3",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 385,
+      "output": "MuseScore3 3.2.3\n\nQStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-node'"
+    },
+    {
+      "id": "fluidsynth",
+      "label": "FluidSynth",
+      "envName": "FLUIDSYNTH_COMMAND",
+      "command": "fluidsynth",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 108,
+      "output": "FluidSynth runtime version 2.3.1\nCopyright (C) 2000-2022 Peter Hanappe and others.\nDistributed under the LGPL license.\nSoundFont(R) is a registered trademark of Creative Technology Ltd.\n\nFluidSynth executable version 2.3.1\nSample type=double"
+    },
+    {
+      "id": "ffmpeg",
+      "label": "ffmpeg",
+      "envName": "FFMPEG_COMMAND",
+      "command": "ffmpeg",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 37,
+      "output": "ffmpeg version 5.1.9-0+deb12u1 Copyright (c) 2000-2026 the FFmpeg developers\nbuilt with gcc 12 (Debian 12.2.0-14+deb12u1)\nconfiguration: --prefix=/usr --extra-version=0+deb12u1 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --enable-gnutls --enable-ladspa --enable-libaom --enable-libass --enable-libbluray --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libjack --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-libpulse --enable-librabbitmq --enable-librist --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-libzvbi --enable-lv2 --enable-omx --enable-openal --enable-opencl --enable-opengl --enable-sdl2 --disable-sndio --enable-libjxl --enable-pocketsphinx --enable-librsvg --enable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-libx264 --enable-libplacebo --enable-librav1e --enable-shared\nlibavutil      57. 28.100 / 57. 28.100\nlibavcodec     59. 37.100 / 59. 37.100\nlibavformat    59. 27.100 / 59. 27.100\nlibavdevice    59.  7.100 / 59.  7.100\nlibavfilter     8. 44.100 /  8. 44.100\nlibswscale      6.  7.100 /  6.  7.100\nlibswresample   4.  7.100 /  4.  7.100\nlibpostproc    56.  6.100 / 56.  6.100"
+    },
+    {
+      "id": "ffprobe",
+      "label": "ffprobe",
+      "envName": "FFPROBE_COMMAND",
+      "command": "ffprobe",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 36,
+      "output": "ffprobe version 5.1.9-0+deb12u1 Copyright (c) 2007-2026 the FFmpeg developers\nbuilt with gcc 12 (Debian 12.2.0-14+deb12u1)\nconfiguration: --prefix=/usr --extra-version=0+deb12u1 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --enable-gnutls --enable-ladspa --enable-libaom --enable-libass --enable-libbluray --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libjack --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-libpulse --enable-librabbitmq --enable-librist --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-libzvbi --enable-lv2 --enable-omx --enable-openal --enable-opencl --enable-opengl --enable-sdl2 --disable-sndio --enable-libjxl --enable-pocketsphinx --enable-librsvg --enable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-libx264 --enable-libplacebo --enable-librav1e --enable-shared\nlibavutil      57. 28.100 / 57. 28.100\nlibavcodec     59. 37.100 / 59. 37.100\nlibavformat    59. 27.100 / 59. 27.100\nlibavdevice    59.  7.100 / 59.  7.100\nlibavfilter     8. 44.100 /  8. 44.100\nlibswscale      6.  7.100 /  6.  7.100\nlibswresample   4.  7.100 /  4.  7.100\nlibpostproc    56.  6.100 / 56.  6.100"
+    },
+    {
+      "id": "basic-pitch",
+      "label": "Basic Pitch",
+      "envName": "BASIC_PITCH_COMMAND",
+      "command": "basic-pitch",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 1914,
+      "output": "usage: basic-pitch [-h] [--model-path MODEL_PATH]\n                   [--model-serialization {tf,coreml,tflite,onnx}]\n                   [--save-midi] [--sonify-midi] [--save-model-outputs]\n                   [--save-note-events] [--onset-threshold ONSET_THRESHOLD]\n                   [--frame-threshold FRAME_THRESHOLD]\n                   [--minimum-note-length MINIMUM_NOTE_LENGTH]\n                   [--minimum-frequency MINIMUM_FREQUENCY]\n                   [--maximum-frequency MAXIMUM_FREQUENCY]\n                   [--multiple-pitch-bends]\n                   [--sonification-samplerate SONIFICATION_SAMPLERATE]\n                   [--midi-tempo MIDI_TEMPO] [--debug-file DEBUG_FILE]\n                   [--no-melodia]\n                   output_dir audio_paths [audio_paths ...]\n\nPredict midi from audio.\n\npositional arguments:\n  output_dir            directory to save outputs\n  audio_paths           Space separated paths to the input audio files.\n\noptions:\n  -h, --help            show this help message and exit\n  --model-path MODEL_PATH\n                        path to the saved model directory. Defaults to a\n                        ICASSP 2022 model. The preferred model is determined\n                        by the first library available in [tensorflow, coreml,\n                        tensorflow-lite, onnx]\n  --model-serialization {tf,coreml,tflite,onnx}\n                        If used, --model-path is ignored and instead the model\n                        serialization typespecified is used.\n  --save-midi           Create a MIDI file.\n  --sonify-midi         Create an audio .wav file which sonifies the MIDI\n                        outputs.\n  --save-model-outputs  Save the raw model output as an npz file.\n  --save-note-events    Save the predicted note events as a csv file.\n  --onset-threshold ONSET_THRESHOLD\n                        The minimum likelihood for an onset to occur, between\n                        0 and 1.\n  --frame-threshold FRAME_THRESHOLD\n                        The minimum likelihood for a frame to sustain, between\n                        0 and 1.\n  --minimum-note-length MINIMUM_NOTE_LENGTH\n                        The minimum allowed note length, in miliseconds.\n  --minimum-frequency MINIMUM_FREQUENCY\n                        The minimum allowed note frequency, in Hz.\n  --maximum-frequency MAXIMUM_FREQUENCY\n                        The maximum allowed note frequency, in Hz.\n  --multiple-pitch-bends\n                        Allow overlapping notes in midi file to have pitch\n                        bends. Note: this will map each pitch to its own\n                        instrument\n  --sonification-samplerate SONIFICATION_SAMPLERATE\n                        The samplerate for sonified audio files.\n  --midi-tempo MIDI_TEMPO\n                        The tempo for the midi file.\n  --debug-file DEBUG_FILE\n                        Optional file for debug output for inference.\n  --no-melodia          Skip the melodia trick.\n\nWARNING:root:Coremltools is not installed. If you plan to use a CoreML Saved Model, reinstall basic-pitch with `pip install 'basic-pitch[coreml]'`\nWARNING:root:tflite-runtime is not installed. If you plan to use a TFLite Model, reinstall basic-pitch with `pip install 'basic-pitch tflite-runtime'` or `pip install 'basic-pitch[tf]'\nWARNING:root:onnxruntime is not installed. If you plan to use an ONNX Model, reinstall basic-pitch with `pip install 'basic-pitch[onnx]'`\n2026-08-17 06:53:29.398419: I external/local_tsl/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.\n2026-08-17 06:53:29.417368: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:9261] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered\n2026-08-17 06:53:29.417420: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:607] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered\n2026-08-17 06:53:29.418050: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1515"
+    },
+    {
+      "id": "yt-dlp",
+      "label": "yt-dlp",
+      "envName": "YT_DLP_COMMAND",
+      "command": "yt-dlp",
+      "status": "passed",
+      "reason": null,
+      "durationMs": 106,
+      "output": "2026.07.04"
+    }
+  ],
+  "soundFont": {
+    "status": "passed",
+    "reason": null,
+    "manifestPath": "/srv/scoretransposer/deploy/backend/soundfont-license-manifest.json",
+    "entries": [
+      {
+        "name": "FluidR3 General MIDI",
+        "path": "/usr/share/sounds/sf2/FluidR3_GM.sf2",
+        "expectedSha256": "74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0",
+        "actualSha256": "74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0",
+        "licenseId": "MIT",
+        "status": "passed",
+        "errors": []
+      }
+    ]
+  },
+  "failures": []
+}

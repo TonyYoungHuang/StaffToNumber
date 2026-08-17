@@ -2,6 +2,7 @@ import Link from "next/link";
 import { APP_ROUTES } from "@score/shared";
 import { Panel, SectionIntro } from "@score/ui";
 import { readAppLocale } from "../lib/locale";
+import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 
 export default async function NotFound() {
   const locale = await readAppLocale();
@@ -35,8 +36,8 @@ export default async function NotFound() {
           <Link href={APP_ROUTES.jobs} className="button button-secondary">
             {isChinese ? "任务" : "Jobs"}
           </Link>
-          <Link href={APP_ROUTES.checkout} className="button button-tertiary">
-            {isChinese ? "支付" : "Checkout"}
+          <Link href={accountActivationRoute} className="button button-tertiary">
+            {checkoutAvailable ? (isChinese ? "支付" : "Checkout") : (isChinese ? "激活" : "Activation")}
           </Link>
         </div>
       </Panel>

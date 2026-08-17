@@ -535,7 +535,7 @@ export function SharedScoreViewer() {
           body,
           cache: "no-store",
         });
-        const payload = await response.json().catch(() => null);
+        const payload = await response.json().catch(() => null) as (SharedAssignmentSubmissionPayload & { error?: string }) | null;
         result = response.ok
           ? ({ ok: true, data: payload as SharedAssignmentSubmissionPayload } as const)
           : ({ ok: false, error: payload?.error ?? assignmentCopy.submitFailed } as const);

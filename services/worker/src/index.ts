@@ -2,13 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
-import { DatabaseSync } from "node:sqlite";
+import { assertPostgresRuntimeTables, createRuntimeDatabase } from "@score/runtime-database";
 import AdmZip from "adm-zip";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { PDFParse } from "pdf-parse";
 import { PNG } from "pngjs";
 import { Worker as BullWorker } from "bullmq";
-import { Redis } from "ioredis";
 import {
   PRODUCT_NAME,
   SCORE_PROCESSING_QUEUE,
@@ -29,6 +28,7 @@ import { AudiverisProcessError, runAudiverisCommand } from "./audiveris-runner.j
 import { claimNextScoreJob, type ClaimedScoreJob } from "./score-job-claim.js";
 import { claimNextLegacyJob, type ClaimedLegacyJob } from "./legacy-job-claim.js";
 import { consumeBrokerJob } from "./job-broker-consumer.js";
+import { bullMqStartupRetryDelayMs, createBullMqWorkerRedisOptions } from "./job-broker-connection.js";
 import { commitOmrCandidate } from "./omr-candidate-commit.js";
 import {
   claimNextNotificationDelivery,
@@ -190,7 +190,12 @@ type OmrPitchPreview = {
   pageSummaries: PagePreviewSummary[];
 };
 
-const db = new DatabaseSync(workerConfig.dbFile);
+const db = createRuntimeDatabase({
+  primary: workerConfig.runtimeDatabasePrimary,
+  sqliteFile: workerConfig.dbFile,
+  postgresUrl: workerConfig.postgresUrl,
+  postgresSchema: workerConfig.postgresSchema,
+});
 if (workerConfig.nodeEnv === "production" && workerConfig.storageBackend !== "s3") {
   throw new Error("STORAGE_BACKEND=s3 is required for the production worker.");
 }
@@ -208,17 +213,79 @@ const objectStorage = new ObjectStorage({
   serverSideEncryption: workerConfig.s3ServerSideEncryption,
   kmsKeyId: workerConfig.s3KmsKeyId,
 });
-db.exec("PRAGMA busy_timeout = 5000;");
-db.exec(`
-  CREATE TABLE IF NOT EXISTS service_runtime (
-    service_name TEXT PRIMARY KEY,
-    status TEXT NOT NULL,
-    message TEXT,
-    details_json TEXT,
-    last_heartbeat_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-`);
+if (db.primary === "postgres") {
+  assertPostgresRuntimeTables(db, [
+    "users",
+    "files",
+    "jobs",
+    "job_dispatch_outbox",
+    "service_runtime",
+    "score_documents",
+    "score_revisions",
+    "score_assets",
+    "score_jobs",
+    "omr_diagnostics",
+    "score_classrooms",
+    "score_classroom_students",
+    "score_student_guardians",
+    "score_classroom_notifications",
+    "score_notification_preferences",
+    "score_notification_deliveries",
+  ]);
+} else {
+  db.exec("PRAGMA busy_timeout = 5000;");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS service_runtime (
+      service_name TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      message TEXT,
+      details_json TEXT,
+      last_heartbeat_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+}
+
+if (workerConfig.runtimeReadinessCheckOnly) {
+  const probeServiceName = `worker-readiness-${crypto.randomUUID()}`;
+  const timestamp = new Date().toISOString();
+
+  db.exec("BEGIN");
+  try {
+    db.prepare(
+      `
+        INSERT INTO service_runtime (service_name, status, message, details_json, last_heartbeat_at, updated_at)
+        VALUES (?, 'idle', 'Runtime readiness probe', NULL, ?, ?)
+      `,
+    ).run(probeServiceName, timestamp, timestamp);
+    const row = db.prepare("SELECT service_name, status FROM service_runtime WHERE service_name = ?").get(probeServiceName) as
+      | { service_name: string; status: string }
+      | undefined;
+    if (row?.service_name !== probeServiceName || row.status !== "idle") {
+      throw new Error("Worker runtime readiness probe could not read back its transactional write.");
+    }
+    db.exec("ROLLBACK");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // Preserve the original readiness failure.
+    }
+    db.close();
+    throw error;
+  }
+
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    service: "worker",
+    event: "worker.runtime_readiness_passed",
+    databasePrimary: db.primary,
+    postgresSchema: workerConfig.postgresSchema,
+  }));
+  db.close();
+  process.exit(0);
+}
+
 fs.mkdirSync(workerConfig.storageDir, { recursive: true });
 const NEWLINE = String.fromCharCode(10);
 
@@ -226,7 +293,7 @@ function workerLog(event: string, details: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), service: "worker", event, ...details }));
 }
 
-workerLog("worker.started", { product: PRODUCT_NAME, dbFile: workerConfig.dbFile });
+workerLog("worker.started", { product: PRODUCT_NAME, databasePrimary: db.primary });
 
 function createId() {
   return crypto.randomUUID();
@@ -3713,31 +3780,48 @@ async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
 
 let pollingTimer: NodeJS.Timeout | null = null;
 let brokerWorker: BullWorker<JobBrokerPayload> | null = null;
-let brokerConnection: Redis | null = null;
 if (workerConfig.jobBrokerBackend === "bullmq") {
   if (!workerConfig.jobBrokerRedisUrl) throw new Error("JOB_BROKER_REDIS_URL or REDIS_URL is required for BullMQ.");
-  brokerConnection = new Redis(workerConfig.jobBrokerRedisUrl, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: true,
-    lazyConnect: true,
+  let startupAttempt = 0;
+  while (!brokerWorker) {
+    startupAttempt += 1;
+    const candidate = new BullWorker<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, async (brokerJob) => consumeBrokerJob({
+      db,
+      brokerJob,
+      now: nowIso,
+      processScoreJob: processClaimedScoreJob,
+      processLegacyJob: processClaimedLegacyJob,
+    }), {
+      connection: createBullMqWorkerRedisOptions(workerConfig.jobBrokerRedisUrl),
+      prefix: workerConfig.jobBrokerPrefix,
+      concurrency: workerConfig.jobBrokerConcurrency,
+      autorun: false,
+    });
+    candidate.on("error", (error) => {
+      console.error("[worker] BullMQ worker error", error);
+      try {
+        recordWorkerHeartbeat("error", error.message, { broker: "bullmq" });
+      } catch (heartbeatError) {
+        console.error("[worker] could not record BullMQ error heartbeat", heartbeatError);
+      }
+    });
+    try {
+      await candidate.waitUntilReady();
+      brokerWorker = candidate;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "BullMQ connection failed.";
+      const delayMs = bullMqStartupRetryDelayMs(startupAttempt);
+      console.warn(`[worker] BullMQ startup attempt ${startupAttempt} failed; retrying in ${delayMs}ms: ${message}`);
+      await candidate.close(true).catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  void brokerWorker.run().catch((error) => {
+    console.error("[worker] BullMQ processing loop stopped", error);
+    if (workerConfig.runtimeReadyFile) fs.rmSync(workerConfig.runtimeReadyFile, { force: true });
+    process.exitCode = 1;
+    setTimeout(() => process.exit(1), 100).unref();
   });
-  await brokerConnection.connect();
-  brokerWorker = new BullWorker<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, async (brokerJob) => consumeBrokerJob({
-    db,
-    brokerJob,
-    now: nowIso,
-    processScoreJob: processClaimedScoreJob,
-    processLegacyJob: processClaimedLegacyJob,
-  }), {
-    connection: brokerConnection,
-    prefix: workerConfig.jobBrokerPrefix,
-    concurrency: workerConfig.jobBrokerConcurrency,
-  });
-  brokerWorker.on("error", (error) => {
-    console.error("[worker] BullMQ worker error", error);
-    recordWorkerHeartbeat("error", error.message, { broker: "bullmq" });
-  });
-  await brokerWorker.waitUntilReady();
   console.log(`[worker] BullMQ consumer ready (${SCORE_PROCESSING_QUEUE}, concurrency ${workerConfig.jobBrokerConcurrency})`);
 } else {
   const safeTick = async () => {
@@ -3753,6 +3837,21 @@ if (workerConfig.jobBrokerBackend === "bullmq") {
   void safeTick();
 }
 
+function publishRuntimeReadiness() {
+  if (!workerConfig.runtimeReadyFile) return;
+  fs.mkdirSync(path.dirname(workerConfig.runtimeReadyFile), { recursive: true });
+  const temporaryPath = `${workerConfig.runtimeReadyFile}.${process.pid}.tmp`;
+  fs.writeFileSync(temporaryPath, JSON.stringify({
+    readyAt: nowIso(),
+    databasePrimary: db.primary,
+    databaseSchema: workerConfig.postgresSchema,
+    broker: workerConfig.jobBrokerBackend,
+  }), { encoding: "utf8", mode: 0o600 });
+  fs.renameSync(temporaryPath, workerConfig.runtimeReadyFile);
+}
+
+publishRuntimeReadiness();
+
 const notificationTimer = setInterval(() => void notificationTick(), workerConfig.pollIntervalMs);
 void notificationTick();
 
@@ -3763,8 +3862,8 @@ async function shutdown(signal: string) {
   console.log(`[worker] shutting down after ${signal}`);
   if (pollingTimer) clearInterval(pollingTimer);
   clearInterval(notificationTimer);
+  if (workerConfig.runtimeReadyFile) fs.rmSync(workerConfig.runtimeReadyFile, { force: true });
   if (brokerWorker) await brokerWorker.close();
-  if (brokerConnection) await brokerConnection.quit();
   db.close();
 }
 

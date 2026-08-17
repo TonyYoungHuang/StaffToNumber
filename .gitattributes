@@ -1,0 +1,5 @@
+* text=auto
+
+# Publication fixtures are checksum-pinned and parser diagnostics use byte-stable offsets.
+services/api/src/lib/fixtures/jianpu-publication/*.txt text eol=lf
+services/api/src/lib/fixtures/jianpu-publication/*.json text eol=lf

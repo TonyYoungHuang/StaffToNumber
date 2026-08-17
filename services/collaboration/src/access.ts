@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 export type CollaborationAccess = {
   actorId: string;
@@ -7,7 +7,7 @@ export type CollaborationAccess = {
   readOnly: boolean;
 };
 
-export function resolveCollaborationAccess(db: DatabaseSync, documentId: string, token: string, now = new Date().toISOString()): CollaborationAccess | null {
+export function resolveCollaborationAccess(db: RuntimeDatabaseLike, documentId: string, token: string, now = new Date().toISOString()): CollaborationAccess | null {
   const owner = db.prepare(`
     SELECT users.id AS actor_id, users.email AS actor_name
     FROM sessions

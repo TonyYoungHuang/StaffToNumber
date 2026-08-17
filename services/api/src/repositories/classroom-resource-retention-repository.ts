@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 type PolicyRow = {
   classroom_id: string;
@@ -18,7 +18,7 @@ type CandidateRow = {
   retained_rank: number;
 };
 
-export function getClassroomResourceRetentionPolicy(db: DatabaseSync, classroomId: string) {
+export function getClassroomResourceRetentionPolicy(db: RuntimeDatabaseLike, classroomId: string) {
   const row = db.prepare(`
     SELECT classroom_id, enabled, historical_version_days, minimum_versions_per_group, updated_at
     FROM score_classroom_resource_retention_policies WHERE classroom_id = ?
@@ -31,8 +31,7 @@ export function getClassroomResourceRetentionPolicy(db: DatabaseSync, classroomI
     updatedAt: row?.updated_at ?? null,
   };
 }
-
-export function updateClassroomResourceRetentionPolicy(db: DatabaseSync, input: {
+export function updateClassroomResourceRetentionPolicy(db: RuntimeDatabaseLike, input: {
   classroomId: string;
   userId: string;
   enabled: boolean;
@@ -64,7 +63,7 @@ export function updateClassroomResourceRetentionPolicy(db: DatabaseSync, input: 
   return getClassroomResourceRetentionPolicy(db, input.classroomId);
 }
 
-export function listClassroomResourceRetentionCandidates(db: DatabaseSync, input: {
+export function listClassroomResourceRetentionCandidates(db: RuntimeDatabaseLike, input: {
   classroomId: string;
   historicalVersionDays: number;
   minimumVersionsPerGroup: number;
@@ -101,7 +100,7 @@ export function listClassroomResourceRetentionCandidates(db: DatabaseSync, input
   };
 }
 
-export function purgeClassroomResourceRetentionCandidates(db: DatabaseSync, input: {
+export function purgeClassroomResourceRetentionCandidates(db: RuntimeDatabaseLike, input: {
   classroomId: string;
   historicalVersionDays: number;
   minimumVersionsPerGroup: number;
@@ -130,7 +129,7 @@ export function purgeClassroomResourceRetentionCandidates(db: DatabaseSync, inpu
   }
 }
 
-export function pruneEnabledClassroomResourceRetentionPolicies(db: DatabaseSync, now = new Date()) {
+export function pruneEnabledClassroomResourceRetentionPolicies(db: RuntimeDatabaseLike, now = new Date()) {
   const policies = db.prepare(`
     SELECT classroom_id, historical_version_days, minimum_versions_per_group
     FROM score_classroom_resource_retention_policies WHERE enabled = 1
@@ -150,7 +149,7 @@ export function pruneEnabledClassroomResourceRetentionPolicies(db: DatabaseSync,
   return { classroomsProcessed: policies.length, purged, totalBytes };
 }
 
-export function setClassroomResourceRetentionHold(db: DatabaseSync, input: {
+export function setClassroomResourceRetentionHold(db: RuntimeDatabaseLike, input: {
   classroomId: string;
   resourceId: string;
   retentionHold: boolean;

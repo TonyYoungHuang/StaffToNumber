@@ -1,0 +1,17 @@
+{
+    "schemaVersion":  1,
+    "environment":  "production",
+    "startedAt":  "2026-08-17T06:52:55.2974389Z",
+    "completedAt":  "2026-08-17T06:53:15.9256439Z",
+    "passed":  true,
+    "database":  "scoretransposer_production",
+    "schema":  "scoretransposer",
+    "tableCount":  61,
+    "runtimeRole":  "scoretransposer_runtime",
+    "source":  "staging schema-only export",
+    "sourceRowsCopied":  false,
+    "isolatedCredentialsCreated":  [
+                                       "deploy/cloudflare/.env.neon-production-owner-url",
+                                       "deploy/cloudflare/.env.neon-production-app-url"
+                                   ]
+}

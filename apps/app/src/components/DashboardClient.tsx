@@ -6,6 +6,7 @@ import { APP_ROUTES } from "@score/shared";
 import { CheckSealIcon, ClockPulseIcon, DownloadIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
+import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 import { OperationsPanel } from "./OperationsPanel";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -209,7 +210,7 @@ export function DashboardClient() {
         cache: "no-store",
       });
       if (!response.ok) {
-        const payload = await response.json().catch(() => null);
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
         throw new Error(payload?.error ?? "Data export failed.");
       }
       const blob = await response.blob();
@@ -436,8 +437,8 @@ export function DashboardClient() {
             </div>
           </div>
           <div className="button-row">
-            <Link href={APP_ROUTES.checkout} className="button button-primary">
-              {copy.actions.checkout}
+            <Link href={accountActivationRoute} className="button button-primary">
+              {checkoutAvailable ? copy.actions.checkout : copy.actions.redeem}
             </Link>
             <Link href={APP_ROUTES.upload} className="button button-primary">
               {copy.actions.uploads}

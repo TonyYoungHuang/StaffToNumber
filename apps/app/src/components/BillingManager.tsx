@@ -42,11 +42,19 @@ type Seat = {
 };
 
 type BillingPayload = { subscriptions: Subscription[]; invoices: Invoice[]; seatAssignments: Seat[] };
+type QuotaUsage = {
+  tier: "legacy" | "pro" | "education";
+  periodStart: string;
+  periodEnd: string;
+  jobs: { used: number; limit: number; remaining: number };
+  storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
+};
 
 export function BillingManager() {
   const { locale } = useAppLocale();
   const isChinese = locale === "zh-CN";
   const [billing, setBilling] = useState<BillingPayload>({ subscriptions: [], invoices: [], seatAssignments: [] });
+  const [quota, setQuota] = useState<QuotaUsage | null>(null);
   const [seatDrafts, setSeatDrafts] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -57,12 +65,16 @@ export function BillingManager() {
       setStatus(isChinese ? "请先登录后查看账单。" : "Sign in to view billing.");
       return;
     }
-    const result = await apiRequest<BillingPayload>("/api/payments/billing", { headers: { Authorization: `Bearer ${token}` } });
+    const [result, quotaResult] = await Promise.all([
+      apiRequest<BillingPayload>("/api/payments/billing", { headers: { Authorization: `Bearer ${token}` } }),
+      apiRequest<{ usage: QuotaUsage }>("/api/payments/billing/usage", { headers: { Authorization: `Bearer ${token}` } }),
+    ]);
     if (!result.ok) {
       setStatus(result.error);
       return;
     }
     setBilling(result.data);
+    if (quotaResult.ok) setQuota(quotaResult.data.usage);
     setStatus(null);
   }, [isChinese, token]);
 
@@ -108,8 +120,35 @@ export function BillingManager() {
     await refresh();
   }
 
+  async function cancelSubscription(subscriptionId: string) {
+    if (!token) return;
+    setBusy(`cancel-${subscriptionId}`);
+    const result = await apiRequest<{ subscriptionId: string; cancelAtPeriodEnd: boolean }>(`/api/payments/billing/subscriptions/${subscriptionId}/cancel`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ atPeriodEnd: true }),
+    });
+    setBusy(null);
+    if (!result.ok) return setStatus(result.error);
+    setStatus(isChinese ? "订阅将在当前计费周期结束时取消。" : "The subscription will cancel at the end of the current billing period.");
+    await refresh();
+  }
+
   return (
     <div className="page-stack">
+      <section className="surface-panel stack-lg">
+        <div className="stack-xs">
+          <p className="eyebrow">{isChinese ? "本月用量" : "Current usage"}</p>
+          <h2 className="card-title">{quota ? `${quota.tier.toUpperCase()} ${isChinese ? "套餐配额" : "plan quotas"}` : isChinese ? "正在读取套餐配额" : "Loading plan quotas"}</h2>
+        </div>
+        {quota ? (
+          <div className="metric-grid">
+            <QuotaMeter label={isChinese ? "处理任务" : "Processing jobs"} used={quota.jobs.used} limit={quota.jobs.limit} value={`${quota.jobs.used} / ${quota.jobs.limit}`} />
+            <QuotaMeter label={isChinese ? "文件存储" : "File storage"} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBytes(quota.storage.usedBytes)} / ${formatBytes(quota.storage.limitBytes)}`} />
+          </div>
+        ) : null}
+      </section>
+
       <section className="surface-panel stack-lg">
         <div className="section-heading-row">
           <div className="stack-xs">
@@ -130,8 +169,16 @@ export function BillingManager() {
                     <p className="item-title">{subscription.provider.toUpperCase()} <span className={`status-chip ${subscription.status === "active" || subscription.status === "trialing" ? "tone-green" : "tone-amber"}`}>{subscription.status}</span></p>
                     <p className="item-meta">{subscription.currentPeriodEnd ? `${isChinese ? "当前周期至" : "Current period ends"} ${formatDate(subscription.currentPeriodEnd, locale)}` : isChinese ? "无固定周期结束时间" : "No fixed period end"}</p>
                     {subscription.lastPaymentFailedAt ? <p className="form-status error">{isChinese ? "最近一次续费失败，请更新付款方式。" : "The latest renewal failed. Update the payment method."}</p> : null}
+                    {subscription.cancelAtPeriodEnd ? <p className="form-status">{isChinese ? "已安排在当前周期结束时取消。" : "Cancellation is scheduled for the end of this period."}</p> : null}
                   </div>
-                  <span className="status-chip tone-cyan">{subscription.seatQuantity} {isChinese ? "席位" : "seats"}</span>
+                  <div className="button-row">
+                    <span className="status-chip tone-cyan">{subscription.seatQuantity} {isChinese ? "席位" : "seats"}</span>
+                    {!subscription.cancelAtPeriodEnd && ["active", "trialing", "past_due", "paused", "unpaid"].includes(subscription.status) ? (
+                      <button type="button" className="button button-tertiary" disabled={busy === `cancel-${subscription.id}`} onClick={() => void cancelSubscription(subscription.id)}>
+                        {busy === `cancel-${subscription.id}` ? (isChinese ? "正在取消..." : "Canceling...") : (isChinese ? "周期结束时取消" : "Cancel at period end")}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 {subscription.organizationId ? (
                   <div className="stack-sm">
@@ -173,4 +220,23 @@ function formatMoney(value: number | null, currency: string | null, locale: stri
   } catch {
     return `${currency.toUpperCase()} ${(value / 100).toFixed(2)}`;
   }
+}
+
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024 ** 3) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  return `${(value / 1024 ** 3).toFixed(1)} GB`;
+}
+
+function QuotaMeter({ label, used, limit, value }: { label: string; used: number; limit: number; value: string }) {
+  const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  return (
+    <div className="metric-card stack-sm">
+      <div className="section-heading-row"><span className="field-label">{label}</span><strong>{value}</strong></div>
+      <div className="quota-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={limit} aria-valuenow={Math.min(used, limit)}>
+        <span className="quota-fill" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
 }

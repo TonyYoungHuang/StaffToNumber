@@ -1,16 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createRuntimeDatabase } from "@score/runtime-database";
 import { config } from "./config.js";
 import { DATABASE_SCHEMA_VERSION } from "./schema-version.js";
 
-const dbDir = path.dirname(config.dbFile);
-fs.mkdirSync(dbDir, { recursive: true });
+if (config.runtimeDatabasePrimary === "sqlite") fs.mkdirSync(path.dirname(config.dbFile), { recursive: true });
 fs.mkdirSync(config.storageDir, { recursive: true });
 
-export const db = new DatabaseSync(config.dbFile);
-db.exec("PRAGMA foreign_keys = ON;");
-db.exec("PRAGMA busy_timeout = 5000;");
+export const db = createRuntimeDatabase({
+  primary: config.runtimeDatabasePrimary,
+  sqliteFile: config.dbFile,
+  postgresUrl: config.postgresUrl,
+  postgresSchema: config.postgresSchema,
+});
+if (db.primary === "sqlite") {
+  db.exec("PRAGMA foreign_keys = ON;");
+  db.exec("PRAGMA busy_timeout = 5000;");
+}
 
 function ensureColumn(tableName: string, columnName: string, columnDefinition: string) {
   const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
@@ -19,7 +25,20 @@ function ensureColumn(tableName: string, columnName: string, columnDefinition: s
   }
 }
 
+function currentSchemaVersion() {
+  const row = db.prepare("PRAGMA user_version;").get() as { user_version: number } | undefined;
+  return row?.user_version ?? 0;
+}
+
 export function initDb() {
+  if (db.primary === "postgres") {
+    validatePostgresSchema();
+    return;
+  }
+  if (currentSchemaVersion() === DATABASE_SCHEMA_VERSION) {
+    return;
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -180,6 +199,7 @@ export function initDb() {
       billing_kind TEXT NOT NULL DEFAULT 'one_time',
       organization_id TEXT,
       seat_quantity INTEGER NOT NULL DEFAULT 1,
+      idempotency_key_hash TEXT,
       checkout_session_id TEXT,
       transaction_id TEXT,
       checkout_url TEXT,
@@ -1051,6 +1071,7 @@ export function initDb() {
   ensureColumn("payment_orders", "billing_kind", "TEXT NOT NULL DEFAULT 'one_time'");
   ensureColumn("payment_orders", "organization_id", "TEXT");
   ensureColumn("payment_orders", "seat_quantity", "INTEGER NOT NULL DEFAULT 1");
+  ensureColumn("payment_orders", "idempotency_key_hash", "TEXT");
   ensureColumn("payment_orders", "checkout_session_id", "TEXT");
   ensureColumn("payment_orders", "transaction_id", "TEXT");
   ensureColumn("payment_orders", "checkout_url", "TEXT");
@@ -1274,6 +1295,9 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_activation_codes_status ON activation_codes(status);
     CREATE INDEX IF NOT EXISTS idx_payment_orders_checkout_session_id ON payment_orders(checkout_session_id);
     CREATE INDEX IF NOT EXISTS idx_payment_orders_transaction_id ON payment_orders(transaction_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_idempotency
+      ON payment_orders(user_id, provider, idempotency_key_hash)
+      WHERE idempotency_key_hash IS NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_support_requests_reference_code ON support_requests(reference_code);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_score_assignment_submissions_review_token ON score_assignment_submissions(review_token);
     CREATE INDEX IF NOT EXISTS idx_score_organizations_owner ON score_organizations(owner_user_id, archived_at);
@@ -1311,4 +1335,29 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_users_account_status_deletion ON users(account_status, scheduled_deletion_at);
   `);
   db.exec(`PRAGMA user_version = ${DATABASE_SCHEMA_VERSION};`);
+}
+
+function validatePostgresSchema() {
+  const requiredTables = [
+    "users",
+    "sessions",
+    "files",
+    "score_documents",
+    "score_jobs",
+    "jobs",
+    "billing_subscriptions",
+    "job_dispatch_outbox",
+    "service_runtime",
+  ];
+  const rows = db.prepare(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = current_schema()
+      AND table_name IN (${requiredTables.map((table) => `'${table}'`).join(", ")})
+  `).all() as Array<{ table_name: string }>;
+  const available = new Set(rows.map((row) => row.table_name));
+  const missing = requiredTables.filter((table) => !available.has(table));
+  if (missing.length > 0) {
+    throw new Error(`PostgreSQL runtime schema is incomplete (${missing.join(", ")}). Run and verify the PostgreSQL migration before starting API traffic.`);
+  }
 }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { PaymentProvider } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
@@ -23,17 +23,18 @@ export function CheckoutClient() {
   const [provider, setProvider] = useState<PaymentProvider>("stripe");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
 
   const copy = useMemo(
     () =>
       locale === "zh-CN"
         ? {
             eyebrow: "安全支付",
-            title: "在线付款并开通一年访问权限",
-            body: "国际用户可以直接通过 Stripe 或 Paddle 支付。已经通过其他渠道购买激活码的中国大陆用户，可以跳过付款，直接到应用内兑换。",
-            email: "联系邮箱（可选）",
+            title: "在线订阅并自动开通账户",
+            body: "使用已注册账户的邮箱继续支付。付款成功后，订阅与配额会自动归属到该账户。",
+            email: "已注册账户邮箱",
             emailPlaceholder: "you@example.com",
-            emailHelp: "填写邮箱有助于后续核对支付记录或处理支持请求。",
+            emailHelp: "必须与 ScoreTransposer 注册邮箱一致，避免订阅无法归属。",
             provider: "支付渠道",
             stripeTitle: "Stripe",
             stripeBody: "适合国际银行卡、Apple Pay、Google Pay，以及标准托管收银台流程。",
@@ -43,30 +44,30 @@ export function CheckoutClient() {
             loading: "正在跳转到支付页面...",
             activate: "我已经有激活码",
             badge: "托管支付页",
-            accessLabel: "访问时长",
-            accessValue: "1 年",
-            accessBody: "当前 checkout 流程围绕一年访问权限来设计。",
+            accessLabel: "计费周期",
+            accessValue: "按月",
+            accessBody: "订阅按月续费，可在账单中心管理付款方式或取消。",
             deliveryLabel: "支付后",
-            deliveryValue: "自动发码",
-            deliveryBody: "支付成功页会确认订单状态，并展示这笔订单生成的激活码。",
+            deliveryValue: "自动开通",
+            deliveryBody: "支付成功后订阅、席位与使用配额会自动写入已注册账户。",
             supportLabel: "人工支持",
             supportValue: "邮件复核",
             supportBody: "如果支付回跳异常或激活码没有出现，可以由支持团队人工核对订单链路。",
             nextTitle: "继续之前请先确认",
             nextSteps: [
-              "支付成功后，系统会自动确认订单并发放一枚一年期激活码。",
-              "成功页会同时显示订单状态和激活码，请在离开页面前先保存。",
+              "支付成功后，系统会自动确认订单并为注册账户开通订阅。",
+              "同一笔支付即使重复点击或网络重试，也只会创建一个有效订单。",
               "如果你已经通过其他渠道买过激活码，不需要在这里重复付款。",
             ],
             contact: "联系支持",
           }
         : {
             eyebrow: "Secure checkout",
-            title: "Pay online and unlock one year of access",
-            body: "International customers can pay directly with Stripe or Paddle. Mainland-China customers who already bought an activation code elsewhere can skip checkout and redeem inside the app.",
-            email: "Contact email (optional)",
+            title: "Subscribe online and unlock your account",
+            body: "Continue with the email of an existing ScoreTransposer account. Your subscription and quotas are linked automatically after payment.",
+            email: "Registered account email",
             emailPlaceholder: "you@example.com",
-            emailHelp: "Adding an email can make it easier to reconcile payment issues or support follow-up later.",
+            emailHelp: "This must match your ScoreTransposer account so the subscription can be attributed safely.",
             provider: "Payment provider",
             stripeTitle: "Stripe",
             stripeBody: "Best for international cards, Apple Pay, Google Pay, and a standard hosted checkout flow.",
@@ -76,19 +77,19 @@ export function CheckoutClient() {
             loading: "Redirecting to the payment page...",
             activate: "I already have an activation code",
             badge: "Hosted payment page",
-            accessLabel: "Access term",
-            accessValue: "1 year",
-            accessBody: "This checkout flow is positioned around one year of access.",
+            accessLabel: "Billing cycle",
+            accessValue: "Monthly",
+            accessBody: "The subscription renews monthly and can be managed or canceled from Billing.",
             deliveryLabel: "After payment",
-            deliveryValue: "Auto-issued code",
-            deliveryBody: "The success page confirms the order and shows the activation code generated for the purchase.",
+            deliveryValue: "Automatic access",
+            deliveryBody: "A successful payment links the subscription, seats, and usage quotas to the registered account.",
             supportLabel: "Human support",
             supportValue: "Email review",
             supportBody: "If checkout returns unexpectedly or a code does not appear, support can manually review the order path.",
             nextTitle: "Know this before you continue",
             nextSteps: [
-              "After payment succeeds, the system confirms the order and issues a one-year activation code automatically.",
-              "The success page shows both order status and the activation code, so save the code before leaving the page.",
+              "After payment succeeds, the system confirms the order and activates the registered account automatically.",
+              "Repeated clicks or network retries reuse the same checkout intent instead of creating duplicate orders.",
               "If you already purchased an activation code through another channel, you do not need to pay here again.",
             ],
             contact: "Contact support",
@@ -101,11 +102,18 @@ export function CheckoutClient() {
     setLoading(true);
     setStatus(null);
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const signature = JSON.stringify({ provider, locale, email: normalizedEmail });
+    if (checkoutIntent.current?.signature !== signature) {
+      checkoutIntent.current = { signature, key: crypto.randomUUID() };
+    }
+
     const result = await apiRequest<CheckoutPayload>("/api/payments/checkout", {
       method: "POST",
+      headers: { "Idempotency-Key": checkoutIntent.current.key },
       body: JSON.stringify({
         provider,
-        email: email.trim() || undefined,
+        email: normalizedEmail,
         locale,
       }),
     });
@@ -137,6 +145,7 @@ export function CheckoutClient() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={copy.emailPlaceholder}
+            required
           />
           <span className="helper-copy">{copy.emailHelp}</span>
         </label>

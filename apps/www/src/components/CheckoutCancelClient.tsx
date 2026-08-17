@@ -2,12 +2,13 @@
 
 import { useMemo } from "react";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
-import { getAppActivateUrl, getSupportUrl } from "../lib/site";
+import { getAppActivateUrl, getCheckoutUrl, getSupportUrl } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 export function CheckoutCancelClient() {
   const { locale } = useSiteLocale();
   const activateUrl = getAppActivateUrl();
+  const checkoutUrl = getCheckoutUrl(locale);
   const copy = useMemo(
     () =>
       locale === "zh-CN"
@@ -71,7 +72,7 @@ export function CheckoutCancelClient() {
       </div>
 
       <div className="button-row">
-        <a href="/checkout" className="public-button primary">
+        <a href={checkoutUrl} className="public-button primary">
           {copy.retry}
         </a>
         <a href={activateUrl} className="public-button secondary">

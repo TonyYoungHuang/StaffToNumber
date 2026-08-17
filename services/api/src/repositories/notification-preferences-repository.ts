@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 export type NotificationPreferences = {
   emailClassroomAnnouncements: boolean;
@@ -19,8 +19,7 @@ function mapPreferences(row: PreferenceRow | undefined): NotificationPreferences
     updatedAt: row?.updated_at ?? null,
   };
 }
-
-export function getNotificationPreferences(db: DatabaseSync, userId: string) {
+export function getNotificationPreferences(db: RuntimeDatabaseLike, userId: string) {
   const row = db.prepare(`
     SELECT email_classroom_announcements, locale, updated_at
     FROM score_notification_preferences
@@ -29,7 +28,7 @@ export function getNotificationPreferences(db: DatabaseSync, userId: string) {
   return mapPreferences(row);
 }
 
-export function updateNotificationPreferences(db: DatabaseSync, input: {
+export function updateNotificationPreferences(db: RuntimeDatabaseLike, input: {
   userId: string;
   emailClassroomAnnouncements: boolean;
   locale: "zh-CN" | "en";

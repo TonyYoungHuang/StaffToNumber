@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
+import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type MePayload = {
@@ -43,8 +44,10 @@ export function DashboardBannerActions() {
   if (status !== "active") {
     return (
       <div className="page-banner-actions">
-        <Link href={APP_ROUTES.checkout} className="button button-primary">
-          {locale === "zh-CN" ? "立即开通" : "Pay now"}
+        <Link href={accountActivationRoute} className="button button-primary">
+          {checkoutAvailable
+            ? locale === "zh-CN" ? "立即开通" : "Pay now"
+            : locale === "zh-CN" ? "兑换激活码" : "View activation options"}
         </Link>
         <Link href={locale === "zh-CN" ? APP_ROUTES.activate : APP_ROUTES.register} className="button button-secondary">
           {locale === "zh-CN" ? "兑换激活码" : "View account setup"}

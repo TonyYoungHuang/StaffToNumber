@@ -81,7 +81,6 @@ await app.register(educationRoutes, { prefix: "/api" });
 await app.register(ltiRoutes, { prefix: "/api" });
 
 initDb();
-const jobBrokerDispatcher = await startJobBrokerDispatcher(app.log);
 const auditPruneResult = pruneSecurityAuditEvents();
 if (auditPruneResult.deleted > 0) {
   app.log.info({ event: "security.audit_retention_pruned", ...auditPruneResult });
@@ -104,15 +103,30 @@ async function runLifecycleCleanup() {
   }
 }
 
+type JobBrokerDispatcher = Awaited<ReturnType<typeof startJobBrokerDispatcher>>;
+
 let lifecycleCleanupTimer: NodeJS.Timeout | null = null;
-if (config.lifecycleCleanupEnabled) {
-  await runLifecycleCleanup();
-  lifecycleCleanupTimer = setInterval(() => void runLifecycleCleanup(), config.lifecycleCleanupIntervalMs);
-  lifecycleCleanupTimer.unref();
+let jobBrokerRetryTimer: NodeJS.Timeout | null = null;
+let jobBrokerDispatcher: JobBrokerDispatcher | null = null;
+let shuttingDown = false;
+
+async function initializeJobBroker() {
+  try {
+    jobBrokerDispatcher = await startJobBrokerDispatcher(app.log);
+  } catch (error) {
+    app.log.error({ event: "job_broker.start_failed", error });
+    if (shuttingDown) return;
+    jobBrokerRetryTimer = setTimeout(() => void initializeJobBroker(), 5_000);
+    jobBrokerRetryTimer.unref();
+  }
 }
+
 app.addHook("onClose", async () => {
+  shuttingDown = true;
   if (lifecycleCleanupTimer) clearInterval(lifecycleCleanupTimer);
-  await jobBrokerDispatcher.close();
+  if (jobBrokerRetryTimer) clearTimeout(jobBrokerRetryTimer);
+  await jobBrokerDispatcher?.close();
+  db.close();
 });
 for (const code of config.seedActivationCodes) {
   ensureActivationCode(code, config.entitlementDays);
@@ -126,6 +140,29 @@ app.get("/health", async () => {
   };
 });
 
+app.get("/ready", async (_request, reply) => {
+  try {
+    const probe = db.prepare("SELECT 1 AS ok").get() as { ok?: number | string } | undefined;
+    if (Number(probe?.ok) !== 1) throw new Error("PostgreSQL readiness probe returned an unexpected result.");
+    return {
+      status: "ready",
+      service: "api",
+      databasePrimary: db.primary,
+      databaseSchema: config.postgresSchema,
+      dependencies: { database: "ready" },
+    };
+  } catch (error) {
+    app.log.error({ event: "api.readiness_failed", error });
+    return reply.code(503).send({
+      status: "not_ready",
+      service: "api",
+      databasePrimary: db.primary,
+      databaseSchema: config.postgresSchema,
+      dependencies: { database: "not_ready" },
+    });
+  }
+});
+
 app.get("/", async () => {
   return {
     message: "Online PDF Score Converter API is running.",
@@ -135,6 +172,12 @@ app.get("/", async () => {
 async function start() {
   try {
     await app.listen({ port: config.port, host: config.host });
+    void initializeJobBroker();
+    if (config.lifecycleCleanupEnabled) {
+      void runLifecycleCleanup();
+      lifecycleCleanupTimer = setInterval(() => void runLifecycleCleanup(), config.lifecycleCleanupIntervalMs);
+      lifecycleCleanupTimer.unref();
+    }
   } catch (error) {
     app.log.error(error);
     process.exit(1);

@@ -1,11 +1,20 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import { assertPostgresRuntimeTables, type RuntimeDatabaseLike } from "@score/runtime-database";
 import { Server } from "@hocuspocus/server";
 import { Redis as RedisExtension, type Configuration as RedisConfiguration } from "@hocuspocus/extension-redis";
 import * as Y from "yjs";
 import { resolveCollaborationAccess } from "./access.js";
 
-export function initCollaborationDb(db: DatabaseSync) {
+export function initCollaborationDb(db: RuntimeDatabaseLike) {
+  if (db.primary === "postgres") {
+    assertPostgresRuntimeTables(db, [
+      "score_documents",
+      "score_collaboration_documents",
+      "score_collaboration_updates",
+      "score_collaboration_snapshots",
+    ]);
+    return;
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS score_collaboration_documents (
       document_id TEXT PRIMARY KEY,
@@ -47,15 +56,56 @@ export function initCollaborationDb(db: DatabaseSync) {
   if (!columns.some((column) => column.name === "request_id")) db.exec("ALTER TABLE score_collaboration_updates ADD COLUMN request_id TEXT;");
   if (!columns.some((column) => column.name === "trace_id")) db.exec("ALTER TABLE score_collaboration_updates ADD COLUMN trace_id TEXT;");
 }
-
-export function createCollaborationServer(db: DatabaseSync, options: { port?: number; address?: string; maxOperations?: number; maxConflicts?: number; redis?: Partial<RedisConfiguration> } = {}) {
+export function createCollaborationServer(db: RuntimeDatabaseLike, options: { port?: number; address?: string; maxOperations?: number; maxConflicts?: number; redis?: Partial<RedisConfiguration>; databaseSchema?: string } = {}) {
   initCollaborationDb(db);
   const maxOperations = boundedRetention(options.maxOperations, 500);
   const maxConflicts = boundedRetention(options.maxConflicts, 500);
+  const redisExtension = options.redis ? new RedisExtension(options.redis) : undefined;
   return new Server({
     port: options.port ?? 4001,
     address: options.address ?? "0.0.0.0",
-    extensions: options.redis ? [new RedisExtension(options.redis)] : [],
+    extensions: redisExtension ? [redisExtension] : [],
+    async onRequest({ request, response }) {
+      const pathname = new URL(request.url ?? "/", "http://collaboration.local").pathname;
+      if (pathname !== "/health" && pathname !== "/ready") return;
+
+      const dependencies = {
+        database: "unavailable",
+        redis: redisExtension ? "unavailable" : "disabled",
+      };
+      let statusCode = 200;
+      try {
+        const row = db.prepare("SELECT 1 AS ok").get() as { ok?: number } | undefined;
+        if (Number(row?.ok) !== 1) throw new Error("PostgreSQL readiness query returned an unexpected result.");
+        dependencies.database = "ready";
+        if (redisExtension) {
+          const pong = await Promise.race([
+            redisExtension.pub.ping(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Redis readiness check timed out.")), 3_000)),
+          ]);
+          if (pong !== "PONG") throw new Error("Redis readiness check returned an unexpected result.");
+          dependencies.redis = "ready";
+        }
+      } catch {
+        statusCode = 503;
+      }
+
+      const body = JSON.stringify({
+        status: statusCode === 200 ? "ready" : "not_ready",
+        service: "collaboration",
+        databasePrimary: db.primary ?? "unknown",
+        databaseSchema: options.databaseSchema?.trim() || (db.primary === "postgres" ? "public" : "main"),
+        dependencies,
+      });
+      response.writeHead(statusCode, {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json; charset=utf-8",
+      });
+      response.end(request.method === "HEAD" ? undefined : body);
+
+      // Stop Hocuspocus from replacing this response with its default welcome page.
+      return Promise.reject();
+    },
     async onAuthenticate({ documentName, token, connectionConfig }) {
       const access = resolveCollaborationAccess(db, documentName, String(token ?? ""));
       if (!access) throw new Error("Not authorized for this score collaboration document.");

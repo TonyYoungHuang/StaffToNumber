@@ -1,10 +1,10 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import { createId } from "../lib/auth.js";
 
 export type OrganizationMemberRole = "admin" | "teacher" | "assistant" | "observer";
 export type ClassroomStaffRole = "teacher" | "assistant" | "observer";
 
-export function createEducationOrganization(db: DatabaseSync, input: { ownerUserId: string; name: string }) {
+export function createEducationOrganization(db: RuntimeDatabaseLike, input: { ownerUserId: string; name: string }) {
   const id = createId();
   const now = new Date().toISOString();
   const slugBase = input.name.toLocaleLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "").slice(0, 40) || "organization";
@@ -27,13 +27,12 @@ export function createEducationOrganization(db: DatabaseSync, input: { ownerUser
   }
   return findEducationOrganization(db, id);
 }
-
-export function findEducationOrganization(db: DatabaseSync, organizationId: string) {
+export function findEducationOrganization(db: RuntimeDatabaseLike, organizationId: string) {
   return db.prepare("SELECT id, owner_user_id AS ownerUserId, name, slug, created_at AS createdAt, updated_at AS updatedAt, archived_at AS archivedAt FROM score_organizations WHERE id = ?")
     .get(organizationId) as Record<string, unknown> | undefined;
 }
 
-export function listEducationOrganizations(db: DatabaseSync, userId: string) {
+export function listEducationOrganizations(db: RuntimeDatabaseLike, userId: string) {
   const organizations = db.prepare(`
     SELECT DISTINCT organizations.id, organizations.owner_user_id AS ownerUserId, organizations.name,
            organizations.slug, organizations.created_at AS createdAt, organizations.updated_at AS updatedAt
@@ -57,7 +56,7 @@ export function listEducationOrganizations(db: DatabaseSync, userId: string) {
   }));
 }
 
-export function createEducationCampus(db: DatabaseSync, input: { organizationId: string; name: string; code?: string | null; timezone: string }) {
+export function createEducationCampus(db: RuntimeDatabaseLike, input: { organizationId: string; name: string; code?: string | null; timezone: string }) {
   const id = createId();
   const now = new Date().toISOString();
   db.prepare(`
@@ -67,7 +66,7 @@ export function createEducationCampus(db: DatabaseSync, input: { organizationId:
   return db.prepare("SELECT id, organization_id AS organizationId, name, code, timezone, created_at AS createdAt, updated_at AS updatedAt FROM score_organization_campuses WHERE id = ?").get(id);
 }
 
-export function inviteEducationOrganizationMember(db: DatabaseSync, input: { organizationId: string; invitedByUserId: string; email: string; displayName: string; role: OrganizationMemberRole }) {
+export function inviteEducationOrganizationMember(db: RuntimeDatabaseLike, input: { organizationId: string; invitedByUserId: string; email: string; displayName: string; role: OrganizationMemberRole }) {
   const email = input.email.trim().toLocaleLowerCase();
   const existing = db.prepare("SELECT role FROM score_organization_members WHERE organization_id = ? AND invited_email = ?")
     .get(input.organizationId, email) as { role: string } | undefined;
@@ -92,13 +91,13 @@ export function inviteEducationOrganizationMember(db: DatabaseSync, input: { org
     .get(input.organizationId, email);
 }
 
-export function removeEducationOrganizationMember(db: DatabaseSync, input: { organizationId: string; memberId: string }) {
+export function removeEducationOrganizationMember(db: RuntimeDatabaseLike, input: { organizationId: string; memberId: string }) {
   const now = new Date().toISOString();
   return db.prepare("UPDATE score_organization_members SET status = 'removed', removed_at = ?, updated_at = ? WHERE id = ? AND organization_id = ? AND role != 'owner' AND removed_at IS NULL")
     .run(now, now, input.memberId, input.organizationId).changes > 0;
 }
 
-export function listClassroomStaff(db: DatabaseSync, classroomId: string) {
+export function listClassroomStaff(db: RuntimeDatabaseLike, classroomId: string) {
   return db.prepare(`
     SELECT id, classroom_id AS classroomId, user_id AS userId, invited_email AS invitedEmail,
            display_name AS displayName, role, status, created_at AS createdAt, accepted_at AS acceptedAt
@@ -106,7 +105,7 @@ export function listClassroomStaff(db: DatabaseSync, classroomId: string) {
   `).all(classroomId);
 }
 
-export function inviteClassroomStaff(db: DatabaseSync, input: { classroomId: string; invitedByUserId: string; email: string; displayName: string; role: ClassroomStaffRole }) {
+export function inviteClassroomStaff(db: RuntimeDatabaseLike, input: { classroomId: string; invitedByUserId: string; email: string; displayName: string; role: ClassroomStaffRole }) {
   const email = input.email.trim().toLocaleLowerCase();
   const owner = db.prepare(`
     SELECT users.email
@@ -130,10 +129,10 @@ export function inviteClassroomStaff(db: DatabaseSync, input: { classroomId: str
     createId(), input.classroomId, user?.id ?? null, email, input.displayName, input.role,
     user ? "active" : "invited", input.invitedByUserId, now, now, user ? now : null,
   );
-  return listClassroomStaff(db, input.classroomId).find((member) => (member as { invitedEmail: string }).invitedEmail === email)!;
+  return listClassroomStaff(db, input.classroomId).find((member: unknown) => (member as { invitedEmail: string }).invitedEmail === email)!;
 }
 
-export function removeClassroomStaff(db: DatabaseSync, input: { classroomId: string; staffId: string }) {
+export function removeClassroomStaff(db: RuntimeDatabaseLike, input: { classroomId: string; staffId: string }) {
   const now = new Date().toISOString();
   return db.prepare("UPDATE score_classroom_staff SET status = 'removed', removed_at = ?, updated_at = ? WHERE id = ? AND classroom_id = ? AND removed_at IS NULL")
     .run(now, now, input.staffId, input.classroomId).changes > 0;

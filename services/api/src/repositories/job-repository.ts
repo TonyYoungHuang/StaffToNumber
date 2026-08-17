@@ -3,6 +3,7 @@ import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
+import { assertProcessingQuota } from "../lib/plan-quotas.js";
 
 type JobRow = {
   id: string;
@@ -24,6 +25,7 @@ type JobRow = {
 };
 
 export function createJob(input: { userId: string; inputFileId: string; direction: ConversionDirection }) {
+  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const id = createId();
   const context = currentRequestContext();

@@ -76,8 +76,8 @@ export function createUser(email: string, passwordHash: string, passwordSalt: st
 
 export function findUserByEmail(email: string) {
   return db
-    .prepare("SELECT id, email, password_hash, password_salt, created_at, updated_at, account_status, deletion_requested_at, scheduled_deletion_at FROM users WHERE email = ?")
-    .get(email) as UserRow | undefined;
+    .prepare("SELECT id, email, password_hash, password_salt, created_at, updated_at, account_status, deletion_requested_at, scheduled_deletion_at FROM users WHERE lower(email) = lower(?)")
+    .get(email.trim()) as UserRow | undefined;
 }
 
 export function findUserById(id: string) {

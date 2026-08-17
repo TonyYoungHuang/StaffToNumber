@@ -1,11 +1,12 @@
 ﻿import Link from "next/link";
 import { Panel, SectionIntro } from "@score/ui";
 import { readSiteLocale } from "../lib/locale";
-import { getSupportUrl } from "../lib/site";
+import { getCheckoutUrl, getSupportUrl } from "../lib/site";
 
 export default async function NotFound() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
+  const checkoutUrl = getCheckoutUrl(locale);
 
   return (
     <section className="public-container public-page stack-xl">
@@ -35,8 +36,8 @@ export default async function NotFound() {
           <Link href={getSupportUrl("general", "not-found")} className="public-button tertiary">
             {isChinese ? "支持页" : "Support"}
           </Link>
-          <Link href="/checkout" className="public-button tertiary">
-            {isChinese ? "开通路径" : "Checkout"}
+          <Link href={checkoutUrl} className="public-button tertiary">
+            {isChinese ? "开通路径" : "Access options"}
           </Link>
         </div>
       </Panel>

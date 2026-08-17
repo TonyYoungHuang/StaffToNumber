@@ -1,4 +1,5 @@
 import path from "node:path";
+import { runtimeDatabasePrimary } from "@score/runtime-database";
 
 const cwd = process.cwd();
 
@@ -9,6 +10,11 @@ function storageEncryption(value: string | undefined): "AES256" | "aws:kms" | un
 export const workerConfig = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   dbFile: process.env.DB_FILE ?? path.join(cwd, "..", "api", "data", "app.sqlite"),
+  postgresUrl: process.env.POSTGRES_URL ?? "",
+  postgresSchema: process.env.POSTGRES_SCHEMA?.trim() || "public",
+  runtimeDatabasePrimary: runtimeDatabasePrimary(process.env.RUNTIME_DATABASE_PRIMARY, process.env.NODE_ENV),
+  runtimeReadinessCheckOnly: process.env.WORKER_RUNTIME_READINESS_CHECK_ONLY === "true",
+  runtimeReadyFile: process.env.WORKER_RUNTIME_READY_FILE?.trim() ?? "",
   storageDir: process.env.STORAGE_DIR ?? path.join(cwd, "..", "api", "storage"),
   storageBackend: process.env.STORAGE_BACKEND?.trim().toLowerCase() === "s3" ? "s3" as const : "local" as const,
   s3Bucket: process.env.S3_BUCKET ?? "",
@@ -48,6 +54,13 @@ export const workerConfig = {
   notificationRetryBaseMs: Number(process.env.NOTIFICATION_RETRY_BASE_MS ?? 60000),
   notificationLockTimeoutMs: Number(process.env.NOTIFICATION_LOCK_TIMEOUT_MS ?? 900000),
 };
+
+if ((workerConfig.nodeEnv === "production" || workerConfig.nodeEnv === "staging") && workerConfig.runtimeDatabasePrimary !== "postgres") {
+  throw new Error(`${workerConfig.nodeEnv} worker requires RUNTIME_DATABASE_PRIMARY=postgres; SQLite fallback is disabled.`);
+}
+if (workerConfig.runtimeDatabasePrimary === "postgres" && !workerConfig.postgresUrl) {
+  throw new Error("POSTGRES_URL is required when RUNTIME_DATABASE_PRIMARY=postgres.");
+}
 
 if (workerConfig.nodeEnv === "production" && (workerConfig.jobBrokerBackend !== "bullmq" || !workerConfig.jobBrokerRedisUrl)) {
   throw new Error("Production worker requires JOB_BROKER_BACKEND=bullmq and JOB_BROKER_REDIS_URL or REDIS_URL.");

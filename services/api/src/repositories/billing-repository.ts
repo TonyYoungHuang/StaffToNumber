@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { PaymentProvider } from "@score/shared";
 import { createId } from "../lib/auth.js";
 
@@ -63,12 +63,11 @@ class WebhookReplayMismatchError extends Error {}
 function nowIso() {
   return new Date().toISOString();
 }
-
 function positiveSeatQuantity(value: number | null | undefined) {
   return Number.isSafeInteger(value) && Number(value) > 0 ? Math.min(Number(value), 100_000) : 1;
 }
 
-function upsertCustomer(database: DatabaseSync, event: NormalizedBillingEvent) {
+function upsertCustomer(database: RuntimeDatabaseLike, event: NormalizedBillingEvent) {
   const input = event.customer;
   if (!input?.providerCustomerId) return null;
   const now = nowIso();
@@ -100,7 +99,7 @@ function upsertCustomer(database: DatabaseSync, event: NormalizedBillingEvent) {
   return id;
 }
 
-function upsertSubscription(database: DatabaseSync, event: NormalizedBillingEvent, customerId: string | null) {
+function upsertSubscription(database: RuntimeDatabaseLike, event: NormalizedBillingEvent, customerId: string | null) {
   const input = event.subscription;
   if (!input) return null;
   const now = nowIso();
@@ -151,7 +150,7 @@ function upsertSubscription(database: DatabaseSync, event: NormalizedBillingEven
   return id;
 }
 
-function upsertInvoice(database: DatabaseSync, event: NormalizedBillingEvent, subscriptionId: string | null) {
+function upsertInvoice(database: RuntimeDatabaseLike, event: NormalizedBillingEvent, subscriptionId: string | null) {
   const input = event.invoice;
   if (!input) return;
   const now = nowIso();
@@ -171,7 +170,11 @@ function upsertInvoice(database: DatabaseSync, event: NormalizedBillingEvent, su
       status = excluded.status,
       amount_due_minor = COALESCE(excluded.amount_due_minor, billing_invoices.amount_due_minor),
       amount_paid_minor = COALESCE(excluded.amount_paid_minor, billing_invoices.amount_paid_minor),
-      amount_refunded_minor = MAX(excluded.amount_refunded_minor, billing_invoices.amount_refunded_minor),
+      amount_refunded_minor = CASE
+        WHEN excluded.amount_refunded_minor > billing_invoices.amount_refunded_minor
+          THEN excluded.amount_refunded_minor
+        ELSE billing_invoices.amount_refunded_minor
+      END,
       currency = COALESCE(excluded.currency, billing_invoices.currency),
       hosted_url = COALESCE(excluded.hosted_url, billing_invoices.hosted_url),
       due_at = COALESCE(excluded.due_at, billing_invoices.due_at),
@@ -186,14 +189,22 @@ function upsertInvoice(database: DatabaseSync, event: NormalizedBillingEvent, su
   );
 }
 
-function applyRefund(database: DatabaseSync, event: NormalizedBillingEvent) {
+function applyRefund(database: RuntimeDatabaseLike, event: NormalizedBillingEvent) {
   if (!event.refund) return;
   const status = event.refund.fullyRefunded ? "refunded" : "paid";
   database.prepare(`
     UPDATE billing_invoices
-    SET amount_refunded_minor = MAX(amount_refunded_minor, ?), status = ?, updated_at = ?
+    SET amount_refunded_minor = CASE WHEN amount_refunded_minor > ? THEN amount_refunded_minor ELSE ? END,
+        status = ?, updated_at = ?
     WHERE provider = ? AND provider_invoice_id = ?
-  `).run(Math.max(0, event.refund.amountRefundedMinor), status, nowIso(), event.provider, event.refund.providerInvoiceId);
+  `).run(
+    Math.max(0, event.refund.amountRefundedMinor),
+    Math.max(0, event.refund.amountRefundedMinor),
+    status,
+    nowIso(),
+    event.provider,
+    event.refund.providerInvoiceId,
+  );
   if (event.refund.fullyRefunded) {
     database.prepare(`
       UPDATE billing_subscriptions
@@ -205,7 +216,7 @@ function applyRefund(database: DatabaseSync, event: NormalizedBillingEvent) {
   }
 }
 
-export function processBillingWebhookEvent(database: DatabaseSync, event: NormalizedBillingEvent) {
+export function processBillingWebhookEvent(database: RuntimeDatabaseLike, event: NormalizedBillingEvent) {
   const payloadSha256 = createHash("sha256").update(event.rawPayload).digest("hex");
   const now = nowIso();
   database.exec("BEGIN IMMEDIATE");
@@ -258,7 +269,7 @@ export function processBillingWebhookEvent(database: DatabaseSync, event: Normal
   }
 }
 
-export function assignBillingSeat(database: DatabaseSync, input: {
+export function assignBillingSeat(database: RuntimeDatabaseLike, input: {
   subscriptionId: string;
   organizationId: string;
   email: string;
@@ -276,7 +287,9 @@ export function assignBillingSeat(database: DatabaseSync, input: {
   const existing = database.prepare(`
     SELECT id, status FROM billing_seat_assignments WHERE subscription_id = ? AND assigned_email = ?
   `).get(input.subscriptionId, normalizedEmail) as { id: string; status: string } | undefined;
-  if (!existing && Number(activeSeats.count) >= subscription.seatQuantity) throw new Error("No subscription seats are available.");
+  if (existing?.status !== "active" && Number(activeSeats.count) >= subscription.seatQuantity) {
+    throw new Error("No subscription seats are available.");
+  }
   const now = nowIso();
   database.prepare(`
     INSERT INTO billing_seat_assignments (
@@ -288,7 +301,7 @@ export function assignBillingSeat(database: DatabaseSync, input: {
   `).run(existing?.id ?? createId(), input.subscriptionId, input.organizationId, input.userId ?? null, normalizedEmail, now, now);
 }
 
-export function revokeBillingSeat(database: DatabaseSync, input: { subscriptionId: string; organizationId: string; email: string }) {
+export function revokeBillingSeat(database: RuntimeDatabaseLike, input: { subscriptionId: string; organizationId: string; email: string }) {
   const now = nowIso();
   return database.prepare(`
     UPDATE billing_seat_assignments SET status = 'revoked', revoked_at = ?, updated_at = ?
@@ -296,10 +309,11 @@ export function revokeBillingSeat(database: DatabaseSync, input: { subscriptionI
   `).run(now, now, input.subscriptionId, input.organizationId, input.email.trim().toLocaleLowerCase()).changes > 0;
 }
 
-export function findActiveSubscriptionEntitlement(database: DatabaseSync, userId: string) {
+export function findActiveSubscriptionEntitlement(database: RuntimeDatabaseLike, userId: string) {
   return database.prepare(`
     SELECT subscriptions.id, subscriptions.status, subscriptions.current_period_start AS startsAt,
-           subscriptions.current_period_end AS endsAt, subscriptions.provider, subscriptions.organization_id AS organizationId
+           subscriptions.current_period_end AS endsAt, subscriptions.provider, subscriptions.organization_id AS organizationId,
+           subscriptions.plan_ref AS planRef, subscriptions.seat_quantity AS seatQuantity
     FROM billing_subscriptions subscriptions
     LEFT JOIN billing_seat_assignments seats
       ON seats.subscription_id = subscriptions.id AND seats.user_id = ? AND seats.status = 'active'
@@ -315,10 +329,50 @@ export function findActiveSubscriptionEntitlement(database: DatabaseSync, userId
     endsAt: string | null;
     provider: PaymentProvider;
     organizationId: string | null;
+    planRef: string | null;
+    seatQuantity: number;
   } | undefined;
 }
 
-export function listBillingForUser(database: DatabaseSync, userId: string) {
+export function markBillingSubscriptionCancellation(
+  database: RuntimeDatabaseLike,
+  subscriptionId: string,
+  atPeriodEnd: boolean,
+) {
+  const now = nowIso();
+  return database.prepare(`
+    UPDATE billing_subscriptions
+    SET cancel_at_period_end = ?,
+        status = CASE WHEN ? = 1 THEN status ELSE 'cancelled' END,
+        canceled_at = COALESCE(canceled_at, ?),
+        ended_at = CASE WHEN ? = 1 THEN ended_at ELSE COALESCE(ended_at, ?) END,
+        updated_at = ?
+    WHERE id = ?
+  `).run(atPeriodEnd ? 1 : 0, atPeriodEnd ? 1 : 0, now, atPeriodEnd ? 1 : 0, now, now, subscriptionId).changes > 0;
+}
+
+export function findBillingSubscriptionForRefund(
+  database: RuntimeDatabaseLike,
+  provider: PaymentProvider,
+  providerInvoiceId: string,
+) {
+  return database.prepare(`
+    SELECT subscriptions.id, subscriptions.provider,
+           subscriptions.provider_subscription_id AS providerSubscriptionId,
+           subscriptions.status
+    FROM billing_invoices invoices
+    JOIN billing_subscriptions subscriptions ON subscriptions.id = invoices.subscription_id
+    WHERE invoices.provider = ? AND invoices.provider_invoice_id = ?
+    LIMIT 1
+  `).get(provider, providerInvoiceId) as {
+    id: string;
+    provider: PaymentProvider;
+    providerSubscriptionId: string;
+    status: BillingSubscriptionStatus;
+  } | undefined;
+}
+
+export function listBillingForUser(database: RuntimeDatabaseLike, userId: string) {
   const subscriptions = database.prepare(`
     SELECT id, provider, provider_subscription_id AS providerSubscriptionId, status, plan_ref AS planRef,
            seat_quantity AS seatQuantity, current_period_start AS currentPeriodStart,

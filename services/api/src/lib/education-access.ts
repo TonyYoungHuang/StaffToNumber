@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 export type ClassroomAccessRole = "owner" | "organization_admin" | "teacher" | "assistant" | "observer";
 export type OrganizationRole = "owner" | "admin" | "teacher" | "assistant" | "observer";
@@ -11,7 +11,7 @@ export type ClassroomAccess = {
   canAdmin: boolean;
 };
 
-export function linkEducationInvitationsByEmail(db: DatabaseSync, userId: string, email: string) {
+export function linkEducationInvitationsByEmail(db: RuntimeDatabaseLike, userId: string, email: string) {
   const normalized = email.trim().toLocaleLowerCase();
   const now = new Date().toISOString();
   const organizationMemberships = db.prepare(`
@@ -27,7 +27,7 @@ export function linkEducationInvitationsByEmail(db: DatabaseSync, userId: string
   return { organizationMemberships, classroomStaff };
 }
 
-export function resolveOrganizationRole(db: DatabaseSync, organizationId: string, userId: string): OrganizationRole | null {
+export function resolveOrganizationRole(db: RuntimeDatabaseLike, organizationId: string, userId: string): OrganizationRole | null {
   const organization = db.prepare("SELECT owner_user_id FROM score_organizations WHERE id = ? AND archived_at IS NULL").get(organizationId) as { owner_user_id: string } | undefined;
   if (!organization) return null;
   if (organization.owner_user_id === userId) return "owner";
@@ -42,7 +42,7 @@ export function canAdminOrganization(role: OrganizationRole | null) {
   return role === "owner" || role === "admin";
 }
 
-export function resolveClassroomAccess(db: DatabaseSync, classroomId: string, userId: string): ClassroomAccess | null {
+export function resolveClassroomAccess(db: RuntimeDatabaseLike, classroomId: string, userId: string): ClassroomAccess | null {
   const classroom = db.prepare(`
     SELECT owner_user_id, organization_id FROM score_classrooms
     WHERE id = ? AND archived_at IS NULL
@@ -59,7 +59,7 @@ export function resolveClassroomAccess(db: DatabaseSync, classroomId: string, us
   return staff ? access(classroomId, staff.role) : null;
 }
 
-export function listAccessibleClassroomIds(db: DatabaseSync, userId: string) {
+export function listAccessibleClassroomIds(db: RuntimeDatabaseLike, userId: string) {
   return (db.prepare(`
     SELECT DISTINCT classrooms.id
     FROM score_classrooms classrooms
@@ -76,7 +76,7 @@ export function listAccessibleClassroomIds(db: DatabaseSync, userId: string) {
   `).all(userId, userId, userId, userId) as Array<{ id: string }>).map((row) => row.id);
 }
 
-export function resolveClassroomAudience(db: DatabaseSync, classroomId: string, userId: string) {
+export function resolveClassroomAudience(db: RuntimeDatabaseLike, classroomId: string, userId: string) {
   if (resolveClassroomAccess(db, classroomId, userId)) return "staff" as const;
   const student = db.prepare(`
     SELECT id FROM score_classroom_students

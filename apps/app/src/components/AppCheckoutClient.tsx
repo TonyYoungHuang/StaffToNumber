@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
@@ -26,6 +26,7 @@ export function AppCheckoutClient() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState("");
   const [seatQuantity, setSeatQuantity] = useState(10);
+  const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
 
   const copy = useMemo(
     () =>
@@ -90,10 +91,16 @@ export function AppCheckoutClient() {
     setLoading(true);
     setStatus(null);
 
+    const signature = JSON.stringify({ provider, locale, planKind, organizationId, seatQuantity });
+    if (checkoutIntent.current?.signature !== signature) {
+      checkoutIntent.current = { signature, key: crypto.randomUUID() };
+    }
+
     const result = await apiRequest<CheckoutPayload>("/api/payments/checkout/authenticated", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Idempotency-Key": checkoutIntent.current.key,
       },
       body: JSON.stringify({
         provider,

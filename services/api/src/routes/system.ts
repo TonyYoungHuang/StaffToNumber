@@ -15,7 +15,7 @@ function readDatabaseStatus() {
       key: "database",
       label: "Database",
       status: "ok",
-      message: config.dbFile,
+      message: config.runtimeDatabasePrimary,
     } as const;
   } catch (error) {
     return {

@@ -15,7 +15,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       cache: "no-store",
     });
 
-    const payload = await response.json().catch(() => null);
+    const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
     if (!response.ok) {
       return {
         ok: false,

@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { APP_ROUTES } from "@score/shared";
 import { readAppLocale } from "../../../lib/locale";
+import { accountActivationRoute, checkoutAvailable } from "../../../lib/release";
 
 export default async function CheckoutCancelPage() {
   const locale = await readAppLocale();
@@ -15,8 +16,10 @@ export default async function CheckoutCancelPage() {
             : "The order was not completed. You can restart payment whenever you are ready."}
         </p>
         <div className="button-row">
-          <Link href={APP_ROUTES.checkout} className="button button-primary">
-            {locale === "zh-CN" ? "重新支付" : "Try payment again"}
+          <Link href={accountActivationRoute} className="button button-primary">
+            {checkoutAvailable
+              ? locale === "zh-CN" ? "重新支付" : "Try payment again"
+              : locale === "zh-CN" ? "查看激活方式" : "View activation options"}
           </Link>
           <Link href={APP_ROUTES.dashboard} className="button button-secondary">
             {locale === "zh-CN" ? "返回控制台" : "Back to dashboard"}

@@ -7,6 +7,7 @@ import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { openStoredFile, storedFileExists } from "../lib/object-storage.js";
 import { storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
+import { assertStorageQuota } from "../lib/plan-quotas.js";
 import { createStoredFile, findStoredFileById, listStoredFilesByUserId } from "../repositories/file-repository.js";
 
 function sanitizeFilename(filename: string) {
@@ -70,6 +71,7 @@ export async function fileRoutes(app: FastifyInstance) {
     if (!filename || filename.length > 255 || !filename.toLowerCase().endsWith(".pdf")) return reply.code(400).send({ error: "Resumable uploads currently accept PDF files only." });
     if (mimeType !== "application/pdf") return reply.code(400).send({ error: "Resumable PDF uploads must use application/pdf." });
     if (!Number.isInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > config.uploadMaxBytes) return reply.code(400).send({ error: `Upload size must be from 1 to ${config.uploadMaxBytes} bytes.` });
+    assertStorageQuota(request.authUserId!, sizeBytes);
 
     const id = createId();
     const storedName = `${createId()}-${sanitizeFilename(filename)}`;

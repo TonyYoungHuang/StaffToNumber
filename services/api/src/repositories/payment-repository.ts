@@ -5,7 +5,7 @@ import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
 import { findActivationCodeById, findUserByEmail, issueActivationCode, redeemActivationCode } from "./auth-repository.js";
 
-type PaymentOrderRow = {
+export type PaymentOrderRow = {
   id: string;
   public_token: string;
   user_id: string | null;
@@ -17,6 +17,7 @@ type PaymentOrderRow = {
   billing_kind: "one_time" | "subscription";
   organization_id: string | null;
   seat_quantity: number;
+  idempotency_key_hash: string | null;
   checkout_session_id: string | null;
   transaction_id: string | null;
   checkout_url: string | null;
@@ -33,7 +34,7 @@ type PaymentOrderRow = {
 
 const paymentOrderSelect = `
   SELECT po.id, po.public_token, po.user_id, po.provider, po.status, po.customer_email, po.locale, po.entitlement_days,
-         po.billing_kind, po.organization_id, po.seat_quantity,
+         po.billing_kind, po.organization_id, po.seat_quantity, po.idempotency_key_hash,
          po.checkout_session_id, po.transaction_id, po.checkout_url, po.amount_minor, po.currency,
          po.activation_code_id, po.paid_at, po.cancelled_at, po.failure_reason, po.created_at, po.updated_at,
          ac.code AS activation_code
@@ -50,6 +51,7 @@ export function createPaymentOrder(input: {
   billingKind?: "one_time" | "subscription";
   organizationId?: string | null;
   seatQuantity?: number;
+  idempotencyKeyHash?: string | null;
 }) {
   const id = createId();
   const publicToken = randomBytes(18).toString("hex");
@@ -59,11 +61,11 @@ export function createPaymentOrder(input: {
     `
       INSERT INTO payment_orders (
         id, public_token, user_id, provider, status, customer_email, locale, entitlement_days,
-        billing_kind, organization_id, seat_quantity,
+        billing_kind, organization_id, seat_quantity, idempotency_key_hash,
         checkout_session_id, transaction_id, checkout_url, amount_minor, currency,
         activation_code_id, paid_at, cancelled_at, failure_reason, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)
     `,
   ).run(
     id,
@@ -76,11 +78,26 @@ export function createPaymentOrder(input: {
     input.billingKind ?? "one_time",
     input.organizationId ?? null,
     Math.max(1, Math.min(input.seatQuantity ?? 1, 100_000)),
+    input.idempotencyKeyHash ?? null,
     timestamp,
     timestamp,
   );
 
   return findPaymentOrderById(id);
+}
+
+export function findReusablePaymentOrder(input: {
+  userId: string;
+  provider: PaymentProvider;
+  idempotencyKeyHash: string;
+}) {
+  return db.prepare(`
+    ${paymentOrderSelect}
+    WHERE po.user_id = ? AND po.provider = ? AND po.idempotency_key_hash = ?
+      AND po.status IN ('pending', 'paid')
+    ORDER BY datetime(po.created_at) DESC
+    LIMIT 1
+  `).get(input.userId, input.provider, input.idempotencyKeyHash) as PaymentOrderRow | undefined;
 }
 
 export function findPaymentOrderById(id: string) {

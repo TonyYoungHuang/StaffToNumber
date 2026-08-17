@@ -79,6 +79,8 @@ test("observability propagates trace context, persists audited mutations, and pr
 test("production configuration rejects missing security secrets and malware scanner", () => {
   const previous = {
     nodeEnv: config.nodeEnv,
+    runtimeDatabasePrimary: config.runtimeDatabasePrimary,
+    postgresUrl: config.postgresUrl,
     securityAuditHashSalt: config.securityAuditHashSalt,
     metricsBearerToken: config.metricsBearerToken,
     clamAvCommand: config.clamAvCommand,
@@ -86,7 +88,14 @@ test("production configuration rejects missing security secrets and malware scan
     apiReplicaCount: config.apiReplicaCount,
     redisUrl: config.redisUrl,
   };
-  Object.assign(config, { nodeEnv: "production", securityAuditHashSalt: "", metricsBearerToken: "", clamAvCommand: "" });
+  Object.assign(config, {
+    nodeEnv: "production",
+    runtimeDatabasePrimary: "postgres",
+    postgresUrl: "postgresql://runtime:secret@database.example/scoretransposer",
+    securityAuditHashSalt: "",
+    metricsBearerToken: "",
+    clamAvCommand: "",
+  });
   try {
     assert.throws(() => validateRuntimeConfig(), /SECURITY_AUDIT_HASH_SALT/u);
   } finally {
@@ -97,6 +106,8 @@ test("production configuration rejects missing security secrets and malware scan
 test("production configuration requires safe media inspection and transcode commands", () => {
   const previous = {
     nodeEnv: config.nodeEnv,
+    runtimeDatabasePrimary: config.runtimeDatabasePrimary,
+    postgresUrl: config.postgresUrl,
     securityAuditHashSalt: config.securityAuditHashSalt,
     metricsBearerToken: config.metricsBearerToken,
     clamAvCommand: config.clamAvCommand,
@@ -106,6 +117,8 @@ test("production configuration requires safe media inspection and transcode comm
   };
   Object.assign(config, {
     nodeEnv: "production",
+    runtimeDatabasePrimary: "postgres",
+    postgresUrl: "postgresql://runtime:secret@database.example/scoretransposer",
     securityAuditHashSalt: "a".repeat(32),
     metricsBearerToken: "b".repeat(32),
     clamAvCommand: "clamscan",
@@ -123,6 +136,8 @@ test("production configuration requires safe media inspection and transcode comm
 test("production configuration requires Redis for multiple API replicas", () => {
   const previous = {
     nodeEnv: config.nodeEnv,
+    runtimeDatabasePrimary: config.runtimeDatabasePrimary,
+    postgresUrl: config.postgresUrl,
     securityAuditHashSalt: config.securityAuditHashSalt,
     metricsBearerToken: config.metricsBearerToken,
     clamAvCommand: config.clamAvCommand,
@@ -132,6 +147,8 @@ test("production configuration requires Redis for multiple API replicas", () => 
   };
   Object.assign(config, {
     nodeEnv: "production",
+    runtimeDatabasePrimary: "postgres",
+    postgresUrl: "postgresql://runtime:secret@database.example/scoretransposer",
     securityAuditHashSalt: "a".repeat(32),
     metricsBearerToken: "b".repeat(32),
     clamAvCommand: "clamscan",
@@ -149,6 +166,8 @@ test("production configuration requires Redis for multiple API replicas", () => 
 test("production configuration requires private S3 object storage", () => {
   const previous = {
     nodeEnv: config.nodeEnv,
+    runtimeDatabasePrimary: config.runtimeDatabasePrimary,
+    postgresUrl: config.postgresUrl,
     securityAuditHashSalt: config.securityAuditHashSalt,
     metricsBearerToken: config.metricsBearerToken,
     clamAvCommand: config.clamAvCommand,
@@ -162,6 +181,8 @@ test("production configuration requires private S3 object storage", () => {
   };
   Object.assign(config, {
     nodeEnv: "production",
+    runtimeDatabasePrimary: "postgres",
+    postgresUrl: "postgresql://runtime:secret@database.example/scoretransposer",
     securityAuditHashSalt: "a".repeat(32),
     metricsBearerToken: "b".repeat(32),
     clamAvCommand: "clamscan",
