@@ -38,6 +38,8 @@ export type ObjectStorageConfig = {
   maxAttempts?: number;
   serverSideEncryption?: "AES256" | "aws:kms";
   kmsKeyId?: string;
+  gatewayUrl?: string;
+  gatewayToken?: string;
 };
 
 export type ResumableUploadSession = {
@@ -114,6 +116,21 @@ async function sha256File(filePath: string) {
   return digest.digest("hex");
 }
 
+async function md5FileBase64(filePath: string) {
+  const digest = createHash("md5");
+  for await (const chunk of fs.createReadStream(filePath)) digest.update(chunk as Buffer);
+  return digest.digest("base64");
+}
+
+function isCloudflareR2Endpoint(endpoint: string | undefined) {
+  if (!endpoint?.trim()) return false;
+  try {
+    return new URL(endpoint).hostname.toLowerCase().endsWith(".r2.cloudflarestorage.com");
+  } catch {
+    return false;
+  }
+}
+
 export function createStorageObjectKey(input: {
   prefix?: string;
   userId: string;
@@ -131,12 +148,22 @@ export class ObjectStorage {
   readonly keyPrefix: string;
   private readonly localRoot: string;
   private readonly s3: S3Sender | null;
+  private readonly useR2CompatibleChecksums: boolean;
+  private readonly gatewayUrl: string | null;
+  private readonly gatewayToken: string | null;
 
   constructor(private readonly config: ObjectStorageConfig, client?: S3Sender) {
     this.backend = config.backend;
     this.localRoot = path.resolve(config.localRoot);
     this.bucket = config.bucket?.trim() || null;
     this.keyPrefix = normalizePrefix(config.keyPrefix);
+    this.useR2CompatibleChecksums = isCloudflareR2Endpoint(config.endpoint);
+    this.gatewayUrl = config.gatewayUrl?.trim().replace(/\/+$/u, "") || null;
+    this.gatewayToken = config.gatewayToken?.trim() || null;
+
+    if (Boolean(this.gatewayUrl) !== Boolean(this.gatewayToken)) {
+      throw new Error("OBJECT_STORAGE_GATEWAY_URL and OBJECT_STORAGE_GATEWAY_TOKEN must be configured together.");
+    }
 
     if (this.backend === "s3") {
       if (!this.bucket) throw new Error("S3_BUCKET is required when STORAGE_BACKEND=s3.");
@@ -146,11 +173,13 @@ export class ObjectStorage {
         endpoint: config.endpoint?.trim() || undefined,
         forcePathStyle: config.forcePathStyle ?? false,
         maxAttempts: config.maxAttempts ?? 3,
+        requestChecksumCalculation: this.useR2CompatibleChecksums ? "WHEN_REQUIRED" : undefined,
+        responseChecksumValidation: this.useR2CompatibleChecksums ? "WHEN_REQUIRED" : undefined,
       };
       if (config.accessKeyId && config.secretAccessKey) {
         clientConfig.credentials = { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey };
       }
-      this.s3 = client ?? new S3Client(clientConfig);
+      this.s3 = this.gatewayUrl ? null : client ?? new S3Client(clientConfig);
     } else {
       this.s3 = null;
     }
@@ -171,14 +200,35 @@ export class ObjectStorage {
 
     const key = trimObjectKey(input.objectKey);
     if (!key) throw new Error("Object storage key cannot be empty.");
+    if (this.gatewayUrl) {
+      const body = await fs.promises.readFile(sourcePath);
+      await this.gatewayRequest("object", {
+        method: "PUT",
+        key,
+        body,
+        headers: {
+          "content-type": input.contentType,
+          "content-length": String(stats.size),
+          "x-score-sha256": checksumSha256,
+        },
+      });
+      if (input.removeSource !== false) await fs.promises.rm(sourcePath, { force: true });
+      return {
+        ref: { backend: "s3", storagePath: `s3://${this.bucket}/${key}`, storageKey: key } satisfies StoredObjectRef,
+        sizeBytes: stats.size,
+        checksumSha256,
+      };
+    }
     const checksumBase64 = Buffer.from(checksumSha256, "hex").toString("base64");
+    const contentMd5 = this.useR2CompatibleChecksums ? await md5FileBase64(sourcePath) : undefined;
     await this.s3!.send(new PutObjectCommand({
       Bucket: this.bucket!,
       Key: key,
       Body: fs.createReadStream(sourcePath),
       ContentLength: stats.size,
       ContentType: input.contentType,
-      ChecksumSHA256: checksumBase64,
+      ChecksumSHA256: this.useR2CompatibleChecksums ? undefined : checksumBase64,
+      ContentMD5: contentMd5,
       Metadata: { "sha256-hex": checksumSha256 },
       ServerSideEncryption: this.config.serverSideEncryption,
       SSEKMSKeyId: this.config.serverSideEncryption === "aws:kms" ? this.config.kmsKeyId : undefined,
@@ -196,6 +246,16 @@ export class ObjectStorage {
     if (!objectKey) throw new Error("Object storage key cannot be empty.");
     const createdAt = new Date().toISOString();
     if (this.backend === "s3") {
+      if (this.gatewayUrl) {
+        const response = await this.gatewayRequest("multipart", {
+          method: "POST",
+          body: JSON.stringify({ objectKey, contentType: input.contentType }),
+          headers: { "content-type": "application/json" },
+        });
+        const payload = await response.json() as { uploadId?: string };
+        if (!payload.uploadId) throw new Error("Object storage gateway did not return a multipart upload id.");
+        return { backend: "s3", uploadId: payload.uploadId, objectKey, contentType: input.contentType, createdAt };
+      }
       const response = await this.s3!.send(new CreateMultipartUploadCommand({
         Bucket: this.bucket!,
         Key: objectKey,
@@ -220,6 +280,17 @@ export class ObjectStorage {
     const checksumSha256 = createHash("sha256").update(input.body).digest("hex");
     if (this.backend === "s3") {
       if (input.session.backend !== "s3") throw new Error("Multipart upload backend does not match object storage.");
+      if (this.gatewayUrl) {
+        const response = await this.gatewayRequest(`multipart/${encodeURIComponent(input.session.uploadId)}/parts/${input.partNumber}`, {
+          method: "PUT",
+          key: input.session.objectKey,
+          body: input.body,
+          headers: { "content-length": String(input.body.length) },
+        });
+        const payload = await response.json() as { etag?: string };
+        if (!payload.etag) throw new Error("Object storage gateway did not return an ETag for the uploaded part.");
+        return { partNumber: input.partNumber, etag: payload.etag, sizeBytes: input.body.length, checksumSha256 };
+      }
       const response = await this.s3!.send(new UploadPartCommand({
         Bucket: this.bucket!,
         Key: input.session.objectKey,
@@ -227,7 +298,8 @@ export class ObjectStorage {
         PartNumber: input.partNumber,
         Body: input.body,
         ContentLength: input.body.length,
-        ChecksumSHA256: Buffer.from(checksumSha256, "hex").toString("base64"),
+        ChecksumSHA256: this.useR2CompatibleChecksums ? undefined : Buffer.from(checksumSha256, "hex").toString("base64"),
+        ContentMD5: this.useR2CompatibleChecksums ? createHash("md5").update(input.body).digest("base64") : undefined,
       }));
       if (!response.ETag) throw new Error("S3 did not return an ETag for the uploaded part.");
       return { partNumber: input.partNumber, etag: response.ETag, sizeBytes: input.body.length, checksumSha256 };
@@ -249,11 +321,26 @@ export class ObjectStorage {
     });
     if (this.backend === "s3") {
       if (input.session.backend !== "s3") throw new Error("Multipart upload backend does not match object storage.");
+      if (this.gatewayUrl) {
+        await this.gatewayRequest(`multipart/${encodeURIComponent(input.session.uploadId)}/complete`, {
+          method: "POST",
+          key: input.session.objectKey,
+          body: JSON.stringify({ parts: parts.map((part) => ({ partNumber: part.partNumber, etag: part.etag })) }),
+          headers: { "content-type": "application/json" },
+        });
+        return { ref: { backend: "s3", storagePath: `s3://${this.bucket}/${input.session.objectKey}`, storageKey: input.session.objectKey } satisfies StoredObjectRef };
+      }
       await this.s3!.send(new CompleteMultipartUploadCommand({
         Bucket: this.bucket!,
         Key: input.session.objectKey,
         UploadId: input.session.uploadId,
-        MultipartUpload: { Parts: parts.map((part) => ({ PartNumber: part.partNumber, ETag: part.etag, ChecksumSHA256: Buffer.from(part.checksumSha256, "hex").toString("base64") })) },
+        MultipartUpload: {
+          Parts: parts.map((part) => ({
+            PartNumber: part.partNumber,
+            ETag: part.etag,
+            ChecksumSHA256: this.useR2CompatibleChecksums ? undefined : Buffer.from(part.checksumSha256, "hex").toString("base64"),
+          })),
+        },
       }));
       return { ref: { backend: "s3", storagePath: `s3://${this.bucket}/${input.session.objectKey}`, storageKey: input.session.objectKey } satisfies StoredObjectRef };
     }
@@ -284,6 +371,10 @@ export class ObjectStorage {
   async abortResumableUpload(session: ResumableUploadSession) {
     if (this.backend === "s3") {
       if (session.backend !== "s3") throw new Error("Multipart upload backend does not match object storage.");
+      if (this.gatewayUrl) {
+        await this.gatewayRequest(`multipart/${encodeURIComponent(session.uploadId)}`, { method: "DELETE", key: session.objectKey });
+        return;
+      }
       await this.s3!.send(new AbortMultipartUploadCommand({ Bucket: this.bucket!, Key: session.objectKey, UploadId: session.uploadId }));
       return;
     }
@@ -314,6 +405,11 @@ export class ObjectStorage {
       return fs.createReadStream(storagePath);
     }
     if (!ref.storageKey) throw new Error("Stored S3 object is missing its key.");
+    if (this.gatewayUrl) {
+      const response = await this.gatewayRequest("object", { method: "GET", key: ref.storageKey });
+      if (!response.body) throw new Error("Object storage gateway returned an empty response body.");
+      return Readable.fromWeb(response.body as never);
+    }
     const response = await this.s3!.send(new GetObjectCommand({ Bucket: this.bucket!, Key: ref.storageKey }));
     if (!response.Body) throw new Error("Stored S3 object returned an empty response body.");
     if (response.Body instanceof Readable) return response.Body;
@@ -332,6 +428,10 @@ export class ObjectStorage {
     }
     if (!ref.storageKey) return false;
     try {
+      if (this.gatewayUrl) {
+        await this.gatewayRequest("object", { method: "HEAD", key: ref.storageKey }, [404]);
+        return true;
+      }
       await this.s3!.send(new HeadObjectCommand({ Bucket: this.bucket!, Key: ref.storageKey }));
       return true;
     } catch (error) {
@@ -345,6 +445,10 @@ export class ObjectStorage {
       await fs.promises.mkdir(this.localRoot, { recursive: true });
       await fs.promises.access(this.localRoot, fs.constants.R_OK | fs.constants.W_OK);
       return { backend: this.backend, target: this.localRoot } as const;
+    }
+    if (this.gatewayUrl) {
+      await this.gatewayRequest("health", { method: "GET" });
+      return { backend: this.backend, target: this.bucket! } as const;
     }
     await this.s3!.send(new HeadBucketCommand({ Bucket: this.bucket! }));
     return { backend: this.backend, target: this.bucket! } as const;
@@ -384,7 +488,38 @@ export class ObjectStorage {
       return true;
     }
     if (!ref.storageKey) return false;
+    if (this.gatewayUrl) {
+      await this.gatewayRequest("object", { method: "DELETE", key: ref.storageKey });
+      return true;
+    }
     await this.s3!.send(new DeleteObjectCommand({ Bucket: this.bucket!, Key: ref.storageKey }));
     return true;
+  }
+
+  private async gatewayRequest(
+    route: string,
+    input: { method: string; key?: string; body?: BodyInit; headers?: Record<string, string> },
+    acceptedStatuses: number[] = [],
+  ) {
+    const url = new URL(`${this.gatewayUrl!}/${route}`);
+    if (input.key) url.searchParams.set("key", input.key);
+    const response = await fetch(url, {
+      method: input.method,
+      headers: {
+        ...input.headers,
+        "x-score-storage-token": this.gatewayToken!,
+      },
+      body: input.body,
+    });
+    if (response.ok) return response;
+    if (acceptedStatuses.includes(response.status)) {
+      const error = new Error(`Object storage gateway returned ${response.status}.`);
+      error.name = response.status === 404 ? "NotFound" : "ObjectStorageGatewayError";
+      throw error;
+    }
+    const detail = (await response.text()).replace(/\s+/gu, " ").trim().slice(0, 300);
+    const error = new Error(`Object storage gateway returned ${response.status}${detail ? `: ${detail}` : ""}.`);
+    error.name = "ObjectStorageGatewayError";
+    throw error;
   }
 }

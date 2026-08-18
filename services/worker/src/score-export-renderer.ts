@@ -187,21 +187,28 @@ function runCommand(input: {
     let stdout = "";
     let stderr = "";
     let settled = false;
+    let terminationError: Error | undefined;
+    let terminationFallback: NodeJS.Timeout | undefined;
     const finish = (error?: Error) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
       clearInterval(cancelPoll);
+      if (terminationFallback) clearTimeout(terminationFallback);
       if (error) reject(error); else resolve({ stdout, stderr });
     };
-    const timeout = setTimeout(() => {
+    const terminate = (error: Error) => {
+      if (settled || terminationError) return;
+      terminationError = error;
       child.kill("SIGKILL");
-      finish(new Error(`${input.label} timed out after ${input.timeoutMs} ms.`));
+      terminationFallback = setTimeout(() => finish(error), 2_000);
+    };
+    const timeout = setTimeout(() => {
+      terminate(new Error(`${input.label} timed out after ${input.timeoutMs} ms.`));
     }, input.timeoutMs);
     const cancelPoll = setInterval(() => {
       if (input.isCancelled()) {
-        child.kill("SIGKILL");
-        finish(new Error("Export job was cancelled."));
+        terminate(new Error("Export job was cancelled."));
       }
     }, 250);
     child.stdout?.on("data", (chunk) => { stdout += String(chunk); });
@@ -209,6 +216,10 @@ function runCommand(input: {
     child.on("error", (error) => finish(error));
     child.on("close", (code) => {
       if (settled) return;
+      if (terminationError) {
+        finish(terminationError);
+        return;
+      }
       if (code === 0) finish();
       else finish(new Error(`${input.label} exited with code ${code}. ${(stderr || stdout).trim()}`.trim()));
     });

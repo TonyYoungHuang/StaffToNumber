@@ -10,6 +10,7 @@ import { db, initDb } from "./db.js";
 import { registerApiObservability } from "./lib/observability.js";
 import { registerApiRateLimiting } from "./lib/rate-limit.js";
 import { startJobBrokerDispatcher } from "./lib/job-broker.js";
+import { safeJobBrokerErrorMessage } from "./lib/job-broker-connection.js";
 import { authPlugin } from "./plugins/auth.js";
 import { ensureActivationCode } from "./repositories/auth-repository.js";
 import { adminActivationRoutes } from "./routes/admin-activation.js";
@@ -114,7 +115,7 @@ async function initializeJobBroker() {
   try {
     jobBrokerDispatcher = await startJobBrokerDispatcher(app.log);
   } catch (error) {
-    app.log.error({ event: "job_broker.start_failed", error });
+    app.log.error({ event: "job_broker.start_failed", error: safeJobBrokerErrorMessage(error) });
     if (shuttingDown) return;
     jobBrokerRetryTimer = setTimeout(() => void initializeJobBroker(), 5_000);
     jobBrokerRetryTimer.unref();

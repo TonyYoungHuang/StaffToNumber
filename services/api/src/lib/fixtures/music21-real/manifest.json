@@ -5,7 +5,7 @@
       "id": "simple",
       "file": "simple.musicxml",
       "title": "Simple chromatic transposition",
-      "sha256": "d6bd7b6c8f2714c3f0e64c3270100dfa90611046c28418b6f6305aaaa1d5054b",
+      "sha256": "13436234b9fac793261db8a3bc8d446845ef063f4aee565fe85108e2af1a65f8",
       "provenance": {
         "kind": "public-domain",
         "source": "Original integration fixture authored for this repository",
@@ -17,7 +17,7 @@
       "id": "complex",
       "file": "complex.musicxml",
       "title": "Complex notation transposition",
-      "sha256": "b1e1b0230f97d212d84c5621dc3fca13f541213a72f409f4f36cfb9dc83d9518",
+      "sha256": "882edf3b374f811f53d75276fed25fb82df033e4b2d2eb9701ebb0c11b3fb34c",
       "provenance": {
         "kind": "public-domain",
         "source": "Original integration fixture authored for this repository",
@@ -29,7 +29,7 @@
       "id": "instrument-parts",
       "file": "instrument-parts.musicxml",
       "title": "Multi-instrument part transposition",
-      "sha256": "31e460d06c11f327145de5c2d9f24e04bdb582a21671bb7893ac25b6d905a6b3",
+      "sha256": "0843cee83654fb3a38d0008d06ac0ac28c63dccce53bc0fbed14f410f619b882",
       "provenance": {
         "kind": "public-domain",
         "source": "Original integration fixture authored for this repository",

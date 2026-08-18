@@ -30,6 +30,7 @@ type Bindings = {
   SECURITY_AUDIT_HASH_SALT: string;
   METRICS_BEARER_TOKEN: string;
   ADMIN_API_KEY: string;
+  SEED_ACTIVATION_CODES?: string;
   EMAIL_DELIVERY_ENABLED: string;
   RESEND_API_KEY?: string;
   PAYMENT_PROVIDERS?: string;
@@ -40,6 +41,7 @@ type Bindings = {
   STRIPE_MANAGED_PAYMENTS_ENABLED: string;
   SOUNDFONT_OBJECT_KEY?: string;
   SOUNDFONT_LICENSE_OBJECT_KEY?: string;
+  OBJECT_STORAGE_GATEWAY_TOKEN?: string;
 };
 
 function baseContainerEnvironment(env: Bindings) {
@@ -67,6 +69,10 @@ function baseContainerEnvironment(env: Bindings) {
     S3_SECRET_ACCESS_KEY: env.S3_SECRET_ACCESS_KEY,
     S3_KEY_PREFIX: env.S3_KEY_PREFIX,
     S3_MAX_ATTEMPTS: "3",
+    OBJECT_STORAGE_GATEWAY_URL: env.OBJECT_STORAGE_GATEWAY_TOKEN
+      ? `${env.PUBLIC_API_URL.replace(/\/+$/u, "")}/__edge/storage`
+      : "",
+    OBJECT_STORAGE_GATEWAY_TOKEN: env.OBJECT_STORAGE_GATEWAY_TOKEN ?? "",
     PUBLIC_SITE_URL: env.PUBLIC_SITE_URL,
     PUBLIC_APP_URL: env.PUBLIC_APP_URL,
     PUBLIC_API_URL: env.PUBLIC_API_URL,
@@ -74,6 +80,7 @@ function baseContainerEnvironment(env: Bindings) {
     SECURITY_AUDIT_HASH_SALT: env.SECURITY_AUDIT_HASH_SALT,
     METRICS_BEARER_TOKEN: env.METRICS_BEARER_TOKEN,
     ADMIN_API_KEY: env.ADMIN_API_KEY,
+    SEED_ACTIVATION_CODES: env.DEPLOYMENT_ENV === "staging" ? env.SEED_ACTIVATION_CODES ?? "" : "",
     EMAIL_DELIVERY_ENABLED: String(emailDeliveryEnabled),
     RESEND_API_KEY: emailDeliveryEnabled ? env.RESEND_API_KEY ?? "" : "",
     EMAIL_FROM_ADDRESS: "ScoreTransposer <no-reply@notify.scoretransposer.com>",
@@ -122,15 +129,15 @@ const apiContainerEntrypoint = [
   "-lc",
   [
     "test -r /etc/cloudflare/certs/cloudflare-containers-ca.crt",
-    "cp /etc/cloudflare/certs/cloudflare-containers-ca.crt /usr/local/share/ca-certificates/cloudflare-containers-ca.crt",
-    "update-ca-certificates",
-    "exec runuser -u node -- node services/api/dist/index.js",
+    "if [ \"$(id -u)\" = \"0\" ]; then cp /etc/cloudflare/certs/cloudflare-containers-ca.crt /usr/local/share/ca-certificates/cloudflare-containers-ca.crt && update-ca-certificates && exec runuser -u node -- node services/api/dist/index.js; else exec node services/api/dist/index.js; fi",
   ].join(" && "),
 ];
 
 export class ApiContainer extends ObservableContainer {
   static outboundByHost = {
     "api.stripe.com": (request: Request) => fetch(request),
+    "api-staging.scoretransposer.com": (request: Request) => fetch(request),
+    "api.scoretransposer.com": (request: Request) => fetch(request),
   };
 
   serviceName = "api";
@@ -146,6 +153,7 @@ export class ApiContainer extends ObservableContainer {
     NODE_EXTRA_CA_CERTS: "/etc/cloudflare/certs/cloudflare-containers-ca.crt",
     PORT: "4000",
     RATE_LIMIT_REDIS_URL: "",
+    MUSIC21_COMMAND: "/opt/score-python/bin/python",
   };
 }
 
@@ -293,10 +301,121 @@ function secureResponse(response: Response) {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+function secureTokenEquals(left: string, right: string) {
+  const length = Math.max(left.length, right.length);
+  let mismatch = left.length ^ right.length;
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return mismatch === 0;
+}
+
+function storageObjectKey(url: URL, env: Bindings) {
+  const key = url.searchParams.get("key")?.trim() ?? "";
+  const prefix = env.S3_KEY_PREFIX.trim().replace(/^\/+|\/+$/gu, "");
+  if (!key || key.length > 2_048 || key.includes("\0") || key.startsWith("/") || key.includes("../")) return null;
+  if (prefix && key !== prefix && !key.startsWith(`${prefix}/`)) return null;
+  return key;
+}
+
+async function storageGatewayResponse(request: Request, env: Bindings) {
+  const configuredToken = env.OBJECT_STORAGE_GATEWAY_TOKEN?.trim() ?? "";
+  const requestToken = request.headers.get("x-score-storage-token") ?? "";
+  if (!configuredToken || !secureTokenEquals(configuredToken, requestToken)) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const route = url.pathname.slice("/__edge/storage/".length);
+  if (route === "health" && request.method === "GET") {
+    await env.SCORE_ASSETS.list({ prefix: `${env.S3_KEY_PREFIX.replace(/\/+$/u, "")}/`, limit: 1 });
+    return Response.json({ status: "ready", backend: "r2", bucket: env.S3_BUCKET });
+  }
+
+  if (route === "object") {
+    const key = storageObjectKey(url, env);
+    if (!key) return Response.json({ error: "Invalid object key." }, { status: 400 });
+    if (request.method === "PUT") {
+      if (!request.body) return Response.json({ error: "Object body is required." }, { status: 400 });
+      await env.SCORE_ASSETS.put(key, request.body, {
+        httpMetadata: { contentType: request.headers.get("content-type") ?? "application/octet-stream" },
+        customMetadata: { sha256Hex: request.headers.get("x-score-sha256") ?? "" },
+      });
+      return Response.json({ stored: true, key }, { status: 201 });
+    }
+    if (request.method === "GET") {
+      const object = await env.SCORE_ASSETS.get(key);
+      if (!object) return Response.json({ error: "Object not found." }, { status: 404 });
+      const headers = new Headers({ etag: object.httpEtag, "content-length": String(object.size) });
+      object.writeHttpMetadata(headers);
+      return new Response(object.body, { headers });
+    }
+    if (request.method === "HEAD") {
+      const object = await env.SCORE_ASSETS.head(key);
+      if (!object) return new Response(null, { status: 404 });
+      const headers = new Headers({ etag: object.httpEtag, "content-length": String(object.size) });
+      object.writeHttpMetadata(headers);
+      return new Response(null, { headers });
+    }
+    if (request.method === "DELETE") {
+      await env.SCORE_ASSETS.delete(key);
+      return new Response(null, { status: 204 });
+    }
+  }
+
+  if (route === "multipart" && request.method === "POST") {
+    const payload = await request.json() as { objectKey?: string; contentType?: string };
+    const keyUrl = new URL(url);
+    keyUrl.searchParams.set("key", payload.objectKey ?? "");
+    const key = storageObjectKey(keyUrl, env);
+    if (!key) return Response.json({ error: "Invalid object key." }, { status: 400 });
+    const upload = await env.SCORE_ASSETS.createMultipartUpload(key, {
+      httpMetadata: { contentType: payload.contentType?.trim() || "application/octet-stream" },
+    });
+    return Response.json({ uploadId: upload.uploadId });
+  }
+
+  const partMatch = /^multipart\/([^/]+)\/parts\/(\d+)$/u.exec(route);
+  if (partMatch && request.method === "PUT") {
+    const key = storageObjectKey(url, env);
+    const partNumber = Number(partMatch[2]);
+    if (!key || !Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10_000 || !request.body) {
+      return Response.json({ error: "Invalid multipart upload request." }, { status: 400 });
+    }
+    const upload = env.SCORE_ASSETS.resumeMultipartUpload(key, decodeURIComponent(partMatch[1]));
+    const part = await upload.uploadPart(partNumber, request.body);
+    return Response.json({ etag: part.etag, partNumber: part.partNumber });
+  }
+
+  const completeMatch = /^multipart\/([^/]+)\/complete$/u.exec(route);
+  if (completeMatch && request.method === "POST") {
+    const key = storageObjectKey(url, env);
+    const payload = await request.json() as { parts?: Array<{ partNumber: number; etag: string }> };
+    if (!key || !Array.isArray(payload.parts) || payload.parts.length === 0) {
+      return Response.json({ error: "Invalid multipart completion request." }, { status: 400 });
+    }
+    const upload = env.SCORE_ASSETS.resumeMultipartUpload(key, decodeURIComponent(completeMatch[1]));
+    await upload.complete(payload.parts);
+    return Response.json({ completed: true, key });
+  }
+
+  const abortMatch = /^multipart\/([^/]+)$/u.exec(route);
+  if (abortMatch && request.method === "DELETE") {
+    const key = storageObjectKey(url, env);
+    if (!key) return Response.json({ error: "Invalid object key." }, { status: 400 });
+    const upload = env.SCORE_ASSETS.resumeMultipartUpload(key, decodeURIComponent(abortMatch[1]));
+    await upload.abort();
+    return new Response(null, { status: 204 });
+  }
+
+  return Response.json({ error: "Storage route not found." }, { status: 404 });
+}
+
 async function routeRequest(request: Request, env: Bindings) {
   const url = new URL(request.url);
   if (url.pathname === "/__edge/health") return edgeResponse(env);
   if (url.pathname === "/__edge/readiness") return runtimeReadinessResponse(env);
+  if (url.pathname.startsWith("/__edge/storage/")) return secureResponse(await storageGatewayResponse(request, env));
 
   const collaborationRequest = url.hostname === new URL(env.PUBLIC_COLLABORATION_URL).hostname
     || url.hostname.startsWith("collab.")
@@ -324,11 +443,12 @@ async function routeRequest(request: Request, env: Bindings) {
             COLLABORATION_INSTANCE_ID: "cloudflare-primary",
             COLLABORATION_REDIS_PREFIX: `score-collaboration-${env.DEPLOYMENT_ENV}`,
           }
-        : {
+          : {
             ...baseContainerEnvironment(env),
             NODE_EXTRA_CA_CERTS: "/etc/cloudflare/certs/cloudflare-containers-ca.crt",
             PORT: "4000",
             RATE_LIMIT_REDIS_URL: "",
+            MUSIC21_COMMAND: "/opt/score-python/bin/python",
           },
     },
   });

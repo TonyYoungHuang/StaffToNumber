@@ -33,8 +33,9 @@
     "sampleRate": 48000,
     "channels": 2,
     "tempoBpm": 120,
-    "durationSeconds": { "target": 2.5, "tolerance": 1.25 },
-    "meanVolumeDb": { "target": -16.0, "tolerance": 6.0 },
-    "peakVolumeDb": { "target": -3.0, "tolerance": 3.0 }
+    "loudnessTargetLufs": -16.0,
+    "durationSeconds": { "target": 4.68, "tolerance": 0.15 },
+    "meanVolumeDb": { "target": -20.9, "tolerance": 1.0 },
+    "peakVolumeDb": { "target": -3.7, "tolerance": 0.5 }
   }
 }

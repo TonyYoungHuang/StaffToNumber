@@ -4,6 +4,7 @@ import { SCORE_PROCESSING_QUEUE, type JobBrokerPayload } from "@score/shared";
 import { config } from "../config.js";
 import { db } from "../db.js";
 import { dispatchJobOutboxBatch } from "./job-broker-dispatch.js";
+import { createJobBrokerRedisOptions, safeJobBrokerErrorMessage } from "./job-broker-connection.js";
 
 type BrokerState = {
   state: "database" | "connecting" | "ready" | "error" | "closed";
@@ -36,14 +37,9 @@ export async function startJobBrokerDispatcher(log: {
 
   let redis: Redis | null = null;
   let queue: Queue<JobBrokerPayload> | null = null;
-  redis = new Redis(config.jobBrokerRedisUrl, {
-    enableReadyCheck: true,
-    maxRetriesPerRequest: 1,
-    connectTimeout: config.redisConnectTimeoutMs,
-    lazyConnect: true,
-  });
+  redis = new Redis(createJobBrokerRedisOptions(config.jobBrokerRedisUrl, config.redisConnectTimeoutMs));
   redis.on("error", (error) => {
-    brokerState = { state: "error", message: error.message, checkedAt: new Date().toISOString() };
+    brokerState = { state: "error", message: safeJobBrokerErrorMessage(error), checkedAt: new Date().toISOString() };
   });
   await redis.connect();
   queue = new Queue<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, {
@@ -75,14 +71,16 @@ export async function startJobBrokerDispatcher(log: {
           brokerState = { state: "ready", message: "BullMQ dispatcher is connected.", checkedAt: new Date().toISOString() };
         },
         onError: ({ dispatchId, message }) => {
-          brokerState = { state: "error", message, checkedAt: new Date().toISOString() };
-          log.error({ event: "job_broker.dispatch_failed", dispatchId, error: message });
+          const safeMessage = safeJobBrokerErrorMessage(message);
+          brokerState = { state: "error", message: safeMessage, checkedAt: new Date().toISOString() };
+          log.error({ event: "job_broker.dispatch_failed", dispatchId, error: safeMessage });
         },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Job dispatch tick failed.";
-      brokerState = { state: "error", message, checkedAt: new Date().toISOString() };
-      log.error({ event: "job_broker.tick_failed", error: message });
+      const safeMessage = safeJobBrokerErrorMessage(message);
+      brokerState = { state: "error", message: safeMessage, checkedAt: new Date().toISOString() };
+      log.error({ event: "job_broker.tick_failed", error: safeMessage });
     } finally {
       busy = false;
     }

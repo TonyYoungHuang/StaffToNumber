@@ -53,6 +53,8 @@ export const config = {
   s3MaxAttempts: positiveInteger(process.env.S3_MAX_ATTEMPTS, 3),
   s3ServerSideEncryption: storageEncryption(process.env.S3_SERVER_SIDE_ENCRYPTION),
   s3KmsKeyId: process.env.S3_KMS_KEY_ID ?? "",
+  objectStorageGatewayUrl: process.env.OBJECT_STORAGE_GATEWAY_URL ?? "",
+  objectStorageGatewayToken: process.env.OBJECT_STORAGE_GATEWAY_TOKEN ?? "",
   publicSiteUrl: process.env.PUBLIC_SITE_URL ?? "http://localhost:3000",
   publicAppUrl: process.env.PUBLIC_APP_URL ?? "http://localhost:3001",
   publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:4000",
@@ -183,6 +185,9 @@ export function validateRuntimeConfig() {
   }
   if ((config.s3AccessKeyId && !config.s3SecretAccessKey) || (!config.s3AccessKeyId && config.s3SecretAccessKey)) {
     failures.push("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be configured together");
+  }
+  if ((config.objectStorageGatewayUrl && !config.objectStorageGatewayToken) || (!config.objectStorageGatewayUrl && config.objectStorageGatewayToken)) {
+    failures.push("OBJECT_STORAGE_GATEWAY_URL and OBJECT_STORAGE_GATEWAY_TOKEN must be configured together");
   }
   if (config.s3ServerSideEncryption === "aws:kms" && !config.s3KmsKeyId) failures.push("S3_KMS_KEY_ID is required when S3_SERVER_SIDE_ENCRYPTION=aws:kms");
   if (config.redisUrl) {

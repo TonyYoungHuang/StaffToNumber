@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test, { after } from "node:test";
-import { AudiverisProcessError, runAudiverisCommand } from "./audiveris-runner.js";
+import { AudiverisProcessError, runAudiverisCommand, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "audiveris-runner-"));
 const mockScript = path.join(tempDir, "mock-audiveris.cjs");
@@ -11,7 +11,17 @@ fs.writeFileSync(mockScript, `
 const mode = process.argv[2];
 if (mode === "success") { process.stdout.write("exported"); process.exit(0); }
 if (mode === "failure") { process.stderr.write("invalid score image"); process.exit(7); }
+if (mode === "rotation-fallback") {
+  const inputPath = process.argv.at(-1);
+  if (inputPath.includes("rotation-180")) { process.stdout.write("corrected"); process.exit(0); }
+  process.stderr.write("wrong orientation"); process.exit(7);
+}
 setInterval(() => {}, 1000);
+`, "utf8");
+const mockConvertScript = path.join(tempDir, "mock-convert.cjs");
+fs.writeFileSync(mockConvertScript, `
+const fs = require("node:fs");
+fs.copyFileSync(process.argv[2], process.argv.at(-1));
 `, "utf8");
 
 after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
@@ -60,4 +70,23 @@ test("terminates Audiveris after a persisted cancellation is observed", async ()
     assert.equal(error.reason, "cancelled");
     return true;
   });
+});
+
+test("normalizes raster input and retries alternate orientations", async () => {
+  const source = path.join(tempDir, "rotated.png");
+  const outputDir = path.join(tempDir, "rotation-output");
+  fs.writeFileSync(source, "fixture", "utf8");
+  fs.mkdirSync(outputDir, { recursive: true });
+  const result = await runAudiverisWithRotationFallback({
+    command: process.execPath,
+    commandArgsPrefix: [mockScript, "rotation-fallback"],
+    imageMagickCommand: process.execPath,
+    imageMagickCommandArgsPrefix: [mockConvertScript],
+    inputPath: source,
+    outputDir,
+    timeoutMs: 2_000,
+    cancellationPollMs: 25,
+  });
+  assert.equal(result.appliedRotationDegrees, 180);
+  assert.equal(result.stdout, "corrected");
 });

@@ -24,7 +24,12 @@ import { parseAudiverisMusicXmlToScoreJson } from "./musicxml-score-parser.js";
 import { applyAudiverisOmrDiagnostics } from "./audiveris-omr-diagnostics.js";
 import { summarizeAudiverisConfidence } from "./omr-confidence.js";
 import { renderScoreExport } from "./score-export-renderer.js";
-import { AudiverisProcessError, runAudiverisCommand } from "./audiveris-runner.js";
+import { AudiverisProcessError, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
+import {
+  findAudiverisMusicXmlOutput,
+  findAudiverisProjectOutput,
+  readAudiverisMusicXml,
+} from "./audiveris-output.js";
 import { claimNextScoreJob, type ClaimedScoreJob } from "./score-job-claim.js";
 import { claimNextLegacyJob, type ClaimedLegacyJob } from "./legacy-job-claim.js";
 import { consumeBrokerJob } from "./job-broker-consumer.js";
@@ -212,6 +217,8 @@ const objectStorage = new ObjectStorage({
   maxAttempts: workerConfig.s3MaxAttempts,
   serverSideEncryption: workerConfig.s3ServerSideEncryption,
   kmsKeyId: workerConfig.s3KmsKeyId,
+  gatewayUrl: workerConfig.objectStorageGatewayUrl,
+  gatewayToken: workerConfig.objectStorageGatewayToken,
 });
 if (db.primary === "postgres") {
   assertPostgresRuntimeTables(db, [
@@ -613,42 +620,6 @@ function createScoreRevisionFromAudioTranscribe(input: {
   }
 
   return revisionId;
-}
-
-function findMusicXmlOutput(outputDir: string) {
-  const candidates: string[] = [];
-
-  function walk(dir: string) {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-        continue;
-      }
-      if (/\.(musicxml|xml)$/i.test(entry.name)) {
-        candidates.push(fullPath);
-      }
-    }
-  }
-
-  if (fs.existsSync(outputDir)) {
-    walk(outputDir);
-  }
-
-  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
-}
-
-function findAudiverisProjectOutput(outputDir: string) {
-  const candidates: string[] = [];
-  function walk(dir: string) {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(fullPath);
-      else if (/\.omr$/i.test(entry.name)) candidates.push(fullPath);
-    }
-  }
-  if (fs.existsSync(outputDir)) walk(outputDir);
-  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
 }
 
 function runBasicPitch(inputPath: string, outputDir: string) {
@@ -3075,14 +3046,27 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     },
   });
 
-  let audiverisResult: { stdout: string; stderr: string };
+  let audiverisResult: Awaited<ReturnType<typeof runAudiverisWithRotationFallback>>;
   try {
-    audiverisResult = await runAudiverisCommand({
+    audiverisResult = await runAudiverisWithRotationFallback({
       command: workerConfig.audiverisCommand,
+      imageMagickCommand: workerConfig.audiverisImageMagickCommand,
       inputPath: inputFile.storage_path,
       outputDir,
       timeoutMs: workerConfig.audiverisTimeoutMs,
       isCancelled: () => isScoreJobCancelled(job.id),
+    });
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "processing",
+        engine: "audiveris",
+        message:
+          audiverisResult.appliedRotationDegrees === 0
+            ? "Raster input normalization completed without orientation correction."
+            : `Raster input orientation was corrected by ${audiverisResult.appliedRotationDegrees} degrees before recognition.`,
+      },
     });
   } catch (error) {
     if (error instanceof AudiverisProcessError && error.reason === "cancelled") {
@@ -3111,9 +3095,9 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     });
     return;
   }
-  const musicXmlPath = findMusicXmlOutput(outputDir);
+  const musicXmlPath = findAudiverisMusicXmlOutput(outputDir);
   if (!musicXmlPath) {
-    const message = "Audiveris finished but no .musicxml or .xml output was found.";
+    const message = "Audiveris finished but no .musicxml, .mxl, or .xml output was found.";
     insertOmrDiagnostic({
       jobId: job.id,
       documentId: job.document_id,
@@ -3129,10 +3113,10 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     return;
   }
 
-  const musicXml = fs.readFileSync(musicXmlPath, "utf8");
+  const musicXml = readAudiverisMusicXml(musicXmlPath);
   const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris.musicxml`;
   const storedMusicXmlPath = path.join(jobDir, originalName);
-  fs.copyFileSync(musicXmlPath, storedMusicXmlPath);
+  fs.writeFileSync(storedMusicXmlPath, musicXml, "utf8");
   const musicXmlFileId = await insertStoredFile({
     userId: job.user_id,
     originalName,

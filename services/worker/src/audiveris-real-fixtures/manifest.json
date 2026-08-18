@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "synthetic-multipage",
+      "scenario": "multipage",
+      "path": "generated/multipage.pdf",
+      "sha256": "ed6d1fafc4c5f9ad2872480684675e1230a9df67ecdb58d024c7d0d25972fd75",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "expected": {
+        "minPages": 2,
+        "minMeasures": 2,
+        "minNotes": 2
+      }
+    },
+    {
+      "id": "synthetic-rotation-90",
+      "scenario": "rotation-90",
+      "path": "generated/rotation-90.png",
+      "sha256": "519ad913f34511756689771a7edf4596f9cba2a20f80e7769bd066f276ed16b8",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "input": {
+        "rotationDegrees": 90
+      },
+      "expected": {
+        "minMeasures": 1,
+        "minNotes": 1
+      }
+    },
+    {
+      "id": "synthetic-rotation-180",
+      "scenario": "rotation-180",
+      "path": "generated/rotation-180.png",
+      "sha256": "a0ebf826361466ebd8a0e73c8c216676cf135fa88c52ffa23198c29836de585d",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "input": {
+        "rotationDegrees": 180
+      },
+      "expected": {
+        "minMeasures": 1,
+        "minNotes": 1
+      }
+    },
+    {
+      "id": "synthetic-rotation-270",
+      "scenario": "rotation-270",
+      "path": "generated/rotation-270.png",
+      "sha256": "add3f607df42ee863e03d6f2fbb2d2e184c84a14233839adfb3c891836714075",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "input": {
+        "rotationDegrees": 270
+      },
+      "expected": {
+        "minMeasures": 1,
+        "minNotes": 1
+      }
+    },
+    {
+      "id": "synthetic-crop",
+      "scenario": "crop",
+      "path": "generated/crop.png",
+      "sha256": "a5cd445e2f20c09ab4af812e7e913724a9f6f3fce1cb166dd6b3d212ab30e4f7",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "input": {
+        "cropped": true
+      },
+      "expected": {
+        "minMeasures": 1,
+        "minNotes": 1
+      }
+    },
+    {
+      "id": "synthetic-low-confidence",
+      "scenario": "low-confidence",
+      "path": "generated/low-confidence.png",
+      "sha256": "c20865a772e9c875e66b3fcb3d42fc441d19d7b6838e25888079d26becd7286f",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "expected": {
+        "minMeasures": 1,
+        "minNotes": 1,
+        "lowConfidenceThreshold": 1,
+        "minSymbolsBelowThreshold": 1
+      }
+    },
+    {
+      "id": "synthetic-corrupted",
+      "scenario": "corrupted-input",
+      "path": "generated/corrupted-input.png",
+      "sha256": "f0fd6820a43ae0e2197ed6876c7c1951bb3048282fbebbefa25f7a575d166e91",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "expected": {}
+    },
+    {
+      "id": "synthetic-timeout",
+      "scenario": "timeout",
+      "path": "generated/timeout.png",
+      "sha256": "70937ff76bca0261f75121c352384eee2551d61aa7e56b914aa55ec0a0622eeb",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "expected": {}
+    },
+    {
+      "id": "synthetic-cancellation",
+      "scenario": "cancellation",
+      "path": "generated/cancellation.png",
+      "sha256": "70937ff76bca0261f75121c352384eee2551d61aa7e56b914aa55ec0a0622eeb",
+      "rights": {
+        "classification": "repository-authored",
+        "statement": "Synthetic qualification score authored in this repository and generated deterministically for real-engine testing."
+      },
+      "expected": {}
+    }
+  ]
+}

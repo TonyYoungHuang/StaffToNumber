@@ -36,14 +36,28 @@ def main() -> int:
     args = parse_args()
 
     try:
-        from music21 import converter, interval, key
+        from music21 import chord, converter, harmony, interval, key, note
     except Exception as exc:
         print(f"Could not import music21: {exc}", file=sys.stderr)
         return 1
 
     try:
         score = converter.parse(args.source_path)
-        transposed = score.transpose(interval.ChromaticInterval(args.semitones))
+        # Score JSON currently stores MIDI program/name but not an explicit
+        # written-to-sounding transposition. music21 infers one from names such
+        # as "B-flat Clarinet" and would materialize that guess during export.
+        # Clear inferred intervals so this adapter preserves the written pitches
+        # it received and applies only the requested chromatic shift.
+        for instrument in score.recurse().getElementsByClass("Instrument"):
+            instrument.transposition = None
+        # Stream.transpose() also visits Instrument objects. For transposing
+        # instruments that changes their written-pitch interval and then shifts
+        # the notes again when MusicXML is written. Restrict the operation to
+        # notation elements so every part moves by exactly the requested amount.
+        transposed = score.transpose(
+            interval.ChromaticInterval(args.semitones),
+            classFilterList=(note.Note, chord.Chord, harmony.ChordSymbol, key.KeySignature),
+        )
         if args.target_tonic:
             target_key = key.Key(args.target_tonic, args.target_mode)
             key_signatures = list(transposed.recurse().getElementsByClass(key.KeySignature))

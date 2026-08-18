@@ -7,7 +7,7 @@
     "dev": "node --env-file=.env --watch --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node --env-file=.env dist/index.js",
-    "test": "node --import tsx --test src/audio-transcription-cleanup.test.ts src/omr-confidence.test.ts src/audiveris-omr-diagnostics.test.ts src/audiveris-runner.test.ts src/score-job-claim.test.ts src/legacy-job-claim.test.ts src/job-broker-connection.test.ts src/job-broker-consumer.test.ts src/job-broker-consumer.integration.test.ts src/omr-candidate-commit.test.ts src/musicxml-professional-symbols.test.ts src/score-export-renderer.test.ts src/notification-delivery.test.ts",
+    "test": "node --import tsx --test src/audio-transcription-cleanup.test.ts src/omr-confidence.test.ts src/audiveris-omr-diagnostics.test.ts src/audiveris-output.test.ts src/audiveris-runner.test.ts src/score-job-claim.test.ts src/legacy-job-claim.test.ts src/job-broker-connection.test.ts src/job-broker-consumer.test.ts src/job-broker-consumer.integration.test.ts src/omr-candidate-commit.test.ts src/musicxml-professional-symbols.test.ts src/score-export-renderer.test.ts src/notification-delivery.test.ts",
     "test:music-engines": "node --import tsx --test src/audiveris-real.integration.test.ts src/score-renderer-real.integration.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "evaluate:samples": "tsx src/evaluate-samples.ts"

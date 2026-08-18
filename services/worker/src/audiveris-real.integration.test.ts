@@ -5,7 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { applyAudiverisOmrDiagnostics } from "./audiveris-omr-diagnostics.js";
-import { AudiverisProcessError, runAudiverisCommand } from "./audiveris-runner.js";
+import {
+  findAudiverisMusicXmlOutput,
+  findAudiverisProjectOutput,
+  readAudiverisMusicXml,
+} from "./audiveris-output.js";
+import { AudiverisProcessError, runAudiverisCommand, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
 import { parseAudiverisMusicXmlToScoreJson } from "./musicxml-score-parser.js";
 import { summarizeAudiverisConfidence } from "./omr-confidence.js";
 
@@ -38,7 +43,7 @@ type Fixture = {
   path: string;
   sha256: string;
   rights: {
-    classification: "public-domain" | "user-provided";
+    classification: "public-domain" | "user-provided" | "repository-authored";
     source?: string;
     statement: string;
   };
@@ -68,6 +73,7 @@ const normalTimeoutMs = positiveIntegerEnv("AUDIVERIS_REAL_TIMEOUT_MS", 300_000)
 const timeoutProbeMs = positiveIntegerEnv("AUDIVERIS_REAL_TIMEOUT_PROBE_MS", 10);
 const cancelAfterMs = positiveIntegerEnv("AUDIVERIS_REAL_CANCEL_AFTER_MS", 50);
 const cancellationPollMs = positiveIntegerEnv("AUDIVERIS_REAL_CANCEL_POLL_MS", 25);
+const imageMagickCommand = (process.env.AUDIVERIS_REAL_IMAGE_MAGICK_COMMAND ?? "convert").trim();
 const keepOutput = process.env.AUDIVERIS_REAL_KEEP_OUTPUT === "1";
 const manifestState = loadManifestState();
 
@@ -176,7 +182,7 @@ qualificationTest("corrupted-input", "rejects corrupted input without publishing
       t.diagnostic(`${fixture.id}: rejected in ${Date.now() - startedAt} ms with exitCode=${String(error.exitCode)} message=${tail(error.message)}`);
       return;
     }
-    const musicXmlPath = findNewestOutput(output.path, /\.(musicxml|xml)$/iu);
+    const musicXmlPath = findAudiverisMusicXmlOutput(output.path);
     assert.equal(
       musicXmlPath,
       undefined,
@@ -311,28 +317,29 @@ async function runSuccessfulFixture(t: TestContext, fixture: Fixture & { absolut
   const output = createOutputDirectory(fixture);
   const startedAt = Date.now();
   try {
-    const processResult = await runAudiverisCommand({
+    const processResult = await runAudiverisWithRotationFallback({
       command,
       commandArgsPrefix,
+      imageMagickCommand,
       inputPath: fixture.absolutePath,
       outputDir: output.path,
       timeoutMs: normalTimeoutMs,
       cancellationPollMs,
     });
-    const musicXmlPath = findNewestOutput(output.path, /\.(musicxml|xml)$/iu);
+    const musicXmlPath = findAudiverisMusicXmlOutput(output.path);
     assert.ok(
       musicXmlPath,
-      `${fixture.id}: Audiveris exited successfully but emitted no .musicxml/.xml output in ${output.path}. ` +
+      `${fixture.id}: Audiveris exited successfully but emitted no .musicxml/.mxl/.xml output in ${output.path}. ` +
         `stdout=${tail(processResult.stdout)} stderr=${tail(processResult.stderr)}`,
     );
     const score = parseAudiverisMusicXmlToScoreJson({
-      musicXml: fs.readFileSync(musicXmlPath, "utf8"),
+      musicXml: readAudiverisMusicXml(musicXmlPath),
       title: fixture.id,
       sourceFileId: `qualification-${fixture.id}`,
       sourceOriginalName: path.basename(fixture.absolutePath),
       importedAt: new Date().toISOString(),
     });
-    const omrPath = findNewestOutput(output.path, /\.omr$/iu);
+    const omrPath = findAudiverisProjectOutput(output.path);
     const diagnosedScore = omrPath ? applyAudiverisOmrDiagnostics(score, omrPath) : score;
     const summary = summarizeAudiverisConfidence(diagnosedScore);
     const confidences =
@@ -363,7 +370,7 @@ async function runSuccessfulFixture(t: TestContext, fixture: Fixture & { absolut
     t.diagnostic(
       `${fixture.id}: elapsedMs=${result.elapsedMs} pages=${result.pageCount} measures=${result.measureCount} ` +
         `notes=${result.noteCount} audiverisSymbols=${result.symbolCount} averageAudiverisConfidence=${String(result.averageConfidence)} ` +
-        `musicXml=${result.musicXmlPath} omr=${result.omrPath ?? "not emitted"}`,
+        `rotationCorrection=${processResult.appliedRotationDegrees} musicXml=${result.musicXmlPath} omr=${result.omrPath ?? "not emitted"}`,
     );
     return result;
   } finally {
@@ -406,19 +413,6 @@ function createOutputDirectory(fixture: Fixture) {
       }
     },
   };
-}
-
-function findNewestOutput(directory: string, pattern: RegExp): string | undefined {
-  const candidates: string[] = [];
-  const walk = (current: string) => {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      const entryPath = path.join(current, entry.name);
-      if (entry.isDirectory()) walk(entryPath);
-      else if (pattern.test(entry.name)) candidates.push(entryPath);
-    }
-  };
-  if (fs.existsSync(directory)) walk(directory);
-  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
 }
 
 function loadManifestState(): ManifestState {
@@ -477,8 +471,8 @@ function validateFixture(value: unknown, index: number, manifestPath: string): F
   assertRecord(value.rights, `${label}.rights must be an object.`);
   const classification = requireString(value.rights.classification, `${label}.rights.classification`);
   assert.ok(
-    classification === "public-domain" || classification === "user-provided",
-    `${label}.rights.classification must be public-domain or user-provided.`,
+    classification === "public-domain" || classification === "user-provided" || classification === "repository-authored",
+    `${label}.rights.classification must be public-domain, user-provided, or repository-authored.`,
   );
   const statement = requireString(value.rights.statement, `${label}.rights.statement`);
   assert.ok(statement.length >= 8, `${label}.rights.statement must explain permission for qualification use.`);

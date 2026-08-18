@@ -16,6 +16,7 @@ const tools = [
   tool("fluidsynth", "FluidSynth", "FLUIDSYNTH_COMMAND", ["--version"]),
   tool("ffmpeg", "ffmpeg", "FFMPEG_COMMAND", ["-version"]),
   tool("ffprobe", "ffprobe", "FFPROBE_COMMAND", ["-version"]),
+  tool("imagemagick", "ImageMagick", "AUDIVERIS_IMAGE_MAGICK_COMMAND", ["-version"]),
   tool("basic-pitch", "Basic Pitch", "BASIC_PITCH_COMMAND", ["--help"]),
   tool("yt-dlp", "yt-dlp", "YT_DLP_COMMAND", ["--version"]),
 ];

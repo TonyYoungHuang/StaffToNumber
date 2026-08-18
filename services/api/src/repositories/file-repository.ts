@@ -2,7 +2,7 @@ import type { StoredFileKind } from "@score/shared";
 import { createStorageObjectKey } from "@score/storage";
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
-import { objectStorage, ObjectStorageUnavailableError } from "../lib/object-storage.js";
+import { objectStorage, objectStorageDiagnostic, ObjectStorageUnavailableError } from "../lib/object-storage.js";
 import { assertStorageQuota } from "../lib/plan-quotas.js";
 import { nowIso } from "../lib/time.js";
 
@@ -47,6 +47,11 @@ export async function createStoredFile(input: {
       contentType: input.mimeType,
     });
   } catch (error) {
+    const storageError = objectStorageDiagnostic(error);
+    console.error(JSON.stringify({
+      event: "object_storage.persist_failed",
+      ...storageError,
+    }));
     throw new ObjectStorageUnavailableError(error);
   }
   if (persisted.sizeBytes !== input.sizeBytes) {

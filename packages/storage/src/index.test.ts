@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -70,6 +71,32 @@ test("S3 storage writes checksummed private objects and reads through the config
   await fs.promises.rm(root, { recursive: true, force: true });
 });
 
+test("Cloudflare R2 uploads use supported MD5 transport checksums and retain SHA-256 metadata", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-storage-r2-"));
+  const source = path.join(root, "source.png");
+  await fs.promises.writeFile(source, "r2-image");
+  const commands: unknown[] = [];
+  const storage = new ObjectStorage({
+    backend: "s3",
+    localRoot: root,
+    bucket: "scoretransposer-staging",
+    region: "auto",
+    endpoint: "https://0123456789abcdef.r2.cloudflarestorage.com",
+  }, {
+    async send(command: unknown) {
+      commands.push(command);
+      return {};
+    },
+  } as never);
+
+  const persisted = await storage.persistFile({ sourcePath: source, objectKey: "staging/source.png", contentType: "image/png" });
+  const put = commands[0] as PutObjectCommand;
+  assert.equal(put.input.ChecksumSHA256, undefined);
+  assert.equal(put.input.ContentMD5, createHash("md5").update("r2-image").digest("base64"));
+  assert.equal(put.input.Metadata?.["sha256-hex"], persisted.checksumSha256);
+  await fs.promises.rm(root, { recursive: true, force: true });
+});
+
 test("object keys are tenant-scoped and traversal-safe", () => {
   assert.equal(
     createStorageObjectKey({ prefix: "prod/scores", userId: "../user", fileId: "file/1", storedName: "../../score.xml" }),
@@ -114,4 +141,81 @@ test("S3 resumable uploads use native multipart commands and preserve encryption
   assert.equal(commands[2] instanceof CompleteMultipartUploadCommand, true);
   assert.equal(commands[3] instanceof AbortMultipartUploadCommand, true);
   assert.equal(completed.ref.storagePath, "s3://private-scores/users/u1/large.pdf");
+});
+
+test("Cloudflare R2 multipart parts use supported MD5 transport checksums", async () => {
+  const commands: unknown[] = [];
+  const body = Buffer.from("%PDF-r2-part");
+  const storage = new ObjectStorage({
+    backend: "s3",
+    localRoot: ".",
+    bucket: "scoretransposer-staging",
+    region: "auto",
+    endpoint: "https://0123456789abcdef.r2.cloudflarestorage.com",
+  }, {
+    async send(command: unknown) {
+      commands.push(command);
+      if (command instanceof CreateMultipartUploadCommand) return { UploadId: "upload-r2" };
+      if (command instanceof UploadPartCommand) return { ETag: '"etag-r2"' };
+      return {};
+    },
+  } as never);
+
+  const session = await storage.beginResumableUpload({ objectKey: "staging/large.pdf", contentType: "application/pdf" });
+  const part = await storage.uploadResumablePart({ session, partNumber: 1, body });
+  await storage.completeResumableUpload({ session, parts: [part] });
+  const upload = commands[1] as UploadPartCommand;
+  const complete = commands[2] as CompleteMultipartUploadCommand;
+  assert.equal(upload.input.ChecksumSHA256, undefined);
+  assert.equal(upload.input.ContentMD5, createHash("md5").update(body).digest("base64"));
+  assert.equal(complete.input.MultipartUpload?.Parts?.[0]?.ChecksumSHA256, undefined);
+});
+
+test("object storage gateway supports private object and multipart operations", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-storage-gateway-"));
+  const source = path.join(root, "source.musicxml");
+  await fs.promises.writeFile(source, "<score-partwise/>");
+  const requests: Array<{ url: URL; method: string; token: string | null; body: Buffer }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+    const headers = new Headers(init?.headers);
+    const body = init?.body ? Buffer.from(init.body as Uint8Array) : Buffer.alloc(0);
+    requests.push({ url, method: init?.method ?? "GET", token: headers.get("x-score-storage-token"), body });
+    if (url.pathname.endsWith("/health")) return Response.json({ status: "ready" });
+    if (url.pathname.endsWith("/multipart") && init?.method === "POST") return Response.json({ uploadId: "gateway-upload" });
+    if (url.pathname.includes("/parts/")) return Response.json({ etag: "gateway-etag", partNumber: 1 });
+    if (url.pathname.endsWith("/complete")) return Response.json({ completed: true });
+    if (init?.method === "GET") return new Response("<score-partwise/>");
+    return new Response(null, { status: init?.method === "PUT" ? 201 : 204 });
+  }) as typeof fetch;
+
+  try {
+    const storage = new ObjectStorage({
+      backend: "s3",
+      localRoot: root,
+      bucket: "private-scores",
+      region: "auto",
+      gatewayUrl: "https://api.example.com/__edge/storage",
+      gatewayToken: "test-storage-token",
+    });
+    const persisted = await storage.persistFile({ sourcePath: source, objectKey: "staging/users/u1/source.musicxml", contentType: "application/xml" });
+    assert.equal(persisted.ref.storageKey, "staging/users/u1/source.musicxml");
+    assert.equal(requests[0].token, "test-storage-token");
+    assert.equal(requests[0].body.toString(), "<score-partwise/>");
+    assert.equal(await storage.exists(persisted.ref), true);
+    const chunks: Buffer[] = [];
+    for await (const chunk of await storage.openReadStream(persisted.ref)) chunks.push(Buffer.from(chunk));
+    assert.equal(Buffer.concat(chunks).toString(), "<score-partwise/>");
+    assert.deepEqual(await storage.checkHealth(), { backend: "s3", target: "private-scores" });
+    const session = await storage.beginResumableUpload({ objectKey: "staging/users/u1/large.pdf", contentType: "application/pdf" });
+    const part = await storage.uploadResumablePart({ session, partNumber: 1, body: Buffer.from("part") });
+    await storage.completeResumableUpload({ session, parts: [part] });
+    await storage.abortResumableUpload(session);
+    assert.equal(await storage.delete(persisted.ref), true);
+    assert.equal(requests.every((entry) => entry.token === "test-storage-token"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    await fs.promises.rm(root, { recursive: true, force: true });
+  }
 });

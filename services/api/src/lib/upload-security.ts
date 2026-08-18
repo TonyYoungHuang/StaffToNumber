@@ -505,7 +505,14 @@ export function uploadErrorResponse(error: unknown) {
     return { statusCode: quotaError.statusCode, body: { error: quotaError.message, code: quotaError.code, quota: quotaError.quota } };
   }
   if (error instanceof ObjectStorageUnavailableError) {
-    return { statusCode: 503 as const, body: { error: error.message, code: error.code } };
+    return {
+      statusCode: 503 as const,
+      body: {
+        error: error.message,
+        code: error.code,
+        ...(config.nodeEnv === "staging" ? { diagnostic: error.diagnostic } : {}),
+      },
+    };
   }
   if (error instanceof UploadSecurityError) {
     return { statusCode: error.statusCode, body: { error: error.message, code: error.code } };

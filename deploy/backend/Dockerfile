@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/score-python/bin:$PATH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl ffmpeg fluidsynth fluid-soundfont-gm fonts-dejavu-core \
+    ca-certificates curl ffmpeg fluidsynth fluid-soundfont-gm fonts-dejavu-core imagemagick \
     libsndfile1 libxtst6 musescore3 openjdk-17-jre-headless python3 python3-pip python3-venv \
     tesseract-ocr unzip && \
     rm -rf /var/lib/apt/lists/*
@@ -48,6 +48,7 @@ ENV NODE_ENV=production \
     RUNTIME_DATABASE_PRIMARY=postgres \
     STORAGE_DIR=/data/storage \
     AUDIVERIS_COMMAND=/opt/audiveris/bin/Audiveris \
+    AUDIVERIS_IMAGE_MAGICK_COMMAND=/usr/bin/convert \
     BASIC_PITCH_COMMAND=/opt/score-python/bin/basic-pitch \
     MUSIC21_COMMAND=/opt/score-python/bin/python \
     YT_DLP_COMMAND=/opt/score-python/bin/yt-dlp \

@@ -12,7 +12,7 @@
   ],
   "vars": {
     "DEPLOYMENT_ENV": "staging",
-    "API_CONTAINER_NAME": "api-primary-v4",
+    "API_CONTAINER_NAME": "api-primary-v5",
     "COLLABORATION_CONTAINER_NAME": "collaboration-primary",
     "MUSIC_WORKER_CONTAINER_NAME": "music-worker-primary-v3",
     "RUNTIME_DATABASE_PRIMARY": "postgres",
@@ -41,7 +41,8 @@
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
       "STRIPE_PRICE_ID",
-      "STRIPE_SCHOOL_PRICE_ID"
+      "STRIPE_SCHOOL_PRICE_ID",
+      "OBJECT_STORAGE_GATEWAY_TOKEN"
     ]
   },
   "r2_buckets": [
@@ -57,7 +58,7 @@
       "image": "./Dockerfile.api",
       "image_build_context": "../../.tmp/cloudflare-build-context",
       "instance_type": "standard-2",
-      "max_instances": 1,
+      "max_instances": 2,
       "rollout_active_grace_period": 60,
       "rollout_step_percentage": [100],
       "constraints": { "regions": ["ENAM"] }

@@ -2,12 +2,18 @@ FROM node:22-bookworm-slim
 
 WORKDIR /srv/scoretransposer
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONUTF8=1 \
+    PATH=/opt/score-python/bin:$PATH
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
       clamav \
       clamav-freshclam \
       ffmpeg \
+      python3 \
+      python3-venv \
       util-linux && \
     freshclam --stdout && \
     test "$(find /var/lib/clamav -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) | wc -l)" -gt 0 && \
@@ -15,6 +21,10 @@ RUN apt-get update && \
     ffmpeg -version >/dev/null && \
     ffprobe -version >/dev/null && \
     rm -rf /var/lib/apt/lists/* /var/log/clamav/*
+
+RUN python3 -m venv /opt/score-python && \
+    /opt/score-python/bin/pip install --no-cache-dir "setuptools<81" music21==10.5.0 && \
+    /opt/score-python/bin/python -c "import music21; print(music21.__version__)"
 
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/app/package.json apps/app/package.json
@@ -43,6 +53,7 @@ ENV NODE_ENV=staging \
     CLAMAV_TIMEOUT_MS=180000 \
     FFMPEG_COMMAND=/usr/bin/ffmpeg \
     FFPROBE_COMMAND=/usr/bin/ffprobe \
+    MUSIC21_COMMAND=/opt/score-python/bin/python \
     MEDIA_SAFETY_REQUIRED=true
 
 RUN mkdir -p /srv/scoretransposer/runtime /tmp/scoretransposer/storage && \

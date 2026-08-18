@@ -47,6 +47,8 @@ for (const relative of ["package.json", "package-lock.json", "tsconfig.base.json
 for (const relative of ["apps/app/package.json", "apps/www/package.json"]) copyFile(relative);
 for (const relative of ["packages", "services"]) copyTree(relative);
 copyFile("deploy/cloudflare/container-worker-entrypoint.mjs");
+copyFile("deploy/backend/soundfont-license-manifest.json");
+copyTree("deploy/backend/licenses");
 fs.writeFileSync(path.join(target, ".dockerignore"), "node_modules\ndist\n.next\n.env*\n*.sqlite\n*.tsbuildinfo\n", "utf8");
 
 let files = 0;

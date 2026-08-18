@@ -42,6 +42,7 @@ type QualificationManifest = {
     sampleRate: 44100 | 48000 | 96000;
     channels: 1 | 2;
     tempoBpm: number;
+    loudnessTargetLufs: number;
     durationSeconds: Tolerance;
     meanVolumeDb: Tolerance;
     peakVolumeDb: Tolerance;
@@ -62,6 +63,22 @@ type SoundFontLicenseManifest = {
     redistributionAllowed: boolean;
     attribution?: string;
   };
+};
+
+type ReviewedSoundFontLicenseManifest = {
+  schemaVersion: 1;
+  soundFonts: Array<{
+    name: string;
+    path: string;
+    sha256: string;
+    licenseId: string;
+    licenseNoticePath: string;
+    sourceUrl: string;
+    commercialUseApproved: boolean;
+    reviewedAt: string;
+    reviewedBy: string;
+    reviewNote?: string;
+  }>;
 };
 
 const fixtureDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "render-real");
@@ -189,22 +206,48 @@ function loadLicensedSoundFont() {
 
   const licenseManifestPath = path.resolve(licenseManifestPathValue);
   assert.ok(fs.existsSync(licenseManifestPath), `SoundFont license manifest does not exist: ${licenseManifestPath}`);
-  const licenseManifest = JSON.parse(fs.readFileSync(licenseManifestPath, "utf8")) as SoundFontLicenseManifest;
+  const licenseManifest = JSON.parse(fs.readFileSync(licenseManifestPath, "utf8")) as
+    | SoundFontLicenseManifest
+    | ReviewedSoundFontLicenseManifest;
   assert.equal(licenseManifest.schemaVersion, 1);
-  assert.ok(licenseManifest.soundFont.name.trim(), "SoundFont license manifest requires a name");
-  assert.equal(licenseManifest.soundFont.fileName, path.basename(soundFontPath));
-  assertHttpUrl(licenseManifest.soundFont.sourceUrl, "SoundFont sourceUrl");
-  assertHttpUrl(licenseManifest.license.licenseUrl, "SoundFont licenseUrl");
-  assert.ok(manifest.soundFontLicensePolicy.allowedSpdxLicenseIds.includes(licenseManifest.license.spdxId), `SoundFont license ${licenseManifest.license.spdxId} is not approved`);
-  if (manifest.soundFontLicensePolicy.requireRedistributionAllowed) {
-    assert.equal(licenseManifest.license.redistributionAllowed, true, "SoundFont manifest must explicitly permit redistribution");
-  }
-  if (manifest.soundFontLicensePolicy.licensesRequiringAttribution.includes(licenseManifest.license.spdxId)) {
-    assert.ok(licenseManifest.license.attribution?.trim(), `${licenseManifest.license.spdxId} requires attribution text`);
-  }
-  if (manifest.soundFontLicensePolicy.requireSha256) {
-    assert.match(licenseManifest.soundFont.sha256, /^[a-f0-9]{64}$/u);
-    assert.equal(sha256(soundFontPath), licenseManifest.soundFont.sha256, "SoundFont checksum does not match its license manifest");
+  if ("soundFonts" in licenseManifest) {
+    const reviewed = licenseManifest.soundFonts.find((entry) =>
+      path.resolve(entry.path) === soundFontPath || path.basename(entry.path) === path.basename(soundFontPath));
+    assert.ok(reviewed, `SoundFont license manifest has no entry for ${soundFontPath}`);
+    assert.ok(reviewed.name.trim(), "SoundFont license manifest requires a name");
+    assertHttpUrl(reviewed.sourceUrl, "SoundFont sourceUrl");
+    assert.ok(
+      manifest.soundFontLicensePolicy.allowedSpdxLicenseIds.includes(reviewed.licenseId),
+      `SoundFont license ${reviewed.licenseId} is not approved`,
+    );
+    assert.equal(reviewed.commercialUseApproved, true, "SoundFont must be explicitly approved for commercial use");
+    assert.ok(reviewed.reviewedAt.trim(), "SoundFont license review date is required");
+    assert.ok(reviewed.reviewedBy.trim(), "SoundFont license reviewer is required");
+    const noticePath = path.resolve(reviewed.licenseNoticePath);
+    assert.ok(fs.existsSync(noticePath), `SoundFont license notice does not exist: ${noticePath}`);
+    const notice = fs.readFileSync(noticePath, "utf8");
+    assert.match(notice, /copyright/iu, "SoundFont license notice must preserve copyright text");
+    assert.match(notice, /permission is hereby granted/iu, "SoundFont license notice must preserve permission terms");
+    if (manifest.soundFontLicensePolicy.requireSha256) {
+      assert.match(reviewed.sha256, /^[a-f0-9]{64}$/u);
+      assert.equal(sha256(soundFontPath), reviewed.sha256, "SoundFont checksum does not match its license manifest");
+    }
+  } else {
+    assert.ok(licenseManifest.soundFont.name.trim(), "SoundFont license manifest requires a name");
+    assert.equal(licenseManifest.soundFont.fileName, path.basename(soundFontPath));
+    assertHttpUrl(licenseManifest.soundFont.sourceUrl, "SoundFont sourceUrl");
+    assertHttpUrl(licenseManifest.license.licenseUrl, "SoundFont licenseUrl");
+    assert.ok(manifest.soundFontLicensePolicy.allowedSpdxLicenseIds.includes(licenseManifest.license.spdxId), `SoundFont license ${licenseManifest.license.spdxId} is not approved`);
+    if (manifest.soundFontLicensePolicy.requireRedistributionAllowed) {
+      assert.equal(licenseManifest.license.redistributionAllowed, true, "SoundFont manifest must explicitly permit redistribution");
+    }
+    if (manifest.soundFontLicensePolicy.licensesRequiringAttribution.includes(licenseManifest.license.spdxId)) {
+      assert.ok(licenseManifest.license.attribution?.trim(), `${licenseManifest.license.spdxId} requires attribution text`);
+    }
+    if (manifest.soundFontLicensePolicy.requireSha256) {
+      assert.match(licenseManifest.soundFont.sha256, /^[a-f0-9]{64}$/u);
+      assert.equal(sha256(soundFontPath), licenseManifest.soundFont.sha256, "SoundFont checksum does not match its license manifest");
+    }
   }
   return soundFontPath;
 }
@@ -380,7 +423,7 @@ test("FluidSynth renders WAV and ffmpeg analysis stays within acoustic golden to
     manifest.environment.soundFontPath,
     manifest.environment.soundFontLicenseManifest,
   ]),
-}, async () => {
+}, async (t) => {
   const soundFontPath = loadLicensedSoundFont();
   const directory = temporaryDirectory("score-renderer-real-audio-");
   try {
@@ -403,6 +446,7 @@ test("FluidSynth renders WAV and ffmpeg analysis stays within acoustic golden to
     const durationSeconds = numericMetric(result.metrics, "durationSeconds");
     const meanVolumeDb = numericMetric(result.metrics, "meanVolumeDb");
     const peakVolumeDb = numericMetric(result.metrics, "peakVolumeDb");
+    t.diagnostic(JSON.stringify({ durationSeconds, meanVolumeDb, peakVolumeDb }));
     assertWithinTolerance(durationSeconds, manifest.acousticGolden.durationSeconds, "durationSeconds");
     assertWithinTolerance(meanVolumeDb, manifest.acousticGolden.meanVolumeDb, "meanVolumeDb");
     assertWithinTolerance(peakVolumeDb, manifest.acousticGolden.peakVolumeDb, "peakVolumeDb");
@@ -432,7 +476,7 @@ function acousticSnapshot(): ScoreExportSnapshot {
       reverbEnabled: false,
       chorusEnabled: false,
       normalizeLoudness: true,
-      loudnessTargetLufs: manifest.acousticGolden.meanVolumeDb.target,
+      loudnessTargetLufs: manifest.acousticGolden.loudnessTargetLufs,
     },
   };
 }

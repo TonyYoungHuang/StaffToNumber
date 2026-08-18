@@ -5091,15 +5091,22 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const fileKind = verified.detectedKind === "pdf" ? "source_pdf" : "source_image";
 
-      const storedFile = await createStoredFile({
-        userId: request.authUserId!,
-        originalName: filename,
-        storedName,
-        storagePath: targetPath,
-        mimeType: verified.mimeType,
-        sizeBytes: verified.sizeBytes,
-        fileKind,
-      });
+      let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
+      try {
+        storedFile = await createStoredFile({
+          userId: request.authUserId!,
+          originalName: filename,
+          storedName,
+          storagePath: targetPath,
+          mimeType: verified.mimeType,
+          sizeBytes: verified.sizeBytes,
+          fileKind,
+        });
+      } catch (error) {
+        const response = uploadErrorResponse(error);
+        request.log.error({ uploadCode: response.body.code }, "OMR source persistence failed.");
+        return reply.code(response.statusCode).send(response.body);
+      }
 
       if (!storedFile) {
         return reply.code(500).send({ error: "Could not store the OMR source file." });

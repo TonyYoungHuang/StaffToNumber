@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:score:audiveris-real-fixtures:v1",
   "title": "Audiveris real-engine qualification fixture manifest",
-  "description": "References external, checksum-pinned fixtures. No score images or PDFs are stored with this schema.",
+  "description": "References checksum-pinned real-engine fixtures, including repository-authored synthetic scores.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "fixtures"],
@@ -55,7 +55,7 @@
           "required": ["classification", "statement"],
           "properties": {
             "classification": {
-              "enum": ["public-domain", "user-provided"]
+              "enum": ["public-domain", "user-provided", "repository-authored"]
             },
             "source": {
               "type": "string",
