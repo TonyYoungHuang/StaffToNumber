@@ -12,6 +12,14 @@
 
 ## 2. 需要创建的 Google 配置
 
+生产状态（2026-08-18）：
+
+- Search Console Domain property：`scoretransposer.com`，已验证。
+- Sitemap：`https://scoretransposer.com/sitemap.xml`，2026-08-18 读取成功，发现 14 个页面。
+- GA4 媒体资源：`ScoreTransposer`，Property ID `550391758`。
+- Web 数据流：`ScoreTransposer Production`，Stream ID `15458085141`。
+- Measurement ID：`G-CERGG48WWE`，Google 官方安装检测通过并已收到实时访问。
+
 1. 在 Google Analytics 创建一个 Web 数据流，域名填写 `https://scoretransposer.com`，取得 `G-...` Measurement ID。
 2. 在 Search Console 添加站点：
    - 推荐添加 Domain property `scoretransposer.com`，按 Google 提供的值在 DNS 添加 TXT；这覆盖主域和 `app.` 子域。
@@ -26,7 +34,7 @@
 
 ```text
 NEXT_PUBLIC_ANALYTICS_ENABLED=true
-NEXT_PUBLIC_GA4_MEASUREMENT_ID=G-XXXXXXXXXX
+NEXT_PUBLIC_GA4_MEASUREMENT_ID=G-CERGG48WWE
 NEXT_PUBLIC_CLARITY_PROJECT_ID=
 GOOGLE_SITE_VERIFICATION=
 ```
@@ -56,7 +64,7 @@ RESEND_API_KEY=re_...
 
 `purchase` 使用本地订单 ID 去重。Paddle/Stripe Webhook 是付款和权益的真相源；浏览器事件只用于漏斗分析，不能用于发放权益。
 
-在 GA4 Admin 中把 `sign_up`、`free_omr_created`、`upgrade_click` 和 `purchase` 标记为 Key events。零流量阶段先看每一步是否有数据，不设置虚假的转化率目标。
+`purchase` 已由 GA4 自动列为 Key event。GA4 最长需要 24 小时才会把首次收到的自定义事件加入“近期事件”；届时再把 `sign_up`、`free_omr_created` 和 `upgrade_click` 标记为 Key events。零流量阶段先看每一步是否有数据，不设置虚假的转化率目标。
 
 ## 5. 发布与验收
 
@@ -64,8 +72,10 @@ RESEND_API_KEY=re_...
 2. 运行：
 
 ```powershell
-node scripts/audit-production-seo.mjs --base-url https://scoretransposer.com --required-paths /pdf-score-scanner --require-google-verification
+node scripts/audit-production-seo.mjs --base-url https://scoretransposer.com --required-paths /pdf-score-scanner
 ```
+
+当前使用已验证的 Domain property，不依赖 HTML verification meta，因此不要为该模式添加 `--require-google-verification`。
 
 3. 在浏览器同意分析 Cookie，确认 Cookie Domain 为 `.scoretransposer.com`，进入 `app.` 后不再次丢失同意状态。
 4. 用 GA4 DebugView/Realtime 依次验证 `seo_landing_view → sign_up → free_omr_created → free_omr_preview_viewed → upgrade_click → begin_checkout`。

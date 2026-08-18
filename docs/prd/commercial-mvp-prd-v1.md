@@ -11,7 +11,7 @@
 - 生产支付保持关闭：等待 Paddle Sandbox 真实联调，以及后续 Live 账户、域名、凭据、付款和退款验收。
 - 阶段二完成：官网、注册、导航和工作区统一到“免费识别一页 PDF/图片”；旧 `/upload` 转入 OMR 工程入口；音频转谱和教学不再出现在未启用环境的主路径；免费候选页显示识别诊断和可行动失败提示。
 - 阶段三代码完成：Google 技术 SEO 审计、跨主域/应用子域分析同意、SEO 落地页到注册/免费 OMR/升级/支付事件、付款运营邮件提醒均已实现。
-- 阶段三外部上线待办：提供 Search Console 验证值和 GA4 Measurement ID，统一生产部署后提交 sitemap，并完成 Paddle Sandbox 漏斗验收。
+- 阶段三 Google 外部上线完成：Search Console Domain property 已验证，生产 sitemap 已在 2026-08-18 成功读取 14 个页面；GA4 `ScoreTransposer` 媒体资源和生产 Web 数据流已创建，Google 官方检测确认代码安装成功并已收到实时访问。剩余外部待办仅为 Paddle Sandbox/Live 支付漏斗验收。
 
 ## 1. 产品结论
 
@@ -147,7 +147,7 @@ ScoreTransposer 已拥有可销售的乐谱处理底座，但正式站还没有�
 - Search Console、sitemap、核心 OMR 页面和漏斗分析上线。
 - 用真实展示量、点击、注册和付款数据优化页面，不批量制造低质量内容。
 
-代码验收状态：已完成。生产验收状态：等待 Google 账号配置、统一部署与首轮真实数据。
+代码验收状态：已完成。生产验收状态：Search Console、sitemap、GA4 和两个生产前端均已上线；等待 Google 在 24 小时内生成完整事件列表，并根据首批真实访问建立漏斗基线。
 
 ### 阶段四：首批订单后优化
 
