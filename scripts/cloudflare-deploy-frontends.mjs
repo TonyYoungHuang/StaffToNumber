@@ -38,6 +38,7 @@ const environmentConfig = environment === "production"
       audioTranscriptionAvailable: "false",
       teachingAvailable: "false",
       analyticsEnabled: "false",
+      ga4MeasurementId: "G-CERGG48WWE",
     }
   : {
       siteUrl: "https://staging.scoretransposer.com",
@@ -51,6 +52,7 @@ const environmentConfig = environment === "production"
       audioTranscriptionAvailable: "true",
       teachingAvailable: "true",
       analyticsEnabled: "false",
+      ga4MeasurementId: "",
     };
 const buildEnvironment = {
   ...process.env,
@@ -75,8 +77,9 @@ const buildEnvironment = {
   NEXT_PUBLIC_TEACHING_AVAILABLE: environmentConfig.teachingAvailable,
   NEXT_PUBLIC_ANALYTICS_ENABLED:
     process.env.NEXT_PUBLIC_ANALYTICS_ENABLED?.trim()
-    || (process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() ? "true" : environmentConfig.analyticsEnabled),
-  NEXT_PUBLIC_GA4_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || "",
+    || (process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || environmentConfig.ga4MeasurementId || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() ? "true" : environmentConfig.analyticsEnabled),
+  NEXT_PUBLIC_GA4_MEASUREMENT_ID:
+    process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || environmentConfig.ga4MeasurementId,
   NEXT_PUBLIC_CLARITY_PROJECT_ID: process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() || "",
   NEXT_PUBLIC_DEMO_ACTIVATION_CODE: "",
   NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() || "",
