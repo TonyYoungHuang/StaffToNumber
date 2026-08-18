@@ -6,16 +6,28 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONUTF8=1 \
     PATH=/opt/score-python/bin:$PATH
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates \
-      clamav \
-      clamav-freshclam \
-      ffmpeg \
-      python3 \
-      python3-venv \
-      util-linux && \
-    freshclam --stdout && \
+RUN set -eux; \
+    apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update; \
+    for attempt in 1 2 3; do \
+      if apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 install -y --no-install-recommends \
+        ca-certificates \
+        clamav \
+        clamav-freshclam \
+        ffmpeg \
+        python3 \
+        python3-venv \
+        util-linux; then \
+        break; \
+      fi; \
+      test "$attempt" -lt 3; \
+      sleep "$((attempt * 10))"; \
+      apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update; \
+    done; \
+    for attempt in 1 2 3; do \
+      if freshclam --stdout; then break; fi; \
+      test "$attempt" -lt 3; \
+      sleep "$((attempt * 10))"; \
+    done; \
     test "$(find /var/lib/clamav -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) | wc -l)" -gt 0 && \
     clamscan --version && \
     ffmpeg -version >/dev/null && \
