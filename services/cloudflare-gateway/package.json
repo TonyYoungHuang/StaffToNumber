@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test tests/request-proxy.test.ts",
     "deploy:staging": "wrangler deploy --config ../../deploy/cloudflare/wrangler.staging.jsonc",
     "deploy:production": "wrangler deploy --config ../../deploy/cloudflare/wrangler.production.jsonc",
     "types:staging": "wrangler types --config ../../deploy/cloudflare/wrangler.staging.jsonc worker-configuration.d.ts"

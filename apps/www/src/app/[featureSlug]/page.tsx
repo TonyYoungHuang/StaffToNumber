@@ -39,7 +39,7 @@ function actionLabel(page: NonNullable<ReturnType<typeof findPlatformFeaturePage
 
   const action = page.primaryAction;
   if (action === "upload") {
-    return "Start with an upload";
+    return "Scan one page free";
   }
 
   if (action === "checkout") {
@@ -120,7 +120,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   }
   const relatedPages = seo.relatedSlugs
     .map((slug) => findPlatformFeaturePage(slug))
-    .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage));
+    .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)));
   const faqItems = [
     {
       question: `What input does ${page.title} accept?`,

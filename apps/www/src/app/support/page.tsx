@@ -33,7 +33,7 @@ export default async function SupportPage() {
         {
           step: "01",
           title: "支付 / 订单问题",
-          body: "适用于支付成功后未看到激活码、支付回跳异常、重复扣款疑问，或需要人工核查订单状态。",
+          body: "适用于支付成功后账户权益未生效、支付回跳异常、重复扣款疑问，或需要人工核查订单状态。",
         },
         {
           step: "02",
@@ -50,7 +50,7 @@ export default async function SupportPage() {
         {
           step: "01",
           title: "Payment and order issues",
-          body: "Use this route when checkout succeeds but no activation code appears, when the return path looks incomplete, or when an order needs manual review.",
+          body: "Use this route when checkout succeeds but account access does not appear, when the return path looks incomplete, or when an order needs manual review.",
         },
         {
           step: "02",

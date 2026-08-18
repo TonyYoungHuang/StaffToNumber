@@ -39,6 +39,12 @@ type Bindings = {
   STRIPE_PRICE_ID?: string;
   STRIPE_SCHOOL_PRICE_ID?: string;
   STRIPE_MANAGED_PAYMENTS_ENABLED: string;
+  PADDLE_API_KEY?: string;
+  PADDLE_WEBHOOK_SECRET?: string;
+  PADDLE_PRICE_ID?: string;
+  PADDLE_SCHOOL_PRICE_ID?: string;
+  PADDLE_ENVIRONMENT?: string;
+  PADDLE_DEFAULT_PAYMENT_LINK?: string;
   SOUNDFONT_OBJECT_KEY?: string;
   SOUNDFONT_LICENSE_OBJECT_KEY?: string;
   OBJECT_STORAGE_GATEWAY_TOKEN?: string;
@@ -48,6 +54,7 @@ function baseContainerEnvironment(env: Bindings) {
   const emailDeliveryEnabled = env.EMAIL_DELIVERY_ENABLED === "true";
   const paymentProviders = env.PAYMENT_PROVIDERS?.trim() ?? "";
   const stripeEnabled = paymentProviders.split(",").map((provider) => provider.trim()).includes("stripe");
+  const paddleEnabled = paymentProviders.split(",").map((provider) => provider.trim()).includes("paddle");
 
   return {
     NODE_ENV: env.DEPLOYMENT_ENV === "production" ? "production" : "staging",
@@ -93,6 +100,12 @@ function baseContainerEnvironment(env: Bindings) {
     STRIPE_PRICE_ID: stripeEnabled ? env.STRIPE_PRICE_ID ?? "" : "",
     STRIPE_SCHOOL_PRICE_ID: stripeEnabled ? env.STRIPE_SCHOOL_PRICE_ID ?? "" : "",
     STRIPE_MANAGED_PAYMENTS_ENABLED: env.STRIPE_MANAGED_PAYMENTS_ENABLED,
+    PADDLE_API_KEY: paddleEnabled ? env.PADDLE_API_KEY ?? "" : "",
+    PADDLE_WEBHOOK_SECRET: paddleEnabled ? env.PADDLE_WEBHOOK_SECRET ?? "" : "",
+    PADDLE_PRICE_ID: paddleEnabled ? env.PADDLE_PRICE_ID ?? "" : "",
+    PADDLE_SCHOOL_PRICE_ID: paddleEnabled ? env.PADDLE_SCHOOL_PRICE_ID ?? "" : "",
+    PADDLE_ENVIRONMENT: env.PADDLE_ENVIRONMENT ?? (env.DEPLOYMENT_ENV === "production" ? "production" : "sandbox"),
+    PADDLE_DEFAULT_PAYMENT_LINK: env.PADDLE_DEFAULT_PAYMENT_LINK ?? `${env.PUBLIC_SITE_URL.replace(/\/+$/u, "")}/checkout/paddle`,
     TRUST_PROXY: "true",
     RATE_LIMIT_ENABLED: "true",
     API_REPLICA_COUNT: "1",
@@ -136,6 +149,8 @@ const apiContainerEntrypoint = [
 export class ApiContainer extends ObservableContainer {
   static outboundByHost = {
     "api.stripe.com": (request: Request) => fetch(request),
+    "api.paddle.com": (request: Request) => fetch(request),
+    "sandbox-api.paddle.com": (request: Request) => fetch(request),
     "api-staging.scoretransposer.com": (request: Request) => fetch(request),
     "api.scoretransposer.com": (request: Request) => fetch(request),
   };

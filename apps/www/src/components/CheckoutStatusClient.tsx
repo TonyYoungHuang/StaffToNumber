@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PaymentProvider, PaymentOrderStatus } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
+import { trackFunnelEventOnce } from "../lib/analytics";
 import { getAppActivateUrl, getAppHomeUrl, getAppRegisterUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
@@ -15,6 +16,9 @@ type PublicOrder = {
   billingKind: "one_time" | "subscription";
   userId: string | null;
   customerEmail: string | null;
+  amountMinor: number | null;
+  currency: string | null;
+  seatQuantity: number;
   paidAt: string | null;
 };
 
@@ -52,7 +56,7 @@ export function CheckoutStatusClient({
             paidTitle: "支付成功，激活码已发放",
             paidBody: "你的订单已确认。请先保存激活码，然后到应用内完成兑换。",
             subscriptionPaidTitle: "订阅已成功开通",
-            subscriptionPaidBody: "Stripe 已确认首期付款。请登录现有账号，或使用付款邮箱注册账号来使用订阅权益。",
+            subscriptionPaidBody: "支付渠道已确认首期付款。请登录现有账号，或使用付款邮箱注册账号来使用订阅权益。",
             stalledTitle: "这笔订单暂未自动确认",
             stalledBody: "这不一定代表扣款失败。有时支付回跳信息不完整，需要再次校验或人工处理。",
             missingTitle: "暂时没有找到可确认的订单",
@@ -100,7 +104,7 @@ export function CheckoutStatusClient({
             paidTitle: "Payment successful and activation code issued",
             paidBody: "Your order is confirmed. Save the activation code first, then redeem it inside the app.",
             subscriptionPaidTitle: "Your subscription is active",
-            subscriptionPaidBody: "Stripe confirmed the first payment. Sign in, or create an account with the payment email, to use your subscription.",
+            subscriptionPaidBody: "The payment provider confirmed the first payment. Sign in, or create an account with the payment email, to use your subscription.",
             stalledTitle: "This order was not auto-confirmed yet",
             stalledBody: "That does not always mean the charge failed. Sometimes the provider return is incomplete and needs another check or manual review.",
             missingTitle: "We could not find a confirmed order yet",
@@ -184,6 +188,22 @@ export function CheckoutStatusClient({
   }, [orderId, provider, sessionId, token]);
 
   const isPaid = order?.status === "paid";
+
+  useEffect(() => {
+    if (!isPaid || !order) return;
+    const hasValue = typeof order.amountMinor === "number" && Boolean(order.currency);
+    trackFunnelEventOnce(`purchase-${order.id}`, "purchase", {
+      transaction_id: order.id,
+      payment_type: order.provider,
+      ...(hasValue ? { value: order.amountMinor! / 100, currency: order.currency!.toUpperCase() } : {}),
+      items: [{
+        item_id: order.billingKind === "subscription" ? "scoretransposer_subscription" : "scoretransposer_access",
+        item_name: order.billingKind === "subscription" ? "ScoreTransposer subscription" : "ScoreTransposer access",
+        quantity: order.seatQuantity || 1,
+      }],
+    });
+  }, [isPaid, order]);
+
   const isSubscriptionPaid = isPaid && order?.billingKind === "subscription";
   const isStalled = order?.status === "cancelled" || order?.status === "failed";
   const badge = isPaid ? copy.paidBadge : isStalled ? copy.stalledBadge : copy.pendingBadge;

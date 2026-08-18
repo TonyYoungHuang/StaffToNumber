@@ -16,7 +16,7 @@ type MePayload = {
   };
 };
 
-export function EntitlementGate({ children }: { children: ReactNode }) {
+export function EntitlementGate({ children, allowFreePreview = false }: { children: ReactNode; allowFreePreview?: boolean }) {
   const router = useRouter();
   const { locale } = useAppLocale();
   const [status, setStatus] = useState<"checking" | "allowed" | "redirecting">("checking");
@@ -54,7 +54,7 @@ export function EntitlementGate({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (result.data.user.entitlement.status !== "active") {
+      if (result.data.user.entitlement.status !== "active" && !allowFreePreview) {
         setStatus("redirecting");
         router.replace(accountActivationRoute);
         return;
@@ -62,7 +62,7 @@ export function EntitlementGate({ children }: { children: ReactNode }) {
 
       setStatus("allowed");
     });
-  }, [router]);
+  }, [allowFreePreview, router]);
 
   if (status !== "allowed") {
     return (

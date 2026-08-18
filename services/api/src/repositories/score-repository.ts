@@ -32,6 +32,7 @@ import {
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
 import { assertProcessingQuota } from "../lib/plan-quotas.js";
+import { assertFreeTrialOmrAvailable } from "../lib/free-trial.js";
 
 type ScoreDocumentRow = {
   id: string;
@@ -613,6 +614,7 @@ export function createOmrImportScoreDocument(input: {
   sourceFileId: string;
   sourceFileKind: Extract<StoredFileKind, "source_pdf" | "source_image">;
   sourceOriginalName: string;
+  freeTrial?: boolean;
 }) {
   assertProcessingQuota(input.userId);
   const timestamp = nowIso();
@@ -624,6 +626,7 @@ export function createOmrImportScoreDocument(input: {
   db.exec("BEGIN");
 
   try {
+    if (input.freeTrial) assertFreeTrialOmrAvailable(input.userId);
     db.prepare(
       `
         INSERT INTO score_documents (

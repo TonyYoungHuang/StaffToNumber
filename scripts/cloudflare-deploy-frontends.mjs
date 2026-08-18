@@ -32,9 +32,9 @@ const environmentConfig = environment === "production"
       apiUrl: "https://api.scoretransposer.com",
       collaborationUrl: "wss://collab.scoretransposer.com",
       publicLaunchReady: "true",
-      productAppAvailable: "false",
+      productAppAvailable: "true",
       checkoutAvailable: "false",
-      omrAvailable: "false",
+      omrAvailable: "true",
       audioTranscriptionAvailable: "false",
       teachingAvailable: "false",
       analyticsEnabled: "false",
@@ -65,14 +65,23 @@ const buildEnvironment = {
   NEXT_PUBLIC_PRICE_CURRENCY: "USD",
   NEXT_PUBLIC_PUBLIC_LAUNCH_READY: environmentConfig.publicLaunchReady,
   NEXT_PUBLIC_PRODUCT_APP_AVAILABLE: environmentConfig.productAppAvailable,
-  NEXT_PUBLIC_CHECKOUT_AVAILABLE: environmentConfig.checkoutAvailable,
+  NEXT_PUBLIC_CHECKOUT_AVAILABLE:
+    process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE?.trim() || environmentConfig.checkoutAvailable,
+  NEXT_PUBLIC_PAYMENT_PROVIDERS:
+    process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS?.trim() || (environment === "production" ? "paddle" : "paddle,stripe"),
+  NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE: "false",
   NEXT_PUBLIC_OMR_AVAILABLE: environmentConfig.omrAvailable,
   NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE: environmentConfig.audioTranscriptionAvailable,
   NEXT_PUBLIC_TEACHING_AVAILABLE: environmentConfig.teachingAvailable,
-  NEXT_PUBLIC_ANALYTICS_ENABLED: environmentConfig.analyticsEnabled,
+  NEXT_PUBLIC_ANALYTICS_ENABLED:
+    process.env.NEXT_PUBLIC_ANALYTICS_ENABLED?.trim()
+    || (process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() ? "true" : environmentConfig.analyticsEnabled),
+  NEXT_PUBLIC_GA4_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || "",
+  NEXT_PUBLIC_CLARITY_PROJECT_ID: process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() || "",
   NEXT_PUBLIC_DEMO_ACTIVATION_CODE: "",
-  NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: "",
-  NEXT_PUBLIC_PADDLE_ENVIRONMENT: "production",
+  NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() || "",
+  NEXT_PUBLIC_PADDLE_ENVIRONMENT:
+    process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT?.trim() || (environment === "production" ? "production" : "sandbox"),
   NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN: ".scoretransposer.com",
 };
 

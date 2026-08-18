@@ -24,6 +24,12 @@ import { XMLParser } from "fast-xml-parser";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { config } from "../config.js";
 import { db } from "../db.js";
+import {
+  assertFreeTrialOmrAvailable,
+  assertFreeTrialPdfPageLimit,
+  FreeTrialLimitError,
+  FreeTrialPageLimitError,
+} from "../lib/free-trial.js";
 import { linkEducationInvitationsByEmail, listAccessibleClassroomIds, resolveClassroomAccess, resolveOrganizationRole } from "../lib/education-access.js";
 import { createId } from "../lib/auth.js";
 import { openStoredFile, storedFileExists } from "../lib/object-storage.js";
@@ -78,6 +84,7 @@ import {
   transposeScoreJson,
 } from "../lib/score-transpose.js";
 import { createStoredFile, findStoredFileById } from "../repositories/file-repository.js";
+import { getUserProfile } from "../repositories/auth-repository.js";
 import { listClassroomStaff } from "../repositories/education-organization-repository.js";
 import { listStudentGuardians } from "../repositories/education-repository.js";
 import {
@@ -1520,6 +1527,20 @@ function sendCanonicalScoreCommandResult(reply: FastifyReply, documentId: string
   return reply.code(result.status === "duplicate" ? 200 : 201).send(payload);
 }
 
+function mapOwnedScoreForAccess(document: Parameters<typeof mapScoreDocumentForApi>[0], paidAccess: boolean) {
+  const mapped = mapScoreDocumentForApi(document);
+  if (paidAccess) return mapped;
+  const redactRevision = (revision: typeof mapped.currentRevision) => revision
+    ? { ...revision, scoreJson: undefined, musicxmlFileId: null }
+    : null;
+  return {
+    ...mapped,
+    sourceFileId: null,
+    currentRevision: redactRevision(mapped.currentRevision),
+    pendingRevision: redactRevision(mapped.pendingRevision),
+  };
+}
+
 export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/tooling/status",
@@ -1558,11 +1579,12 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request) => {
+      const paidAccess = getUserProfile(request.authUserId!)?.entitlement.status === "active";
       return {
-        scores: listScoreDocumentsByUserId(request.authUserId!).map(mapScoreDocumentForApi),
+        scores: listScoreDocumentsByUserId(request.authUserId!).map((document) => mapOwnedScoreForAccess(document, paidAccess)),
       };
     },
   );
@@ -1570,7 +1592,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -1580,9 +1602,11 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Score document not found." });
       }
 
+      const paidAccess = getUserProfile(request.authUserId!)?.entitlement.status === "active";
+
       return reply.send({
-        score: mapScoreDocumentForApi(document),
-        revisions: listScoreRevisionsByDocumentId(document.id).map(mapScoreRevisionForApi),
+        score: mapOwnedScoreForAccess(document, paidAccess),
+        revisions: paidAccess ? listScoreRevisionsByDocumentId(document.id).map(mapScoreRevisionForApi) : [],
       });
     },
   );
@@ -1716,7 +1740,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/candidate/musicxml-preview",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3027,7 +3051,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/jobs",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4195,7 +4219,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/musicxml-preview",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -5066,9 +5090,23 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/omr",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
+      const profile = getUserProfile(request.authUserId!);
+      const isPaid = profile?.entitlement.status === "active";
+      let freeTrial = null;
+      if (!isPaid) {
+        try {
+          freeTrial = assertFreeTrialOmrAvailable(request.authUserId!);
+        } catch (error) {
+          if (error instanceof FreeTrialLimitError) {
+            return reply.code(error.statusCode).send({ error: error.message, code: error.code, freeTrial: error.trial });
+          }
+          throw error;
+        }
+      }
+
       const file = await request.file();
 
       if (!file) {
@@ -5090,6 +5128,19 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(response.statusCode).send(response.body);
       }
       const fileKind = verified.detectedKind === "pdf" ? "source_pdf" : "source_image";
+
+      if (freeTrial && verified.detectedKind === "pdf") {
+        try {
+          await assertFreeTrialPdfPageLimit(await fs.promises.readFile(targetPath), freeTrial.maxSourcePages);
+        } catch (error) {
+          await fs.promises.rm(targetPath, { force: true });
+          if (error instanceof FreeTrialPageLimitError) {
+            return reply.code(error.statusCode).send({ error: error.message, code: error.code, freeTrial });
+          }
+          request.log.warn({ error }, "Free-trial PDF page validation failed.");
+          return reply.code(400).send({ error: "The PDF page count could not be verified for the free preview." });
+        }
+      }
 
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
       try {
@@ -5118,6 +5169,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         sourceFileId: storedFile.id,
         sourceFileKind: fileKind,
         sourceOriginalName: storedFile.original_name,
+        freeTrial: Boolean(freeTrial),
       });
 
       if (!result.document || !result.job) {

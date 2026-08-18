@@ -4,6 +4,7 @@ import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { addDays, nowIso } from "../lib/time.js";
 import { findActiveSubscriptionEntitlement } from "./billing-repository.js";
+import { getFreeTrialAccess } from "../lib/free-trial.js";
 
 type UserRow = {
   id: string;
@@ -367,6 +368,7 @@ export function getUserProfile(userId: string) {
     deletionRequestedAt: user.deletion_requested_at,
     scheduledDeletionAt: user.scheduled_deletion_at,
     entitlement: effectiveEntitlement,
+    freeTrial: getFreeTrialAccess(user.id),
   };
 }
 

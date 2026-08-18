@@ -42,6 +42,18 @@ type SupportNotificationEmailInput = {
   createdAt: string;
 };
 
+type PaymentNotificationEmailInput = {
+  provider: "stripe" | "paddle";
+  environment?: string | null;
+  orderId: string;
+  providerReference?: string | null;
+  customerEmail?: string | null;
+  amountMinor?: number | null;
+  currency?: string | null;
+  billingKind: "one_time" | "subscription";
+  paidAt?: string | null;
+};
+
 export function isTransactionalEmailEnabled() {
   return Boolean(config.resendApiKey && config.emailFromAddress);
 }
@@ -196,6 +208,49 @@ export function buildSupportNotificationEmail(input: SupportNotificationEmailInp
     text: lines.join("\n"),
     html: `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#111">${htmlSections.join("")}</div>`,
   };
+}
+
+export function buildPaymentNotificationEmail(input: PaymentNotificationEmailInput) {
+  const providerLabel = input.provider === "paddle" ? "Paddle" : "Stripe";
+  const environment = input.environment?.trim().toLowerCase() || "unknown";
+  const isLive = environment === "production" || environment === "live";
+  const paymentLabel = isLive ? "Payment" : "Payment TEST";
+  const currency = input.currency?.trim().toUpperCase() || null;
+  const amount = typeof input.amountMinor === "number" && currency
+    ? `${currency} ${(input.amountMinor / 100).toFixed(2)}`
+    : "Not reported";
+  const paidAt = input.paidAt || new Date().toISOString();
+  const subject = `[${paymentLabel}][${providerLabel}] ${amount} - ${input.orderId}`;
+  const lines = [
+    isLive ? "A real ScoreTransposer payment was confirmed." : "A ScoreTransposer test payment was confirmed; this is not evidence of customer demand.",
+    "",
+    `Provider: ${providerLabel}`,
+    `Environment: ${environment}`,
+    `Order: ${input.orderId}`,
+    `Provider reference: ${input.providerReference?.trim() || "-"}`,
+    `Customer email: ${input.customerEmail?.trim() || "-"}`,
+    `Billing kind: ${input.billingKind}`,
+    `Amount: ${amount}`,
+    `Paid at: ${paidAt}`,
+    "",
+    isLive
+      ? "This is the demand-validation alert. Verify the order in the payment provider dashboard before taking any manual action."
+      : "This is a payment integration test alert. Do not count it as customer demand.",
+  ];
+  const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#111">
+    <h2>ScoreTransposer payment confirmed</h2>
+    <p>${isLive ? "A real payment" : "A test payment"} was confirmed by ${escapeHtml(providerLabel)}.</p>
+    <p><strong>Environment:</strong> ${escapeHtml(environment)}</p>
+    <p><strong>Order:</strong> ${escapeHtml(input.orderId)}</p>
+    <p><strong>Provider reference:</strong> ${escapeHtml(input.providerReference?.trim() || "-")}</p>
+    <p><strong>Customer email:</strong> ${escapeHtml(input.customerEmail?.trim() || "-")}</p>
+    <p><strong>Billing kind:</strong> ${escapeHtml(input.billingKind)}</p>
+    <p><strong>Amount:</strong> ${escapeHtml(amount)}</p>
+    <p><strong>Paid at:</strong> ${escapeHtml(paidAt)}</p>
+    <p>${isLive ? "This is the demand-validation alert. Verify the order in the payment provider dashboard before taking any manual action." : "This is a payment integration test alert. Do not count it as customer demand."}</p>
+  </div>`;
+
+  return { subject, text: lines.join("\n"), html };
 }
 
 export async function sendTransactionalEmail(input: EmailInput) {

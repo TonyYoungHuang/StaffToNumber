@@ -11,8 +11,9 @@ import { useAppLocale } from "./AppLocaleProvider";
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { locale } = useAppLocale();
-  const primaryHref = pathname === APP_ROUTES.upload ? APP_ROUTES.jobs : APP_ROUTES.upload;
+  const primaryHref = `${APP_ROUTES.scores}#omr-import`;
   const checkoutAvailable = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE === "true";
+  const teachingAvailable = process.env.NEXT_PUBLIC_TEACHING_AVAILABLE === "true";
 
   const copy =
     locale === "zh-CN"
@@ -20,17 +21,15 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           navItems: [
             { href: APP_ROUTES.home, label: "工作台" },
             { href: APP_ROUTES.scores, label: "乐谱工程" },
-            { href: APP_ROUTES.upload, label: "上传" },
-            { href: APP_ROUTES.jobs, label: "任务" },
-            { href: APP_ROUTES.classrooms, label: "课堂" },
+            ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: "课堂" }] : []),
           ],
-          scope: "MusicXML 乐谱工作台",
-          primaryLabel: pathname === APP_ROUTES.upload ? "查看任务" : "导入乐谱",
+          scope: "PDF / 图片乐谱工作台",
+          primaryLabel: "免费识别一页",
           billing: "账单",
           upgrade: "升级",
           footerTitle: "The Digital Score",
           footerCopy:
-            "当前平台围绕 MusicXML 与 Score JSON 提供扫描识别、修谱、移调、播放练习、导出和教学协作能力。",
+            "先免费识别一页 PDF 或图片；开通后在同一份 Score JSON 中继续修谱、移调、播放与导出。",
           footerLinks: {
             register: "注册账户",
             activate: "兑换激活码",
@@ -48,17 +47,15 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           navItems: [
             { href: APP_ROUTES.home, label: "Studio" },
             { href: APP_ROUTES.scores, label: "Scores" },
-            { href: APP_ROUTES.upload, label: "Uploads" },
-            { href: APP_ROUTES.jobs, label: "Jobs" },
-            { href: APP_ROUTES.classrooms, label: "Classes" },
+            ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: "Classes" }] : []),
           ],
-          scope: "MusicXML score workspace",
-          primaryLabel: pathname === APP_ROUTES.upload ? "Open jobs" : "Import score",
+          scope: "PDF and image score workspace",
+          primaryLabel: "Scan one page free",
           billing: "Billing",
           upgrade: "Upgrade",
           footerTitle: "The Digital Score",
           footerCopy:
-            "The platform now centers on MusicXML and Score JSON for OMR import, correction, transposition, playback, export, and teaching workflows.",
+            "Scan one PDF page or image for free, then continue correction, transposition, playback, and export from the same Score JSON project.",
           footerLinks: {
             register: "Create account",
             activate: "Redeem code",
@@ -124,10 +121,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             {locale === "zh-CN" ? <Link href={APP_ROUTES.activate}>{copy.footerLinks.activate}</Link> : null}
             {checkoutAvailable ? <Link href={APP_ROUTES.checkout}>{copy.footerLinks.checkout}</Link> : null}
             <Link href={APP_ROUTES.scores}>{copy.footerLinks.scores}</Link>
-            <Link href={APP_ROUTES.classrooms}>{copy.footerLinks.classrooms}</Link>
-            <Link href={APP_ROUTES.student}>{copy.footerLinks.student}</Link>
-            <Link href={APP_ROUTES.upload}>{copy.footerLinks.upload}</Link>
-            <Link href={APP_ROUTES.jobs}>{copy.footerLinks.jobs}</Link>
+            {teachingAvailable ? <Link href={APP_ROUTES.classrooms}>{copy.footerLinks.classrooms}</Link> : null}
+            {teachingAvailable ? <Link href={APP_ROUTES.student}>{copy.footerLinks.student}</Link> : null}
           </div>
         </div>
       </footer>

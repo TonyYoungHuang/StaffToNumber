@@ -77,7 +77,7 @@ export const siteConfig = {
   },
 } as const;
 
-export const publicContentLastUpdated = "2026-08-10";
+export const publicContentLastUpdated = "2026-08-18";
 export const legalLastUpdated = "2026-08-10";
 
 export function getCheckoutUrl(locale: SupportedLocale) {
@@ -114,7 +114,7 @@ export function getAppActivateUrl() {
 
 export function getAppStartConversionUrl() {
   if (siteConfig.release.productAppAvailable) {
-    return buildUrl(siteConfig.appUrl, APP_ROUTES.upload);
+    return `${buildUrl(siteConfig.appUrl, APP_ROUTES.scores)}#omr-import`;
   }
 
   return getSupportUrl("general", "upload-launch-access");

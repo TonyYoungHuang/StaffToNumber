@@ -57,3 +57,25 @@ test("Paddle full and partial adjustments preserve the intended subscription dow
   }, Buffer.from("full"));
   assert.equal(full?.refund?.fullyRefunded, true);
 });
+
+test("Paddle completed transactions activate the subscription for the registered user", () => {
+  const normalized = normalizePaddleBillingEvent({
+    event_id: "evt-transaction-completed",
+    event_type: "transaction.completed",
+    occurred_at: "2026-08-18T10:00:00Z",
+    data: {
+      id: "txn-1",
+      status: "completed",
+      customer_id: "ctm-1",
+      subscription_id: "sub-1",
+      custom_data: { userId: "user-1", orderId: "order-1" },
+      details: { totals: { grand_total: "999", currency_code: "USD" } },
+    },
+  }, Buffer.from("transaction-completed"));
+
+  assert.equal(normalized?.subscription?.providerSubscriptionId, "sub-1");
+  assert.equal(normalized?.subscription?.userId, "user-1");
+  assert.equal(normalized?.subscription?.status, "active");
+  assert.equal(normalized?.invoice?.amountPaidMinor, 999);
+  assert.equal(normalized?.invoice?.currency, "USD");
+});

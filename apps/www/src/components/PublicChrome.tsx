@@ -3,13 +3,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowNorthEastIcon, BrandIcon, sonataCopy } from "@score/ui";
-import { getCheckoutUrl, getSafeAppUrl, siteConfig } from "../lib/site";
+import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 export function PublicChrome({ children }: { children: ReactNode }) {
   const { locale } = useSiteLocale();
-  const appUrl = getSafeAppUrl("public-navigation");
+  const appUrl = getAppStartConversionUrl();
   const checkoutUrl = getCheckoutUrl(locale);
   const homeSections = { workflow: "/#workflow", useCases: "/#use-cases" } as const;
   const copy =
@@ -26,10 +26,10 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           terms: "条款",
           privacy: "隐私",
           copyright: "版权投诉",
-          app: siteConfig.release.productAppAvailable ? "打开应用" : "上线状态",
+          app: siteConfig.release.productAppAvailable ? "免费识别一页" : "上线状态",
           buy: "升级套餐",
-          brandCaption: "MusicXML 全功能乐谱工作台",
-          footerCopy: "这是以 MusicXML 和 Score JSON 为核心的乐谱工作台官网，覆盖导入识别、校对编辑、简谱互换、移调、练习播放、导出与教学流程。",
+          brandCaption: "PDF / 图片五线谱识别工作台",
+          footerCopy: "上传一页五线谱 PDF 或图片，先查看可校对的 OMR 候选；开通后继续编辑、简谱互换、移调、播放与完整导出。",
         }
       : {
           scanner: "Scanner",
@@ -43,10 +43,10 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           terms: "Terms",
           privacy: "Privacy",
           copyright: "Copyright",
-          app: siteConfig.release.productAppAvailable ? "Open app" : "Launch status",
+          app: siteConfig.release.productAppAvailable ? "Scan one page free" : "Launch status",
           buy: "Upgrade",
-          brandCaption: "MusicXML-first score workspace",
-          footerCopy: `A public site for the current ${sonataCopy.currentScope.toLowerCase()} release, built to support search discovery, payment routing, activation guidance, and support clarity.`,
+          brandCaption: "PDF and image score scanner",
+          footerCopy: `Scan one staff-score PDF page or image into a reviewable OMR candidate, then unlock correction, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()} workspace.`,
         };
 
   return (
@@ -68,7 +68,7 @@ export function PublicChrome({ children }: { children: ReactNode }) {
             <Link href="/score-editor" className="nav-link">{copy.editor}</Link>
             <Link href="/transpose-score" className="nav-link">{copy.transpose}</Link>
             {siteConfig.release.checkoutAvailable ? <Link href="/pricing" className="nav-link">{copy.pricing}</Link> : null}
-            <Link href="/teaching" className="nav-link">{copy.education}</Link>
+            {siteConfig.release.teachingAvailable ? <Link href="/teaching" className="nav-link">{copy.education}</Link> : null}
           </nav>
 
           <div className="header-actions">

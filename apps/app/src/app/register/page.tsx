@@ -10,8 +10,8 @@ export default async function RegisterPage() {
       title={locale === "zh-CN" ? "创建账户" : "Create your account"}
       description={
         locale === "zh-CN"
-          ? "先用邮箱和密码创建账户，再兑换你的专属激活码，解锁一年的使用权限。"
-          : "Create an account with your email and password first, then redeem your dedicated activation code to unlock one year of access."
+          ? "用邮箱和密码创建账户，即可免费识别一页五线谱 PDF 或一张图片；无需先付款或兑换激活码。"
+          : "Create an account to scan one staff-score PDF page or one image for free. No payment or activation code is required to start."
       }
     >
       <AuthForm mode="register" />

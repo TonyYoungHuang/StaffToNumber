@@ -3,6 +3,7 @@ import React from "react";
 import "@score/ui/sonata.css";
 import { AppChrome } from "../components/AppChrome";
 import { AppLocaleProvider } from "../components/AppLocaleProvider";
+import { ProductAnalytics } from "../components/ProductAnalytics";
 import { readAppLocale } from "../lib/locale";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -29,6 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <AppLocaleProvider locale={locale}>
           <AppChrome>{children}</AppChrome>
+          <ProductAnalytics />
         </AppLocaleProvider>
       </body>
     </html>

@@ -157,6 +157,13 @@ export async function findDurablePaymentOrderByCheckoutSessionId(sessionId: stri
   return row ? mapRow(row, "") : undefined;
 }
 
+export async function findDurablePaymentOrderByTransactionId(transactionId: string) {
+  if (!(await ensureStoreReady())) return undefined;
+  const result = await pool!.query(`SELECT * FROM public.score_payment_orders WHERE transaction_id = $1`, [transactionId]);
+  const row = result.rows[0];
+  return row ? mapRow(row, "") : undefined;
+}
+
 export async function findDurablePaymentOrderById(id: string) {
   if (!(await ensureStoreReady())) return undefined;
   const result = await pool!.query(`SELECT * FROM public.score_payment_orders WHERE id = $1`, [id]);

@@ -14,6 +14,8 @@ export default function PaddleCheckoutPage() {
       <PaddlePaymentLinkPage
         clientToken={process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? ""}
         environment={process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === "production" ? "production" : "sandbox"}
+        siteUrl={process.env.NEXT_PUBLIC_SITE_URL ?? "https://scoretransposer.com"}
+        appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "https://app.scoretransposer.com"}
       />
     </section>
   );

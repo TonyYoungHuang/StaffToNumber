@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -15,11 +16,15 @@ type CheckoutPayload = {
 
 type Organization = { id: string; name: string; currentRole: string };
 
-const providers: PaymentProvider[] = ["stripe", "paddle"];
+const providers = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS ?? "stripe")
+  .split(",")
+  .map((item) => item.trim())
+  .filter((item): item is PaymentProvider => item === "stripe" || item === "paddle");
+const schoolCheckoutAvailable = process.env.NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE === "true";
 
 export function AppCheckoutClient() {
   const { locale } = useAppLocale();
-  const [provider, setProvider] = useState<PaymentProvider>("stripe");
+  const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [planKind, setPlanKind] = useState<"individual" | "school">("individual");
@@ -69,6 +74,7 @@ export function AppCheckoutClient() {
   );
 
   useEffect(() => {
+    if (!schoolCheckoutAvailable) return;
     const token = getStoredToken();
     if (!token) return;
     void apiRequest<{ organizations: Organization[] }>("/api/education/organizations", { headers: { Authorization: `Bearer ${token}` } })
@@ -116,6 +122,11 @@ export function AppCheckoutClient() {
       return;
     }
 
+    trackFunnelEvent("begin_checkout", {
+      payment_type: provider,
+      plan_kind: planKind,
+      quantity: planKind === "school" ? seatQuantity : 1,
+    });
     window.location.href = result.data.url;
   }
 
@@ -128,13 +139,13 @@ export function AppCheckoutClient() {
       </div>
 
       <form className="form-grid" onSubmit={handleCheckout}>
-        <div className="field-group">
+        {schoolCheckoutAvailable ? <div className="field-group">
           <span className="field-label">{copy.plan}</span>
           <div className="button-row" role="group" aria-label={copy.plan}>
             <button type="button" className={`button ${planKind === "individual" ? "button-primary" : "button-secondary"}`} aria-pressed={planKind === "individual"} onClick={() => setPlanKind("individual")}>{copy.individual}</button>
             <button type="button" className={`button ${planKind === "school" ? "button-primary" : "button-secondary"}`} aria-pressed={planKind === "school"} onClick={() => setPlanKind("school")}>{copy.school}</button>
           </div>
-        </div>
+        </div> : null}
         {planKind === "school" ? (
           <div className="form-grid two-column">
             <label className="field-group"><span className="field-label">{copy.organization}</span><select className="field-select" value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} required><option value="">{copy.organization}</option>{organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}</select></label>

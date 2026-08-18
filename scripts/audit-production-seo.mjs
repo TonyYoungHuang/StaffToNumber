@@ -89,6 +89,7 @@ async function inspectPage(url, sitemapEntry = null) {
   });
   const ogImage = absoluteUrl($('meta[property="og:image"]').attr("content") || "", response.url);
   const twitterImage = absoluteUrl($('meta[name="twitter:image"]').attr("content") || "", response.url);
+  const hasGoogleSiteVerification = Boolean($('meta[name="google-site-verification"]').attr("content")?.trim());
 
   if (response.status !== 200) issue("error", scope, `Expected HTTP 200, received ${response.status}.`);
   if (!title) issue("error", scope, "Missing document title.");
@@ -112,7 +113,7 @@ async function inspectPage(url, sitemapEntry = null) {
     else if (lastModified.valueOf() > Date.now() + 86400000) issue("error", scope, "Sitemap lastmod is in the future.");
   }
 
-  const result = { url, finalUrl: response.url, status: response.status, title, description, canonical, robots, indexable, h1Count, h2Count, images, links, schemaTypes, ogImage, twitterImage };
+  const result = { url, finalUrl: response.url, status: response.status, title, description, canonical, robots, indexable, hasGoogleSiteVerification, h1Count, h2Count, images, links, schemaTypes, ogImage, twitterImage };
   pages.push(result);
   return result;
 }
@@ -166,8 +167,18 @@ try {
 
 const crawlTargets = new Map([[baseUrl.toString(), null]]);
 for (const entry of sitemapEntries) crawlTargets.set(new URL(entry.loc).toString(), entry);
-for (const pathname of requiredFeaturePaths) crawlTargets.set(new URL(pathname, baseUrl).toString(), null);
+for (const pathname of requiredFeaturePaths) {
+  const requiredUrl = new URL(pathname, baseUrl).toString();
+  const sitemapEntry = sitemapEntries.find((entry) => new URL(entry.loc).toString() === requiredUrl) ?? null;
+  if (!sitemapEntry) issue("error", new URL(requiredUrl).pathname, "Required acquisition page is absent from sitemap.xml.");
+  crawlTargets.set(requiredUrl, sitemapEntry);
+}
 for (const [url, sitemapEntry] of crawlTargets) await inspectPage(url, sitemapEntry);
+
+if (args["require-google-verification"]) {
+  const homepage = pages.find((page) => new URL(page.url).pathname === "/");
+  if (!homepage?.hasGoogleSiteVerification) issue("error", "/", "Google Search Console verification meta tag is missing.");
+}
 
 const internalLinks = new Set(pages.flatMap((page) => page.links).filter((url) => new URL(url).origin === baseUrl.origin));
 const knownStatuses = new Map(pages.map((page) => [new URL(page.finalUrl).toString(), page.status]));

@@ -23,19 +23,19 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
           {
             question: "当前真正上线的能力是什么？",
             answer:
-              "当前产品以 MusicXML 和 Score JSON 为核心，提供 PDF/图片扫描候选校对、五线谱与简谱互换、移调、图形编辑、播放练习、多格式导出、分享和第一版教学流程。OMR、音频转谱和高质量渲染仍依赖后端工具并需要人工复核。",
+              "注册用户可以免费识别一页五线谱 PDF 或一张图片，并查看需要人工检查的候选五线谱与基础诊断。开通后可继续多页识别、校对、简谱互换、移调、播放和完整导出。",
           },
           {
             question: "国际用户和中国大陆用户的购买路径一样吗？",
             answer: checkoutAvailable
               ? "不完全一样。国际用户可以直接走在线支付；中国大陆用户也可以继续通过激活码路径开通，然后进入应用内兑换使用。"
-              : "在线支付尚未开放。Stripe/Paddle 生产交易、退款和权益发放全部通过验证后，网站才会启用购买入口。",
+              : "在线支付尚未开放。Paddle 生产交易、退款和权益发放通过验证后，网站才会启用购买入口；免费单页体验不受影响。",
           },
           {
             question: "支付后会得到什么？",
             answer: checkoutAvailable
-              ? "支付成功后系统会确认订单并生成激活码；你可以在成功页保存激活码，再进入应用内完成兑换。"
-              : "当前不会收款。购买开放后，订单确认、激活码和应用内权益发放会按已验证流程执行。",
+              ? "支付成功后，系统会把订阅直接绑定到已注册账户，不需要再兑换激活码。"
+              : "当前不会收款。购买开放后，订单确认和账户权益发放会按已验证流程自动执行。",
           },
         ],
       },
@@ -45,12 +45,12 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
           {
             question: "现在支持什么输入格式？",
             answer:
-              "乐谱工程支持 MusicXML/MXL、MIDI、结构化简谱和 Score JSON；PDF/图片进入 Audiveris OMR 候选流程，音频进入 Basic Pitch 候选流程。",
+              "免费入口支持一页 PDF 或一张 PNG、JPG、WebP、TIFF 乐谱图片。付费工程还支持 MusicXML/MXL、MIDI、结构化简谱和 Score JSON；音频转谱保持实验状态，不进入当前主路径。",
           },
           {
-            question: "为什么有时会出现 draft，而不是 final？",
+            question: "为什么识别结果被标记为候选稿？",
             answer:
-              "当系统判断某些页面置信度不足时，会把它们保留在 draft 包中，而不是强行输出看起来完整但质量不稳的 final 结果。",
+              "OMR 可能误判音高、时值、声部或小节结构，因此免费结果会显示为需要人工检查的候选稿，并保留置信度和警告，不会伪装成出版级成品。",
           },
           {
             question: "如果上传失败或下载异常怎么办？",
@@ -89,19 +89,19 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
         {
           question: "What is actually live today?",
           answer:
-            "The product uses MusicXML and Score JSON for PDF/image scan review, staff and Jianpu round trips, transposition, visual editing, practice playback, multi-format export, sharing, and first-pass teaching workflows. OMR, audio transcription, and high-quality rendering still require configured backend tools and human review.",
+            "A registered user can scan one staff-score PDF page or image for free and review a staff candidate with basic diagnostics. Paid access continues into multi-page OMR, correction, Jianpu conversion, transposition, playback, and full export.",
         },
         {
           question: "Do international and mainland-China users follow the same path?",
           answer: checkoutAvailable
             ? "Not exactly. International customers can pay online directly, while mainland-China customers can also continue through activation-code distribution and redeem inside the app."
-            : "Online checkout is not open yet. Purchase links will be enabled only after Stripe or Paddle production payments, refunds, and entitlement delivery pass verification.",
+            : "Online checkout is not open yet. It will be enabled after Paddle production payments, refunds, and entitlement delivery pass verification; the free one-page experience remains available.",
         },
         {
           question: "What do I receive after payment?",
           answer: checkoutAvailable
-            ? "After a successful payment, the system confirms the order and issues an activation code. Save the code on the success page, then redeem it inside the app."
-            : "No payment is collected right now. Once checkout opens, order confirmation, activation codes, and in-app entitlements will follow the verified production flow.",
+            ? "After a successful payment, the system links the subscription directly to the registered account. No activation-code step is required."
+            : "No payment is collected right now. Once checkout opens, order confirmation and account entitlement delivery will run automatically through the verified production flow.",
         },
       ],
     },
@@ -111,12 +111,12 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
         {
           question: "What input format is supported right now?",
           answer:
-            "Score projects accept MusicXML/MXL, MIDI, structured Jianpu, and Score JSON. PDF/images enter an Audiveris OMR candidate workflow, while audio enters a Basic Pitch candidate workflow.",
+            "The free entry accepts one PDF page or one PNG, JPG, WebP, or TIFF score image. Paid projects also accept MusicXML/MXL, MIDI, structured Jianpu, and Score JSON. Audio transcription remains experimental and is not part of the current primary path.",
         },
         {
-          question: "Why might I get a draft instead of a final result?",
+          question: "Why is recognition marked as a candidate?",
           answer:
-            "When confidence is too low for part of the score, the system keeps those pages in a draft bundle instead of forcing a polished-looking output that may be misleading.",
+            "OMR can misread pitch, duration, voices, or measure structure. The free result therefore stays a human-review candidate with confidence and warning details instead of pretending to be publication-ready notation.",
         },
         {
           question: "What should I do if upload or download fails?",

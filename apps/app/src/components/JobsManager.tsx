@@ -390,7 +390,7 @@ export function JobsManager() {
             <button type="button" className="button button-secondary" onClick={() => void loadData()}>
               {copy.create.refresh}
             </button>
-            <Link href={APP_ROUTES.upload} className="button button-tertiary">
+            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-tertiary">
               {copy.create.uploads}
             </Link>
           </div>

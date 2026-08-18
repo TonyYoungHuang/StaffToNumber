@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,65 +10,30 @@ import {
   trackFunnelEvent,
   writeAnalyticsConsent,
 } from "../lib/analytics";
-import { useSiteLocale } from "./SiteLocaleProvider";
-
-const seoLandingPaths = new Set([
-  "/staff-to-jianpu",
-  "/jianpu-to-staff",
-  "/transpose-score",
-  "/score-editor",
-  "/score-to-audio",
-  "/musicxml-midi",
-  "/pdf-score-scanner",
-  "/pricing",
-]);
+import { useAppLocale } from "./AppLocaleProvider";
 
 function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: string }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const sendPageEvents = () => {
+    const sendPageView = () => {
       trackFunnelEvent("page_view", {
         page_location: window.location.href,
         page_path: pathname,
         page_title: document.title,
       });
-      if (seoLandingPaths.has(pathname)) {
-        trackFunnelEvent("seo_landing_view", {
-          landing_path: pathname,
-          page_location: window.location.href,
-          page_title: document.title,
-        });
-      }
     };
-
-    if (window.gtag) sendPageEvents();
-    else window.addEventListener(analyticsReadyEvent, sendPageEvents, { once: true });
-    return () => window.removeEventListener(analyticsReadyEvent, sendPageEvents);
+    if (window.gtag) sendPageView();
+    else window.addEventListener(analyticsReadyEvent, sendPageView, { once: true });
+    return () => window.removeEventListener(analyticsReadyEvent, sendPageView);
   }, [pathname]);
-
-  useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      const link = (event.target as Element | null)?.closest<HTMLAnchorElement>("a.public-button");
-      if (!link) return;
-      const destination = link.href;
-      const label = link.textContent?.trim() || "unlabeled_cta";
-      trackFunnelEvent("product_cta_click", {
-        link_text: label,
-        link_url: destination,
-        page_path: window.location.pathname,
-      });
-    };
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
-  }, []);
 
   return (
     <>
       {gaId ? (
         <>
           <Script src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`} strategy="afterInteractive" />
-          <Script id="scoretransposer-ga4" strategy="afterInteractive">{`
+          <Script id="scoretransposer-app-ga4" strategy="afterInteractive">{`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             window.gtag = gtag;
@@ -86,7 +50,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
           `}</Script>
         </>
       ) : null}
-      {clarityId ? <Script id="scoretransposer-clarity" strategy="afterInteractive">{`
+      {clarityId ? <Script id="scoretransposer-app-clarity" strategy="afterInteractive">{`
         (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
         t=l.createElement(r);t.async=1;t.src='https://www.clarity.ms/tag/'+i;
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
@@ -96,14 +60,15 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
   );
 }
 
-export function ProductionAnalytics() {
-  const { locale } = useSiteLocale();
+export function ProductAnalytics() {
+  const { locale } = useAppLocale();
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true";
   const configuredGaId = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim();
   const configuredClarityId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim();
   const gaId = configuredGaId && /^G-[A-Z0-9]+$/u.test(configuredGaId) ? configuredGaId : undefined;
   const clarityId = configuredClarityId && /^[a-z0-9]+$/u.test(configuredClarityId) ? configuredClarityId : undefined;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://scoretransposer.com";
 
   useEffect(() => {
     const cookieConsent = readAnalyticsConsent();
@@ -125,12 +90,12 @@ export function ProductionAnalytics() {
   return (
     <aside className="analytics-consent" aria-label={locale === "zh-CN" ? "分析 Cookie 选择" : "Analytics cookie choice"}>
       <p>
-        {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进搜索落地和产品流程。" : "We use analytics only after consent to improve search landing pages and product flows."}{" "}
-        <Link href="/privacy">{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</Link>
+        {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进免费识谱与升级流程。" : "We use analytics only after consent to improve the free scan and upgrade flow."}{" "}
+        <a href={`${siteUrl.replace(/\/$/u, "")}/privacy`}>{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</a>
       </p>
       <div className="button-row">
-        <button type="button" className="public-button primary" onClick={() => choose("granted")}>{locale === "zh-CN" ? "同意" : "Accept"}</button>
-        <button type="button" className="public-button tertiary" onClick={() => choose("denied")}>{locale === "zh-CN" ? "拒绝" : "Decline"}</button>
+        <button type="button" className="button button-primary" onClick={() => choose("granted")}>{locale === "zh-CN" ? "同意" : "Accept"}</button>
+        <button type="button" className="button button-tertiary" onClick={() => choose("denied")}>{locale === "zh-CN" ? "拒绝" : "Decline"}</button>
       </div>
     </aside>
   );

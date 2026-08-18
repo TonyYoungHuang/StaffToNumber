@@ -18,7 +18,7 @@ export default async function ScoresPage() {
             : "Create MusicXML and Score JSON based projects so scanning, correction, transposition, playback, Jianpu conversion, and export can share one foundation."}
         </p>
       </div>
-      <EntitlementGate>
+      <EntitlementGate allowFreePreview>
         <ScoreLibraryManager />
       </EntitlementGate>
     </section>

@@ -44,7 +44,7 @@ export default async function CheckoutPage() {
         {
           step: "02",
           title: "系统确认订阅并绑定账户",
-          body: "付款成功后，系统校验 Stripe 事件，并按付款邮箱把订阅权益绑定到已注册账户。",
+          body: "付款成功后，系统校验支付渠道的签名事件，并把订阅权益绑定到已注册账户。",
         },
         {
           step: "03",
@@ -61,7 +61,7 @@ export default async function CheckoutPage() {
         {
           step: "02",
           title: "The system confirms and links the subscription",
-          body: "After payment, Stripe events are verified and the subscription is linked to the registered checkout email.",
+          body: "After payment, signed provider events are verified and the subscription is linked to the registered account.",
         },
         {
           step: "03",
@@ -122,8 +122,8 @@ export default async function CheckoutPage() {
               value={siteConfig.supportEmail}
               body={
                 isChinese
-                  ? "如果支付回跳异常或激活码未出现，支持团队可以人工核查订单链路。"
-                  : "If checkout returns unexpectedly or a code does not appear, support can manually inspect the order path."
+                  ? "如果支付回跳异常或账户权益未出现，支持团队可以人工核查订单链路。"
+                  : "If checkout returns unexpectedly or account access does not appear, support can manually inspect the order path."
               }
             />
           </div>

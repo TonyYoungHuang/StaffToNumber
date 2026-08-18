@@ -231,7 +231,7 @@ export async function fileRoutes(app: FastifyInstance) {
   app.get(
     "/files/:id/download",
     {
-      preHandler: app.requireAuth,
+      preHandler: app.requireActiveEntitlement,
     },
     async (request, reply) => {
       const params = request.params as { id: string };

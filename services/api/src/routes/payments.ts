@@ -7,6 +7,7 @@ import { findUserByEmail, getUserProfile } from "../repositories/auth-repository
 import {
   cancelPaddleSubscription,
   cancelStripeSubscription,
+  buildPaddleCheckoutRedirectUrl,
   createPaddleTransaction,
   createStripeBillingPortalSession,
   createStripeCheckoutSession,
@@ -270,13 +271,18 @@ export async function paymentRoutes(app: FastifyInstance) {
           orderId: order.id,
           publicToken: order.public_token,
           customerEmail,
-          successUrl: successBase,
           userId: request.authUserId,
           organizationId,
           seatQuantity,
           priceId: organizationId ? config.paddleSchoolPriceId || config.paddlePriceId : config.paddlePriceId,
         });
-        const checkoutUrl = transaction.checkout?.url ?? `${config.publicSiteUrl}/checkout/paddle?_ptxn=${transaction.id}`;
+        const checkoutUrl = buildPaddleCheckoutRedirectUrl({
+          checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
+          transactionId: transaction.id,
+          orderId: order.id,
+          publicToken: order.public_token,
+          successUrl: successBase,
+        });
         attachPaddleTransaction(order.id, transaction.id, checkoutUrl);
         await persistLocalPaymentOrder(order.id);
 
@@ -379,7 +385,13 @@ export async function paymentRoutes(app: FastifyInstance) {
         customerEmail: account.email,
         userId: account.id,
       });
-      const checkoutUrl = transaction.checkout?.url ?? `${config.publicSiteUrl}/checkout/paddle?_ptxn=${transaction.id}`;
+      const checkoutUrl = buildPaddleCheckoutRedirectUrl({
+        checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
+        transactionId: transaction.id,
+        orderId: order.id,
+        publicToken: order.public_token,
+        successUrl: `${config.publicSiteUrl}/checkout/success?provider=paddle&order_id=${order.id}&token=${order.public_token}`,
+      });
       attachPaddleTransaction(order.id, transaction.id, checkoutUrl);
       await persistLocalPaymentOrder(order.id);
 

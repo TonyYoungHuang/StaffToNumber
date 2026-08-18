@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PaymentProvider, PaymentOrderStatus } from "@score/shared";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import { trackFunnelEventOnce } from "../lib/analytics";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type PublicOrder = {
@@ -11,6 +12,10 @@ type PublicOrder = {
   provider: PaymentProvider;
   status: PaymentOrderStatus;
   activationCode: string | null;
+  billingKind: "one_time" | "subscription";
+  amountMinor: number | null;
+  currency: string | null;
+  seatQuantity: number;
   paidAt: string | null;
 };
 
@@ -96,6 +101,21 @@ export function AppCheckoutStatusClient({
   }, [orderId, provider, sessionId, token]);
 
   const isPaid = order?.status === "paid";
+
+  useEffect(() => {
+    if (!isPaid || !order) return;
+    const hasValue = typeof order.amountMinor === "number" && Boolean(order.currency);
+    trackFunnelEventOnce(`purchase-${order.id}`, "purchase", {
+      transaction_id: order.id,
+      payment_type: order.provider,
+      ...(hasValue ? { value: order.amountMinor! / 100, currency: order.currency!.toUpperCase() } : {}),
+      items: [{
+        item_id: order.billingKind === "subscription" ? "scoretransposer_subscription" : "scoretransposer_access",
+        item_name: order.billingKind === "subscription" ? "ScoreTransposer subscription" : "ScoreTransposer access",
+        quantity: order.seatQuantity || 1,
+      }],
+    });
+  }, [isPaid, order]);
 
   return (
     <div className="surface-panel stack-lg">

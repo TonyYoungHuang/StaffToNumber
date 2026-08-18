@@ -40,7 +40,7 @@ export default async function CheckoutSuccessPage({
       )}
 
       <Panel variant="glass" className="stack-md">
-        <h2 className="card-title">{locale === "zh-CN" ? "如果没有看到激活码怎么办？" : "What if the activation code does not appear?"}</h2>
+        <h2 className="card-title">{locale === "zh-CN" ? "如果账户权益没有出现怎么办？" : "What if account access does not appear?"}</h2>
         <p className="body-copy">
           {locale === "zh-CN"
             ? "先不要立刻再次付款。请保留支付截图、订单邮箱和购买时间，然后联系支持人工核查。"

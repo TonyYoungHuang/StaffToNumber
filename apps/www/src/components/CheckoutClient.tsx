@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import type { PaymentProvider } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
+import { trackFunnelEvent } from "../lib/analytics";
 import { getAppActivateUrl, getSupportUrl } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
@@ -14,13 +15,16 @@ type CheckoutPayload = {
   url: string;
 };
 
-const providers: PaymentProvider[] = ["stripe", "paddle"];
+const providers = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS ?? "stripe")
+  .split(",")
+  .map((item) => item.trim())
+  .filter((item): item is PaymentProvider => item === "stripe" || item === "paddle");
 
 export function CheckoutClient() {
   const { locale } = useSiteLocale();
   const activateUrl = getAppActivateUrl();
   const [email, setEmail] = useState("");
-  const [provider, setProvider] = useState<PaymentProvider>("stripe");
+  const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
@@ -52,7 +56,7 @@ export function CheckoutClient() {
             deliveryBody: "支付成功后订阅、席位与使用配额会自动写入已注册账户。",
             supportLabel: "人工支持",
             supportValue: "邮件复核",
-            supportBody: "如果支付回跳异常或激活码没有出现，可以由支持团队人工核对订单链路。",
+            supportBody: "如果支付回跳异常或账户权益没有出现，可以由支持团队人工核对订单链路。",
             nextTitle: "继续之前请先确认",
             nextSteps: [
               "支付成功后，系统会自动确认订单并为注册账户开通订阅。",
@@ -85,7 +89,7 @@ export function CheckoutClient() {
             deliveryBody: "A successful payment links the subscription, seats, and usage quotas to the registered account.",
             supportLabel: "Human support",
             supportValue: "Email review",
-            supportBody: "If checkout returns unexpectedly or a code does not appear, support can manually review the order path.",
+            supportBody: "If checkout returns unexpectedly or account access does not appear, support can manually review the order path.",
             nextTitle: "Know this before you continue",
             nextSteps: [
               "After payment succeeds, the system confirms the order and activates the registered account automatically.",
@@ -124,6 +128,11 @@ export function CheckoutClient() {
       return;
     }
 
+    trackFunnelEvent("begin_checkout", {
+      payment_type: provider,
+      plan_kind: "individual",
+      quantity: 1,
+    });
     window.location.href = result.data.url;
   }
 

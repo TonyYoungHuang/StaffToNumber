@@ -23,6 +23,13 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: {
       index: siteConfig.release.publicLaunchReady,
       follow: siteConfig.release.publicLaunchReady,
+      googleBot: {
+        index: siteConfig.release.publicLaunchReady,
+        follow: siteConfig.release.publicLaunchReady,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
     verification: {
       google: process.env.GOOGLE_SITE_VERIFICATION || undefined,

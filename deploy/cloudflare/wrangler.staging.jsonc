@@ -25,8 +25,12 @@
     "S3_BUCKET": "scoretransposer-staging",
     "S3_KEY_PREFIX": "staging",
     "EMAIL_DELIVERY_ENABLED": "false",
+    "FREE_TRIAL_OMR_JOBS": "1",
+    "FREE_TRIAL_MAX_SOURCE_PAGES": "1",
     "PAYMENT_PROVIDERS": "stripe",
-    "STRIPE_MANAGED_PAYMENTS_ENABLED": "true"
+    "STRIPE_MANAGED_PAYMENTS_ENABLED": "true",
+    "PADDLE_ENVIRONMENT": "sandbox",
+    "PADDLE_DEFAULT_PAYMENT_LINK": "https://staging.scoretransposer.com/checkout/paddle"
   },
   "secrets": {
     "required": [

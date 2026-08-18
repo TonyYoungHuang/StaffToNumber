@@ -1,9 +1,14 @@
 ﻿import { AppCheckoutClient } from "../../components/AppCheckoutClient";
 import { readAppLocale } from "../../lib/locale";
 
+import Link from "next/link";
+import { APP_ROUTES } from "@score/shared";
+import { buildSupportTemplates } from "../../lib/support";
+
 export default async function CheckoutPage() {
   const locale = await readAppLocale();
   const checkoutAvailable = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE === "true";
+  const paymentSupportUrl = buildSupportTemplates(locale).find((item) => item.key === "payment")?.href;
 
   if (!checkoutAvailable) {
     return (
@@ -18,6 +23,12 @@ export default async function CheckoutPage() {
               ? "当前正式站不会创建测试订单或跳转到 staging 支付。生产支付、退款和订阅续费通过最终验收后，此入口将正式开放。"
               : "The production site will not create test orders or redirect to staging checkout. This entry opens after live payments, refunds, and subscription renewals pass final verification."}
           </p>
+          <div className="button-row">
+            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
+              {locale === "zh-CN" ? "继续使用免费预览" : "Continue with the free preview"}
+            </Link>
+            {paymentSupportUrl ? <a href={paymentSupportUrl} className="button button-secondary">{locale === "zh-CN" ? "登记升级意向" : "Ask about paid access"}</a> : null}
+          </div>
         </div>
       </section>
     );

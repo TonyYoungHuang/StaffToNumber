@@ -63,6 +63,25 @@ export function buildPaddleTransactionEndpoint(transactionId: string) {
   return new URL(`/transactions/${encodeURIComponent(safeTransactionId)}`, paddleApiBase);
 }
 
+export function buildPaddleCheckoutRedirectUrl(input: {
+  checkoutUrl: string;
+  transactionId: string;
+  orderId: string;
+  publicToken: string;
+  successUrl: string;
+}) {
+  const transactionId = normalizePaddleTransactionId(input.transactionId);
+  const checkoutUrl = new URL(input.checkoutUrl);
+  if (checkoutUrl.protocol !== "https:" && checkoutUrl.protocol !== "http:") {
+    throw new Error("Invalid Paddle checkout URL.");
+  }
+  checkoutUrl.searchParams.set("_ptxn", transactionId);
+  checkoutUrl.searchParams.set("order_id", input.orderId);
+  checkoutUrl.searchParams.set("token", input.publicToken);
+  checkoutUrl.searchParams.set("success_url", input.successUrl);
+  return checkoutUrl.toString();
+}
+
 export function listEnabledPaymentProviders() {
   return config.paymentProviders.filter((provider): provider is PaymentProvider => provider === "stripe" || provider === "paddle");
 }
@@ -209,7 +228,6 @@ export async function createPaddleTransaction(input: {
   orderId: string;
   publicToken: string;
   customerEmail?: string | null;
-  successUrl?: string;
   userId?: string | null;
   organizationId?: string | null;
   seatQuantity?: number;
@@ -237,8 +255,6 @@ export async function createPaddleTransaction(input: {
       },
       checkout: {
         url: config.paddleDefaultPaymentLink,
-        success_url:
-          input.successUrl ?? `${config.publicSiteUrl}/checkout/success?provider=paddle&order_id=${input.orderId}&token=${input.publicToken}`,
       },
     }),
   });

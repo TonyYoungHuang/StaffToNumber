@@ -440,7 +440,7 @@ export function DashboardClient() {
             <Link href={accountActivationRoute} className="button button-primary">
               {checkoutAvailable ? copy.actions.checkout : copy.actions.redeem}
             </Link>
-            <Link href={APP_ROUTES.upload} className="button button-primary">
+            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
               {copy.actions.uploads}
             </Link>
             <Link href={APP_ROUTES.jobs} className="button button-secondary">

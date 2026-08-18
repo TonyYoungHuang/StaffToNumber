@@ -5,7 +5,6 @@ import React from "react";
 import { APP_ROUTES } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, VaultIcon } from "@score/ui";
 import { useAppLocale } from "./AppLocaleProvider";
-import { accountActivationRoute } from "../lib/release";
 
 export function AuthShell({
   title,
@@ -22,26 +21,26 @@ export function AuthShell({
       ? {
           eyebrow: "安全访问乐谱工作台",
           quote: "注册后进入同一套 MusicXML 乐谱工程，完成导入、校对、转换、移调、练习和导出。",
-          accessTitle: "在线支付与激活码开通",
-          accessBody: "海外用户可在线支付自动开通，中国大陆用户也可兑换销售渠道提供的激活码。",
+          accessTitle: "注册后先免费识别一页",
+          accessBody: "无需先付款或兑换激活码；查看 OMR 候选五线谱后，再决定是否开通校对、移调和完整导出。",
           scopeTitle: "全流程乐谱工程",
           scopeBody: "五线谱与简谱互换、图形修谱、移调、分声部播放和多格式导出都围绕同一份 Score JSON 工作。",
           draftTitle: "候选优先的安全机制",
-          draftBody: "扫描识别和音频转谱先生成待校对候选，不会未经确认覆盖正式修订。",
+          draftBody: "扫描识别先生成待校对候选，不会未经确认覆盖正式修订。",
           back: "返回工作台首页",
-          preview: "预览流程",
+          preview: "查看免费识谱入口",
         }
       : {
           eyebrow: "Secure score-workspace access",
           quote: "Create one MusicXML-first score project for import, correction, conversion, transposition, practice, and export.",
-          accessTitle: "Automatic online activation",
-          accessBody: "International users register first, pay online, and get access automatically on the same account.",
+          accessTitle: "Scan one page before paying",
+          accessBody: "No payment or activation code is required to start. Review the OMR staff candidate first, then decide whether to unlock correction, transposition, and export.",
           scopeTitle: "Complete score-project workflow",
           scopeBody: "Staff and Jianpu conversion, visual correction, transposition, part playback, and multi-format export all use the same Score JSON revision.",
           draftTitle: "Candidate-first safety",
-          draftBody: "OMR and audio transcription create review candidates and never replace an accepted revision without confirmation.",
+          draftBody: "OMR creates a review candidate and never replaces an accepted revision without confirmation.",
           back: "Return to studio",
-          preview: "Open checkout",
+          preview: "View free scanner",
         };
 
   return (
@@ -86,7 +85,7 @@ export function AuthShell({
             <Link href={APP_ROUTES.home} className="button button-secondary">
               {copy.back}
             </Link>
-            <Link href={locale === "zh-CN" ? APP_ROUTES.upload : accountActivationRoute} className="button button-tertiary">
+            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-tertiary">
               {copy.preview}
               <ArrowNorthEastIcon width={16} height={16} />
             </Link>

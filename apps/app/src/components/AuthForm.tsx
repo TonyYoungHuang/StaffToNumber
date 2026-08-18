@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import { trackFunnelEvent } from "../lib/analytics";
 import { setStoredToken } from "../lib/auth-storage";
-import { accountActivationRoute } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type AuthPayload = {
@@ -14,6 +14,7 @@ type AuthPayload = {
   user: {
     id: string;
     email: string;
+    entitlement: { status: "inactive" | "active" | "expired" };
   };
 };
 
@@ -32,7 +33,7 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
           title: mode === "register" ? "先锁定你的工作台席位" : "回到你的转换工作台",
           body:
             mode === "register"
-              ? "先用邮箱和密码注册。海外用户随后在线支付即可自动开通；中国大陆用户可继续兑换激活码。"
+              ? "用邮箱和密码注册后，可以先免费处理一页五线谱 PDF 或一张图片，再决定是否开通完整功能。"
               : "登录后可以管理权限、在线支付、上传五线谱 PDF，并追踪输出结果。",
           email: "邮箱",
           emailPlaceholder: "you@example.com",
@@ -43,7 +44,7 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
           switch: mode === "register" ? "已有账户" : "还没有账户",
           footnote:
             mode === "register"
-              ? "海外用户注册后可直接支付开通；中国大陆用户仍可通过激活码解锁权限。"
+              ? "免费预览不包含下载；多页识谱、再次处理、校对和完整导出需要开通权限。"
               : "如你通过电商渠道购买了激活码，可在登录后继续兑换。",
           redeem: "兑换激活码（中国大陆）",
           forgot: "忘记密码",
@@ -55,7 +56,7 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
           title: mode === "register" ? "Secure your studio seat" : "Return to your conversion studio",
           body:
             mode === "register"
-              ? "Register with email and password first. International users then pay online and get activated automatically; mainland-China users can still redeem activation codes."
+              ? "Create an account to process one staff-score PDF page or one image for free before you decide to unlock the complete workflow."
               : "Sign in to manage access, pay online, upload staff PDFs, and track output packages.",
           email: "Email",
           emailPlaceholder: "you@example.com",
@@ -66,7 +67,7 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
           switch: mode === "register" ? "Already have an account" : "Need an account",
           footnote:
             mode === "register"
-              ? "After registration, international users can pay online for instant activation. Activation codes remain available for mainland-China sales."
+              ? "The free preview does not include downloads. Multi-page OMR, additional processing, correction, and full exports require access."
               : "If you bought an activation code through a mainland-China sales channel, redeem it after signing in.",
           redeem: "Redeem activation code (Mainland China)",
           forgot: "Forgot password",
@@ -99,9 +100,12 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
     }
 
     setStoredToken(result.data.token);
+    trackFunnelEvent(mode === "register" ? "sign_up" : "login", { method: "email" });
     setStatus(mode === "register" ? copy.registerSuccess : copy.loginSuccess);
     setStatusKind("success");
-    const nextRoute = locale === "zh-CN" ? APP_ROUTES.activate : accountActivationRoute;
+    const nextRoute = mode === "register" || result.data.user.entitlement.status !== "active"
+      ? `${APP_ROUTES.scores}#omr-import`
+      : APP_ROUTES.dashboard;
     router.push(nextRoute);
     router.refresh();
   }

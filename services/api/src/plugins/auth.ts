@@ -13,6 +13,7 @@ declare module "fastify" {
 
   interface FastifyInstance {
     requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireScorePreviewAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireActiveEntitlement: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
@@ -60,6 +61,16 @@ export const authPlugin = fp(async (app) => {
     const profile = getUserProfile(request.authUserId);
     if (!profile || profile.accountStatus !== "active" || profile.entitlement.status !== "active") {
       reply.code(403).send({ error: "An active entitlement is required." });
+    }
+  });
+
+  app.decorate("requireScorePreviewAccess", async (request: FastifyRequest, reply: FastifyReply) => {
+    await app.requireAuth(request, reply);
+    if (reply.sent || !request.authUserId) return;
+
+    const profile = getUserProfile(request.authUserId);
+    if (!profile || profile.accountStatus !== "active") {
+      reply.code(403).send({ error: "An active account is required." });
     }
   });
 

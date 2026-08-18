@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
+import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
+import { accountActivationRoute } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type ScoreDocument = {
@@ -47,9 +49,23 @@ type OmrImportPayload = ImportPayload & {
   };
 };
 
+type AccessPayload = {
+  user: {
+    entitlement: { status: "inactive" | "active" | "expired" };
+    freeTrial: {
+      omrJobsUsed: number;
+      omrJobsLimit: number;
+      omrJobsRemaining: number;
+      available: boolean;
+      maxSourcePages: number;
+    };
+  };
+};
+
 export function ScoreLibraryManager() {
   const { locale } = useAppLocale();
   const token = useMemo(() => getStoredToken(), []);
+  const audioTranscriptionAvailable = process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE === "true";
   const [scores, setScores] = useState<ScoreDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -67,6 +83,7 @@ export function ScoreLibraryManager() {
   const [jianpuText, setJianpuText] = useState("1=C\n4/4\n1 2 3 4 | 5 - 5 - | 6 5 3 1 | 2 0 1 - |");
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
+  const [access, setAccess] = useState<AccessPayload["user"] | null>(null);
 
   const copy =
     locale === "zh-CN"
@@ -324,7 +341,16 @@ export function ScoreLibraryManager() {
 
   useEffect(() => {
     void loadScores();
+    void loadAccess();
   }, []);
+
+  async function loadAccess() {
+    if (!token) return;
+    const result = await apiRequest<AccessPayload>("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (result.ok) setAccess(result.data.user);
+  }
 
   async function handleImport(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -372,6 +398,7 @@ export function ScoreLibraryManager() {
         input.value = "";
       }
       await loadScores();
+      await loadAccess();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : copy.importFailed);
       setStatusKind("error");
@@ -418,12 +445,18 @@ export function ScoreLibraryManager() {
 
       setStatus(omrCopy.imported);
       setStatusKind("success");
+      const extension = selectedOmrFile.name.split(".").pop()?.toLowerCase() || "unknown";
+      trackFunnelEvent("free_omr_created", {
+        free_trial: !hasPaidAccess,
+        source_type: extension === "pdf" ? "pdf" : "image",
+      });
       setSelectedOmrFile(null);
       const input = document.getElementById("omr-import-input") as HTMLInputElement | null;
       if (input) {
         input.value = "";
       }
       await loadScores();
+      await loadAccess();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : omrCopy.importFailed);
       setStatusKind("error");
@@ -634,9 +667,41 @@ export function ScoreLibraryManager() {
 
   const revisionCount = scores.filter((score) => score.pendingRevision || score.currentRevision).length;
   const statusTone = status ? statusKind : null;
+  const hasPaidAccess = access?.entitlement.status === "active";
+  const freeTrialAvailable = access?.freeTrial.available ?? false;
 
   return (
     <div className="page-stack">
+      {access && !hasPaidAccess ? (
+        <section className="surface-panel stack-sm">
+          <p className="eyebrow">{locale === "zh-CN" ? "免费单页预览" : "Free one-page preview"}</p>
+          <h2 className="card-title">
+            {freeTrialAvailable
+              ? locale === "zh-CN" ? "你可以免费识别一页 PDF 或一张乐谱图片。" : "You can scan one PDF page or one score image for free."
+              : locale === "zh-CN" ? "免费预览已经使用。" : "Your free preview has been used."}
+          </h2>
+          <p className="body-copy">
+            {locale === "zh-CN"
+              ? "免费层可查看 OMR 候选五线谱，但不提供下载。再次识别、多页处理、校对和完整导出需要开通权限。"
+              : "The free tier shows an OMR staff-notation candidate without downloads. Additional scans, multi-page processing, correction, and exports require access."}
+          </p>
+          <div className="button-row">
+            <a href="#omr-import" className="button button-primary">
+              {freeTrialAvailable
+                ? locale === "zh-CN" ? "开始免费预览" : "Start free preview"
+                : locale === "zh-CN" ? "查看试用工程" : "View trial project"}
+            </a>
+            <Link
+              href={accountActivationRoute}
+              className="button button-secondary"
+              onClick={() => trackFunnelEvent("upgrade_click", { source: "score_library_trial_banner" })}
+            >
+              {locale === "zh-CN" ? "开通完整功能" : "Unlock full access"}
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <div className="metric-grid">
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.projects[0]}</p>
@@ -656,7 +721,7 @@ export function ScoreLibraryManager() {
       </div>
 
       <section className="surface-panel studio-split">
-        <form id="musicxml-import" onSubmit={handleImport} className="converter-side">
+        <form id="musicxml-import" onSubmit={handleImport} className="converter-side" hidden={!hasPaidAccess}>
           <div className="stack-sm">
             <p className="eyebrow">{copy.import.eyebrow}</p>
             <h2 className="card-title">{copy.import.title}</h2>
@@ -674,6 +739,7 @@ export function ScoreLibraryManager() {
             id="musicxml-import-input"
             className="sr-only"
             type="file"
+            disabled={!hasPaidAccess}
             accept=".musicxml,.xml,.mxl,application/xml,text/xml,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml"
             onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
           />
@@ -689,7 +755,7 @@ export function ScoreLibraryManager() {
           )}
 
           <div className="button-row">
-            <button type="submit" disabled={importing} className="button button-primary">
+            <button type="submit" disabled={importing || !hasPaidAccess} className="button button-primary">
               {importing ? copy.import.importing : copy.import.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedFile(null)}>
@@ -700,7 +766,7 @@ export function ScoreLibraryManager() {
           {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
         </form>
 
-        <div id="score-json-import" className="converter-side">
+        <div id="score-json-import" className="converter-side" hidden={!hasPaidAccess}>
           <div className="stack-sm">
             <p className="eyebrow">{scoreJsonCopy.eyebrow}</p>
             <h2 className="card-title">{scoreJsonCopy.title}</h2>
@@ -718,6 +784,7 @@ export function ScoreLibraryManager() {
             id="score-json-import-input"
             className="sr-only"
             type="file"
+            disabled={!hasPaidAccess}
             accept=".score.json,.json,application/json"
             onChange={(event) => setSelectedScoreJsonFile(event.target.files?.[0] ?? null)}
           />
@@ -733,7 +800,7 @@ export function ScoreLibraryManager() {
           )}
 
           <div className="button-row">
-            <button type="button" disabled={scoreJsonImporting} className="button button-primary" onClick={() => void handleScoreJsonImport()}>
+            <button type="button" disabled={scoreJsonImporting || !hasPaidAccess} className="button button-primary" onClick={() => void handleScoreJsonImport()}>
               {scoreJsonImporting ? scoreJsonCopy.importing : scoreJsonCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedScoreJsonFile(null)}>
@@ -742,7 +809,7 @@ export function ScoreLibraryManager() {
           </div>
         </div>
 
-        <div id="midi-import" className="converter-side">
+        <div id="midi-import" className="converter-side" hidden={!hasPaidAccess}>
           <div className="stack-sm">
             <p className="eyebrow">{midiCopy.eyebrow}</p>
             <h2 className="card-title">{midiCopy.title}</h2>
@@ -760,6 +827,7 @@ export function ScoreLibraryManager() {
             id="midi-import-input"
             className="sr-only"
             type="file"
+            disabled={!hasPaidAccess}
             accept=".mid,.midi,audio/midi,audio/x-midi"
             onChange={(event) => setSelectedMidiFile(event.target.files?.[0] ?? null)}
           />
@@ -775,7 +843,7 @@ export function ScoreLibraryManager() {
           )}
 
           <div className="button-row">
-            <button type="button" disabled={midiImporting} className="button button-primary" onClick={() => void handleMidiImport()}>
+            <button type="button" disabled={midiImporting || !hasPaidAccess} className="button button-primary" onClick={() => void handleMidiImport()}>
               {midiImporting ? midiCopy.importing : midiCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedMidiFile(null)}>
@@ -817,7 +885,7 @@ export function ScoreLibraryManager() {
           )}
 
           <div className="button-row">
-            <button type="button" disabled={omrImporting} className="button button-primary" onClick={() => void handleOmrImport()}>
+            <button type="button" disabled={omrImporting || (!hasPaidAccess && !freeTrialAvailable)} className="button button-primary" onClick={() => void handleOmrImport()}>
               {omrImporting ? omrCopy.importing : omrCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedOmrFile(null)}>
@@ -826,7 +894,7 @@ export function ScoreLibraryManager() {
           </div>
         </div>
 
-        <div id="audio-import" className="converter-side">
+        <div id="audio-import" className="converter-side" hidden={!hasPaidAccess || !audioTranscriptionAvailable}>
           <div className="stack-sm">
             <p className="eyebrow">{audioCopy.eyebrow}</p>
             <h2 className="card-title">{audioCopy.title}</h2>
@@ -844,6 +912,7 @@ export function ScoreLibraryManager() {
             id="audio-import-input"
             className="sr-only"
             type="file"
+            disabled={!hasPaidAccess}
             accept=".wav,.mp3,.m4a,.aac,.flac,.ogg,.aif,.aiff,audio/*"
             onChange={(event) => setSelectedAudioFile(event.target.files?.[0] ?? null)}
           />
@@ -859,7 +928,7 @@ export function ScoreLibraryManager() {
           )}
 
           <div className="button-row">
-            <button type="button" disabled={audioImporting} className="button button-primary" onClick={() => void handleAudioImport()}>
+            <button type="button" disabled={audioImporting || !hasPaidAccess} className="button button-primary" onClick={() => void handleAudioImport()}>
               {audioImporting ? audioCopy.importing : audioCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedAudioFile(null)}>
@@ -868,7 +937,7 @@ export function ScoreLibraryManager() {
           </div>
         </div>
 
-        <form id="jianpu-import" onSubmit={handleJianpuImport} className="converter-side">
+        <form id="jianpu-import" onSubmit={handleJianpuImport} className="converter-side" hidden={!hasPaidAccess}>
           <div className="stack-sm">
             <p className="eyebrow">{jianpuCopy.eyebrow}</p>
             <h2 className="card-title">{jianpuCopy.title}</h2>
@@ -879,6 +948,7 @@ export function ScoreLibraryManager() {
             <span className="field-label">{jianpuCopy.titleLabel}</span>
             <input
               className="field-control"
+              disabled={!hasPaidAccess}
               value={jianpuTitle}
               placeholder={jianpuCopy.titlePlaceholder}
               onChange={(event) => setJianpuTitle(event.target.value)}
@@ -889,6 +959,7 @@ export function ScoreLibraryManager() {
             <span className="field-label">{jianpuCopy.textLabel}</span>
             <textarea
               className="field-control"
+              disabled={!hasPaidAccess}
               rows={8}
               value={jianpuText}
               placeholder={jianpuCopy.textPlaceholder}
@@ -897,7 +968,7 @@ export function ScoreLibraryManager() {
           </label>
 
           <div className="button-row">
-            <button type="submit" disabled={jianpuImporting} className="button button-primary">
+            <button type="submit" disabled={jianpuImporting || !hasPaidAccess} className="button button-primary">
               {jianpuImporting ? jianpuCopy.importing : jianpuCopy.button}
             </button>
             <button

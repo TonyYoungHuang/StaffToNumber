@@ -2,12 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildPaddleTransactionEndpoint,
+  buildPaddleCheckoutRedirectUrl,
   buildStripeCheckoutSessionParams,
   hashPaymentOrderToken,
   normalizeStripeCredential,
   normalizeWebhookSigningSecret,
   stripeSessionMatchesPaymentOrder,
 } from "./payments.js";
+
+test("Paddle checkout links carry the order return context without changing the transaction", () => {
+  const checkoutUrl = buildPaddleCheckoutRedirectUrl({
+    checkoutUrl: "https://scoretransposer.com/checkout/paddle?_ptxn=txn_01abcDEF234",
+    transactionId: "txn_01abcDEF234",
+    orderId: "order-1",
+    publicToken: "public-token",
+    successUrl: "https://app.scoretransposer.com/checkout/success?provider=paddle&order_id=order-1&token=public-token",
+  });
+  const parsed = new URL(checkoutUrl);
+  assert.equal(parsed.searchParams.get("_ptxn"), "txn_01abcDEF234");
+  assert.equal(parsed.searchParams.get("order_id"), "order-1");
+  assert.equal(parsed.searchParams.get("token"), "public-token");
+  assert.equal(
+    parsed.searchParams.get("success_url"),
+    "https://app.scoretransposer.com/checkout/success?provider=paddle&order_id=order-1&token=public-token",
+  );
+});
 
 test("Paddle transaction lookup stays on an approved host and rejects path injection", () => {
   const endpoint = buildPaddleTransactionEndpoint("txn_01abcDEF234");

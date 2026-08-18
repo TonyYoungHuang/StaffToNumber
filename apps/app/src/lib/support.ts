@@ -47,7 +47,7 @@ export function buildSupportTemplates(locale: string): SupportTemplate[] {
     {
       key: "payment",
       title: "Payment and order review",
-      description: "Use when checkout succeeds but no activation code appears, or when a manual order review is needed.",
+        description: "Use when checkout succeeds but account access does not appear, or when a manual order review is needed.",
       href: buildSupportHref("payment"),
     },
     {

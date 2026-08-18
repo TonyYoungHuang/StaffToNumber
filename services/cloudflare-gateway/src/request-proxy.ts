@@ -6,9 +6,11 @@ export async function withProxyHeaders(request: Request) {
   headers.set("x-forwarded-host", new URL(request.url).host);
 
   const url = new URL(request.url);
-  if (url.pathname !== "/webhooks/stripe") return new Request(request, { headers });
+  if (url.pathname !== "/webhooks/stripe" && url.pathname !== "/webhooks/paddle") {
+    return new Request(request, { headers });
+  }
 
-  url.pathname = "/api/webhooks/stripe";
+  url.pathname = `/api${url.pathname}`;
   const body = request.method === "GET" || request.method === "HEAD"
     ? undefined
     : await request.arrayBuffer();

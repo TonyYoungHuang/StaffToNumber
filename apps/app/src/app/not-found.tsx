@@ -2,7 +2,7 @@ import Link from "next/link";
 import { APP_ROUTES } from "@score/shared";
 import { Panel, SectionIntro } from "@score/ui";
 import { readAppLocale } from "../lib/locale";
-import { accountActivationRoute, checkoutAvailable } from "../lib/release";
+import { accountActivationRoute } from "../lib/release";
 
 export default async function NotFound() {
   const locale = await readAppLocale();
@@ -20,24 +20,21 @@ export default async function NotFound() {
           }
           body={
             isChinese
-              ? "你可以回到账户、上传、任务或支付页继续当前流程。"
-              : "You can return to account, uploads, jobs, or checkout to continue the current workflow."
+              ? "你可以返回免费识谱入口、工作台首页或升级状态页继续。"
+              : "Return to the free scanner, studio homepage, or upgrade status to continue."
           }
           titleAs="h1"
           largeBody
         />
         <div className="button-row">
-          <Link href={APP_ROUTES.dashboard} className="button button-primary">
-            {isChinese ? "账户" : "Account"}
+          <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
+            {isChinese ? "免费识别一页" : "Scan one page free"}
           </Link>
-          <Link href={APP_ROUTES.upload} className="button button-secondary">
-            {isChinese ? "上传" : "Uploads"}
-          </Link>
-          <Link href={APP_ROUTES.jobs} className="button button-secondary">
-            {isChinese ? "任务" : "Jobs"}
+          <Link href={APP_ROUTES.home} className="button button-secondary">
+            {isChinese ? "工作台首页" : "Studio home"}
           </Link>
           <Link href={accountActivationRoute} className="button button-tertiary">
-            {checkoutAvailable ? (isChinese ? "支付" : "Checkout") : (isChinese ? "激活" : "Activation")}
+            {isChinese ? "升级状态" : "Upgrade status"}
           </Link>
         </div>
       </Panel>

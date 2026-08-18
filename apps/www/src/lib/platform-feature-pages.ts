@@ -330,8 +330,8 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "OMR results are treated as editable candidates with confidence and diagnostics, not as guaranteed final scores.",
       },
       {
-        title: "Production wiring still matters",
-        body: "Audiveris installation, command configuration, timeout tuning, and deployment packaging must be handled for production.",
+        title: "One-page free preview with clear limits",
+        body: "A free account can scan one PDF page or one score image. Additional scans, multi-page recognition, correction, and full exports require paid access.",
       },
     ],
     guardrail: "Scanning is import plus correction. The site should not promise perfect automatic recognition for all PDFs or photos.",
@@ -380,7 +380,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     title: "Score transposer pricing",
     eyebrow: "Access for conversion and project workflows",
     description:
-      "Open the app through checkout or activation-code access, then use score projects for import, conversion, correction, playback, export, and teaching workflows.",
+      "Start with one free OMR preview, then use checkout or activation-code access for additional scans, correction, conversion, playback, and full export.",
     status: "Available",
     releaseRequirement: "checkout",
     updatedAt: "2026-08-10",
@@ -399,13 +399,13 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       },
       {
         title: "Use project workflows",
-        body: "Create score projects, import sources, correct results, transpose, practice, export, and share teaching assignments.",
+        body: "Create score projects, import sources, correct results, transpose, practice, and export the accepted revision.",
       },
     ],
     details: [
       {
         title: "Clear paid boundaries",
-        body: "Full exports, batch work, high-quality audio, saved history, and teaching workflows are natural paid-tier candidates.",
+        body: "Additional scans, multi-page recognition, correction, full exports, high-quality audio, and saved history require paid access.",
       },
       {
         title: "Operational support",
