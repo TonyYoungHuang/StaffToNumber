@@ -24,7 +24,7 @@ export default async function CheckoutPage() {
               : "The production site will not create test orders or redirect to staging checkout. This entry opens after live payments, refunds, and subscription renewals pass final verification."}
           </p>
           <div className="button-row">
-            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
+            <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
               {locale === "zh-CN" ? "继续使用免费预览" : "Continue with the free preview"}
             </Link>
             {paymentSupportUrl ? <a href={paymentSupportUrl} className="button button-secondary">{locale === "zh-CN" ? "登记升级意向" : "Ask about paid access"}</a> : null}

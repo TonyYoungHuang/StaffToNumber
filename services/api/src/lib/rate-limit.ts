@@ -23,7 +23,7 @@ export function resolveApiRateLimitPolicy(method: string, url: string): ApiRateL
   const path = normalizePath(url);
   const normalizedMethod = method.toUpperCase();
 
-  if (normalizedMethod === "POST" && /^\/api\/auth\/(login|register)$/u.test(path)) {
+  if (normalizedMethod === "POST" && /^\/api\/auth\/(google|login|register)$/u.test(path)) {
     return { id: "auth", max: 10, timeWindowMs: 15 * MINUTE };
   }
   if (normalizedMethod === "POST" && /^\/api\/auth\/(forgot-password|reset-password)$/u.test(path)) {

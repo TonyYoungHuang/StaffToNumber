@@ -19,26 +19,26 @@ export function AuthShell({
   const copy =
     locale === "zh-CN"
       ? {
-          eyebrow: "安全访问乐谱工作台",
-          quote: "注册后进入同一套 MusicXML 乐谱工程，完成导入、校对、转换、移调、练习和导出。",
-          accessTitle: "注册后先免费识别一页",
-          accessBody: "无需先付款或兑换激活码；查看 OMR 候选五线谱后，再决定是否开通校对、移调和完整导出。",
-          scopeTitle: "全流程乐谱工程",
-          scopeBody: "五线谱与简谱互换、图形修谱、移调、分声部播放和多格式导出都围绕同一份 Score JSON 工作。",
-          draftTitle: "候选优先的安全机制",
-          draftBody: "扫描识别先生成待校对候选，不会未经确认覆盖正式修订。",
-          back: "返回工作台首页",
-          preview: "查看免费识谱入口",
+          eyebrow: "你的在线乐谱工作台",
+          quote: "登录后，你的乐谱、修改记录和导出文件都会保存在同一个账户中。",
+          accessTitle: "先免费识别一页",
+          accessBody: "上传一页 PDF 或一张乐谱图片，先看识别效果，再决定是否继续使用更多功能。",
+          scopeTitle: "从识别到导出，一处完成",
+          scopeBody: "识别乐谱后，可以继续校对、转简谱、移调、播放练习，并导出常用格式。",
+          draftTitle: "你的原谱不会被覆盖",
+          draftBody: "系统会先生成一份待确认的结果，只有你确认后才保存为正式版本。",
+          back: "返回首页",
+          preview: "免费识别一页",
         }
       : {
           eyebrow: "Secure score-workspace access",
-          quote: "Create one MusicXML-first score project for import, correction, conversion, transposition, practice, and export.",
+          quote: "Sign in to keep your scores, edits, and exports together in one account.",
           accessTitle: "Scan one page before paying",
-          accessBody: "No payment or activation code is required to start. Review the OMR staff candidate first, then decide whether to unlock correction, transposition, and export.",
-          scopeTitle: "Complete score-project workflow",
-          scopeBody: "Staff and Jianpu conversion, visual correction, transposition, part playback, and multi-format export all use the same Score JSON revision.",
-          draftTitle: "Candidate-first safety",
-          draftBody: "OMR creates a review candidate and never replaces an accepted revision without confirmation.",
+          accessBody: "Upload one PDF page or score image, review the result, and decide whether to continue with more tools.",
+          scopeTitle: "Everything stays in one place",
+          scopeBody: "Correct the recognized score, convert notation, transpose, practice, and export without moving between tools.",
+          draftTitle: "Your original stays safe",
+          draftBody: "Recognition creates a result for your review and never replaces an approved version without confirmation.",
           back: "Return to studio",
           preview: "View free scanner",
         };
@@ -85,7 +85,7 @@ export function AuthShell({
             <Link href={APP_ROUTES.home} className="button button-secondary">
               {copy.back}
             </Link>
-            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-tertiary">
+            <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-tertiary">
               {copy.preview}
               <ArrowNorthEastIcon width={16} height={16} />
             </Link>

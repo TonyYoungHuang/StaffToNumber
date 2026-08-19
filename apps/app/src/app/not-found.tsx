@@ -27,7 +27,7 @@ export default async function NotFound() {
           largeBody
         />
         <div className="button-row">
-          <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
+          <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
             {isChinese ? "免费识别一页" : "Scan one page free"}
           </Link>
           <Link href={APP_ROUTES.home} className="button button-secondary">

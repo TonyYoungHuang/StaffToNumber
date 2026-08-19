@@ -13,6 +13,7 @@ import {
 
 test("sensitive API workflows receive separate production rate-limit policies", () => {
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/login"), { id: "auth", max: 10, timeWindowMs: 900_000 });
+  assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/google"), { id: "auth", max: 10, timeWindowMs: 900_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/forgot-password"), { id: "password", max: 5, timeWindowMs: 900_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("GET", "/api/account/data-export"), { id: "privacy-export", max: 5, timeWindowMs: 3_600_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/account/deletion"), { id: "account-deletion", max: 5, timeWindowMs: 3_600_000 });

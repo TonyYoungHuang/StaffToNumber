@@ -11,7 +11,7 @@ import { useAppLocale } from "./AppLocaleProvider";
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { locale } = useAppLocale();
-  const primaryHref = `${APP_ROUTES.scores}#omr-import`;
+  const primaryHref = `${APP_ROUTES.scores}/new/scan`;
   const checkoutAvailable = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE === "true";
   const teachingAvailable = process.env.NEXT_PUBLIC_TEACHING_AVAILABLE === "true";
 
@@ -20,7 +20,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       ? {
           navItems: [
             { href: APP_ROUTES.home, label: "工作台" },
-            { href: APP_ROUTES.scores, label: "乐谱工程" },
+            { href: APP_ROUTES.scores, label: "我的乐谱" },
             ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: "课堂" }] : []),
           ],
           scope: "PDF / 图片乐谱工作台",
@@ -29,19 +29,22 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           upgrade: "升级",
           footerTitle: "The Digital Score",
           footerCopy:
-            "先免费识别一页 PDF 或图片；开通后在同一份 Score JSON 中继续修谱、移调、播放与导出。",
+            "先免费识别一页 PDF 或图片，再继续校对、转简谱、移调、播放与导出。",
           footerLinks: {
             register: "注册账户",
             activate: "兑换激活码",
             checkout: "在线支付",
-            scores: "乐谱工程",
+            scores: "我的乐谱",
             classrooms: "课堂管理",
             student: "学生中心",
             upload: "上传乐谱",
             jobs: "查看任务",
             billing: "账单与用量",
+            about: "关于我们",
+            support: "帮助与联系",
+            privacy: "隐私说明",
           },
-          caption: "MusicXML 全功能乐谱工作台",
+          caption: "在线乐谱识别与编辑工具",
         }
       : {
           navItems: [
@@ -55,19 +58,22 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           upgrade: "Upgrade",
           footerTitle: "The Digital Score",
           footerCopy:
-            "Scan one PDF page or image for free, then continue correction, transposition, playback, and export from the same Score JSON project.",
+            "Scan one PDF page or image for free, then correct, convert, transpose, practice, and export.",
           footerLinks: {
             register: "Create account",
             activate: "Redeem code",
             checkout: "Pay online",
-            scores: "Score projects",
+            scores: "My scores",
             classrooms: "Classes",
             student: "Student hub",
             upload: "Upload score",
             jobs: "Track jobs",
             billing: "Billing and usage",
+            about: "About",
+            support: "Support",
+            privacy: "Privacy",
           },
-          caption: `${sonataCopy.currentScope} studio`,
+          caption: "Online score scanner and editor",
         };
 
   return (
@@ -121,6 +127,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             {locale === "zh-CN" ? <Link href={APP_ROUTES.activate}>{copy.footerLinks.activate}</Link> : null}
             {checkoutAvailable ? <Link href={APP_ROUTES.checkout}>{copy.footerLinks.checkout}</Link> : null}
             <Link href={APP_ROUTES.scores}>{copy.footerLinks.scores}</Link>
+            <Link href="https://www.scoretransposer.com/about">{copy.footerLinks.about}</Link>
+            <Link href="https://www.scoretransposer.com/support">{copy.footerLinks.support}</Link>
+            <Link href="https://www.scoretransposer.com/privacy">{copy.footerLinks.privacy}</Link>
             {teachingAvailable ? <Link href={APP_ROUTES.classrooms}>{copy.footerLinks.classrooms}</Link> : null}
             {teachingAvailable ? <Link href={APP_ROUTES.student}>{copy.footerLinks.student}</Link> : null}
           </div>

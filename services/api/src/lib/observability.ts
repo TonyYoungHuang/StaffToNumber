@@ -69,7 +69,7 @@ export function classifyAuditedMutation(method: string, route: string) {
   const normalizedMethod = method.toUpperCase();
   if (normalizedMethod === "GET" && route === "/api/account/data-export") return "privacy.export";
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(normalizedMethod)) return null;
-  if (/\/api\/auth\/(?:login|register|logout|forgot-password|reset-password)$/u.test(route)) return "auth.mutation";
+  if (/\/api\/auth\/(?:google|login|register|logout|forgot-password|reset-password)$/u.test(route)) return "auth.mutation";
   if (/\/api\/account\/(?:deletion|deletion\/cancel)$/u.test(route)) return "account.lifecycle";
   if (route === "/api/copyright/complaints") return "copyright.submission";
   if (route === "/api/copyright/complaints/lookup") return "copyright.lookup";

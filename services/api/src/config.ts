@@ -59,6 +59,7 @@ export const config = {
   publicAppUrl: process.env.PUBLIC_APP_URL ?? "http://localhost:3001",
   publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:4000",
   resetPasswordUrlBase: process.env.RESET_PASSWORD_URL_BASE ?? `${process.env.PUBLIC_APP_URL ?? "http://localhost:3001"}/reset-password`,
+  googleClientId: process.env.GOOGLE_CLIENT_ID?.trim() ?? "",
   sessionDays: Number(process.env.SESSION_DAYS ?? 30),
   entitlementDays: Number(process.env.DEFAULT_ENTITLEMENT_DAYS ?? 365),
   passwordResetTokenHours: Number(process.env.PASSWORD_RESET_TOKEN_HOURS ?? 2),

@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { AuthShell } from "../../components/AuthShell";
 import { AuthForm } from "../../components/AuthForm";
 import { readAppLocale } from "../../lib/locale";
+
+export const metadata: Metadata = { alternates: { canonical: "/login" } };
 
 export default async function LoginPage() {
   const locale = await readAppLocale();
@@ -10,8 +13,8 @@ export default async function LoginPage() {
       title={locale === "zh-CN" ? "登录" : "Sign in"}
       description={
         locale === "zh-CN"
-          ? "登录你的转换账户，以便管理激活状态、上传五线谱 PDF，并查看转换结果。"
-          : "Sign in to your converter account so you can manage activation, upload staff PDFs, and review job output."
+          ? "继续查看你保存的乐谱、修改记录和导出文件。"
+          : "Continue to your saved scores, edit history, and exports."
       }
     >
       <AuthForm mode="login" />

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
 import { createSalt, createToken, hashPassword, verifyPassword } from "../lib/auth.js";
 import { buildPasswordResetEmail, sendTransactionalEmail } from "../lib/email.js";
+import { verifyGoogleCredential } from "../lib/google-auth.js";
 import {
   completePasswordReset,
   createPasswordResetToken,
@@ -81,6 +82,44 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({
       token,
       user: getUserProfile(user.id),
+    });
+  });
+
+  app.post("/auth/google", async (request, reply) => {
+    const body = (request.body ?? {}) as { credential?: string };
+    if (!config.googleClientId) {
+      return reply.code(503).send({ error: "Google sign-in is not configured." });
+    }
+    if (typeof body.credential !== "string" || !body.credential.trim()) {
+      return reply.code(400).send({ error: "Google credential is required." });
+    }
+
+    let googleAccount;
+    try {
+      googleAccount = await verifyGoogleCredential(body.credential.trim(), config.googleClientId);
+    } catch (error) {
+      request.log.warn({ error }, "Google credential verification failed.");
+      return reply.code(401).send({ error: "Google sign-in could not be verified. Please try again." });
+    }
+
+    let user = findUserByEmail(googleAccount.email);
+    const isNewUser = !user;
+    if (!user) {
+      const salt = createSalt();
+      const passwordHash = hashPassword(createToken(), salt);
+      user = createUser(googleAccount.email, passwordHash, salt);
+    }
+    if (!user) {
+      return reply.code(500).send({ error: "Could not create the Google account." });
+    }
+
+    const token = createToken();
+    createSession(user.id, token, config.sessionDays);
+
+    return reply.code(isNewUser ? 201 : 200).send({
+      token,
+      user: getUserProfile(user.id),
+      isNewUser,
     });
   });
 

@@ -8,17 +8,51 @@ import { readAppLocale } from "../lib/locale";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readAppLocale();
-
-  if (locale === "zh-CN") {
-    return {
-      title: "ScoreTransposer Studio | 简体中文",
-      description: "基于 MusicXML 与 Score JSON 的乐谱工作台，支持扫描校对、简谱互换、移调、图形编辑、播放练习和多格式导出。",
-    };
-  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.scoretransposer.com";
+  const title = locale === "zh-CN"
+    ? "ScoreTransposer PDF 乐谱识别、简谱转换、在线编辑、移调与播放工作台"
+    : "ScoreTransposer – Scan, Edit and Transpose Sheet Music";
+  const description = locale === "zh-CN"
+    ? "上传五线谱 PDF 或图片，在线识别并校对音符，继续完成五线谱与简谱转换、移调、播放练习和常用格式导出。"
+    : "Upload sheet-music PDFs or images, review recognized notes, convert staff and numbered notation, transpose, practice, and export common formats.";
 
   return {
-    title: "ScoreTransposer Studio",
-    description: "MusicXML-first score workspace for scanning, correction, Jianpu conversion, transposition, visual editing, practice playback, and multi-format export.",
+    metadataBase: new URL(appUrl),
+    title,
+    description,
+    applicationName: "ScoreTransposer",
+    keywords: locale === "zh-CN"
+      ? ["乐谱识别", "五线谱", "简谱转换", "乐谱移调", "PDF 转乐谱", "在线乐谱编辑"]
+      : ["sheet music scanner", "music notation converter", "score transposer", "PDF to sheet music", "numbered notation"],
+    openGraph: {
+      title,
+      description,
+      url: appUrl,
+      siteName: "ScoreTransposer",
+      type: "website",
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "ScoreTransposer online sheet-music workspace" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/opengraph-image"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    },
   };
 }
 

@@ -62,7 +62,9 @@ type AccessPayload = {
   };
 };
 
-export function ScoreLibraryManager() {
+export type ScoreImportView = "library" | "musicxml" | "backup" | "midi" | "scan" | "audio" | "jianpu";
+
+export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportView }) {
   const { locale } = useAppLocale();
   const token = useMemo(() => getStoredToken(), []);
   const audioTranscriptionAvailable = process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE === "true";
@@ -91,18 +93,18 @@ export function ScoreLibraryManager() {
           signInFirst: "请先登录。",
           importFailed: "MusicXML 导入失败。",
           chooseFile: "请选择 .musicxml、.xml 或 .mxl 文件。",
-          imported: "乐谱工程已创建。",
+          imported: "乐谱已创建，可以在“我的乐谱”中打开。",
           metrics: {
-            projects: ["乐谱工程", "后续移调、播放、编辑和导出都围绕工程版本展开。"],
-            format: ["核心格式", "当前第一步先接入 MusicXML，PDF/图片 OMR 后续进入同一工程模型。"],
-            revisions: ["当前版本", "每个工程至少有一个可追踪的结构化版本。"],
+            projects: ["我的乐谱", "你保存过的乐谱都会显示在这里。"],
+            format: ["可继续编辑", "识别或导入后可以校对、移调、播放和导出。"],
+            revisions: ["有修改记录", "修改前的版本会保留，需要时可以找回。"],
           },
           import: {
-            eyebrow: "Phase 0",
-            title: "导入 MusicXML 创建乐谱工程",
-            body: "这是全方位五线谱平台的第一块地基：先让系统拥有可计算的乐谱工程，而不是只保存一次性 PDF 任务。",
-            dropTitle: "选择 MusicXML 文件",
-            dropBody: "支持 .musicxml、.xml 和压缩 .mxl 包；PDF/图片 OMR 请从扫描导入面板进入。",
+            eyebrow: "从制谱软件导入",
+            title: "选择 MusicXML 文件",
+            body: "如果你使用 MuseScore、Sibelius、Finale 等制谱软件，可把导出的 MusicXML 文件带到这里继续编辑。",
+            dropTitle: "点击选择文件",
+            dropBody: "支持 .musicxml、.xml 和 .mxl 文件。",
             selected: "已选择",
             empty: "尚未选择文件。",
             button: "导入 MusicXML",
@@ -110,32 +112,32 @@ export function ScoreLibraryManager() {
             clear: "清空选择",
           },
           list: {
-            eyebrow: "Score documents",
-            title: "乐谱工程库",
-            body: "这些工程将成为后续 OSMD 预览、校对、移调、简谱互换、Tone.js 播放和导出的共同入口。",
-            loading: "正在加载乐谱工程...",
-            empty: "还没有乐谱工程。先导入一个 MusicXML 文件来创建第一份结构化乐谱。",
-            open: "打开工程",
-            source: "源文件",
-            revision: "版本",
+            eyebrow: "我的乐谱",
+            title: "已保存的乐谱",
+            body: "打开任意乐谱，继续校对、转简谱、移调、播放或导出。",
+            loading: "正在加载乐谱...",
+            empty: "这里还没有乐谱。创建第一份乐谱后，它会出现在这里。",
+            open: "打开乐谱",
+            source: "原文件",
+            revision: "修改记录",
           },
         }
       : {
           signInFirst: "Please sign in first.",
           importFailed: "MusicXML import failed.",
           chooseFile: "Please choose a .musicxml, .xml, or .mxl file.",
-          imported: "Score project created.",
+          imported: "Your score has been added to My Scores.",
           metrics: {
-            projects: ["Score projects", "Transposition, playback, editing, and export now have a project-level home."],
-            format: ["Core format", "This first foundation accepts MusicXML while PDF/image OMR can later feed the same model."],
-            revisions: ["Current revisions", "Each project starts with a traceable structured revision."],
+            projects: ["My scores", "Every score you save appears here."],
+            format: ["Ready to edit", "After recognition or import, continue correcting, transposing, practicing, and exporting."],
+            revisions: ["Edit history", "Earlier versions stay available when you need them."],
           },
           import: {
-            eyebrow: "Phase 0",
-            title: "Import MusicXML as a score project",
-            body: "This is the foundation for the full notation platform: create computable score projects instead of only one-off PDF jobs.",
-            dropTitle: "Choose a MusicXML file",
-            dropBody: "Supports .musicxml, .xml, and compressed .mxl packages. PDF/image OMR enters through the scan import panel.",
+            eyebrow: "Import from notation software",
+            title: "Choose a MusicXML file",
+            body: "Bring in a MusicXML export from MuseScore, Sibelius, Finale, or another notation app and continue editing here.",
+            dropTitle: "Choose a file",
+            dropBody: "Supports .musicxml, .xml, and .mxl files.",
             selected: "Selected",
             empty: "No file selected yet.",
             button: "Import MusicXML",
@@ -143,14 +145,14 @@ export function ScoreLibraryManager() {
             clear: "Clear selection",
           },
           list: {
-            eyebrow: "Score documents",
-            title: "Score project library",
-            body: "These projects become the common entry point for OSMD preview, correction, transposition, Jianpu conversion, Tone.js playback, and export.",
-            loading: "Loading score projects...",
-            empty: "No score projects yet. Import one MusicXML file to create the first structured score.",
-            open: "Open project",
+            eyebrow: "My scores",
+            title: "Saved scores",
+            body: "Open a score to continue correcting, converting, transposing, practicing, or exporting.",
+            loading: "Loading scores...",
+            empty: "No scores yet. Create your first score and it will appear here.",
+            open: "Open score",
             source: "Source file",
-            revision: "Revision",
+            revision: "Edit history",
           },
         };
   const omrCopy =
@@ -158,76 +160,76 @@ export function ScoreLibraryManager() {
       ? {
           chooseFile: "请选择 PDF 或图片文件。",
           importFailed: "OMR 导入任务创建失败。",
-          imported: "OMR 候选工程已创建，等待 Audiveris worker 处理。",
-          eyebrow: "Phase 1",
-          title: "扫描/PDF/图片 OMR 导入",
-          body: "上传扫描件后先创建乐谱工程和 omr_import 队列任务；Audiveris worker 会在后续步骤把它转换成 MusicXML 和可校对版本。",
-          dropTitle: "选择 PDF 或图片",
-          dropBody: "支持 PDF、PNG、JPG、WEBP、TIFF。当前阶段先入队并保留诊断记录，不直接伪造识别结果。",
+          imported: "文件已上传，正在识别。完成后可在“我的乐谱”中查看并校对。",
+          eyebrow: "乐谱识别",
+          title: "上传 PDF 或乐谱图片",
+          body: "把纸质谱或 PDF 变成可查看、可校对的电子乐谱。复杂谱面可能需要你手动确认少量音符。",
+          dropTitle: "点击选择 PDF 或图片",
+          dropBody: "支持 PDF、PNG、JPG、WEBP 和 TIFF。",
           selected: "已选择",
           empty: "尚未选择扫描件。",
-          button: "创建 OMR 任务",
-          importing: "正在创建任务...",
-          clear: "清空扫描件",
+          button: "开始识别",
+          importing: "正在上传...",
+          clear: "重新选择",
         }
       : {
           chooseFile: "Please choose a PDF or image file.",
           importFailed: "OMR import job could not be created.",
-          imported: "OMR candidate project created and queued for Audiveris worker processing.",
-          eyebrow: "Phase 1",
-          title: "Scan/PDF/image OMR import",
-          body: "Upload a scan to create a score project and omr_import queue item. The Audiveris worker will later convert it into MusicXML and a correctable revision.",
+          imported: "Your file is uploaded and recognition has started. Review it later in My Scores.",
+          eyebrow: "Score recognition",
+          title: "Upload a PDF or score image",
+          body: "Turn a printed score or PDF into a score you can review and correct. Complex notation may need a few manual fixes.",
           dropTitle: "Choose a PDF or image",
-          dropBody: "Supports PDF, PNG, JPG, WEBP, and TIFF. This stage queues the source and diagnostics instead of pretending recognition already happened.",
+          dropBody: "Supports PDF, PNG, JPG, WEBP, and TIFF.",
           selected: "Selected",
           empty: "No scan selected yet.",
-          button: "Create OMR job",
-          importing: "Creating job...",
-          clear: "Clear scan",
+          button: "Start recognition",
+          importing: "Uploading...",
+          clear: "Choose another file",
         };
   const scoreJsonCopy =
     locale === "zh-CN"
       ? {
-          chooseFile: "请选择 Score JSON 快照文件。",
-          importFailed: "Score JSON 导入失败。",
-          imported: "Score JSON 快照已恢复为乐谱工程。",
-          eyebrow: "Foundation",
-          title: "导入 Score JSON 快照",
-          body: "把之前导出的内部结构化乐谱重新恢复成工程，适合备份、迁移、排错和版本转移。",
-          dropTitle: "选择 .score.json 或 .json",
-          dropBody: "这是平台内部源格式；导入后可继续预览、校对、移调、播放、转简谱和导出。",
+          chooseFile: "请选择乐谱备份文件。",
+          importFailed: "备份恢复失败。",
+          imported: "乐谱备份已恢复。",
+          eyebrow: "恢复备份",
+          title: "选择乐谱备份文件",
+          body: "如果你之前从本网站下载过乐谱备份，可以在这里恢复并继续编辑。",
+          dropTitle: "点击选择备份文件",
+          dropBody: "支持 .score.json 和 .json 文件。",
           selected: "已选择",
           empty: "尚未选择 Score JSON 快照。",
-          button: "导入 Score JSON",
+          button: "恢复乐谱",
           importing: "正在导入...",
-          clear: "清空快照",
+          clear: "重新选择",
         }
       : {
-          chooseFile: "Please choose a Score JSON snapshot.",
-          importFailed: "Score JSON import failed.",
-          imported: "Score JSON snapshot restored as a score project.",
-          eyebrow: "Foundation",
-          title: "Import Score JSON snapshot",
-          body: "Restore an exported internal score model as a project for backups, migration, debugging, and version handoff.",
-          dropTitle: "Choose .score.json or .json",
-          dropBody: "This is the platform's internal source format; after import it can preview, correct, transpose, play, convert to Jianpu, and export.",
+          chooseFile: "Please choose a score backup file.",
+          importFailed: "The backup could not be restored.",
+          imported: "Your score backup has been restored.",
+          eyebrow: "Restore a backup",
+          title: "Choose a score backup",
+          body: "Restore a score backup previously downloaded from this site and continue editing it.",
+          dropTitle: "Choose a backup file",
+          dropBody: "Supports .score.json and .json files.",
           selected: "Selected",
           empty: "No Score JSON snapshot selected yet.",
-          button: "Import Score JSON",
+          button: "Restore score",
           importing: "Importing...",
-          clear: "Clear snapshot",
+          clear: "Choose another file",
         };
   const midiCopy =
     locale === "zh-CN"
       ? {
           chooseFile: "请选择 MIDI 文件。",
           importFailed: "MIDI 导入失败。",
-          imported: "MIDI 已转换为乐谱工程。",
-          eyebrow: "Foundation",
-          title: "导入 MIDI 为乐谱工程",
-          body: "上传 .mid/.midi 后，系统会提取音符、速度、拍号和轨道信息，生成可预览、播放、移调和导出的 Score JSON。",
-          dropTitle: "选择 .mid 或 .midi",
-          dropBody: "这是基础 MIDI 导入，会优先保证结构化和可播放；复杂排版可后续在校对面板修正。",
+          imported: "MIDI 已导入，可以在“我的乐谱”中打开。",
+          eyebrow: "导入 MIDI",
+          title: "选择 MIDI 文件",
+          body: "把 MIDI 中的音符和节奏转换成可查看、播放和移调的乐谱。复杂排版可能需要手动调整。",
+          dropTitle: "点击选择 .mid 或 .midi 文件",
+          dropBody: "支持标准 MIDI 文件。",
           selected: "已选择",
           empty: "尚未选择 MIDI 文件。",
           button: "导入 MIDI",
@@ -239,10 +241,10 @@ export function ScoreLibraryManager() {
           importFailed: "MIDI import failed.",
           imported: "MIDI converted into a score project.",
           eyebrow: "Foundation",
-          title: "Import MIDI as a score project",
-          body: "Upload .mid/.midi to extract notes, tempo, meter, and tracks into Score JSON for preview, playback, transposition, and export.",
-          dropTitle: "Choose .mid or .midi",
-          dropBody: "This first MIDI import prioritizes structure and playback; complex notation layout can be corrected later.",
+          title: "Choose a MIDI file",
+          body: "Turn MIDI notes and rhythm into a score you can view, play, and transpose. Complex engraving may need manual adjustment.",
+          dropTitle: "Choose a .mid or .midi file",
+          dropBody: "Supports standard MIDI files.",
           selected: "Selected",
           empty: "No MIDI file selected yet.",
           button: "Import MIDI",
@@ -254,43 +256,43 @@ export function ScoreLibraryManager() {
       ? {
           chooseFile: "请选择音频文件。",
           importFailed: "音频转谱任务创建失败。",
-          imported: "音频转谱候选工程已创建，等待 Basic Pitch/转谱管线处理。",
-          eyebrow: "Phase 7",
-          title: "音频转五线谱候选",
-          body: "上传 MP3/WAV 等音频后，先创建 source_audio 和 audio_transcribe 任务；后续通过 Basic Pitch 生成 MIDI 候选，再清理成 MusicXML/Score JSON。",
-          dropTitle: "选择音频文件",
-          dropBody: "支持 WAV、MP3、M4A、AAC、FLAC、OGG、AIFF。当前是实验性候选入口，不承诺自动识别完全准确。",
+          imported: "音频已上传，正在尝试生成乐谱。完成后请检查音高和节奏。",
+          eyebrow: "录音转乐谱（试用功能）",
+          title: "选择录音文件",
+          body: "上传一段旋律录音，系统会尝试生成可编辑乐谱。多人合奏、噪声或复杂和声可能影响结果。",
+          dropTitle: "点击选择音频",
+          dropBody: "支持 WAV、MP3、M4A、AAC、FLAC、OGG 和 AIFF。",
           selected: "已选择",
           empty: "尚未选择音频。",
-          button: "创建音频转谱任务",
-          importing: "正在创建任务...",
-          clear: "清空音频",
+          button: "开始转谱",
+          importing: "正在上传...",
+          clear: "重新选择",
         }
       : {
           chooseFile: "Please choose an audio file.",
           importFailed: "Audio transcription job could not be created.",
           imported: "Audio transcription project created. Basic Pitch will try to create MIDI and a first-pass editable score revision.",
           eyebrow: "Phase 7",
-          title: "Audio-to-score candidate",
-          body: "Upload MP3/WAV-like audio to create a source_audio asset and audio_transcribe job. Basic Pitch can create a MIDI candidate and the worker will try to turn it into a first-pass editable Score JSON revision.",
+          title: "Choose a recording",
+          body: "Upload a melody recording and the site will try to create an editable score. Ensembles, noise, and complex harmony can reduce accuracy.",
           dropTitle: "Choose an audio file",
-          dropBody: "Supports WAV, MP3, M4A, AAC, FLAC, OGG, and AIFF. This is an experimental candidate import, not a promise of perfect transcription.",
+          dropBody: "Supports WAV, MP3, M4A, AAC, FLAC, OGG, and AIFF.",
           selected: "Selected",
           empty: "No audio selected yet.",
-          button: "Create audio job",
-          importing: "Creating job...",
-          clear: "Clear audio",
+          button: "Start transcription",
+          importing: "Uploading...",
+          clear: "Choose another file",
         };
   const jianpuCopy =
     locale === "zh-CN"
       ? {
           empty: "请输入简谱文本。",
           importFailed: "简谱导入失败。",
-          imported: "简谱工程已创建，可继续预览、移调、播放和导出 MusicXML。",
-          eyebrow: "Phase 2",
-          title: "简谱文本生成五线谱工程",
-          body: "输入 1=C、拍号、数字音符和小节线，系统会生成统一的 Score JSON；之后可转五线谱、播放、移调和导出。",
-          titleLabel: "工程标题",
+          imported: "简谱已生成，可以在“我的乐谱”中查看五线谱并继续编辑。",
+          eyebrow: "简谱转五线谱",
+          title: "输入简谱",
+          body: "填写调号、拍号和数字音符，系统会生成对应五线谱。生成后可以播放、移调和导出。",
+          titleLabel: "乐谱标题",
           titlePlaceholder: "例如：小星星简谱",
           textLabel: "简谱文本",
           textPlaceholder: "1=C\n4/4\n1 1 5 5 | 6 6 5 - |",
@@ -303,9 +305,9 @@ export function ScoreLibraryManager() {
           importFailed: "Jianpu import failed.",
           imported: "Jianpu score project created. Preview, transpose, playback, and MusicXML export can use it now.",
           eyebrow: "Phase 2",
-          title: "Create a staff score from Jianpu",
-          body: "Enter 1=C, meter, numbered notes, rests, and barlines. The importer turns it into the same Score JSON used by preview, playback, transposition, and export.",
-          titleLabel: "Project title",
+          title: "Enter numbered notation",
+          body: "Enter the key, meter, numbered notes, rests, and barlines to create a staff score you can play, transpose, and export.",
+          titleLabel: "Score title",
           titlePlaceholder: "Example: Twinkle in Jianpu",
           textLabel: "Jianpu text",
           textPlaceholder: "1=C\n4/4\n1 1 5 5 | 6 6 5 - |",
@@ -451,7 +453,7 @@ export function ScoreLibraryManager() {
         source_type: extension === "pdf" ? "pdf" : "image",
       });
       setSelectedOmrFile(null);
-      const input = document.getElementById("omr-import-input") as HTMLInputElement | null;
+      const input = document.getElementById("score-scan-input") as HTMLInputElement | null;
       if (input) {
         input.value = "";
       }
@@ -672,7 +674,7 @@ export function ScoreLibraryManager() {
 
   return (
     <div className="page-stack">
-      {access && !hasPaidAccess ? (
+      {view === "library" && access && !hasPaidAccess ? (
         <section className="surface-panel stack-sm">
           <p className="eyebrow">{locale === "zh-CN" ? "免费单页预览" : "Free one-page preview"}</p>
           <h2 className="card-title">
@@ -682,15 +684,15 @@ export function ScoreLibraryManager() {
           </h2>
           <p className="body-copy">
             {locale === "zh-CN"
-              ? "免费层可查看 OMR 候选五线谱，但不提供下载。再次识别、多页处理、校对和完整导出需要开通权限。"
-              : "The free tier shows an OMR staff-notation candidate without downloads. Additional scans, multi-page processing, correction, and exports require access."}
+              ? "免费层可以查看识别后的五线谱，但不提供下载。再次识别、多页处理、校对和完整导出需要开通权限。"
+              : "The free tier shows the recognized staff score without downloads. Additional scans, multi-page processing, correction, and exports require access."}
           </p>
           <div className="button-row">
-            <a href="#omr-import" className="button button-primary">
+            <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
               {freeTrialAvailable
                 ? locale === "zh-CN" ? "开始免费预览" : "Start free preview"
                 : locale === "zh-CN" ? "查看试用工程" : "View trial project"}
-            </a>
+            </Link>
             <Link
               href={accountActivationRoute}
               className="button button-secondary"
@@ -702,7 +704,7 @@ export function ScoreLibraryManager() {
         </section>
       ) : null}
 
-      <div className="metric-grid">
+      {view === "library" ? <div className="metric-grid">
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.projects[0]}</p>
           <p className="metric-value">{scores.length}</p>
@@ -710,7 +712,7 @@ export function ScoreLibraryManager() {
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.format[0]}</p>
-          <p className="metric-value">MusicXML</p>
+            <p className="metric-value">{locale === "zh-CN" ? "可编辑" : "Editable"}</p>
           <p className="helper-copy">{copy.metrics.format[1]}</p>
         </div>
         <div className="metric-card">
@@ -718,10 +720,10 @@ export function ScoreLibraryManager() {
           <p className="metric-value">{revisionCount}</p>
           <p className="helper-copy">{copy.metrics.revisions[1]}</p>
         </div>
-      </div>
+      </div> : null}
 
-      <section className="surface-panel studio-split">
-        <form id="musicxml-import" onSubmit={handleImport} className="converter-side" hidden={!hasPaidAccess}>
+      <section className={`surface-panel${view === "library" ? "" : " single-task-panel"}`}>
+        {view === "musicxml" && hasPaidAccess ? <form id="musicxml-import" onSubmit={handleImport} className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{copy.import.eyebrow}</p>
             <h2 className="card-title">{copy.import.title}</h2>
@@ -764,9 +766,9 @@ export function ScoreLibraryManager() {
           </div>
 
           {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
-        </form>
+        </form> : null}
 
-        <div id="score-json-import" className="converter-side" hidden={!hasPaidAccess}>
+        {view === "backup" && hasPaidAccess ? <div id="score-json-import" className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{scoreJsonCopy.eyebrow}</p>
             <h2 className="card-title">{scoreJsonCopy.title}</h2>
@@ -807,9 +809,9 @@ export function ScoreLibraryManager() {
               {scoreJsonCopy.clear}
             </button>
           </div>
-        </div>
+        </div> : null}
 
-        <div id="midi-import" className="converter-side" hidden={!hasPaidAccess}>
+        {view === "midi" && hasPaidAccess ? <div id="midi-import" className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{midiCopy.eyebrow}</p>
             <h2 className="card-title">{midiCopy.title}</h2>
@@ -850,24 +852,24 @@ export function ScoreLibraryManager() {
               {midiCopy.clear}
             </button>
           </div>
-        </div>
+        </div> : null}
 
-        <div id="omr-import" className="converter-side">
+        {view === "scan" ? <div id="score-scan" className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{omrCopy.eyebrow}</p>
             <h2 className="card-title">{omrCopy.title}</h2>
             <p className="body-copy">{omrCopy.body}</p>
           </div>
 
-          <label htmlFor="omr-import-input" className="file-dropzone">
+          <label htmlFor="score-scan-input" className="file-dropzone">
             <div className="stack-xs">
               <p className="dropzone-title">{omrCopy.dropTitle}</p>
               <p className="dropzone-copy">{omrCopy.dropBody}</p>
             </div>
-            <span className="status-chip tone-amber">OMR</span>
+            <span className="status-chip tone-amber">PDF / JPG</span>
           </label>
           <input
-            id="omr-import-input"
+            id="score-scan-input"
             className="sr-only"
             type="file"
             accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/*"
@@ -892,9 +894,9 @@ export function ScoreLibraryManager() {
               {omrCopy.clear}
             </button>
           </div>
-        </div>
+        </div> : null}
 
-        <div id="audio-import" className="converter-side" hidden={!hasPaidAccess || !audioTranscriptionAvailable}>
+        {view === "audio" && hasPaidAccess && audioTranscriptionAvailable ? <div id="audio-import" className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{audioCopy.eyebrow}</p>
             <h2 className="card-title">{audioCopy.title}</h2>
@@ -935,9 +937,9 @@ export function ScoreLibraryManager() {
               {audioCopy.clear}
             </button>
           </div>
-        </div>
+        </div> : null}
 
-        <form id="jianpu-import" onSubmit={handleJianpuImport} className="converter-side" hidden={!hasPaidAccess}>
+        {view === "jianpu" && hasPaidAccess ? <form id="jianpu-import" onSubmit={handleJianpuImport} className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{jianpuCopy.eyebrow}</p>
             <h2 className="card-title">{jianpuCopy.title}</h2>
@@ -982,9 +984,9 @@ export function ScoreLibraryManager() {
               {jianpuCopy.clear}
             </button>
           </div>
-        </form>
+        </form> : null}
 
-        <div className="preview-side">
+        {view === "library" ? <div className="preview-side">
           <div className="stack-sm">
             <p className="eyebrow">{copy.list.eyebrow}</p>
             <h2 className="card-title">{copy.list.title}</h2>
@@ -1012,7 +1014,16 @@ export function ScoreLibraryManager() {
               ))}
             </div>
           ) : null}
-        </div>
+          <div className="button-row">
+            <Link href={`${APP_ROUTES.scores}/new`} className="button button-primary">
+              {locale === "zh-CN" ? "创建新乐谱" : "Create a new score"}
+            </Link>
+          </div>
+        </div> : null}
+
+        {view !== "library" && view !== "musicxml" && status && statusTone ? (
+          <p className={`form-status ${statusTone}`}>{status}</p>
+        ) : null}
       </section>
     </div>
   );

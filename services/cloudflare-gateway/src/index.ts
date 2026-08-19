@@ -20,6 +20,7 @@ type Bindings = {
   PUBLIC_API_URL: string;
   PUBLIC_COLLABORATION_URL: string;
   ALLOWED_ORIGINS: string;
+  GOOGLE_CLIENT_ID: string;
   S3_BUCKET: string;
   S3_KEY_PREFIX: string;
   POSTGRES_URL: string;
@@ -84,6 +85,7 @@ function baseContainerEnvironment(env: Bindings) {
     PUBLIC_APP_URL: env.PUBLIC_APP_URL,
     PUBLIC_API_URL: env.PUBLIC_API_URL,
     APP_PUBLIC_URL: env.PUBLIC_APP_URL,
+    GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
     SECURITY_AUDIT_HASH_SALT: env.SECURITY_AUDIT_HASH_SALT,
     METRICS_BEARER_TOKEN: env.METRICS_BEARER_TOKEN,
     ADMIN_API_KEY: env.ADMIN_API_KEY,
