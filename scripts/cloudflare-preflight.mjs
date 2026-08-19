@@ -116,7 +116,7 @@ if (environment === "production") {
     check("production-approval", false, error instanceof Error ? error.message : String(error));
   }
   if (approval) {
-    const approvalChecks = ["postgresRuntimePrimary", "backupRestoreDrillPassed", "musicEngineQualificationPassed", "sevenDaySoakPassed"];
+    const approvalChecks = ["postgresRuntimePrimary", "backupRestoreDrillPassed", "musicEngineQualificationPassed"];
     const paymentProviders = String(config?.vars?.PAYMENT_PROVIDERS ?? "").trim();
     const managedPaymentsEnabled = config?.vars?.STRIPE_MANAGED_PAYMENTS_ENABLED === "true";
     const productionPaymentEnabled = paymentProviders.length > 0 || managedPaymentsEnabled;

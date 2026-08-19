@@ -49,10 +49,9 @@ This audit compares the current ScoreTransposer implementation with the supplied
 The staging product can be deployed for controlled sandbox acceptance with visible payment entry. It must not be represented as production-ready paid SaaS until all of these are complete:
 
 1. Stripe live merchant verification and real-money subscription, renewal failure, cancellation, downgrade, and refund acceptance.
-2. Seven-day staging soak with distributed trace correlation across API, Worker, and Collaboration.
-3. Real-device, mobile-network, sleep/resume, accessibility, and cross-browser verification.
-4. R2 lifecycle, backup restore, and cross-region recovery evidence.
-5. SoundFont commercial license approval and acoustic golden tests.
-6. Security, privacy, copyright, tax, terms, refund-policy, and incident-response sign-off.
+2. Real-device, mobile-network, sleep/resume, accessibility, and cross-browser verification.
+3. R2 lifecycle, backup restore, and cross-region recovery evidence.
+4. SoundFont commercial license approval and acoustic golden tests.
+5. Security, privacy, copyright, tax, terms, refund-policy, and incident-response sign-off.
 
 The supplied template improves commercial presentation and deployment discipline, but it does not close the specialist notation, legal, reliability, or live-payment gates listed above.

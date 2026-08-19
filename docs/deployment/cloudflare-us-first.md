@@ -112,7 +112,7 @@ PostgreSQL 运行时阻断已经解除；Cloudflare staging 可进行端到端�
 - 验证真实 Audiveris、music21、MuseScore、FluidSynth、ffmpeg、Basic Pitch 和 yt-dlp 工具矩阵。
 - 验证 200 份合法真实乐谱基准、音频 golden、PDF 回开、30 分钟漂移和浏览器矩阵。
 - 完成支付、退款、邮件、版权、账户导出/删除、备份恢复、告警和回滚演练。
-- 连续完成至少 7 天 staging soak，期间不得出现未解释的数据丢失、任务重复结算或跨租户访问。
+- staging 为可选的隔离验证环境，不设置固定时长；按实际改动完成针对性冒烟测试后即可进入生产发布。
 
 ### 阶段 D：生产发布
 

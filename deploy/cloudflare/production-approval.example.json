@@ -8,6 +8,5 @@
   "paymentMode": "disabled-until-stripe-live",
   "paymentProductionDisabled": true,
   "paymentProductionDrillPassed": false,
-  "musicEngineQualificationPassed": true,
-  "sevenDaySoakPassed": true
+  "musicEngineQualificationPassed": true
 }

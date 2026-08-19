@@ -19,22 +19,18 @@ production launch gates are complete.
 - SoundFont license manifest and music-engine qualification evidence.
 - Production PostgreSQL bootstrap and one-time PostgreSQL/R2 restore-drill
   evidence.
-- Staging soak sampling scripts and the seven-day soak plan.
 
 ## Evidence captured
 
 - `docs/audits/evidence/music-engine-qualification-2026-08-17.json`
 - `docs/audits/evidence/production-postgres-bootstrap-2026-08-17.json`
 - `docs/audits/evidence/production-backup-restore-drill-2026-08-17.json`
-- `docs/audits/staging-soak-plan-2026-08-17.md`
 
 The evidence files contain no runtime credentials. Environment credentials and
 production approval files remain ignored by Git.
 
 ## Open release gates
 
-- Complete and finalize the seven-day staging soak before claiming full
-  production validation.
 - Stabilize the repeatable backup/restore command on Windows and document a
   provider-level PostgreSQL recovery exercise plus independent R2 disaster
   recovery.

@@ -32,8 +32,6 @@
     "verify:staging:data-services:full": "powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/verify-staging-data-services.ps1 -RunIntegrationTests",
     "verify:staging:core-score-e2e": "node scripts/run-deployed-core-score-e2e.mjs",
     "verify:production:backup-restore": "node scripts/run-production-backup-restore-drill.mjs",
-    "verify:staging:soak-sample": "node scripts/staging-soak-sample.mjs",
-    "verify:staging:soak-finalize": "node scripts/staging-soak-sample.mjs --finalize",
     "generate:samples": "node samples/generate-fixtures.mjs",
     "evaluate:samples": "npm run build -w @score/worker && npm run evaluate:samples -w @score/worker",
     "audit:encoding": "node scripts/audit-text-encoding.mjs",

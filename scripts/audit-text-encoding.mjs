@@ -26,6 +26,7 @@ const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclud
   .toString("utf8")
   .split("\0")
   .filter(Boolean)
+  .filter((file) => fs.existsSync(file))
   .filter((file) => textExtensions.has(file.slice(file.lastIndexOf(".")).toLowerCase()));
 
 const failures = [];

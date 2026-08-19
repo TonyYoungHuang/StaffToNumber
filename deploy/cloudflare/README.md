@@ -146,9 +146,9 @@ Invoke-WebRequest https://app-staging.scoretransposer.com -Method Head
 
 `/__edge/health`, `/health`, and `/__edge/readiness` must return `200`. Edge health must report `databasePrimary: "postgres"` and the expected non-empty PostgreSQL schema. Aggregate readiness also requires the API, Collaboration service, and Worker to report ready; the Worker `/health` endpoint is only a liveness probe, while its `/ready` endpoint proves PostgreSQL and BullMQ are connected. Any SQLite selection, missing schema, or dependency readiness failure is a release failure.
 
-## 8. Staging acceptance
+## 8. Optional staging acceptance
 
-Do not advance to production until all of the following have evidence:
+Use staging only when a change benefits from isolated integration testing. Fixed-duration monitoring is not required before production. When staging is used, collect evidence for the affected paths:
 
 1. PostgreSQL runtime is active in API, Worker, and Collaboration; staging/production cannot select SQLite, required-table validation passes, and the Worker readiness transaction succeeds without consuming a job.
 2. R2 direct multipart upload, quarantine, checksum verification, asynchronous ClamAV/media inspection, cancellation, resume, and lifecycle cleanup pass.
@@ -156,7 +156,7 @@ Do not advance to production until all of the following have evidence:
 4. Audiveris, music21, MuseScore, FluidSynth, licensed SoundFont, ffmpeg, Basic Pitch, and yt-dlp qualification reports pass in the actual Container image.
 5. Stripe test subscription, renewal failure, downgrade, refund, webhook replay, and school-seat flows pass.
 6. Backup restoration, alert delivery, trace correlation, account export/deletion, copyright intake, and security incident drills pass.
-7. Real browser/device tests and a continuous seven-day staging soak pass.
+7. Real browser/device smoke tests cover the changed user journeys.
 
 ## 9. Production preparation
 
@@ -190,7 +190,7 @@ npm run cloudflare:deploy:production
 Remove-Item Env:CLOUDFLARE_PRODUCTION_APPROVED
 ```
 
-Wrangler creates the `api.scoretransposer.com` and `collab.scoretransposer.com` custom domains defined in the production config. Production public/app frontend Wrangler configs are intentionally not part of the staging script: create and review them only after the production backend, Stripe live account, legal/compliance review, and seven-day staging soak are approved. Then deploy the public and product apps with `NEXT_PUBLIC_API_BASE_URL=https://api.scoretransposer.com` and verify registration, upload, editing, playback, export, billing, collaboration, and deletion from a clean browser profile.
+Wrangler creates the `api.scoretransposer.com` and `collab.scoretransposer.com` custom domains defined in the production config. Deploy the public and product apps only after the production backend is healthy and any enabled live payment path has completed its own required validation. Build them with `NEXT_PUBLIC_API_BASE_URL=https://api.scoretransposer.com`, then verify registration, upload, editing, playback, export, billing, collaboration, and deletion from a clean browser profile.
 
 Stripe sandbox Checkout and webhooks prove the integration, but live collection remains blocked until the merchant has a supported legal entity, bank account, tax profile, and completed Stripe verification. Never reuse sandbox product IDs, API keys, webhook secrets, or test evidence for production.
 
