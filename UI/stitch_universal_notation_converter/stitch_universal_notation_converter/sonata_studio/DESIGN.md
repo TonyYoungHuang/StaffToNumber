@@ -1,86 +1,146 @@
-# Design System Specification: The Digital Score
+# Design System Specification: The Light Score Studio
 
-## 1. Overview & Creative North Star
-The Creative North Star for this design system is **"The Sonic Manuscript."** 
+## 1. Creative north star
 
-We are moving away from the rigid, sterile grids of standard SaaS platforms and toward an editorial experience that mirrors the elegance of a premium printed musical score. This system balances the technical precision required by educators with the soulful, atmospheric depth desired by performers. 
+ScoreTransposer is a light, precise music workspace. The visual metaphor is a clean score desk: white paper, quiet neutral surfaces, deep ink, and a single expressive brand accent.
 
-The aesthetic is driven by **Atmospheric Asymmetry**. By utilizing significant white space (rhythmic pauses) and high-contrast typography scales, we create a layout that feels composed rather than constructed. Overlapping elements and layered "glass" surfaces replace traditional borders, resulting in a UI that feels fluid, sophisticated, and unmistakably premium.
+The product must never default to a dark website or a dark application shell. Dark media may appear only when it is part of source content supplied by a user. Product chrome, navigation, forms, score review, pricing, support, and marketing surfaces remain light.
 
----
+The design combines three qualities:
 
-## 2. Colors
-Our palette is rooted in the depth of a midnight performance hall. We use charcoal and deep indigo to create a canvas where "melody" and "rhythm" can vibrate.
+- the clarity and trust of a professional productivity tool;
+- the rhythm and editorial spacing of printed music;
+- the immediacy of a modern AI workspace where input and result are visible together.
 
-### The "No-Line" Rule
-**Explicit Instruction:** Designers are prohibited from using 1px solid borders to define sections or containers. Visual boundaries must be achieved through:
-- **Tonal Shifts:** Placing a `surface-container-low` (#1c1b1b) card atop a `surface` (#131313) background.
-- **Negative Space:** Using the spacing scale to create "silent" regions that naturally separate content.
+## 2. Color system
 
-### Surface Hierarchy & Nesting
-Treat the UI as a series of physical layers. Use the surface-container tiers to define importance:
-- **Level 0 (Foundation):** `surface` (#131313) for the main application background.
-- **Level 1 (Sections):** `surface-container-low` (#1c1b1b) for large architectural blocks.
-- **Level 2 (Interaction):** `surface-container-high` (#2a2a2a) for active cards or floating panels.
-- **Level 3 (Focus):** `surface-container-highest` (#353534) for tooltips and modal elements.
+### Foundation
 
-### The "Glass & Gradient" Rule
-To add "soul" to the digital interface:
-- **Glassmorphism:** For floating controls (like music playback bars), use `surface-variant` (#353534) at 60% opacity with a `24px` backdrop blur.
-- **Signature Gradients:** Main CTAs should not be flat. Apply a subtle linear gradient from `primary` (#cdbdff) to `primary-container` (#360094) at a 135-degree angle to evoke movement.
+- Page background: `#f7f8fc`.
+- Quiet section background: `#f1f3f9`.
+- Primary surface and score paper: `#ffffff`.
+- Primary text: `#151a2d`.
+- Secondary text: `#536078`.
+- Soft metadata: `#778198`.
+- Hairline: `#dfe3ee`.
 
----
+### Brand and states
+
+- Brand primary: `#5b4ee8`.
+- Brand strong: `#4134c6`.
+- Informational music accent: `#0b7f8c`.
+- Confirmed/success: green, separate from the brand color.
+- Review/low confidence: amber.
+- Error: red.
+
+Brand purple must not double as a success state. Green must not be used as the default brand color.
+
+### Light-only rule
+
+- Do not introduce a dark global theme.
+- Do not use charcoal sections as a shortcut for visual drama.
+- Create contrast with white paper, pale tinted sections, scale, spacing, imagery, and notation motion.
+- Dialogs and floating controls use white elevated surfaces, not black glass.
 
 ## 3. Typography
-The typographic system is a dialogue between the tradition of the **Newsreader** serif and the modernity of the **Manrope** sans-serif.
 
-- **Display & Headlines (Newsreader):** Used for storytelling, page titles, and musical terms. The serif's characterful terminals evoke the ink of a hand-inked score.
-- **UI & Labels (Manrope):** Used for all functional elements, data points, and navigation. It provides the "metronome"—the steady, legible pulse that keeps the user grounded.
+- Use a highly legible sans-serif family for Chinese, English, numbers, settings, and dense product UI.
+- Display headings may use a compatible editorial face later, but only after Chinese and musical-symbol coverage is verified.
+- Hero headings use strong scale and tight leading; body copy remains calm and readable.
+- Do not use a decorative serif inside operational forms or score correction controls.
 
-**Hierarchy Strategy:** 
-Use `display-lg` (3.5rem) for hero moments, paired immediately with `label-md` (0.75rem) for metadata. This extreme scale contrast creates an editorial, high-end feel that standard "step-by-step" hierarchies lack.
+Initial scale:
 
----
+- Hero: 56–72px desktop, 36–42px mobile.
+- Section title: 40–48px desktop, 30–36px mobile.
+- Card title: 20–24px.
+- Body: 17–20px.
+- Helper text: 13–15px.
 
-## 4. Elevation & Depth
-In this system, depth is felt, not seen. We reject heavy drop shadows in favor of **Tonal Layering**.
+## 4. Layout and rhythm
 
-- **The Layering Principle:** A card does not need a shadow to be "above" the background; it simply needs to be one tier higher in the surface-container scale (e.g., `surface-container-lowest` on a `surface-container-low` section).
-- **Ambient Shadows:** When a floating state is required (e.g., a dragged music file), use a shadow with a `32px` blur and `6%` opacity. The shadow color must be a tint of `on-surface` (#e5e2e1) rather than pure black.
-- **The Ghost Border Fallback:** If accessibility requires a container edge, use the `outline-variant` (#454652) at **15% opacity**. Never use 100% opaque lines.
+- Public content max width: 1200–1280px.
+- Major sections use 80–112px vertical spacing.
+- Hero shows the input action and a real score result in the same viewport.
+- Use full-width pale section backgrounds instead of placing every section inside a bordered panel.
+- A viewport should not show more than two nested container edges.
+- Use asymmetry only when it improves the input/result relationship or score reading.
 
----
+## 5. Surfaces and elevation
 
-## 5. Components
+- Primary cards use white surfaces on pale page backgrounds.
+- Large workbenches use 18–24px radius.
+- Standard cards use 14–18px radius.
+- Controls use 10–14px radius.
+- Pills are reserved for filters, compact modes, and status.
+- Use shadows only for the hero workbench, drag state, popover, dialog, or another genuine floating layer.
+- Ordinary sections should be separated by spacing and tonal shifts, not repeated borders.
+
+## 6. Components
 
 ### Buttons
-- **Primary:** `primary` (#cdbdff) fill with `on-primary` (#370096) text. Use the `xl` (0.75rem) roundedness for a modern, tactile feel.
-- **Secondary:** Transparent fill with a "Ghost Border" and `primary` text.
-- **Tertiary (Melody Blue):** Use `tertiary` (#00daf3) for specialized musical actions (e.g., "Record," "Sync").
 
-### Cards & Lists
-- **The Forbid Rule:** Divider lines are strictly forbidden. 
-- **List Items:** Separate items using a `surface-container-low` background on hover, or simply 16px of vertical white space.
-- **Feature Cards:** Use `surface-container-lowest` (#0e0e0e) for the card body to create a "sunken" or "carved" look against a `surface` background.
+- Primary: solid brand purple, white text, one per section.
+- Secondary: white surface, neutral border, dark text.
+- Text action: no container until hover/focus.
+- Success, warning, and destructive buttons use their semantic colors only when the action carries that meaning.
 
-### Input Fields
-- Avoid the "box" look. Use a `surface-container-highest` (#353534) bottom-weighted fill with no border. 
-- The cursor/caret should always use the `tertiary` (#00daf3) color to provide a rhythmic "pop" of color during data entry.
+### Upload and input
 
-### Music-Specific Components
-- **The Waveform/Timeline:** Use `secondary-container` (#3c494f) for the background track and `tertiary` (#00daf3) for the active "Melody Blue" progress to ensure high visibility against the dark charcoal.
-- **Metronome/Tempo Chips:** Use `secondary` (#bbc8d0) with `label-sm` typography. These should feel like small, precise machine-tooled parts.
+- The primary public entry says exactly where the upload happens.
+- The marketing site must not pretend that a file was uploaded when the protected app owns the real upload flow.
+- Product upload surfaces expose accepted formats, free limits, privacy, progress, error, and recovery states.
 
----
+### Score proof
 
-## 6. Do's and Don'ts
+- Prefer real OSMD/VexFlow output and real product captures.
+- Show the relationship among source scan, OMR candidate, diagnostics, confirmed revision, Jianpu, transposition, playback, and export.
+- Never use decorative fake notation as evidence of engine quality.
 
-### Do
-- **Do** use intentional asymmetry. A heading might be left-aligned while the body text is indented by two grid columns to create a "musical" syncopation.
-- **Do** use `Newsreader` for any text that is meant to be "read" (articles, descriptions) and `Manrope` for any text meant to be "used" (buttons, settings).
-- **Do** leverage the `surface-bright` (#393939) token for subtle hover states on dark backgrounds.
+### Status and uncertainty
 
-### Don't
-- **Don't** use pure black (#000000). Always use `surface` or `surface-container-lowest` to maintain the sophisticated "charcoal" depth.
-- **Don't** use standard icons. All iconography must be custom-contoured, echoing the curves of musical notation (clefs, notes, and rests).
-- **Don't** use harsh transitions. All state changes (hover, active, focus) should have a minimum `200ms` ease-in-out transition to mimic the swell of an instrument.
+- OMR results are candidates until confirmed.
+- Low-confidence notation uses amber plus text and a location cue.
+- Confirmed revisions use green plus text/icon.
+- Errors use red plus a recovery action.
+- Color is never the only status signal.
+
+## 7. Motion
+
+- Motion explains state, progress, revision change, playback, or notation transformation.
+- Normal transitions: 180–300ms.
+- Hover movement stays within 1–2px or about 1.01–1.03 scale.
+- Pressed states may use about 0.98 scale.
+- Playback cursors and measure highlights should feel rhythmic but never obscure notation.
+- Respect `prefers-reduced-motion` everywhere.
+
+## 8. Responsive behavior
+
+- Use an explicit mobile menu instead of relying on an invisible horizontal navigation scrollbar.
+- Keep the hero action and result understandable at 390px.
+- Touch targets are at least 44px.
+- Score previews use deliberate zoom, pan, or open-large behavior instead of becoming unreadably small.
+- Do not hide the product result simply to make the mobile hero shorter.
+
+## 9. Accessibility and truthfulness
+
+- Preserve visible keyboard focus.
+- Tabs, accordions, menus, upload controls, and dialogs use correct semantics.
+- Provide alternative text for score and product evidence.
+- Videos default to muted and provide pause and text alternatives.
+- Public claims match the currently deployed capability flags.
+- Do not fabricate usage counts, testimonials, processing quality, or supported formats.
+
+## 10. Product architecture rule
+
+Every durable UI path returns to the same MusicXML and Score JSON score project:
+
+```text
+PDF/image/audio source
+→ candidate import and diagnostics
+→ confirmed Score JSON revision
+→ correction / Jianpu / transposition / playback
+→ MusicXML / MIDI / PDF / image / audio outputs
+```
+
+The design may present focused entry pages, but it must not imply that these are disconnected one-off converters.

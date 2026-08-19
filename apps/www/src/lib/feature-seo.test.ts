@@ -93,4 +93,11 @@ test("each feature publishes parseable native-format input and output examples",
   assert.match(transposedXml, /<fifths>2<\/fifths>/);
   assert.deepEqual([...transposedXml.matchAll(/<step>([A-G])<\/step>/g)].map((match) => match[1]), ["D", "E", "F", "A"]);
   assert.match(transposedXml, /<step>F<\/step><alter>1<\/alter>/);
+
+  const sourceWav = buildFeatureExampleFile("score-to-audio", "output", { semitones: 0 });
+  const shiftedWav = buildFeatureExampleFile("score-to-audio", "output", { semitones: 2 });
+  assert.ok(sourceWav && shiftedWav);
+  assert.equal(sourceWav.bytes.length, 102_444, "the four-note WAV should remain a 3.2-second deterministic sample");
+  assert.equal(shiftedWav.bytes.length, sourceWav.bytes.length);
+  assert.notDeepEqual(sourceWav.bytes, shiftedWav.bytes, "transposed audio must not reuse the source waveform");
 });

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { APP_ROUTES } from "@score/shared";
 import { MetricCard, Panel, PreviewStaffGraphic, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
@@ -6,6 +7,7 @@ import { getFeatureSeoRecord } from "../../lib/feature-seo";
 import { findPlatformFeaturePage, isFeatureAvailable, isFeatureIndexable, platformFeaturePages } from "../../lib/platform-feature-pages";
 import { getAppHomeUrl, getAppStartConversionUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
 import { readSiteLocale } from "../../lib/locale";
+import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 
 type FeatureRouteParams = {
   featureSlug: string;
@@ -209,12 +211,13 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
 
       <section className="surface-panel stack-lg">
         <SectionIntro eyebrow="Real product example" title="One score, structured input and reusable output" body={`${seo.screenshot.evidence} Captured ${seo.screenshot.capturedAt}.`} />
-        <img
+        <Image
           className="feature-product-screenshot"
           src={seo.screenshot.src}
           width={seo.screenshot.width}
           height={seo.screenshot.height}
           alt={seo.screenshot.alt}
+          sizes="(max-width: 760px) calc(100vw - 40px), 1100px"
         />
         <div className="split-layout">
           <Panel className="stack-sm">
@@ -234,6 +237,14 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         </div>
         <p className="body-copy">{seo.example.notes}</p>
       </section>
+
+      {page.slug === "score-to-audio" ? (
+        <FeaturePracticeDemo
+          locale={locale}
+          workspaceHref={ctaUrl}
+          workspaceAvailable={available}
+        />
+      ) : null}
 
       <section className="split-layout">
         <Panel className="stack-lg">

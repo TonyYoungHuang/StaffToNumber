@@ -2,13 +2,22 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ArrowNorthEastIcon, BrandIcon, sonataCopy } from "@score/ui";
+import type { PublicAnnouncement } from "../lib/public-content";
 import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
-export function PublicChrome({ children }: { children: ReactNode }) {
+type NavigatorWithPerformanceSignals = Navigator & {
+  connection?: { saveData?: boolean };
+  deviceMemory?: number;
+};
+
+export function PublicChrome({ children, announcement }: { children: ReactNode; announcement: PublicAnnouncement | null }) {
   const { locale } = useSiteLocale();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [announcementVisible, setAnnouncementVisible] = useState(false);
   const appUrl = getAppStartConversionUrl();
   const checkoutUrl = getCheckoutUrl(locale);
   const homeSections = { workflow: "/#workflow", useCases: "/#use-cases" } as const;
@@ -26,6 +35,8 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           terms: "条款",
           privacy: "隐私",
           copyright: "版权投诉",
+          menu: "打开导航菜单",
+          closeMenu: "关闭导航菜单",
           app: siteConfig.release.productAppAvailable ? "免费识别一页" : "上线状态",
           buy: "升级套餐",
           brandCaption: "PDF / 图片五线谱识别工作台",
@@ -43,14 +54,67 @@ export function PublicChrome({ children }: { children: ReactNode }) {
           terms: "Terms",
           privacy: "Privacy",
           copyright: "Copyright",
+          menu: "Open navigation menu",
+          closeMenu: "Close navigation menu",
           app: siteConfig.release.productAppAvailable ? "Scan one page free" : "Launch status",
           buy: "Upgrade",
           brandCaption: "PDF and image score scanner",
           footerCopy: `Scan one staff-score PDF page or image into a reviewable OMR candidate, then unlock correction, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()} workspace.`,
         };
 
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => {
+      const navigatorSignals = navigator as NavigatorWithPerformanceSignals;
+      const reduced = Boolean(
+        reducedMotion.matches
+        || navigatorSignals.connection?.saveData
+        || (navigatorSignals.deviceMemory !== undefined && navigatorSignals.deviceMemory <= 2)
+        || navigator.hardwareConcurrency <= 2,
+      );
+      document.documentElement.dataset.visualEffects = reduced ? "reduced" : "full";
+    };
+    updatePreference();
+    reducedMotion.addEventListener("change", updatePreference);
+    return () => reducedMotion.removeEventListener("change", updatePreference);
+  }, []);
+
+  useEffect(() => {
+    if (!announcement) {
+      setAnnouncementVisible(false);
+      return;
+    }
+    try {
+      setAnnouncementVisible(localStorage.getItem(`scoretransposer:announcement:${announcement.id}`) !== "dismissed");
+    } catch {
+      setAnnouncementVisible(true);
+    }
+  }, [announcement]);
+
+  function dismissAnnouncement() {
+    if (!announcement) return;
+    try {
+      localStorage.setItem(`scoretransposer:announcement:${announcement.id}`, "dismissed");
+    } catch {
+      // The bar can still be dismissed for the current page when storage is unavailable.
+    }
+    setAnnouncementVisible(false);
+  }
+
+  const announcementCopy = announcement?.copy[locale];
+
   return (
     <div className="public-frame">
+      {announcement && announcementCopy && announcementVisible ? (
+        <aside className="public-announcement" role="status" aria-label={locale === "zh-CN" ? "活动公告" : "Event announcement"}>
+          <div className="public-container public-announcement-inner">
+            <span className="public-announcement-label">{locale === "zh-CN" ? "限时活动" : "Live event"}</span>
+            <p>{announcementCopy.label}</p>
+            <Link href={announcement.href}>{announcementCopy.action}<ArrowNorthEastIcon width={14} height={14} /></Link>
+            <button type="button" onClick={dismissAnnouncement} aria-label={locale === "zh-CN" ? "关闭活动公告" : "Dismiss event announcement"}>×</button>
+          </div>
+        </aside>
+      ) : null}
       <header className="public-header">
         <div className="public-container header-inner">
           <Link href="/" className="public-brand">
@@ -63,12 +127,12 @@ export function PublicChrome({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
-          <nav className="public-nav" aria-label="Public">
-            <Link href="/pdf-score-scanner" className="nav-link">{copy.scanner}</Link>
-            <Link href="/score-editor" className="nav-link">{copy.editor}</Link>
-            <Link href="/transpose-score" className="nav-link">{copy.transpose}</Link>
-            {siteConfig.release.checkoutAvailable ? <Link href="/pricing" className="nav-link">{copy.pricing}</Link> : null}
-            {siteConfig.release.teachingAvailable ? <Link href="/teaching" className="nav-link">{copy.education}</Link> : null}
+          <nav id="public-primary-navigation" className={`public-nav${menuOpen ? " is-open" : ""}`} aria-label="Public">
+            <Link href="/pdf-score-scanner" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.scanner}</Link>
+            <Link href="/score-editor" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.editor}</Link>
+            <Link href="/transpose-score" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.transpose}</Link>
+            {siteConfig.release.checkoutAvailable ? <Link href="/pricing" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.pricing}</Link> : null}
+            {siteConfig.release.teachingAvailable ? <Link href="/teaching" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.education}</Link> : null}
           </nav>
 
           <div className="header-actions">
@@ -78,6 +142,18 @@ export function PublicChrome({ children }: { children: ReactNode }) {
               {copy.app}
               <ArrowNorthEastIcon width={16} height={16} />
             </a>
+            <button
+              type="button"
+              className="public-menu-toggle"
+              aria-controls="public-primary-navigation"
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? copy.closeMenu : copy.menu}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
           </div>
         </div>
       </header>

@@ -48,7 +48,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "Rendered five-line staff preview used as the source for staff-to-Jianpu conversion",
       evidence: "Captured from a local MusicXML score project in the running product.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "MusicXML: C4 D4 E4 G4 in C major and 4/4",
@@ -69,7 +69,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 885,
       alt: "Five-line staff rendered from a structured Jianpu score project",
       evidence: "Captured from the product's OSMD MusicXML preview.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "1=C 4/4 | 1 2 3 5 |",
@@ -90,7 +90,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "Score workspace where transposition creates a new editable score revision",
       evidence: "Captured from the running score project workspace and revision workflow.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "C major, C4 D4 E4 G4, transpose by two semitones",
@@ -111,7 +111,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "Visual score editor with rendered notation, revision controls and correction tools",
       evidence: "Captured from the running score workspace after importing test MusicXML.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "Selected event: E4 quarter note in measure 2",
@@ -132,7 +132,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "Score workspace with playback, part controls and queued audio export jobs",
       evidence: "Captured from the product workspace that owns playback and export controls.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "Piano Score JSON at 96 BPM with a four-measure loop",
@@ -153,7 +153,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 885,
       alt: "Score project workspace used to review an audio transcription candidate",
       evidence: "Captured from the candidate and revision workspace used after transcription.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "Permitted mono WAV or MP3 melody recording",
@@ -174,7 +174,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "MusicXML score rendered in the product before MIDI and Score JSON export",
       evidence: "Captured from a real MusicXML import and OSMD render in the local product.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "MusicXML, MXL, MIDI or Score JSON snapshot",
@@ -195,7 +195,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "OMR review workspace for comparing a source scan with recognized notation",
       evidence: "Captured from the product workspace that hosts OMR candidates and correction.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "Scanned score PDF, PNG, JPEG, WebP or TIFF",
@@ -216,7 +216,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "Teacher score workspace with sharing, assignment and submission review tools",
       evidence: "Captured from the score project used as the source for teaching workflows.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "Score revision, assignment instructions, due date and practice settings",
@@ -237,7 +237,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       height: 891,
       alt: "Authenticated score workspace unlocked by an active product entitlement",
       evidence: "Captured from the running product experience users receive after access is granted.",
-      capturedAt: "2026-07-15",
+      capturedAt: "2026-08-19",
     },
     example: {
       input: "Account, configured checkout region and required export capability",

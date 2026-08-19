@@ -1,11 +1,20 @@
 import type { Metadata } from "next";
+import { Geist } from "next/font/google";
 import React from "react";
 import "@score/ui/sonata.css";
+import "./public-site.css";
 import { PublicChrome } from "../components/PublicChrome";
 import { SiteLocaleProvider } from "../components/SiteLocaleProvider";
 import { ProductionAnalytics } from "../components/ProductionAnalytics";
 import { readSiteLocale } from "../lib/locale";
+import { getActivePublicAnnouncement } from "../lib/public-content";
 import { siteConfig } from "../lib/site";
+
+const geist = Geist({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-geist",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const title = siteConfig.title;
@@ -58,9 +67,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await readSiteLocale();
+  const announcement = getActivePublicAnnouncement(new Date());
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} className={geist.variable} suppressHydrationWarning>
       <body>
         <script
           type="application/ld+json"
@@ -83,7 +93,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
         <SiteLocaleProvider locale={locale}>
-          <PublicChrome>{children}</PublicChrome>
+          <PublicChrome announcement={announcement}>{children}</PublicChrome>
           <ProductionAnalytics />
         </SiteLocaleProvider>
       </body>

@@ -57,9 +57,13 @@ function midiFile(): FeatureExampleFile {
   };
 }
 
-function wavFile(): FeatureExampleFile {
-  const sampleRate = 8_000;
-  const samples = sampleRate;
+function wavFile(semitones = 0): FeatureExampleFile {
+  const sampleRate = 16_000;
+  const noteSeconds = 0.8;
+  const sourceFrequencies = [261.626, 293.665, 329.628, 391.995];
+  const frequencies = sourceFrequencies.map((frequency) => frequency * 2 ** (semitones / 12));
+  const samplesPerNote = Math.round(sampleRate * noteSeconds);
+  const samples = samplesPerNote * frequencies.length;
   const dataSize = samples * 2;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
@@ -77,8 +81,15 @@ function wavFile(): FeatureExampleFile {
   writeAscii(36, "data");
   view.setUint32(40, dataSize, true);
   for (let index = 0; index < samples; index += 1) {
-    const envelope = Math.min(1, index / 200) * Math.min(1, (samples - index) / 400);
-    view.setInt16(44 + index * 2, Math.round(Math.sin((2 * Math.PI * 440 * index) / sampleRate) * 12_000 * envelope), true);
+    const noteIndex = Math.min(frequencies.length - 1, Math.floor(index / samplesPerNote));
+    const noteSample = index % samplesPerNote;
+    const frequency = frequencies[noteIndex] ?? sourceFrequencies[0];
+    const attack = Math.min(1, noteSample / (sampleRate * 0.025));
+    const release = Math.min(1, (samplesPerNote - noteSample) / (sampleRate * 0.08));
+    const envelope = Math.max(0, Math.min(attack, release));
+    const phase = (2 * Math.PI * frequency * noteSample) / sampleRate;
+    const sample = Math.sin(phase) * 0.72 + Math.sin(phase * 2) * 0.2 + Math.sin(phase * 3) * 0.08;
+    view.setInt16(44 + index * 2, Math.round(sample * 10_000 * envelope), true);
   }
   return { bytes: new Uint8Array(buffer), contentType: "audio/wav", extension: "wav" };
 }
@@ -143,13 +154,17 @@ function scorePngFile(): FeatureExampleFile {
 
 const musicXmlFile = (value = sourceMusicXml) => textFile(value, "application/vnd.recordare.musicxml+xml; charset=utf-8", "musicxml");
 
-export function buildFeatureExampleFile(slug: string, side: "input" | "output"): FeatureExampleFile | null {
+export function buildFeatureExampleFile(
+  slug: string,
+  side: "input" | "output",
+  options: { semitones?: number } = {},
+): FeatureExampleFile | null {
   const files: Record<string, { input: () => FeatureExampleFile; output: () => FeatureExampleFile }> = {
     "staff-to-jianpu": { input: () => musicXmlFile(), output: () => textFile("1=C 4/4\nP: Piano\n| 1 2 3 5 |\nLYRIC: do re mi sol\n", "text/plain; charset=utf-8", "jianpu.txt") },
     "jianpu-to-staff": { input: () => textFile("1=C 4/4\nP: Piano\n| 1 2 3 5 |\nLYRIC: do re mi sol\n", "text/plain; charset=utf-8", "jianpu.txt"), output: () => musicXmlFile() },
     "transpose-score": { input: () => musicXmlFile(), output: () => musicXmlFile(transposedMusicXml) },
     "score-editor": { input: () => musicXmlFile(), output: () => musicXmlFile(correctedMusicXml) },
-    "score-to-audio": { input: () => musicXmlFile(), output: wavFile },
+    "score-to-audio": { input: () => musicXmlFile(), output: () => wavFile(options.semitones ?? 0) },
     "audio-to-score": { input: wavFile, output: midiFile },
     "musicxml-midi": { input: () => musicXmlFile(), output: midiFile },
     "pdf-score-scanner": { input: scorePngFile, output: () => musicXmlFile() },

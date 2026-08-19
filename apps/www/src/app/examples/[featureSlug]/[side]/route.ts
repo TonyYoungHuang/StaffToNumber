@@ -7,7 +7,7 @@ type ExampleRouteParams = {
   side: string;
 };
 
-export async function GET(_request: Request, { params }: { params: Promise<ExampleRouteParams> }) {
+export async function GET(request: Request, { params }: { params: Promise<ExampleRouteParams> }) {
   const { featureSlug, side } = await params;
   const page = findPlatformFeaturePage(featureSlug);
   const seo = getFeatureSeoRecord(featureSlug);
@@ -16,13 +16,15 @@ export async function GET(_request: Request, { params }: { params: Promise<Examp
     return Response.json({ error: "Example not found." }, { status: 404 });
   }
 
-  const file = buildFeatureExampleFile(featureSlug, side);
+  const requestedSemitones = Number(new URL(request.url).searchParams.get("semitones") ?? "0");
+  const semitones = featureSlug === "score-to-audio" && side === "output" && requestedSemitones === 2 ? 2 : 0;
+  const file = buildFeatureExampleFile(featureSlug, side, { semitones });
   if (!file) return Response.json({ error: "Example file is not configured." }, { status: 404 });
 
   return new Response(file.bytes, {
     headers: {
       "Content-Type": file.contentType,
-      "Content-Disposition": `attachment; filename="${featureSlug}-${side}-example.${file.extension}"`,
+      "Content-Disposition": `${file.contentType === "audio/wav" ? "inline" : "attachment"}; filename="${featureSlug}-${side}-example.${file.extension}"`,
       "Cache-Control": "public, max-age=3600, s-maxage=86400",
       "X-Robots-Tag": "noindex",
       "X-Example-Feature": page.slug,
