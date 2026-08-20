@@ -913,6 +913,14 @@ export type AssignmentPracticeSettings = {
 
 export type PaymentProvider = "stripe" | "paddle";
 
+export const CHECKOUT_PLAN_CODES = ["pro-monthly", "pro-annual", "studio-monthly", "studio-annual"] as const;
+
+export type CheckoutPlanCode = (typeof CHECKOUT_PLAN_CODES)[number];
+
+export function isCheckoutPlanCode(value: unknown): value is CheckoutPlanCode {
+  return typeof value === "string" && CHECKOUT_PLAN_CODES.includes(value as CheckoutPlanCode);
+}
+
 export type PaymentOrderStatus = "pending" | "paid" | "cancelled" | "failed";
 
 export function isSupportedLocale(value: string | null | undefined): value is SupportedLocale {

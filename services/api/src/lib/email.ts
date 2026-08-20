@@ -1,4 +1,4 @@
-import { PRODUCT_NAME } from "@score/shared";
+import { PRODUCT_NAME, type CheckoutPlanCode } from "@score/shared";
 import { config } from "../config.js";
 
 type EmailInput = {
@@ -58,6 +58,7 @@ type CheckoutIntentNotificationEmailInput = {
   provider: "stripe" | "paddle";
   siteEnvironment: string;
   providerEnabled: boolean;
+  planCode?: CheckoutPlanCode | null;
   orderId: string;
   userId: string;
   customerEmail: string;
@@ -280,6 +281,7 @@ export function buildCheckoutIntentNotificationEmail(input: CheckoutIntentNotifi
     `Site environment: ${environment}`,
     `Provider: ${providerLabel}`,
     `Provider status: ${providerStatus}`,
+    `Selected plan: ${input.planCode ?? "legacy/unspecified"}`,
     `Order: ${input.orderId}`,
     `User ID: ${input.userId}`,
     `Customer email: ${input.customerEmail}`,
@@ -300,6 +302,7 @@ export function buildCheckoutIntentNotificationEmail(input: CheckoutIntentNotifi
     <p><strong>Site environment:</strong> ${escapeHtml(environment)}</p>
     <p><strong>Provider:</strong> ${escapeHtml(providerLabel)}</p>
     <p><strong>Provider status:</strong> ${escapeHtml(providerStatus)}</p>
+    <p><strong>Selected plan:</strong> ${escapeHtml(input.planCode ?? "legacy/unspecified")}</p>
     <p><strong>Order:</strong> ${escapeHtml(input.orderId)}</p>
     <p><strong>User ID:</strong> ${escapeHtml(input.userId)}</p>
     <p><strong>Customer email:</strong> ${escapeHtml(input.customerEmail)}</p>

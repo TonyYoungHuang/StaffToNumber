@@ -1,4 +1,4 @@
-﻿import { AppCheckoutClient } from "../../components/AppCheckoutClient";
+import { CheckoutPlanSelector, type CheckoutPlanDisplay } from "../../components/CheckoutPlanSelector";
 import styles from "../../components/AppCheckout.module.css";
 import { readAppLocale } from "../../lib/locale";
 
@@ -33,7 +33,7 @@ export default async function CheckoutPage() {
   }
 
   const isChinese = locale === "zh-CN";
-  const plans = isChinese
+  const plans: CheckoutPlanDisplay[] = isChinese
     ? [
         {
           code: "pro-monthly",
@@ -169,48 +169,13 @@ export default async function CheckoutPage() {
         </div>
       </header>
 
-      <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
-        <div className={styles.planGrid}>
-          {plans.map((plan) => (
-            <article key={plan.code} className={`${styles.planCard} ${plan.featured ? styles.featuredPlan : ""}`}>
-              <div className={styles.planTop}>
-                <span className={styles.planBadge}>{plan.badge}</span>
-                <span className={styles.planCycle}>{plan.cycle}</span>
-              </div>
-              <div className={styles.planIdentity}>
-                <h2>{plan.name}</h2>
-                <p>{plan.audience}</p>
-              </div>
-              <div className={styles.priceBlock}>
-                <p className={styles.planPrice}>{plan.price}</p>
-                <p className={styles.unitPrice}>{plan.unitPrice}</p>
-              </div>
-              <div className={styles.creditBox}>
-                <span aria-hidden="true">⚡</span>
-                <div><strong>{plan.credits}</strong><small>{isChinese ? "创建成功的后台任务计费" : "Charged for successfully created server jobs"}</small></div>
-              </div>
-              <a className={`button ${plan.featured ? "button-primary" : "button-secondary"} ${styles.planButton}`} href="#checkout-action">
-                {plan.cta}
-              </a>
-              <div className={styles.cardSection}>
-                <h3>{isChinese ? "包含能力" : "Included capabilities"}</h3>
-                <ul className={styles.planFeatures}>{plan.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
-              </div>
-              <div className={`${styles.cardSection} ${styles.resourceSection}`}>
-                <h3>{isChinese ? "福利与资源" : "Benefits and resources"}</h3>
-                <ul className={styles.resourceList}>{plan.resources.map((resource) => <li key={resource}>{resource}</li>)}</ul>
-              </div>
-            </article>
-          ))}
-        </div>
-        <p className={styles.planNote}>
-          {isChinese
-            ? "月度积分每月重置，未使用积分不滚存。查看、播放控制和未提交的基础编辑不消耗积分。"
-            : "Monthly credits reset each month and do not roll over. Viewing, playback controls, and unsubmitted basic edits use no credits."}
-        </p>
-      </section>
-
-      <div className={styles.checkoutActionWrap}><AppCheckoutClient /></div>
+      <CheckoutPlanSelector
+        plans={plans}
+        isChinese={isChinese}
+        planNote={isChinese
+          ? "月度积分每月重置，未使用积分不滚存。查看、播放控制和未提交的基础编辑不消耗积分。"
+          : "Monthly credits reset each month and do not roll over. Viewing, playback controls, and unsubmitted basic edits use no credits."}
+      />
     </section>
   );
 }

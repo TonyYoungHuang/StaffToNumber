@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import type { PaymentProvider } from "@score/shared";
+import { isCheckoutPlanCode, type CheckoutPlanCode, type PaymentProvider } from "@score/shared";
 import { config } from "../config.js";
 import { getPlanQuotaUsage } from "../lib/plan-quotas.js";
 import { findUserByEmail, getUserProfile } from "../repositories/auth-repository.js";
@@ -62,13 +62,14 @@ function checkoutIdempotencyHash(input: {
   header: string | string[] | undefined;
   userId: string;
   provider: PaymentProvider;
+  planCode?: CheckoutPlanCode | null;
   organizationId?: string | null;
   seatQuantity?: number;
 }) {
   const key = normalizedIdempotencyKey(input.header);
   if (!key) return null;
   return createHash("sha256")
-    .update([input.userId, input.provider, input.organizationId ?? "personal", String(input.seatQuantity ?? 1), key].join(":"))
+    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), key].join(":"))
     .digest("hex");
 }
 
@@ -89,12 +90,14 @@ async function sendCheckoutIntentAlert(
     order: PaymentOrderRow;
     userId: string;
     providerEnabled: boolean;
+    planCode?: CheckoutPlanCode | null;
   },
 ) {
   const email = buildCheckoutIntentNotificationEmail({
     provider: input.order.provider,
     siteEnvironment: config.nodeEnv,
     providerEnabled: input.providerEnabled,
+    planCode: input.planCode,
     orderId: input.order.id,
     userId: input.userId,
     customerEmail: input.order.customer_email ?? "unknown",
@@ -203,11 +206,15 @@ export async function paymentRoutes(app: FastifyInstance) {
       preHandler: app.requireAuth,
     },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; organizationId?: string; seatQuantity?: number };
+      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; organizationId?: string; seatQuantity?: number };
 
       if (!isProvider(body.provider)) {
         return reply.code(400).send({ error: "Payment provider is required." });
       }
+      if (body.planCode !== undefined && !isCheckoutPlanCode(body.planCode)) {
+        return reply.code(400).send({ error: "A valid checkout plan is required." });
+      }
+      const planCode = isCheckoutPlanCode(body.planCode) ? body.planCode : null;
 
       const profile = request.authUserId ? getUserProfile(request.authUserId) : null;
       const customerEmail = profile?.email ?? null;
@@ -236,6 +243,7 @@ export async function paymentRoutes(app: FastifyInstance) {
           header: request.headers["idempotency-key"],
           userId: request.authUserId!,
           provider: body.provider,
+          planCode,
           organizationId,
           seatQuantity,
         });
@@ -279,6 +287,7 @@ export async function paymentRoutes(app: FastifyInstance) {
             order,
             userId: request.authUserId!,
             providerEnabled,
+            planCode,
           });
         } catch (error) {
           app.log.error({ err: error, orderId: order.id }, "Checkout intent email delivery failed.");
