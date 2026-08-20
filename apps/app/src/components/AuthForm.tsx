@@ -38,7 +38,15 @@ declare global {
   }
 }
 
-export function AuthForm({ mode, redirectTo }: { mode: "register" | "login"; redirectTo?: string }) {
+export function AuthForm({
+  mode,
+  redirectTo,
+  onAuthenticated,
+}: {
+  mode: "register" | "login";
+  redirectTo?: string;
+  onAuthenticated?: () => void;
+}) {
   const router = useRouter();
   const { locale } = useAppLocale();
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
@@ -109,20 +117,25 @@ export function AuthForm({ mode, redirectTo }: { mode: "register" | "login"; red
     trackFunnelEvent(payload.isNewUser || mode === "register" ? "sign_up" : "login", { method });
     setStatus(payload.isNewUser || mode === "register" ? copy.registerSuccess : copy.loginSuccess);
     setStatusKind("success");
+    if (onAuthenticated) {
+      onAuthenticated();
+      router.refresh();
+      return;
+    }
     const nextRoute = redirectTo ?? (payload.isNewUser || mode === "register" || payload.user.entitlement.status !== "active"
       ? `${APP_ROUTES.scores}/new/scan`
       : APP_ROUTES.dashboard);
     router.push(nextRoute);
     router.refresh();
-  }, [copy.loginSuccess, copy.registerSuccess, mode, redirectTo, router]);
+  }, [copy.loginSuccess, copy.registerSuccess, mode, onAuthenticated, redirectTo, router]);
 
   useEffect(() => {
-    if (!redirectTo || !getStoredToken()) {
+    if (onAuthenticated || !redirectTo || !getStoredToken()) {
       return;
     }
     router.replace(redirectTo);
     router.refresh();
-  }, [redirectTo, router]);
+  }, [onAuthenticated, redirectTo, router]);
 
   useEffect(() => {
     if (!googleClientId || !googleReady || !window.google || !googleButtonRef.current) return;

@@ -1,12 +1,13 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APP_ROUTES, type PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
+import { AuthForm } from "./AuthForm";
+import styles from "./AppCheckout.module.css";
 
 type CheckoutPayload = {
   provider: PaymentProvider;
@@ -32,9 +33,8 @@ const liveProviders = new Set(
 const schoolCheckoutAvailable = process.env.NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE === "true";
 
 export function AppCheckoutClient() {
-  const router = useRouter();
   const { locale } = useAppLocale();
-  const [sessionState, setSessionState] = useState<"checking" | "ready" | "redirecting">("checking");
+  const [sessionState, setSessionState] = useState<"checking" | "ready" | "signedOut">("checking");
   const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
   const [status, setStatus] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,6 +43,7 @@ export function AppCheckoutClient() {
   const [organizationId, setOrganizationId] = useState("");
   const [seatQuantity, setSeatQuantity] = useState(10);
   const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
+  const handleAuthenticated = useCallback(() => setSessionState("ready"), []);
 
   const copy = useMemo(
     () =>
@@ -68,9 +69,11 @@ export function AppCheckoutClient() {
             button: "继续到安全支付",
             intentButton: "通知站长我的付款需求",
             loading: "正在跳转支付页面...",
-            loginFirst: "请先登录。",
             checking: "正在检查登录状态...",
-            redirecting: "请先使用 Google 或邮箱登录，正在前往登录页...",
+            signInEyebrow: "需要登录",
+            signInTitle: "先登录，再选择支付渠道",
+            signInBody: "使用 Google 或邮箱登录。登录成功后会留在本页，继续查看 Stripe 与 Paddle；未正式开通的渠道不会扣款。",
+            signInPoints: ["确认积分套餐归属到正确账户", "支付需求只允许已登录用户提交", "Google 登录和邮箱登录均可使用"],
             accountNote: "Google 账户用于确认订阅归属；银行卡、Google Pay 或其他付款方式由所选支付渠道提供。",
             intentNote: "点击按钮后，后台会先向站长发送一封付款意向邮件。只有已经正式开通的渠道才会继续跳转；建设中的渠道不会扣款。",
             providerBuilding: (name: string) => `${name} 正式支付正在建设。你的付款需求已经通知站长，当前没有产生扣款。`,
@@ -97,9 +100,11 @@ export function AppCheckoutClient() {
             button: "Continue to secure payment",
             intentButton: "Notify the owner of my purchase request",
             loading: "Redirecting to the payment page...",
-            loginFirst: "Please sign in first.",
             checking: "Checking your sign-in status...",
-            redirecting: "Sign in with Google or email first. Redirecting to sign in...",
+            signInEyebrow: "Sign-in required",
+            signInTitle: "Sign in before choosing a payment provider",
+            signInBody: "Continue with Google or email. You will stay on this page after sign-in and can then review Stripe and Paddle. A provider that is not live never charges you.",
+            signInPoints: ["Attach credits to the correct account", "Only signed-in customers can submit purchase intent", "Use either Google or email sign-in"],
             accountNote: "Your Google account identifies who receives the subscription. Cards, Google Pay, and other payment methods are offered by the selected payment provider.",
             intentNote: "The server emails the owner before continuing. Only a live provider redirects to checkout; a provider under construction never charges you.",
             providerBuilding: (name: string) => `${name} live checkout is under construction. The owner received your purchase request and no charge was created.`,
@@ -108,19 +113,16 @@ export function AppCheckoutClient() {
     [locale],
   );
 
-  const loginUrl = `${APP_ROUTES.login}?${new URLSearchParams({ next: APP_ROUTES.checkout }).toString()}`;
-
   useEffect(() => {
     if (!getStoredToken()) {
-      setSessionState("redirecting");
-      router.replace(loginUrl);
+      setSessionState("signedOut");
       return;
     }
     setSessionState("ready");
-  }, [loginUrl, router]);
+  }, []);
 
   useEffect(() => {
-    if (!schoolCheckoutAvailable) return;
+    if (!schoolCheckoutAvailable || sessionState !== "ready") return;
     const token = getStoredToken();
     if (!token) return;
     void apiRequest<{ organizations: Organization[] }>("/api/education/organizations", { headers: { Authorization: `Bearer ${token}` } })
@@ -130,15 +132,13 @@ export function AppCheckoutClient() {
         setOrganizations(manageable);
         setOrganizationId((current) => manageable.some((organization) => organization.id === current) ? current : manageable[0]?.id ?? "");
       });
-  }, []);
+  }, [sessionState]);
 
   async function handleCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const token = getStoredToken();
     if (!token) {
-      setStatus({ message: copy.loginFirst, tone: "error" });
-      setSessionState("redirecting");
-      router.replace(loginUrl);
+      setSessionState("signedOut");
       return;
     }
 
@@ -168,8 +168,7 @@ export function AppCheckoutClient() {
       setLoading(false);
       if (result.status === 401) {
         clearStoredToken();
-        setSessionState("redirecting");
-        router.replace(loginUrl);
+        setSessionState("signedOut");
         return;
       }
       if (result.data?.code === "PAYMENT_PROVIDER_BUILDING") {
@@ -195,18 +194,32 @@ export function AppCheckoutClient() {
 
   if (sessionState !== "ready") {
     return (
-      <div className="surface-panel stack-lg" aria-live="polite">
-        <p className="eyebrow">Checkout</p>
-        <h1 className="page-title">{sessionState === "checking" ? copy.checking : copy.redirecting}</h1>
-      </div>
+      <section id="checkout-action" className={styles.accessPanel} aria-labelledby="checkout-sign-in-title">
+        <div className={styles.accessCopy}>
+          <p className="eyebrow">{copy.signInEyebrow}</p>
+          <h2 id="checkout-sign-in-title" className={styles.sectionHeading}>{copy.signInTitle}</h2>
+          <p className="body-copy large">{copy.signInBody}</p>
+          <ul className={styles.accessPoints}>
+            {copy.signInPoints.map((point) => <li key={point}>{point}</li>)}
+          </ul>
+          {sessionState === "checking" ? <p className="helper-copy" aria-live="polite">{copy.checking}</p> : null}
+        </div>
+        <div className="auth-card stack-lg">
+          <AuthForm
+            mode="login"
+            redirectTo={APP_ROUTES.checkout}
+            onAuthenticated={handleAuthenticated}
+          />
+        </div>
+      </section>
     );
   }
 
   return (
-    <div className="surface-panel stack-lg">
+    <section id="checkout-action" className={`${styles.paymentPanel} stack-lg`}>
       <div className="stack-sm">
         <p className="eyebrow">Checkout</p>
-        <h1 className="page-title">{copy.title}</h1>
+        <h2 className={styles.sectionHeading}>{copy.title}</h2>
         <p className="body-copy large">{copy.body}</p>
         <p className="helper-copy">{copy.accountNote}</p>
         <p className="helper-copy">{copy.intentNote}</p>
@@ -266,6 +279,6 @@ export function AppCheckoutClient() {
           {status.message}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }
