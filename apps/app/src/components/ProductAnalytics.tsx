@@ -21,6 +21,8 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
         page_location: window.location.href,
         page_path: pathname,
         page_title: document.title,
+        page_hostname: window.location.hostname,
+        site_area: "product_app",
       });
     };
     if (window.gtag) sendPageView();
@@ -45,7 +47,11 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
             });
             gtag('consent', 'update', { analytics_storage: 'granted' });
             gtag('js', new Date());
-            gtag('config', '${gaId}', { send_page_view: false, anonymize_ip: true });
+            gtag('config', '${gaId}', {
+              send_page_view: false,
+              anonymize_ip: true,
+              cookie_domain: 'scoretransposer.com'
+            });
             window.dispatchEvent(new Event('${analyticsReadyEvent}'));
           `}</Script>
         </>

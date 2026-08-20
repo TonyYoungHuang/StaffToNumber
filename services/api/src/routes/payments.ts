@@ -310,8 +310,8 @@ export async function paymentRoutes(app: FastifyInstance) {
         });
       }
 
-      const successBase = `${config.publicAppUrl}/checkout/success?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;
-      const cancelBase = `${config.publicAppUrl}/checkout/cancel?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;
+      const successBase = `${config.publicSiteUrl}/checkout/success?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;
+      const cancelBase = `${config.publicSiteUrl}/checkout/cancel?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;
 
       try {
         if (body.provider === "stripe") {
@@ -596,7 +596,7 @@ export async function paymentRoutes(app: FastifyInstance) {
     `).get(request.authUserId!) as { providerCustomerId: string } | undefined;
     if (!customer) return reply.code(404).send({ error: "Stripe billing customer not found." });
     try {
-      const session = await createStripeBillingPortalSession(customer.providerCustomerId, `${config.publicAppUrl}/dashboard`);
+      const session = await createStripeBillingPortalSession(customer.providerCustomerId, config.publicSiteUrl);
       return reply.send({ url: session.url });
     } catch (error) {
       return reply.code(502).send({ error: error instanceof Error ? error.message : "Unable to open billing portal." });

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CheckoutPlanCode } from "@score/shared";
+import { trackFunnelEvent } from "../lib/analytics";
 import { AppCheckoutClient } from "./AppCheckoutClient";
 import styles from "./AppCheckout.module.css";
 
@@ -32,6 +33,34 @@ export function CheckoutPlanSelector({
   const initialPlanCode = plans.find((plan) => plan.featured)?.code ?? plans[0]?.code;
   const [selectedPlanCode, setSelectedPlanCode] = useState<CheckoutPlanCode | undefined>(initialPlanCode);
   const selectedPlan = plans.find((plan) => plan.code === selectedPlanCode) ?? plans[0];
+  const planListTracked = useRef(false);
+
+  useEffect(() => {
+    if (planListTracked.current) return;
+    planListTracked.current = true;
+    trackFunnelEvent("view_item_list", {
+      item_list_id: "credit_plans",
+      item_list_name: "ScoreTransposer credit plans",
+      items: plans.map((plan) => ({
+        item_id: plan.code,
+        item_name: plan.name,
+        item_variant: plan.cycle,
+      })),
+    });
+  }, [plans]);
+
+  function selectPlan(plan: CheckoutPlanDisplay) {
+    setSelectedPlanCode(plan.code);
+    trackFunnelEvent("select_item", {
+      item_list_id: "credit_plans",
+      item_list_name: "ScoreTransposer credit plans",
+      items: [{
+        item_id: plan.code,
+        item_name: plan.name,
+        item_variant: plan.cycle,
+      }],
+    });
+  }
 
   if (!selectedPlan) return null;
 
@@ -52,7 +81,7 @@ export function CheckoutPlanSelector({
                   name="checkout-plan"
                   value={plan.code}
                   checked={isSelected}
-                  onChange={() => setSelectedPlanCode(plan.code)}
+                  onChange={() => selectPlan(plan)}
                 />
                 <div className={styles.planTop}>
                   <span className={styles.planBadge}>{plan.badge}</span>

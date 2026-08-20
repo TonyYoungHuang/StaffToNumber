@@ -1,4 +1,4 @@
-﻿import { AppCheckoutStatusClient } from "../../../components/AppCheckoutStatusClient";
+﻿import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -8,21 +8,13 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const provider = typeof params.provider === "string" && params.provider === "paddle" ? "paddle" : "stripe";
-  const orderId = typeof params.order_id === "string" ? params.order_id : "";
-  const token = typeof params.token === "string" ? params.token : "";
-  const sessionId = typeof params.session_id === "string" ? params.session_id : undefined;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://scoretransposer.com";
+  const destination = new URL("/checkout/success", `${siteUrl.replace(/\/$/u, "")}/`);
 
-  return (
-    <section className="container page-shell">
-      {orderId && token ? (
-        <AppCheckoutStatusClient orderId={orderId} token={token} provider={provider} sessionId={sessionId} />
-      ) : (
-        <div className="surface-panel stack-lg">
-          <h1 className="page-title">Missing checkout details</h1>
-          <p className="body-copy large">The payment provider returned without the order reference required to confirm the purchase.</p>
-        </div>
-      )}
-    </section>
-  );
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") destination.searchParams.set(key, value);
+    else if (Array.isArray(value)) value.forEach((item) => destination.searchParams.append(key, item));
+  }
+
+  redirect(destination.toString());
 }

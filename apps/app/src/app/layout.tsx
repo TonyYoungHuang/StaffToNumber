@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
+import { Geist } from "next/font/google";
 import React from "react";
 import "@score/ui/sonata.css";
+import "./app-theme.css";
 import { AppChrome } from "../components/AppChrome";
 import { AppLocaleProvider } from "../components/AppLocaleProvider";
 import { ProductAnalytics } from "../components/ProductAnalytics";
 import { readAppLocale } from "../lib/locale";
+
+const geist = Geist({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-geist",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readAppLocale();
@@ -60,7 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await readAppLocale();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} className={geist.variable} suppressHydrationWarning>
       <body>
         <AppLocaleProvider locale={locale}>
           <AppChrome>{children}</AppChrome>

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 import { APP_ROUTES } from "@score/shared";
-import { ArrowNorthEastIcon, BrandIcon, sonataCopy } from "@score/ui";
+import { ArrowNorthEastIcon, BrandIcon } from "@score/ui";
+import { PUBLIC_SITE_URL } from "../lib/support";
 import { AppLocaleSwitcher } from "./AppLocaleSwitcher";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -12,6 +13,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { locale } = useAppLocale();
   const primaryHref = `${APP_ROUTES.scores}/new/scan`;
+  const publicSiteUrl = PUBLIC_SITE_URL.replace(/\/$/u, "");
   const checkoutAvailable = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE === "true";
   const teachingAvailable = process.env.NEXT_PUBLIC_TEACHING_AVAILABLE === "true";
 
@@ -21,6 +23,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           navItems: [
             { href: APP_ROUTES.home, label: "工作台" },
             { href: APP_ROUTES.scores, label: "我的乐谱" },
+            { href: `${publicSiteUrl}/pdf-score-scanner`, label: "扫描识谱" },
+            { href: `${publicSiteUrl}/score-editor`, label: "在线编辑" },
+            { href: `${publicSiteUrl}/transpose-score`, label: "移调" },
+            { href: `${publicSiteUrl}/#pricing`, label: "价格" },
             ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: "课堂" }] : []),
           ],
           scope: "PDF / 图片乐谱工作台",
@@ -50,6 +56,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           navItems: [
             { href: APP_ROUTES.home, label: "Studio" },
             { href: APP_ROUTES.scores, label: "Scores" },
+            { href: `${publicSiteUrl}/pdf-score-scanner`, label: "Scanner" },
+            { href: `${publicSiteUrl}/score-editor`, label: "Editor" },
+            { href: `${publicSiteUrl}/transpose-score`, label: "Transpose" },
+            { href: `${publicSiteUrl}/#pricing`, label: "Pricing" },
             ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: "Classes" }] : []),
           ],
           scope: "PDF and image score workspace",
@@ -80,7 +90,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     <div className="app-frame">
       <header className="app-header">
         <div className="container header-inner">
-          <Link href={APP_ROUTES.home} className="brand">
+          <Link href={publicSiteUrl} className="brand">
             <span className="brand-mark">
               <BrandIcon width={22} height={22} />
             </span>
@@ -127,9 +137,9 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
             {locale === "zh-CN" ? <Link href={APP_ROUTES.activate}>{copy.footerLinks.activate}</Link> : null}
             {checkoutAvailable ? <Link href={APP_ROUTES.checkout}>{copy.footerLinks.checkout}</Link> : null}
             <Link href={APP_ROUTES.scores}>{copy.footerLinks.scores}</Link>
-            <Link href="https://www.scoretransposer.com/about">{copy.footerLinks.about}</Link>
-            <Link href="https://www.scoretransposer.com/support">{copy.footerLinks.support}</Link>
-            <Link href="https://www.scoretransposer.com/privacy">{copy.footerLinks.privacy}</Link>
+            <Link href={`${publicSiteUrl}/about`}>{copy.footerLinks.about}</Link>
+            <Link href={`${publicSiteUrl}/support`}>{copy.footerLinks.support}</Link>
+            <Link href={`${publicSiteUrl}/privacy`}>{copy.footerLinks.privacy}</Link>
             {teachingAvailable ? <Link href={APP_ROUTES.classrooms}>{copy.footerLinks.classrooms}</Link> : null}
             {teachingAvailable ? <Link href={APP_ROUTES.student}>{copy.footerLinks.student}</Link> : null}
           </div>

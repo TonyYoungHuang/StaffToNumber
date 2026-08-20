@@ -200,6 +200,12 @@ export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedChec
       plan_code: selectedPlan.code,
       plan_kind: planKind,
       quantity: planKind === "school" ? seatQuantity : 1,
+      items: [{
+        item_id: selectedPlan.code,
+        item_name: selectedPlan.name,
+        item_variant: selectedPlan.cycle,
+        quantity: planKind === "school" ? seatQuantity : 1,
+      }],
     });
     window.location.href = result.data.url;
   }
