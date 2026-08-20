@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
-import { setStoredToken } from "../lib/auth-storage";
+import { getStoredToken, setStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type AuthPayload = {
@@ -38,7 +38,7 @@ declare global {
   }
 }
 
-export function AuthForm({ mode }: { mode: "register" | "login" }) {
+export function AuthForm({ mode, redirectTo }: { mode: "register" | "login"; redirectTo?: string }) {
   const router = useRouter();
   const { locale } = useAppLocale();
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
@@ -109,12 +109,20 @@ export function AuthForm({ mode }: { mode: "register" | "login" }) {
     trackFunnelEvent(payload.isNewUser || mode === "register" ? "sign_up" : "login", { method });
     setStatus(payload.isNewUser || mode === "register" ? copy.registerSuccess : copy.loginSuccess);
     setStatusKind("success");
-    const nextRoute = payload.isNewUser || mode === "register" || payload.user.entitlement.status !== "active"
+    const nextRoute = redirectTo ?? (payload.isNewUser || mode === "register" || payload.user.entitlement.status !== "active"
       ? `${APP_ROUTES.scores}/new/scan`
-      : APP_ROUTES.dashboard;
+      : APP_ROUTES.dashboard);
     router.push(nextRoute);
     router.refresh();
-  }, [copy.loginSuccess, copy.registerSuccess, mode, router]);
+  }, [copy.loginSuccess, copy.registerSuccess, mode, redirectTo, router]);
+
+  useEffect(() => {
+    if (!redirectTo || !getStoredToken()) {
+      return;
+    }
+    router.replace(redirectTo);
+    router.refresh();
+  }, [redirectTo, router]);
 
   useEffect(() => {
     if (!googleClientId || !googleReady || !window.google || !googleButtonRef.current) return;

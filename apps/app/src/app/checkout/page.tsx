@@ -3,12 +3,10 @@ import { readAppLocale } from "../../lib/locale";
 
 import Link from "next/link";
 import { APP_ROUTES } from "@score/shared";
-import { buildSupportTemplates } from "../../lib/support";
 
 export default async function CheckoutPage() {
   const locale = await readAppLocale();
   const checkoutAvailable = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE === "true";
-  const paymentSupportUrl = buildSupportTemplates(locale).find((item) => item.key === "payment")?.href;
 
   if (!checkoutAvailable) {
     return (
@@ -27,7 +25,6 @@ export default async function CheckoutPage() {
             <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
               {locale === "zh-CN" ? "继续使用免费预览" : "Continue with the free preview"}
             </Link>
-            {paymentSupportUrl ? <a href={paymentSupportUrl} className="button button-secondary">{locale === "zh-CN" ? "登记升级意向" : "Ask about paid access"}</a> : null}
           </div>
         </div>
       </section>
@@ -38,11 +35,11 @@ export default async function CheckoutPage() {
     <section className="container page-shell">
       <div className="page-banner">
         <p className="eyebrow">{locale === "zh-CN" ? "在线支付" : "Online payment"}</p>
-        <h1 className="page-title">{locale === "zh-CN" ? "注册后支付，系统自动开通。" : "Register, pay, and get activated automatically."}</h1>
+        <h1 className="page-title">{locale === "zh-CN" ? "登录账户，选择支付渠道；未开通渠道会先记录你的需求。" : "Sign in and choose a provider; unavailable channels record your purchase request first."}</h1>
         <p className="body-copy large">
           {locale === "zh-CN"
-            ? "针对海外用户，支付完成后会直接把权限开通到当前账户；激活码仅保留给中国大陆电商销售场景。"
-            : "For international customers, payment activates the current account automatically. Activation codes stay reserved for mainland-China ecommerce sales."}
+            ? "点击继续后，后台会先向站长发送付款意向邮件。只有已完成正式商户配置的 Stripe 或 Paddle 才会跳转付款；建设中的渠道只记录需求，不会扣款。"
+            : "After you continue, the server first emails the owner about your purchase intent. Only a fully configured Stripe or Paddle channel redirects to payment; a channel under construction records demand without charging you."}
         </p>
       </div>
       <AppCheckoutClient />

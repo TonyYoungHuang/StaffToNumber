@@ -33,7 +33,7 @@ const environmentConfig = environment === "production"
       collaborationUrl: "wss://collab.scoretransposer.com",
       publicLaunchReady: "true",
       productAppAvailable: "true",
-      checkoutAvailable: "false",
+      checkoutAvailable: "true",
       omrAvailable: "true",
       audioTranscriptionAvailable: "false",
       teachingAvailable: "false",
@@ -65,6 +65,7 @@ const buildEnvironment = {
   NEXT_PUBLIC_API_BASE_URL: environmentConfig.apiUrl,
   NEXT_PUBLIC_COLLABORATION_URL: environmentConfig.collaborationUrl,
   NEXT_PUBLIC_SUPPORT_EMAIL: "support@scoretransposer.com",
+  NEXT_PUBLIC_DISCORD_INVITE_URL: process.env.NEXT_PUBLIC_DISCORD_INVITE_URL?.trim() || "",
   NEXT_PUBLIC_PRICE_AMOUNT: "9.99",
   NEXT_PUBLIC_PRICE_CURRENCY: "USD",
   NEXT_PUBLIC_PUBLIC_LAUNCH_READY: environmentConfig.publicLaunchReady,
@@ -72,7 +73,9 @@ const buildEnvironment = {
   NEXT_PUBLIC_CHECKOUT_AVAILABLE:
     process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE?.trim() || environmentConfig.checkoutAvailable,
   NEXT_PUBLIC_PAYMENT_PROVIDERS:
-    process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS?.trim() || (environment === "production" ? "paddle" : "paddle,stripe"),
+    process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS?.trim() || "paddle,stripe",
+  NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS:
+    process.env.NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS?.trim() || "",
   NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE: "false",
   NEXT_PUBLIC_OMR_AVAILABLE: environmentConfig.omrAvailable,
   NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE: environmentConfig.audioTranscriptionAvailable,

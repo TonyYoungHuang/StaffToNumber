@@ -1,10 +1,11 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PaymentProvider } from "@score/shared";
+import { useRouter } from "next/navigation";
+import { APP_ROUTES, type PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
-import { getStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type CheckoutPayload = {
@@ -12,20 +13,30 @@ type CheckoutPayload = {
   orderId: string;
   token: string;
   url: string;
+  code?: "PAYMENT_PROVIDER_BUILDING" | "CHECKOUT_INTENT_NOTIFICATION_FAILED";
+  intentNotified?: boolean;
 };
 
 type Organization = { id: string; name: string; currentRole: string };
 
-const providers = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS ?? "stripe")
+const providers = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS ?? "paddle,stripe")
   .split(",")
   .map((item) => item.trim())
   .filter((item): item is PaymentProvider => item === "stripe" || item === "paddle");
+const liveProviders = new Set(
+  (process.env.NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item): item is PaymentProvider => item === "stripe" || item === "paddle"),
+);
 const schoolCheckoutAvailable = process.env.NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE === "true";
 
 export function AppCheckoutClient() {
+  const router = useRouter();
   const { locale } = useAppLocale();
+  const [sessionState, setSessionState] = useState<"checking" | "ready" | "redirecting">("checking");
   const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [loading, setLoading] = useState(false);
   const [planKind, setPlanKind] = useState<"individual" | "school">("individual");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -46,12 +57,24 @@ export function AppCheckoutClient() {
             organization: "购买机构",
             seats: "席位数量",
             stripeTitle: "Stripe",
-            stripeBody: "适合国际银行卡和钱包支付。",
+            stripeLiveBody: "适合国际银行卡和钱包支付。",
+            stripeBuildingBody: "正式版尚未接入，当前只记录付款需求，不会扣款。",
             paddleTitle: "Paddle",
-            paddleBody: "适合需要 Merchant of Record 的海外收款。",
-            button: "继续支付",
+            paddleLiveBody: "由 Paddle 处理海外付款、税务与订阅。",
+            paddleBuildingBody: "正式商户仍待验收，当前只记录付款需求，不会扣款。",
+            available: "已开通",
+            building: "正在建设",
+            waiting: "等待正式商户验收",
+            button: "继续到安全支付",
+            intentButton: "通知站长我的付款需求",
             loading: "正在跳转支付页面...",
             loginFirst: "请先登录。",
+            checking: "正在检查登录状态...",
+            redirecting: "请先使用 Google 或邮箱登录，正在前往登录页...",
+            accountNote: "Google 账户用于确认订阅归属；银行卡、Google Pay 或其他付款方式由所选支付渠道提供。",
+            intentNote: "点击按钮后，后台会先向站长发送一封付款意向邮件。只有已经正式开通的渠道才会继续跳转；建设中的渠道不会扣款。",
+            providerBuilding: (name: string) => `${name} 正式支付正在建设。你的付款需求已经通知站长，当前没有产生扣款。`,
+            notificationFailed: "暂时无法把付款需求通知站长，请稍后重试。没有产生扣款。",
           }
         : {
             title: "Pay online and unlock access automatically",
@@ -63,15 +86,38 @@ export function AppCheckoutClient() {
             organization: "Billing organization",
             seats: "Seat quantity",
             stripeTitle: "Stripe",
-            stripeBody: "Best for international cards and wallet payments.",
+            stripeLiveBody: "Best for international cards and wallet payments.",
+            stripeBuildingBody: "Live checkout is not connected yet. This currently records demand without charging you.",
             paddleTitle: "Paddle",
-            paddleBody: "Best for Merchant of Record billing and tax handling.",
-            button: "Continue to payment",
+            paddleLiveBody: "Paddle handles international billing, tax, and subscriptions.",
+            paddleBuildingBody: "The live merchant account still awaits approval. This records demand without charging you.",
+            available: "Live",
+            building: "In development",
+            waiting: "Awaiting live merchant approval",
+            button: "Continue to secure payment",
+            intentButton: "Notify the owner of my purchase request",
             loading: "Redirecting to the payment page...",
             loginFirst: "Please sign in first.",
+            checking: "Checking your sign-in status...",
+            redirecting: "Sign in with Google or email first. Redirecting to sign in...",
+            accountNote: "Your Google account identifies who receives the subscription. Cards, Google Pay, and other payment methods are offered by the selected payment provider.",
+            intentNote: "The server emails the owner before continuing. Only a live provider redirects to checkout; a provider under construction never charges you.",
+            providerBuilding: (name: string) => `${name} live checkout is under construction. The owner received your purchase request and no charge was created.`,
+            notificationFailed: "The owner could not be notified. Please try again later. No charge was created.",
           },
     [locale],
   );
+
+  const loginUrl = `${APP_ROUTES.login}?${new URLSearchParams({ next: APP_ROUTES.checkout }).toString()}`;
+
+  useEffect(() => {
+    if (!getStoredToken()) {
+      setSessionState("redirecting");
+      router.replace(loginUrl);
+      return;
+    }
+    setSessionState("ready");
+  }, [loginUrl, router]);
 
   useEffect(() => {
     if (!schoolCheckoutAvailable) return;
@@ -90,7 +136,9 @@ export function AppCheckoutClient() {
     event.preventDefault();
     const token = getStoredToken();
     if (!token) {
-      setStatus(copy.loginFirst);
+      setStatus({ message: copy.loginFirst, tone: "error" });
+      setSessionState("redirecting");
+      router.replace(loginUrl);
       return;
     }
 
@@ -118,7 +166,22 @@ export function AppCheckoutClient() {
 
     if (!result.ok) {
       setLoading(false);
-      setStatus(result.error);
+      if (result.status === 401) {
+        clearStoredToken();
+        setSessionState("redirecting");
+        router.replace(loginUrl);
+        return;
+      }
+      if (result.data?.code === "PAYMENT_PROVIDER_BUILDING") {
+        const providerName = provider === "stripe" ? copy.stripeTitle : copy.paddleTitle;
+        setStatus({ message: copy.providerBuilding(providerName), tone: "success" });
+        return;
+      }
+      if (result.data?.code === "CHECKOUT_INTENT_NOTIFICATION_FAILED") {
+        setStatus({ message: copy.notificationFailed, tone: "error" });
+        return;
+      }
+      setStatus({ message: result.error, tone: "error" });
       return;
     }
 
@@ -130,12 +193,23 @@ export function AppCheckoutClient() {
     window.location.href = result.data.url;
   }
 
+  if (sessionState !== "ready") {
+    return (
+      <div className="surface-panel stack-lg" aria-live="polite">
+        <p className="eyebrow">Checkout</p>
+        <h1 className="page-title">{sessionState === "checking" ? copy.checking : copy.redirecting}</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="surface-panel stack-lg">
       <div className="stack-sm">
         <p className="eyebrow">Checkout</p>
         <h1 className="page-title">{copy.title}</h1>
         <p className="body-copy large">{copy.body}</p>
+        <p className="helper-copy">{copy.accountNote}</p>
+        <p className="helper-copy">{copy.intentNote}</p>
       </div>
 
       <form className="form-grid" onSubmit={handleCheckout}>
@@ -157,17 +231,22 @@ export function AppCheckoutClient() {
           <div className="feature-grid">
             {providers.map((item) => {
               const isActive = provider === item;
+              const isLive = liveProviders.has(item);
               const title = item === "stripe" ? copy.stripeTitle : copy.paddleTitle;
-              const body = item === "stripe" ? copy.stripeBody : copy.paddleBody;
+              const body = item === "stripe"
+                ? isLive ? copy.stripeLiveBody : copy.stripeBuildingBody
+                : isLive ? copy.paddleLiveBody : copy.paddleBuildingBody;
+              const statusLabel = isLive ? copy.available : item === "stripe" ? copy.building : copy.waiting;
               return (
                 <button
                   key={item}
                   type="button"
                   className={`glass-panel stack-sm ${isActive ? "is-selected" : ""}`}
+                  aria-pressed={isActive}
                   onClick={() => setProvider(item)}
                   style={{ textAlign: "left", border: isActive ? "1px solid rgba(113,236,206,0.6)" : undefined }}
                 >
-                  <p className="item-title">{title}</p>
+                  <p className="item-title">{title} <span className={`status-chip ${isLive ? "tone-green" : "tone-amber"}`}>{statusLabel}</span></p>
                   <p className="body-copy">{body}</p>
                 </button>
               );
@@ -177,12 +256,16 @@ export function AppCheckoutClient() {
 
         <div className="button-row">
           <button type="submit" className="button button-primary" disabled={loading || (planKind === "school" && !organizationId)}>
-            {loading ? copy.loading : copy.button}
+            {loading ? copy.loading : liveProviders.has(provider) ? copy.button : copy.intentButton}
           </button>
         </div>
       </form>
 
-      {status ? <p className="form-status error">{status}</p> : null}
+      {status ? (
+        <p className={`form-status ${status.tone}`} role={status.tone === "error" ? "alert" : "status"}>
+          {status.message}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -8,7 +8,7 @@
     "build:cloudflare": "opennextjs-cloudflare build",
     "deploy:cloudflare:staging": "wrangler deploy --config wrangler.staging.jsonc",
     "start": "next start -p 3001",
-    "test": "node --import tsx --test src/lib/vexflow-layout.test.ts src/lib/vexflow-event-groups.test.ts src/lib/vexflow-beam-groups.test.ts src/lib/vexflow-voice-layout.test.ts src/lib/vexflow-modifier-layout.test.ts src/lib/vexflow-measure-annotations.test.ts src/lib/vexflow-key-signature.test.ts src/lib/vexflow-page-invalidation.test.ts src/lib/score-editor-clipboard.test.ts src/lib/score-collaboration-queue.test.ts src/lib/practice-performance-analysis.test.ts src/lib/score-collaboration-document.test.ts src/lib/omr-overlay-geometry.test.ts src/lib/score-review-viewport.test.ts src/lib/playback-timeline.test.ts",
+    "test": "node --import tsx --test src/lib/auth-return.test.ts src/lib/vexflow-layout.test.ts src/lib/vexflow-event-groups.test.ts src/lib/vexflow-beam-groups.test.ts src/lib/vexflow-voice-layout.test.ts src/lib/vexflow-modifier-layout.test.ts src/lib/vexflow-measure-annotations.test.ts src/lib/vexflow-key-signature.test.ts src/lib/vexflow-page-invalidation.test.ts src/lib/score-editor-clipboard.test.ts src/lib/score-collaboration-queue.test.ts src/lib/practice-performance-analysis.test.ts src/lib/score-collaboration-document.test.ts src/lib/omr-overlay-geometry.test.ts src/lib/score-review-viewport.test.ts src/lib/playback-timeline.test.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {

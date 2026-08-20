@@ -95,6 +95,7 @@ function baseContainerEnvironment(env: Bindings) {
     EMAIL_FROM_ADDRESS: "ScoreTransposer <no-reply@notify.scoretransposer.com>",
     EMAIL_REPLY_TO: "support@scoretransposer.com",
     SUPPORT_EMAIL: "support@scoretransposer.com",
+    PAYMENT_NOTIFICATION_EMAIL: "support@scoretransposer.com",
     PAYMENT_PROVIDERS: paymentProviders,
     PAYMENT_BILLING_MODE: "subscription",
     STRIPE_SECRET_KEY: stripeEnabled ? env.STRIPE_SECRET_KEY ?? "" : "",
@@ -153,6 +154,7 @@ export class ApiContainer extends ObservableContainer {
     "api.stripe.com": (request: Request) => fetch(request),
     "api.paddle.com": (request: Request) => fetch(request),
     "sandbox-api.paddle.com": (request: Request) => fetch(request),
+    "api.resend.com": (request: Request) => fetch(request),
     "api-staging.scoretransposer.com": (request: Request) => fetch(request),
     "api.scoretransposer.com": (request: Request) => fetch(request),
   };

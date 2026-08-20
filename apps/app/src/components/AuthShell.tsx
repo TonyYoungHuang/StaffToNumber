@@ -4,6 +4,7 @@ import Link from "next/link";
 import React from "react";
 import { APP_ROUTES } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, VaultIcon } from "@score/ui";
+import { PUBLIC_SITE_URL } from "../lib/support";
 import { useAppLocale } from "./AppLocaleProvider";
 
 export function AuthShell({
@@ -21,6 +22,8 @@ export function AuthShell({
       ? {
           eyebrow: "你的在线乐谱工作台",
           quote: "登录后，你的乐谱、修改记录和导出文件都会保存在同一个账户中。",
+          proofTitle: "真实案例 · 乐谱生成练习音频",
+          proofBody: "从结构化五线谱控制速度、循环与声部，再生成练习素材。",
           accessTitle: "先免费识别一页",
           accessBody: "上传一页 PDF 或一张乐谱图片，先看识别效果，再决定是否继续使用更多功能。",
           scopeTitle: "从识别到导出，一处完成",
@@ -33,6 +36,8 @@ export function AuthShell({
       : {
           eyebrow: "Secure score-workspace access",
           quote: "Sign in to keep your scores, edits, and exports together in one account.",
+          proofTitle: "Real example · score to practice audio",
+          proofBody: "Control tempo, loops, and parts from a structured score, then create practice media.",
           accessTitle: "Scan one page before paying",
           accessBody: "Upload one PDF page or score image, review the result, and decide whether to continue with more tools.",
           scopeTitle: "Everything stays in one place",
@@ -52,6 +57,19 @@ export function AuthShell({
           <p className="body-copy large">{description}</p>
           <div className="kicker-line" />
           <p className="editorial-quote">{copy.quote}</p>
+          <div className="auth-proof">
+            <video
+              src={`${PUBLIC_SITE_URL.replace(/\/$/, "")}/product/demo-score-to-audio.mp4`}
+              poster={`${PUBLIC_SITE_URL.replace(/\/$/, "")}/product/feature-score-to-audio-real.png`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label={copy.proofTitle}
+            />
+            <div><strong>{copy.proofTitle}</strong><span>{copy.proofBody}</span></div>
+          </div>
           <div className="auth-copy-points">
             <div className="editorial-point">
               <span className="info-icon">

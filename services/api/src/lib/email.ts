@@ -54,6 +54,20 @@ type PaymentNotificationEmailInput = {
   paidAt?: string | null;
 };
 
+type CheckoutIntentNotificationEmailInput = {
+  provider: "stripe" | "paddle";
+  siteEnvironment: string;
+  providerEnabled: boolean;
+  orderId: string;
+  userId: string;
+  customerEmail: string;
+  locale?: string | null;
+  billingKind: "one_time" | "subscription";
+  organizationId?: string | null;
+  seatQuantity: number;
+  createdAt: string;
+};
+
 export function isTransactionalEmailEnabled() {
   return Boolean(config.resendApiKey && config.emailFromAddress);
 }
@@ -248,6 +262,55 @@ export function buildPaymentNotificationEmail(input: PaymentNotificationEmailInp
     <p><strong>Amount:</strong> ${escapeHtml(amount)}</p>
     <p><strong>Paid at:</strong> ${escapeHtml(paidAt)}</p>
     <p>${isLive ? "This is the demand-validation alert. Verify the order in the payment provider dashboard before taking any manual action." : "This is a payment integration test alert. Do not count it as customer demand."}</p>
+  </div>`;
+
+  return { subject, text: lines.join("\n"), html };
+}
+
+export function buildCheckoutIntentNotificationEmail(input: CheckoutIntentNotificationEmailInput) {
+  const providerLabel = input.provider === "paddle" ? "Paddle" : "Stripe";
+  const environment = input.siteEnvironment.trim().toLowerCase() || "unknown";
+  const environmentLabel = environment === "production" ? "PRODUCTION SITE" : environment.toUpperCase();
+  const providerStatus = input.providerEnabled ? "enabled" : "not yet enabled";
+  const subject = `[Checkout intent][${environmentLabel}][${providerLabel}] ${input.customerEmail}`;
+  const lines = [
+    "A signed-in ScoreTransposer user reached the payment step and clicked continue.",
+    "This is purchase-intent evidence, not a confirmed payment.",
+    "",
+    `Site environment: ${environment}`,
+    `Provider: ${providerLabel}`,
+    `Provider status: ${providerStatus}`,
+    `Order: ${input.orderId}`,
+    `User ID: ${input.userId}`,
+    `Customer email: ${input.customerEmail}`,
+    `Locale: ${input.locale?.trim() || "-"}`,
+    `Billing kind: ${input.billingKind}`,
+    `Organization: ${input.organizationId?.trim() || "personal"}`,
+    `Seat quantity: ${input.seatQuantity}`,
+    `Intent created at: ${input.createdAt}`,
+    "",
+    input.providerEnabled
+      ? "The user may now be redirected to the configured provider. Confirm payment separately through the signed provider webhook."
+      : "The selected provider is not live. The user was shown a construction notice and was not sent to a payment page.",
+  ];
+  const html = `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#111">
+    <h2>ScoreTransposer checkout intent</h2>
+    <p>A signed-in user reached the payment step and clicked continue.</p>
+    <p><strong>This is purchase-intent evidence, not a confirmed payment.</strong></p>
+    <p><strong>Site environment:</strong> ${escapeHtml(environment)}</p>
+    <p><strong>Provider:</strong> ${escapeHtml(providerLabel)}</p>
+    <p><strong>Provider status:</strong> ${escapeHtml(providerStatus)}</p>
+    <p><strong>Order:</strong> ${escapeHtml(input.orderId)}</p>
+    <p><strong>User ID:</strong> ${escapeHtml(input.userId)}</p>
+    <p><strong>Customer email:</strong> ${escapeHtml(input.customerEmail)}</p>
+    <p><strong>Locale:</strong> ${escapeHtml(input.locale?.trim() || "-")}</p>
+    <p><strong>Billing kind:</strong> ${escapeHtml(input.billingKind)}</p>
+    <p><strong>Organization:</strong> ${escapeHtml(input.organizationId?.trim() || "personal")}</p>
+    <p><strong>Seat quantity:</strong> ${input.seatQuantity}</p>
+    <p><strong>Intent created at:</strong> ${escapeHtml(input.createdAt)}</p>
+    <p>${input.providerEnabled
+      ? "The user may now be redirected to the configured provider. Confirm payment separately through the signed provider webhook."
+      : "The selected provider is not live. The user was shown a construction notice and was not sent to a payment page."}</p>
   </div>`;
 
   return { subject, text: lines.join("\n"), html };

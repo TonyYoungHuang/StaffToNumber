@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowNorthEastIcon, BrandIcon, sonataCopy } from "@score/ui";
 import type { PublicAnnouncement } from "../lib/public-content";
-import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
+import { getAppLoginUrl, getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
@@ -19,8 +19,9 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   const [menuOpen, setMenuOpen] = useState(false);
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const appUrl = getAppStartConversionUrl();
+  const loginUrl = getAppLoginUrl();
   const checkoutUrl = getCheckoutUrl(locale);
-  const homeSections = { workflow: "/#workflow", useCases: "/#use-cases" } as const;
+  const homeSections = { workflow: "/#workflow", useCases: "/#cases", pricing: "/#pricing" } as const;
   const copy =
     locale === "zh-CN"
       ? {
@@ -28,7 +29,12 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
           editor: "在线编辑",
           transpose: "移调",
           education: "教学",
-          pricing: "开通",
+          pricing: "价格",
+          help: "帮助",
+          guide: "使用指南",
+          contact: "联系我们",
+          discord: "Discord 社群",
+          login: "登录",
           faq: "问答",
           about: "关于 / 支持",
           support: "支持",
@@ -48,6 +54,11 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
           transpose: "Transpose",
           education: "Education",
           pricing: "Pricing",
+          help: "Help",
+          guide: "Guide",
+          contact: "Contact us",
+          discord: "Discord",
+          login: "Sign in",
           faq: "FAQ",
           about: "About",
           support: "Support",
@@ -131,12 +142,23 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
             <Link href="/pdf-score-scanner" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.scanner}</Link>
             <Link href="/score-editor" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.editor}</Link>
             <Link href="/transpose-score" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.transpose}</Link>
-            {siteConfig.release.checkoutAvailable ? <Link href="/pricing" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.pricing}</Link> : null}
+            <Link href={homeSections.pricing} className="nav-link" onClick={() => setMenuOpen(false)}>{copy.pricing}</Link>
+            <details className="public-nav-help">
+              <summary className="nav-link">{copy.help}<span aria-hidden="true">⌄</span></summary>
+              <div className="public-nav-help-menu">
+                <a href={homeSections.workflow} onClick={() => setMenuOpen(false)}>{copy.guide}</a>
+                <Link href="/support" onClick={() => setMenuOpen(false)}>{copy.contact}</Link>
+              </div>
+            </details>
             {siteConfig.release.teachingAvailable ? <Link href="/teaching" className="nav-link" onClick={() => setMenuOpen(false)}>{copy.education}</Link> : null}
+            {siteConfig.discordInviteUrl ? <a href={siteConfig.discordInviteUrl} target="_blank" rel="noreferrer" className="nav-link public-nav-discord" onClick={() => setMenuOpen(false)}>{copy.discord}</a> : null}
+            <a href={loginUrl} className="nav-link public-nav-auth" onClick={() => setMenuOpen(false)}>{copy.login}</a>
           </nav>
 
           <div className="header-actions">
             <SiteLocaleSwitcher />
+            {siteConfig.discordInviteUrl ? <a href={siteConfig.discordInviteUrl} target="_blank" rel="noreferrer" className="public-button secondary public-discord-link">{copy.discord}</a> : null}
+            <a href={loginUrl} className="public-button secondary public-login-link">{copy.login}</a>
             {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button secondary">{copy.buy}</a> : null}
             <a href={appUrl} className="public-button primary">
               {copy.app}
@@ -169,7 +191,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
           <div className="footer-links">
             <a href={homeSections.workflow}>{locale === "zh-CN" ? "使用流程" : "How it works"}</a>
             <a href={homeSections.useCases}>{locale === "zh-CN" ? "使用场景" : "Use cases"}</a>
-            {siteConfig.release.checkoutAvailable ? <Link href="/pricing">{copy.pricing}</Link> : null}
+            <Link href={homeSections.pricing}>{copy.pricing}</Link>
             <Link href="/faq">{copy.faq}</Link>
             <Link href="/about">{copy.about}</Link>
             <Link href="/support">{copy.support}</Link>

@@ -40,8 +40,10 @@ import {
   findReusablePaymentOrder,
   mapPaymentOrderForPublic,
   markPaymentOrderCancelled,
+  markPaymentOrderFailed,
 } from "../repositories/payment-repository.js";
 import type { PaymentOrderRow } from "../repositories/payment-repository.js";
+import { buildCheckoutIntentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
 
 function isProvider(value: unknown): value is PaymentProvider {
   return value === "stripe" || value === "paddle";
@@ -79,6 +81,40 @@ function checkoutResponse(order: PaymentOrderRow) {
     status: order.status,
     reused: true,
   };
+}
+
+async function sendCheckoutIntentAlert(
+  app: FastifyInstance,
+  input: {
+    order: PaymentOrderRow;
+    userId: string;
+    providerEnabled: boolean;
+  },
+) {
+  const email = buildCheckoutIntentNotificationEmail({
+    provider: input.order.provider,
+    siteEnvironment: config.nodeEnv,
+    providerEnabled: input.providerEnabled,
+    orderId: input.order.id,
+    userId: input.userId,
+    customerEmail: input.order.customer_email ?? "unknown",
+    locale: input.order.locale,
+    billingKind: input.order.billing_kind,
+    organizationId: input.order.organization_id,
+    seatQuantity: input.order.seat_quantity,
+    createdAt: input.order.created_at,
+  });
+  const delivery = await sendTransactionalEmail({ to: config.paymentNotificationEmail, ...email });
+  if (config.nodeEnv === "production" && delivery.mode !== "resend") {
+    throw new Error("Production checkout intent email delivery is not configured.");
+  }
+  app.log.info({
+    event: "payment.checkout_intent_notified",
+    orderId: input.order.id,
+    provider: input.order.provider,
+    providerEnabled: input.providerEnabled,
+    deliveryMode: delivery.mode,
+  });
 }
 
 function isSeatEmail(value: string) {
@@ -173,10 +209,6 @@ export async function paymentRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "Payment provider is required." });
       }
 
-      if (!isPaymentProviderEnabled(body.provider)) {
-        return reply.code(400).send({ error: "This payment provider is not enabled." });
-      }
-
       const profile = request.authUserId ? getUserProfile(request.authUserId) : null;
       const customerEmail = profile?.email ?? null;
       if (!customerEmail) {
@@ -238,6 +270,35 @@ export async function paymentRoutes(app: FastifyInstance) {
       } catch (error) {
         app.log.error(error);
         return reply.code(503).send({ error: "Unable to persist the payment order safely." });
+      }
+
+      const providerEnabled = isPaymentProviderEnabled(body.provider);
+      if (!reusable) {
+        try {
+          await sendCheckoutIntentAlert(app, {
+            order,
+            userId: request.authUserId!,
+            providerEnabled,
+          });
+        } catch (error) {
+          app.log.error({ err: error, orderId: order.id }, "Checkout intent email delivery failed.");
+          markPaymentOrderFailed(order.id, "checkout-intent-notification-failed");
+          await persistLocalPaymentOrder(order.id);
+          return reply.code(503).send({
+            error: "Unable to notify the operator about this checkout request. Please try again.",
+            code: "CHECKOUT_INTENT_NOTIFICATION_FAILED",
+          });
+        }
+      }
+
+      if (!providerEnabled) {
+        return reply.code(409).send({
+          error: `${body.provider === "stripe" ? "Stripe" : "Paddle"} production checkout is being prepared. The operator has received your purchase request.`,
+          code: "PAYMENT_PROVIDER_BUILDING",
+          provider: body.provider,
+          orderId: order.id,
+          intentNotified: true,
+        });
       }
 
       const successBase = `${config.publicAppUrl}/checkout/success?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;

@@ -133,10 +133,10 @@ body {
 
 .public-header .header-inner {
   display: grid;
-  grid-template-columns: minmax(240px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(220px, auto) minmax(0, 1fr) auto;
   align-items: center;
   min-height: 76px;
-  gap: 28px;
+  gap: 18px;
 }
 
 .public-brand {
@@ -215,11 +215,75 @@ body {
   color: var(--public-brand-strong);
 }
 
+.public-nav-help {
+  position: relative;
+}
+
+.public-nav-help > summary {
+  gap: 5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.public-nav-help > summary::-webkit-details-marker {
+  display: none;
+}
+
+.public-nav-help > summary span {
+  font-size: 12px;
+  transition: transform 160ms ease;
+}
+
+.public-nav-help[open] > summary span {
+  transform: rotate(180deg);
+}
+
+.public-nav-help-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 60;
+  display: grid;
+  width: 176px;
+  padding: 8px;
+  gap: 3px;
+  border: 1px solid var(--public-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 44px rgba(31, 35, 62, 0.16);
+  transform: translateX(-50%);
+}
+
+.public-nav-help-menu a {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--public-copy);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.public-nav-help-menu a:hover {
+  background: var(--public-surface-tint);
+  color: var(--public-brand-strong);
+}
+
+.public-nav .public-nav-discord {
+  display: none;
+}
+
+.public-nav .public-nav-auth {
+  display: none;
+}
+
 .public-header .header-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .public-header .locale-switcher,
@@ -2865,6 +2929,30 @@ html[data-visual-effects="reduced"] .feature-practice-signal > i {
     padding: 12px;
   }
 
+  .public-nav .public-nav-auth {
+    display: inline-flex;
+  }
+
+  .public-nav .public-nav-discord {
+    display: inline-flex;
+  }
+
+  .public-nav-help > summary {
+    justify-content: space-between;
+  }
+
+  .public-nav-help-menu {
+    position: static;
+    width: auto;
+    margin: 2px 4px 6px;
+    border: 0;
+    border-left: 2px solid #ded9ff;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
   .home-hero {
     padding-top: 58px;
   }
@@ -2965,8 +3053,11 @@ html[data-visual-effects="reduced"] .feature-practice-signal > i {
 
   .public-header .header-actions > .public-button.primary {
     min-height: 44px;
-    padding: 0 12px;
-    font-size: 11px;
+    min-width: 112px;
+    padding: 0 9px;
+    gap: 4px;
+    font-size: 10.5px;
+    white-space: nowrap;
   }
 
   .home-hero {

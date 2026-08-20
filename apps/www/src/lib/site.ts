@@ -25,6 +25,20 @@ function normalizeConfiguredUrl(value: string | undefined, fallback: string) {
   }
 }
 
+function normalizeDiscordInviteUrl(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+
+  try {
+    const url = new URL(trimmed);
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== "https:" || !["discord.gg", "discord.com", "www.discord.com"].includes(hostname)) return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
 function buildUrl(baseUrl: string, pathname: string) {
   return new URL(pathname, `${stripTrailingSlash(baseUrl)}/`).toString();
 }
@@ -44,6 +58,7 @@ export const siteConfig = {
   appUrl: resolvedAppUrl,
   checkoutUrl: resolvedCheckoutUrl,
   chinaCheckoutUrl: resolvedChinaCheckoutUrl,
+  discordInviteUrl: normalizeDiscordInviteUrl(process.env.NEXT_PUBLIC_DISCORD_INVITE_URL),
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@scoretransposer.com",
   priceAmount: process.env.NEXT_PUBLIC_PRICE_AMOUNT ?? "",
   priceCurrency: process.env.NEXT_PUBLIC_PRICE_CURRENCY ?? "USD",
@@ -81,15 +96,20 @@ export const publicContentLastUpdated = "2026-08-19";
 export const legalLastUpdated = "2026-08-10";
 
 export function getCheckoutUrl(locale: SupportedLocale) {
-  if (!siteConfig.release.checkoutAvailable) {
-    return getSupportUrl("payment", "checkout-unavailable");
-  }
-
-  return locale === "zh-CN" ? siteConfig.chinaCheckoutUrl : siteConfig.checkoutUrl;
+  void locale;
+  return getAppLoginUrl(APP_ROUTES.checkout);
 }
 
 export function getAppHomeUrl() {
   return siteConfig.appUrl;
+}
+
+export function getAppLoginUrl(nextPath?: string) {
+  const loginUrl = new URL(APP_ROUTES.login, `${siteConfig.appUrl}/`);
+  if (nextPath?.startsWith("/") && !nextPath.startsWith("//")) {
+    loginUrl.searchParams.set("next", nextPath);
+  }
+  return loginUrl.toString();
 }
 
 export function getSafeAppUrl(source = "site") {

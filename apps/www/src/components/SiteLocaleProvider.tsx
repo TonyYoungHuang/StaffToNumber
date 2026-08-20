@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { LOCALE_COOKIE_NAME, type SupportedLocale } from "@score/shared";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { type SupportedLocale } from "@score/shared";
 
 type SiteLocaleContextValue = {
   locale: SupportedLocale;
@@ -10,31 +10,21 @@ type SiteLocaleContextValue = {
 
 const SiteLocaleContext = createContext<SiteLocaleContextValue | null>(null);
 
-function buildCookie(locale: SupportedLocale) {
-  const parts = [
-    `${LOCALE_COOKIE_NAME}=${locale}`,
-    "Path=/",
-    `Max-Age=${60 * 60 * 24 * 365}`,
-    "SameSite=Lax",
-  ];
-
-  const cookieDomain = process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN;
-  if (cookieDomain) {
-    parts.push(`Domain=${cookieDomain}`);
-  }
-
-  return parts.join("; ");
-}
-
 export function SiteLocaleProvider({ locale, children }: { locale: SupportedLocale; children: ReactNode }) {
+  const [currentLocale, setCurrentLocale] = useState(locale);
+
+  useEffect(() => {
+    setCurrentLocale(locale);
+  }, [locale]);
+
   const value = useMemo<SiteLocaleContextValue>(
     () => ({
-      locale,
+      locale: currentLocale,
       setLocale(nextLocale) {
-        document.cookie = buildCookie(nextLocale);
+        setCurrentLocale(nextLocale);
       },
     }),
-    [locale],
+    [currentLocale],
   );
 
   return <SiteLocaleContext.Provider value={value}>{children}</SiteLocaleContext.Provider>;
