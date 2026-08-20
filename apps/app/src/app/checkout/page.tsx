@@ -33,77 +33,184 @@ export default async function CheckoutPage() {
   }
 
   const isChinese = locale === "zh-CN";
+  const plans = isChinese
+    ? [
+        {
+          code: "pro-monthly",
+          badge: "灵活月付",
+          name: "专业版 Pro",
+          cycle: "月付",
+          price: "$19 / ¥129",
+          unitPrice: "$0.19 / ¥1.29 / 积分",
+          credits: "100 积分 / 月",
+          audience: "适合偶尔识谱、移调和简谱转换的个人用户",
+          benefits: ["PDF／图片乐谱识别", "在线结构化校对与编辑", "整谱移调与调号重算", "五线谱转简谱", "乐谱播放与已开放的服务器端导出"],
+          resources: ["个人乐谱库", "MusicXML／MIDI／PDF 等已开放格式", "按月续费，可随时停止后续续费"],
+          cta: "选择 Pro 月付",
+          featured: false,
+        },
+        {
+          code: "pro-annual",
+          badge: "个人用户推荐",
+          name: "专业版 Pro",
+          cycle: "年付",
+          price: "$159 / ¥999",
+          unitPrice: "$0.13 / ¥0.83 / 积分",
+          credits: "100 积分 / 月",
+          audience: "适合持续处理个人乐谱、希望降低单次成本的用户",
+          benefits: ["包含 Pro 月付全部功能", "PDF／图片识谱与在线校对", "移调、简谱转换与乐谱播放", "每月 100 积分，按月重置", "全年持续使用，无需每月重复购买"],
+          resources: ["年付节省 $69 / ¥549", "个人乐谱库与修订记录", "MusicXML／MIDI／PDF 等已开放格式"],
+          cta: "选择 Pro 年付",
+          featured: true,
+        },
+        {
+          code: "studio-monthly",
+          badge: "批量工作",
+          name: "批量版 Studio",
+          cycle: "月付",
+          price: "$129 / ¥899",
+          unitPrice: "$0.26 / ¥1.80 / 积分",
+          credits: "500 积分 / 月",
+          audience: "适合工作室、教师团队和阶段性批量处理",
+          benefits: ["包含 Pro 全部核心能力", "批量 PDF／图片识谱工作流", "整谱移调与五线谱转简谱", "在线校对、播放和项目管理", "每月 500 积分，适合高频任务"],
+          resources: ["工作室与教学场景使用", "批量乐谱项目资源", "MusicXML／MIDI／PDF 等已开放格式"],
+          cta: "选择 Studio 月付",
+          featured: false,
+        },
+        {
+          code: "studio-annual",
+          badge: "批量处理优选",
+          name: "批量版 Studio",
+          cycle: "年付",
+          price: "$1,099 / ¥7,599",
+          unitPrice: "$0.18 / ¥1.27 / 积分",
+          credits: "500 积分 / 月",
+          audience: "适合出版、教师团队与长期批量乐谱处理",
+          benefits: ["包含 Studio 月付全部能力", "每月 500 积分，按月重置", "批量识谱、校对与转换工作流", "长期项目连续使用", "适合团队、出版与稳定高频处理"],
+          resources: ["年付节省 $449 / ¥3,189", "批量乐谱项目资源", "MusicXML／MIDI／PDF 等已开放格式"],
+          cta: "选择 Studio 年付",
+          featured: false,
+        },
+      ]
+    : [
+        {
+          code: "pro-monthly",
+          badge: "Flexible monthly",
+          name: "Pro",
+          cycle: "Monthly",
+          price: "$19 / ¥129",
+          unitPrice: "$0.19 / ¥1.29 per credit",
+          credits: "100 credits / month",
+          audience: "For individuals who occasionally recognize, transpose, or convert scores",
+          benefits: ["PDF and image score recognition", "Structured online correction and editing", "Whole-score transposition", "Staff-to-Jianpu conversion", "Playback and available server exports"],
+          resources: ["Personal score library", "Available MusicXML, MIDI, and PDF formats", "Monthly renewal with no long commitment"],
+          cta: "Choose Pro monthly",
+          featured: false,
+        },
+        {
+          code: "pro-annual",
+          badge: "Recommended for individuals",
+          name: "Pro",
+          cycle: "Annual",
+          price: "$159 / ¥999",
+          unitPrice: "$0.13 / ¥0.83 per credit",
+          credits: "100 credits / month",
+          audience: "For individuals who process scores regularly and want a lower unit cost",
+          benefits: ["Everything in Pro monthly", "PDF/image recognition and correction", "Transposition, Jianpu, and playback", "100 credits reset each month", "Continuous annual access"],
+          resources: ["Save $69 / ¥549 annually", "Personal library and revision history", "Available MusicXML, MIDI, and PDF formats"],
+          cta: "Choose Pro annual",
+          featured: true,
+        },
+        {
+          code: "studio-monthly",
+          badge: "Batch work",
+          name: "Studio",
+          cycle: "Monthly",
+          price: "$129 / ¥899",
+          unitPrice: "$0.26 / ¥1.80 per credit",
+          credits: "500 credits / month",
+          audience: "For studios, teaching teams, and short-term batch processing",
+          benefits: ["All Pro core capabilities", "Batch PDF/image recognition workflows", "Whole-score transpose and Jianpu", "Correction, playback, and project management", "500 monthly credits for frequent jobs"],
+          resources: ["Studio and teaching use cases", "Batch score project resources", "Available MusicXML, MIDI, and PDF formats"],
+          cta: "Choose Studio monthly",
+          featured: false,
+        },
+        {
+          code: "studio-annual",
+          badge: "Best for batch work",
+          name: "Studio",
+          cycle: "Annual",
+          price: "$1,099 / ¥7,599",
+          unitPrice: "$0.18 / ¥1.27 per credit",
+          credits: "500 credits / month",
+          audience: "For publishing, teaching teams, and sustained batch score processing",
+          benefits: ["Everything in Studio monthly", "500 credits reset each month", "Batch recognition, correction, and conversion", "Continuous access for long projects", "Designed for stable high-volume workflows"],
+          resources: ["Save $449 / ¥3,189 annually", "Batch score project resources", "Available MusicXML, MIDI, and PDF formats"],
+          cta: "Choose Studio annual",
+          featured: false,
+        },
+      ];
 
   return (
-    <section className="container page-shell">
-      <div className={`page-banner ${styles.hero}`}>
-        <p className="eyebrow">{isChinese ? "升级套餐" : "Upgrade your plan"}</p>
-        <h1 className={styles.pageTitle}>{isChinese ? "选择适合你的积分套餐" : "Choose the credit plan that fits your work"}</h1>
-        <p className="body-copy large">
-          {isChinese
-            ? "每个后台处理任务消耗 1 积分；查看、播放控制和未提交的基础编辑为 0 积分。请先查看套餐，再登录账户继续。"
-            : "Each server-side processing job uses one credit. Viewing, playback controls, and unsubmitted basic edits use zero credits. Review the plans, then sign in to continue."}
-        </p>
-      </div>
-
-      <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className="eyebrow">{isChinese ? "积分付费方案" : "Credit pricing"}</p>
-            <h2 id="checkout-plans-title" className={styles.sectionHeading}>
-              {isChinese ? "按实际处理任务购买积分" : "Buy credits for real processing jobs"}
-            </h2>
-          </div>
-          <p className="body-copy">
-            {isChinese ? "月度积分每月重置，未用积分不滚存。" : "Monthly credits reset each month and do not roll over."}
+    <section className={styles.checkoutShell}>
+      <header className={styles.pricingHeader}>
+        <div>
+          <p className="eyebrow">{isChinese ? "积分付费方案" : "Credit pricing"}</p>
+          <h1 id="checkout-plans-title" className={styles.pageTitle}>{isChinese ? "选择你的积分套餐" : "Choose your credit plan"}</h1>
+          <p className={styles.heroCopy}>
+            {isChinese
+              ? "每个创建成功的后台处理任务消耗 1 积分。先比较每项价格、能力与资源，再登录继续。"
+              : "Each successfully created server-side job uses one credit. Compare price, capabilities, and resources before signing in."}
           </p>
         </div>
+        <div className={styles.promoPill}>
+          <span>{isChinese ? "年付更省" : "Save with annual"}</span>
+          <strong>{isChinese ? "最高节省 ¥3,189" : "Save up to $449"}</strong>
+        </div>
+      </header>
 
+      <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
         <div className={styles.planGrid}>
-          {isChinese ? (
-            <>
-              <article className={styles.planCard}>
-                <div className={styles.planTop}><div><span className={styles.planBadge}>个人用户</span><h3>专业版 Pro</h3></div><strong>100 积分 / 月</strong></div>
-                <p className={styles.creditPrice}>$0.13 <span>/ ¥0.83 / 积分</span></p>
-                <p className={styles.regularPrice}>年付折算 · 常规月付单价 $0.19 / ¥1.29</p>
-                <ul className={styles.planFeatures}><li>月付：$19 / ¥129</li><li>年付：$159 / ¥999</li><li>适合偶尔识谱、移调和简谱转换</li></ul>
-                <a className="button button-primary" href="#checkout-action">登录后继续</a>
-              </article>
-              <article className={`${styles.planCard} ${styles.studioPlan}`}>
-                <div className={styles.planTop}><div><span className={styles.planBadge}>批量处理</span><h3>批量版 Studio</h3></div><strong>500 积分 / 月</strong></div>
-                <p className={styles.creditPrice}>$0.18 <span>/ ¥1.27 / 积分</span></p>
-                <p className={styles.regularPrice}>年付折算 · 常规月付单价 $0.26 / ¥1.80</p>
-                <ul className={styles.planFeatures}><li>月付：$129 / ¥899</li><li>年付：$1,099 / ¥7,599</li><li>适合工作室、教师团队、出版与批量处理</li></ul>
-                <a className="button button-secondary" href="#checkout-action">登录后继续</a>
-              </article>
-            </>
-          ) : (
-            <>
-              <article className={styles.planCard}>
-                <div className={styles.planTop}><div><span className={styles.planBadge}>Individuals</span><h3>Pro</h3></div><strong>100 credits / month</strong></div>
-                <p className={styles.creditPrice}>$0.13 <span>/ ¥0.83 / credit</span></p>
-                <p className={styles.regularPrice}>Annual effective rate · regular monthly rate $0.19 / ¥1.29</p>
-                <ul className={styles.planFeatures}><li>Monthly: $19 / ¥129</li><li>Annual: $159 / ¥999</li><li>For occasional recognition, transposition, and Jianpu conversion</li></ul>
-                <a className="button button-primary" href="#checkout-action">Sign in to continue</a>
-              </article>
-              <article className={`${styles.planCard} ${styles.studioPlan}`}>
-                <div className={styles.planTop}><div><span className={styles.planBadge}>Batch work</span><h3>Studio</h3></div><strong>500 credits / month</strong></div>
-                <p className={styles.creditPrice}>$0.18 <span>/ ¥1.27 / credit</span></p>
-                <p className={styles.regularPrice}>Annual effective rate · regular monthly rate $0.26 / ¥1.80</p>
-                <ul className={styles.planFeatures}><li>Monthly: $129 / ¥899</li><li>Annual: $1,099 / ¥7,599</li><li>For studios, teaching teams, publishing, and batch processing</li></ul>
-                <a className="button button-secondary" href="#checkout-action">Sign in to continue</a>
-              </article>
-            </>
-          )}
+          {plans.map((plan) => (
+            <article key={plan.code} className={`${styles.planCard} ${plan.featured ? styles.featuredPlan : ""}`}>
+              <div className={styles.planTop}>
+                <span className={styles.planBadge}>{plan.badge}</span>
+                <span className={styles.planCycle}>{plan.cycle}</span>
+              </div>
+              <div className={styles.planIdentity}>
+                <h2>{plan.name}</h2>
+                <p>{plan.audience}</p>
+              </div>
+              <div className={styles.priceBlock}>
+                <p className={styles.planPrice}>{plan.price}</p>
+                <p className={styles.unitPrice}>{plan.unitPrice}</p>
+              </div>
+              <div className={styles.creditBox}>
+                <span aria-hidden="true">⚡</span>
+                <div><strong>{plan.credits}</strong><small>{isChinese ? "创建成功的后台任务计费" : "Charged for successfully created server jobs"}</small></div>
+              </div>
+              <a className={`button ${plan.featured ? "button-primary" : "button-secondary"} ${styles.planButton}`} href="#checkout-action">
+                {plan.cta}
+              </a>
+              <div className={styles.cardSection}>
+                <h3>{isChinese ? "包含能力" : "Included capabilities"}</h3>
+                <ul className={styles.planFeatures}>{plan.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
+              </div>
+              <div className={`${styles.cardSection} ${styles.resourceSection}`}>
+                <h3>{isChinese ? "福利与资源" : "Benefits and resources"}</h3>
+                <ul className={styles.resourceList}>{plan.resources.map((resource) => <li key={resource}>{resource}</li>)}</ul>
+              </div>
+            </article>
+          ))}
         </div>
         <p className={styles.planNote}>
           {isChinese
-            ? "1 积分对应一次创建成功的后台任务，包括 PDF／图片识谱、整谱移调、五线谱转简谱和已开放的服务器端导出。"
-            : "One credit covers one successfully created server-side job, including PDF/image recognition, whole-score transposition, staff-to-Jianpu, and available server exports."}
+            ? "月度积分每月重置，未使用积分不滚存。查看、播放控制和未提交的基础编辑不消耗积分。"
+            : "Monthly credits reset each month and do not roll over. Viewing, playback controls, and unsubmitted basic edits use no credits."}
         </p>
       </section>
 
-      <AppCheckoutClient />
+      <div className={styles.checkoutActionWrap}><AppCheckoutClient /></div>
     </section>
   );
 }
