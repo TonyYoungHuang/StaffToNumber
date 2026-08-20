@@ -96,20 +96,27 @@ export const publicContentLastUpdated = "2026-08-19";
 export const legalLastUpdated = "2026-08-10";
 
 export function getCheckoutUrl(locale: SupportedLocale) {
-  void locale;
-  return getAppLoginUrl(APP_ROUTES.checkout);
+  return getAppLoginUrl(APP_ROUTES.checkout, locale);
 }
 
 export function getAppHomeUrl() {
   return siteConfig.appUrl;
 }
 
-export function getAppLoginUrl(nextPath?: string) {
+function getAppLocaleHandoffUrl(nextPath: string, locale: SupportedLocale) {
+  const handoffUrl = new URL("/api/locale", `${siteConfig.appUrl}/`);
+  handoffUrl.searchParams.set("locale", locale);
+  handoffUrl.searchParams.set("next", nextPath);
+  return handoffUrl.toString();
+}
+
+export function getAppLoginUrl(nextPath?: string, locale?: SupportedLocale) {
   const loginUrl = new URL(APP_ROUTES.login, `${siteConfig.appUrl}/`);
   if (nextPath?.startsWith("/") && !nextPath.startsWith("//")) {
     loginUrl.searchParams.set("next", nextPath);
   }
-  return loginUrl.toString();
+  const loginPath = `${loginUrl.pathname}${loginUrl.search}`;
+  return locale ? getAppLocaleHandoffUrl(loginPath, locale) : loginUrl.toString();
 }
 
 export function getSafeAppUrl(source = "site") {
@@ -132,12 +139,18 @@ export function getAppActivateUrl() {
   return buildUrl(siteConfig.appUrl, APP_ROUTES.activate);
 }
 
-export function getAppStartConversionUrl() {
+export function getAppStartConversionUrl(locale?: SupportedLocale) {
   if (siteConfig.release.productAppAvailable) {
-    return `${buildUrl(siteConfig.appUrl, APP_ROUTES.scores)}#omr-import`;
+    const scorePath = `${APP_ROUTES.scores}#omr-import`;
+    return locale ? getAppLocaleHandoffUrl(scorePath, locale) : `${buildUrl(siteConfig.appUrl, APP_ROUTES.scores)}#omr-import`;
   }
 
   return getSupportUrl("general", "upload-launch-access");
+}
+
+export function getAppScoreProjectsUrl(locale?: SupportedLocale) {
+  const scorePath = APP_ROUTES.scores;
+  return locale ? getAppLocaleHandoffUrl(scorePath, locale) : buildUrl(siteConfig.appUrl, scorePath);
 }
 
 export function getSupportUrl(category: "payment" | "activation" | "job" | "privacy" | "general", source = "site") {

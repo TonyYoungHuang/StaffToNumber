@@ -22,13 +22,13 @@ const featureDemos = [
 export default async function HomePage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
-  const startUrl = getAppStartConversionUrl();
+  const startUrl = getAppStartConversionUrl(locale);
   const checkoutUrl = getCheckoutUrl(locale);
 
   const copy = isChinese
     ? {
         heroKicker: "AI 识谱与结构化处理工作台",
-        heroTitle: ["让 AI 读懂你的乐谱，", "继续编辑、转换与播放。"],
+        heroTitle: ["让 AI 读懂你的乐谱，", "继续编辑、转换与播放"],
         heroIntro: ["上传 PDF、乐谱图片、MusicXML 或音视频文件。", "先生成可人工校正的五线谱。", "再继续完成简谱、移调、播放与导出。"],
         heroPoints: [
           ["结果可以核对", "保留来源、诊断与需要人工判断的位置。"],
@@ -112,7 +112,7 @@ export default async function HomePage() {
       }
     : {
         heroKicker: "AI recognition and structured score workspace",
-        heroTitle: ["AI reads your score.", "Keep working with it."],
+        heroTitle: ["AI reads your score.", "Edit, convert, and play it next."],
         heroIntro: ["Upload a PDF, score image, MusicXML file, or audio/video source.", "Create a reviewable structured score.", "Then edit, transpose, convert, play, and export it."],
         heroPoints: [
           ["Reviewable results", "Keep source evidence, diagnostics, and uncertain positions together."],
@@ -213,16 +213,13 @@ export default async function HomePage() {
       <section className={`${styles.section} ${styles.hero}`} aria-labelledby="home-title">
         <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
         <div className={`${styles.container} ${styles.heroGrid}`}>
-          <HomeHeroWorkbench isChinese={isChinese} startUrl={startUrl} audioAvailable={siteConfig.release.audioTranscriptionAvailable} />
           <div className={styles.heroCopy}>
             <p className={styles.kicker}><SparkIcon width={16} height={16} />{copy.heroKicker}</p>
-            <h1 id="home-title"><span className={styles.titleLine}>{copy.heroTitle[0]}</span><strong className={styles.titleLine}>{copy.heroTitle[1]}</strong></h1>
-            <p className={styles.heroIntro}>{copy.heroIntro.map((line) => <span key={line}>{line}</span>)}</p>
-            <ul className={styles.heroPoints}>
-              {copy.heroPoints.map(([title, body]) => <li key={title}><CheckSealIcon width={18} height={18} /><span><strong>{title}</strong>{body}</span></li>)}
-            </ul>
-            <a href="#cases" className={styles.secondaryAction}>{copy.heroCases}<ArrowNorthEastIcon width={16} height={16} /></a>
+            <h1 id="home-title" className={isChinese ? undefined : styles.heroTitleEnglish}>
+              {copy.heroTitle.map((line) => <span className={styles.heroTitleLine} key={line}>{line}</span>)}
+            </h1>
           </div>
+          <HomeHeroWorkbench isChinese={isChinese} startUrl={startUrl} audioAvailable={siteConfig.release.audioTranscriptionAvailable} />
         </div>
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
       </section>

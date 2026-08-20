@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { APP_ROUTES } from "@score/shared";
 import { MetricCard, Panel, PreviewStaffGraphic, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
 import { getFeatureSeoRecord } from "../../lib/feature-seo";
+import { getFeaturePageUi, localizeFeatureEvidence, localizeFeaturePage } from "../../lib/feature-page-localization";
 import { findPlatformFeaturePage, isFeatureAvailable, isFeatureIndexable, platformFeaturePages } from "../../lib/platform-feature-pages";
-import { getAppHomeUrl, getAppStartConversionUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
+import { getAppScoreProjectsUrl, getAppStartConversionUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
 import { readSiteLocale } from "../../lib/locale";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 
 type FeatureRouteParams = {
   featureSlug: string;
 };
-
-function appScoresUrl() {
-  return new URL(APP_ROUTES.scores, `${getAppHomeUrl().replace(/\/$/, "")}/`).toString();
-}
 
 function actionUrl(page: NonNullable<ReturnType<typeof findPlatformFeaturePage>>, locale: Awaited<ReturnType<typeof readSiteLocale>>) {
   if (!isFeatureAvailable(page)) {
@@ -24,31 +20,32 @@ function actionUrl(page: NonNullable<ReturnType<typeof findPlatformFeaturePage>>
 
   const action = page.primaryAction;
   if (action === "upload") {
-    return getAppStartConversionUrl();
+    return getAppStartConversionUrl(locale);
   }
 
   if (action === "checkout") {
     return getCheckoutUrl(locale);
   }
 
-  return appScoresUrl();
+  return getAppScoreProjectsUrl(locale);
 }
 
-function actionLabel(page: NonNullable<ReturnType<typeof findPlatformFeaturePage>>) {
+function actionLabel(page: NonNullable<ReturnType<typeof findPlatformFeaturePage>>, locale: Awaited<ReturnType<typeof readSiteLocale>>) {
+  const actions = getFeaturePageUi(locale).actions;
   if (!isFeatureAvailable(page)) {
-    return "Check release availability";
+    return actions.unavailable;
   }
 
   const action = page.primaryAction;
   if (action === "upload") {
-    return "Scan one page free";
+    return actions.upload;
   }
 
   if (action === "checkout") {
-    return "View access options";
+    return actions.checkout;
   }
 
-  return "Open score projects";
+  return actions.scores;
 }
 
 function statusTone(status: string) {
@@ -71,11 +68,13 @@ export function generateStaticParams(): FeatureRouteParams[] {
 
 export async function generateMetadata({ params }: { params: Promise<FeatureRouteParams> }): Promise<Metadata> {
   const { featureSlug } = await params;
-  const page = findPlatformFeaturePage(featureSlug);
+  const sourcePage = findPlatformFeaturePage(featureSlug);
 
-  if (!page) {
+  if (!sourcePage) {
     return {};
   }
+  const locale = await readSiteLocale();
+  const page = localizeFeaturePage(sourcePage, locale);
 
   return {
     title: `${page.title} | ${siteConfig.siteName}`,
@@ -107,33 +106,37 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
 
 export default async function PlatformFeaturePage({ params }: { params: Promise<FeatureRouteParams> }) {
   const { featureSlug } = await params;
-  const page = findPlatformFeaturePage(featureSlug);
+  const sourcePage = findPlatformFeaturePage(featureSlug);
 
-  if (!page) {
+  if (!sourcePage) {
     notFound();
   }
 
   const locale = await readSiteLocale();
-  const available = isFeatureAvailable(page);
-  const ctaUrl = actionUrl(page, locale);
-  const seo = getFeatureSeoRecord(page.slug);
-  if (!seo) {
+  const page = localizeFeaturePage(sourcePage, locale);
+  const ui = getFeaturePageUi(locale);
+  const available = isFeatureAvailable(sourcePage);
+  const ctaUrl = actionUrl(sourcePage, locale);
+  const sourceSeo = getFeatureSeoRecord(page.slug);
+  if (!sourceSeo) {
     notFound();
   }
-  const relatedPages = seo.relatedSlugs
+  const seo = localizeFeatureEvidence(sourceSeo, locale);
+  const relatedPages = sourceSeo.relatedSlugs
     .map((slug) => findPlatformFeaturePage(slug))
-    .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)));
+    .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)))
+    .map((relatedPage) => localizeFeaturePage(relatedPage, locale));
   const faqItems = [
     {
-      question: `What input does ${page.title} accept?`,
+      question: ui.faqInput(page.title),
       answer: page.workflow[0]?.body ?? page.description,
     },
     {
-      question: "Can I edit the result after conversion?",
-      answer: "Yes. Successful imports become Score JSON revisions that can be corrected, transposed, played, and exported from the score workspace.",
+      question: ui.faqEdit,
+      answer: ui.faqEditAnswer,
     },
     {
-      question: "What should I check before relying on the result?",
+      question: ui.faqCheck,
       answer: page.guardrail,
     },
   ];
@@ -142,7 +145,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.siteUrl },
+        { "@type": "ListItem", position: 1, name: ui.home, item: siteConfig.siteUrl },
         { "@type": "ListItem", position: 2, name: page.title, item: `${siteConfig.siteUrl}${page.canonical}` },
       ],
     },
@@ -188,29 +191,29 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       <section className="page-banner split">
         <SectionIntro eyebrow={page.eyebrow} title={page.title} body={page.description} titleAs="h1" largeBody />
         <Panel variant="glass" className="stack-md">
-          <StatusPill tone={available ? statusTone(page.status) : "amber"}>{available ? page.status : "Pending production verification"}</StatusPill>
+          <StatusPill tone={available ? statusTone(page.status) : "amber"}>{available ? ui.statuses[page.status] : ui.unavailable}</StatusPill>
           <PreviewStaffGraphic />
           <p className="body-copy">{page.guardrail}</p>
           <div className="button-row">
             <a href={ctaUrl} className="public-button primary">
-              {actionLabel(page)}
+              {actionLabel(sourcePage, locale)}
             </a>
-            {siteConfig.release.checkoutAvailable ? <a href="/pricing" className="public-button tertiary">Pricing</a> : null}
+            {siteConfig.release.checkoutAvailable ? <a href="/pricing" className="public-button tertiary">{ui.pricing}</a> : null}
           </div>
         </Panel>
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow="Platform modules" title="Built on MusicXML and Score JSON" body="Each feature page maps back to the same score project model rather than a separate one-off converter." />
+        <SectionIntro eyebrow={ui.moduleEyebrow} title={ui.moduleTitle} body={ui.moduleBody} />
         <div className="metric-grid">
           {page.modules.map((module) => (
-            <MetricCard key={module} label="Module" value={module} body="Connected to the score project workflow." />
+            <MetricCard key={module} label={ui.moduleLabel} value={module} body={ui.moduleCardBody} />
           ))}
         </div>
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow="Real product example" title="One score, structured input and reusable output" body={`${seo.screenshot.evidence} Captured ${seo.screenshot.capturedAt}.`} />
+        <SectionIntro eyebrow={ui.exampleEyebrow} title={ui.exampleTitle} body={`${seo.screenshot.evidence} ${ui.captured} ${seo.screenshot.capturedAt}${locale === "zh-CN" ? "。" : "."}`} />
         <Image
           className="feature-product-screenshot"
           src={seo.screenshot.src}
@@ -221,17 +224,17 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         />
         <div className="split-layout">
           <Panel className="stack-sm">
-            <p className="eyebrow">Input</p>
+            <p className="eyebrow">{ui.input}</p>
             <code className="feature-example-code">{seo.example.input}</code>
             <a className="public-button tertiary" href={`/examples/${page.slug}/input`} download>
-              Download input case
+              {ui.downloadInput}
             </a>
           </Panel>
           <Panel className="stack-sm">
-            <p className="eyebrow">Output</p>
+            <p className="eyebrow">{ui.output}</p>
             <code className="feature-example-code">{seo.example.output}</code>
             <a className="public-button tertiary" href={`/examples/${page.slug}/output`} download>
-              Download output case
+              {ui.downloadOutput}
             </a>
           </Panel>
         </div>
@@ -248,7 +251,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
 
       <section className="split-layout">
         <Panel className="stack-lg">
-          <SectionIntro eyebrow="Workflow" title="How this path works" body="The public page leads into the authenticated app workflow when users are ready to process a score." />
+          <SectionIntro eyebrow={ui.workflowEyebrow} title={ui.workflowTitle} body={ui.workflowBody} />
           <div className="workflow-list">
             {page.workflow.map((item, index) => (
               <WorkflowStep key={item.title} step={String(index + 1).padStart(2, "0")} title={item.title} body={item.body} />
@@ -257,7 +260,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         </Panel>
 
         <Panel variant="glass" className="stack-lg">
-          <SectionIntro eyebrow="Product detail" title="What to expect" />
+          <SectionIntro eyebrow={ui.detailEyebrow} title={ui.detailTitle} />
           <div className="list-grid">
             {page.details.map((item) => (
               <div key={item.title} className="list-item">
@@ -272,7 +275,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow="FAQ" title={`Questions about ${page.title}`} body="Practical limits and expected workflow for this score tool." />
+        <SectionIntro eyebrow="FAQ" title={ui.faqTitle(page.title)} body={ui.faqBody} />
         <div className="list-grid">
           {faqItems.map((item) => (
             <details key={item.question} className="list-item">
@@ -284,7 +287,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow="Related workflows" title="Continue with the same score project" body="These pages use the same MusicXML and Score JSON source instead of sending the score through disconnected converters." />
+        <SectionIntro eyebrow={ui.relatedEyebrow} title={ui.relatedTitle} body={ui.relatedBody} />
         <div className="metric-grid">
           {relatedPages.map((relatedPage) => (
             <a key={relatedPage.slug} href={relatedPage.canonical} className="list-item">

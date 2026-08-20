@@ -18,8 +18,8 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   const { locale } = useSiteLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [announcementVisible, setAnnouncementVisible] = useState(false);
-  const appUrl = getAppStartConversionUrl();
-  const loginUrl = getAppLoginUrl();
+  const appUrl = getAppStartConversionUrl(locale);
+  const loginUrl = getAppLoginUrl(undefined, locale);
   const checkoutUrl = getCheckoutUrl(locale);
   const homeSections = { workflow: "/#workflow", useCases: "/#cases", pricing: "/#pricing" } as const;
   const copy =

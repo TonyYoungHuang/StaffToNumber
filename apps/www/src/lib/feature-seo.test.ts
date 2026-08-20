@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { buildFeatureExampleFile } from "./feature-example-files.js";
+import { getFeaturePageUi, localizeFeaturePage } from "./feature-page-localization.js";
 import { auditFeatureSeo, buildFeatureSeoManifest, buildSeoSuggestions, featureSeoRecords } from "./feature-seo.js";
 import { platformFeaturePages } from "./platform-feature-pages.js";
 
@@ -100,4 +101,20 @@ test("each feature publishes parseable native-format input and output examples",
   assert.equal(sourceWav.bytes.length, 102_444, "the four-note WAV should remain a 3.2-second deterministic sample");
   assert.equal(shiftedWav.bytes.length, sourceWav.bytes.length);
   assert.notDeepEqual(sourceWav.bytes, shiftedWav.bytes, "transposed audio must not reuse the source waveform");
+});
+
+test("every public feature page has complete Chinese content with an English fallback", () => {
+  for (const page of platformFeaturePages) {
+    const chinese = localizeFeaturePage(page, "zh-CN");
+    assert.match(chinese.title, /[\u3400-\u9fff]/u, `${page.slug} needs a Chinese title`);
+    assert.match(chinese.description, /[\u3400-\u9fff]/u, `${page.slug} needs a Chinese description`);
+    assert.equal(chinese.canonical, page.canonical);
+    assert.equal(chinese.workflow.length, page.workflow.length);
+    assert.equal(chinese.details.length, page.details.length);
+    assert.ok(chinese.modules.some((module) => /[\u3400-\u9fff]/u.test(module)));
+    assert.strictEqual(localizeFeaturePage(page, "en"), page);
+  }
+
+  assert.equal(getFeaturePageUi("zh-CN").actions.scores, "打开我的乐谱");
+  assert.equal(getFeaturePageUi("en").actions.scores, "Open score projects");
 });
