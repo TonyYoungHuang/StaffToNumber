@@ -33,6 +33,7 @@
     "verify:staging:core-score-e2e": "node scripts/run-deployed-core-score-e2e.mjs",
     "verify:production:backup-restore": "node scripts/run-production-backup-restore-drill.mjs",
     "generate:samples": "node samples/generate-fixtures.mjs",
+    "generate:home-feature-videos": "node --import tsx scripts/generate-home-feature-videos.ts",
     "evaluate:samples": "npm run build -w @score/worker && npm run evaluate:samples -w @score/worker",
     "audit:encoding": "node scripts/audit-text-encoding.mjs",
     "audit:production-seo": "node scripts/audit-production-seo.mjs",

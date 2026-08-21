@@ -13,10 +13,10 @@ const caseImages = [
 ] as const;
 
 const featureDemos = [
-  { slug: "score-editor", video: "/product/demo-score-editor.mp4", poster: "/product/feature-score-editor-real.png", altZh: "在线编辑五线谱功能短片", altEn: "Online score editing product demo" },
-  { slug: "transpose-score", video: "/product/demo-transpose-score.mp4", poster: "/product/feature-transpose-score-real.png", altZh: "五线谱移调功能短片", altEn: "Score transposition product demo" },
-  { slug: "staff-to-jianpu", video: "/product/demo-staff-to-jianpu.mp4", poster: "/product/feature-staff-to-jianpu-real.png", altZh: "五线谱转简谱功能短片", altEn: "Staff notation to Jianpu product demo" },
-  { slug: "score-to-audio", video: "/product/demo-score-to-audio.mp4", poster: "/product/feature-score-to-audio-real.png", altZh: "五线谱生成练习音频功能短片", altEn: "Score-to-audio product demo" },
+  { slug: "score-editor", video: "/product/demo-score-editor.mp4", poster: "/product/demo-score-editor-poster.jpg", altZh: "在线编辑五线谱功能短片", altEn: "Online score editing product demo" },
+  { slug: "transpose-score", video: "/product/demo-transpose-score.mp4", poster: "/product/demo-transpose-score-poster.jpg", altZh: "五线谱移调功能短片", altEn: "Score transposition product demo" },
+  { slug: "staff-to-jianpu", video: "/product/demo-staff-to-jianpu.mp4", poster: "/product/demo-staff-to-jianpu-poster.jpg", altZh: "五线谱转简谱功能短片", altEn: "Staff notation to Jianpu product demo" },
+  { slug: "score-to-audio", video: "/product/demo-score-to-audio.mp4", poster: "/product/demo-score-to-audio-poster.jpg", altZh: "五线谱生成练习音频功能短片", altEn: "Score-to-audio product demo" },
 ] as const;
 
 export default async function HomePage() {
@@ -49,7 +49,9 @@ export default async function HomePage() {
         casesBody: "案例使用当前产品工作区截图和自制测试谱例，不用抽象功能图代替结果。",
         demosKicker: "功能短片",
         demosTitle: "用十几秒看清每个核心功能",
-        demosBody: "短片来自当前真实工作区界面，分别展示在线编辑、移调、简谱转换和乐谱播放。",
+        demosBody: "短片直接录制当前产品工作区与真实操作过程。点击视频就地播放，不会跳离首页。",
+        demosProof: "真实界面录制",
+        demosAction: "进入完整功能",
         demos: [
           ["在线编辑", "修改音高、时值与小节内容。"],
           ["整谱移调", "保留原调并创建目标调版本。"],
@@ -133,7 +135,9 @@ export default async function HomePage() {
         casesBody: "These examples use current product captures and self-authored test scores rather than abstract feature art.",
         demosKicker: "Product demos",
         demosTitle: "See each core tool in a few seconds",
-        demosBody: "These clips use the current product workspace to show editing, transposition, Jianpu conversion, and score playback.",
+        demosBody: "Each clip records the current product workspace and a real operation. Play it in place without leaving the homepage.",
+        demosProof: "Recorded in product",
+        demosAction: "Open the full tool",
         demos: [
           ["Edit online", "Change pitch, duration, and measure content."],
           ["Transpose a score", "Keep the source key and create a target-key revision."],
@@ -224,6 +228,41 @@ export default async function HomePage() {
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
       </section>
 
+      <section id="demos" className={`${styles.section} ${styles.demoSection}`} aria-labelledby="demos-title">
+        <div className={styles.container}>
+          <div className={styles.demoHeading}>
+            <div><p className={styles.kicker}>{copy.demosKicker}</p><h2 id="demos-title">{copy.demosTitle}</h2></div>
+            <p>{copy.demosBody}</p>
+          </div>
+          <div className={styles.demoGrid}>
+            {copy.demos.map(([title, body], index) => {
+              const demo = featureDemos[index];
+              return (
+                <article key={title} className={styles.demoCard}>
+                  <div className={styles.demoMedia}>
+                    <video
+                      src={demo.video}
+                      poster={demo.poster}
+                      controls
+                      muted
+                      playsInline
+                      preload="none"
+                      aria-label={isChinese ? demo.altZh : demo.altEn}
+                    />
+                    <span className={styles.demoProof}>{copy.demosProof}</span>
+                  </div>
+                  <div className={styles.demoCopy}>
+                    <strong>{title}</strong>
+                    <small>{body}</small>
+                    <Link href={`/${demo.slug}`}>{copy.demosAction}<ArrowNorthEastIcon width={14} height={14} /></Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <section id="workflow" className={`${styles.section} ${styles.softSection}`} aria-labelledby="workflow-title">
         <div className={styles.container}>
           <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.stepsKicker}</p><h2 id="workflow-title">{copy.stepsTitle}</h2></header>
@@ -238,22 +277,6 @@ export default async function HomePage() {
             {copy.cases.map(([eyebrow, title, body], index) => {
               const image = caseImages[index];
               return <article key={eyebrow} className={styles.caseCard}><Link href={`/${image.slug}`} className={styles.caseMedia}><Image src={image.image} alt={isChinese ? image.altZh : image.altEn} width={1425} height={891} sizes="(max-width: 820px) 92vw, 31vw" /></Link><div className={styles.caseBody}><span>{eyebrow}</span><h3>{title}</h3><p>{body}</p><Link href={`/${image.slug}`}>{copy.caseAction} →</Link></div></article>;
-            })}
-          </div>
-          <div className={styles.demoHeading}>
-            <div><p className={styles.kicker}>{copy.demosKicker}</p><h3>{copy.demosTitle}</h3></div>
-            <p>{copy.demosBody}</p>
-          </div>
-          <div className={styles.demoGrid}>
-            {copy.demos.map(([title, body], index) => {
-              const demo = featureDemos[index];
-              return (
-                <Link href={`/${demo.slug}`} key={title} className={styles.demoCard} aria-label={isChinese ? demo.altZh : demo.altEn}>
-                  <video src={demo.video} poster={demo.poster} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
-                  <span className={styles.demoPlay} aria-hidden="true">▶</span>
-                  <span className={styles.demoCopy}><strong>{title}</strong><small>{body}</small></span>
-                </Link>
-              );
             })}
           </div>
         </div>
