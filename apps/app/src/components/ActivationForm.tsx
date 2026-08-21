@@ -6,6 +6,7 @@ import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
+import { userFacingError } from "../lib/user-facing-error";
 
 type ActivationPayload = {
   ok: true;
@@ -86,7 +87,7 @@ export function ActivationForm() {
     setSubmitting(false);
 
     if (!result.ok) {
-      setStatus(result.error);
+      setStatus(userFacingError(result.error, locale));
       setStatusKind("error");
       return;
     }

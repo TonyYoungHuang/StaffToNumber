@@ -4,8 +4,8 @@
 }
 
 .app-frame {
-  background: #f8f9fd;
-  font-family: var(--font-geist), "Noto Sans SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  background: var(--surface);
+  font-family: var(--font-ui);
 }
 
 .app-frame .container {

@@ -7,6 +7,7 @@ import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
 import { accountActivationRoute } from "../lib/release";
+import { userFacingError } from "../lib/user-facing-error";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type ScoreDocument = {
@@ -170,7 +171,13 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           empty: "尚未选择扫描件。",
           button: "开始识别",
           importing: "正在上传...",
-          clear: "重新选择",
+           clear: "重新选择",
+          accessLoading: "正在读取免费额度...",
+          exhaustedEyebrow: "免费额度已用完",
+          exhaustedTitle: "本账户的一次免费单页识别已经使用。",
+          exhaustedBody: "你仍可在“我的乐谱”查看免费候选；再次识别、多页处理、校对和导出需要开通完整权限。",
+          exhaustedLibrary: "查看免费候选",
+          exhaustedUpgrade: "兑换激活码",
         }
       : {
           chooseFile: "Please choose a PDF or image file.",
@@ -185,7 +192,13 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           empty: "No scan selected yet.",
           button: "Start recognition",
           importing: "Uploading...",
-          clear: "Choose another file",
+           clear: "Choose another file",
+          accessLoading: "Checking free-scan availability...",
+          exhaustedEyebrow: "Free scan used",
+          exhaustedTitle: "This account has used its one free single-page scan.",
+          exhaustedBody: "You can still view the free candidate in My Scores. Another scan, multi-page processing, correction, and export require full access.",
+          exhaustedLibrary: "View free candidate",
+          exhaustedUpgrade: "Unlock full access",
         };
   const scoreJsonCopy =
     locale === "zh-CN"
@@ -333,7 +346,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
     setLoading(false);
 
     if (!result.ok) {
-      setStatus(result.error);
+      setStatus(userFacingError(result.error, locale));
       setStatusKind("error");
       return;
     }
@@ -387,7 +400,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
       const payload = (await response.json().catch(() => null)) as ImportPayload | { error?: string } | null;
       if (!response.ok) {
-        setStatus(payload && "error" in payload ? payload.error ?? copy.importFailed : copy.importFailed);
+        setStatus(userFacingError(payload && "error" in payload ? payload.error : null, locale, copy.importFailed));
         setStatusKind("error");
         return;
       }
@@ -402,7 +415,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
       await loadScores();
       await loadAccess();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : copy.importFailed);
+      setStatus(userFacingError(error instanceof Error ? error.message : null, locale, copy.importFailed));
       setStatusKind("error");
     } finally {
       setImporting(false);
@@ -440,7 +453,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
       const payload = (await response.json().catch(() => null)) as OmrImportPayload | { error?: string } | null;
       if (!response.ok) {
-        setStatus(payload && "error" in payload ? payload.error ?? omrCopy.importFailed : omrCopy.importFailed);
+        setStatus(userFacingError(payload && "error" in payload ? payload.error : null, locale, omrCopy.importFailed));
         setStatusKind("error");
         return;
       }
@@ -460,7 +473,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
       await loadScores();
       await loadAccess();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : omrCopy.importFailed);
+      setStatus(userFacingError(error instanceof Error ? error.message : null, locale, omrCopy.importFailed));
       setStatusKind("error");
     } finally {
       setOmrImporting(false);
@@ -854,7 +867,29 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           </div>
         </div> : null}
 
-        {view === "scan" ? <div id="score-scan" className="converter-side">
+        {view === "scan" && access === null ? <div className="empty-state">{omrCopy.accessLoading}</div> : null}
+
+        {view === "scan" && access && !hasPaidAccess && !freeTrialAvailable ? (
+          <div className="converter-side stack-lg" role="status">
+            <div className="stack-sm">
+              <p className="eyebrow">{omrCopy.exhaustedEyebrow}</p>
+              <h2 className="card-title">{omrCopy.exhaustedTitle}</h2>
+              <p className="body-copy">{omrCopy.exhaustedBody}</p>
+            </div>
+            <div className="button-row">
+              <Link href={APP_ROUTES.scores} className="button button-primary">{omrCopy.exhaustedLibrary}</Link>
+              <Link
+                href={accountActivationRoute}
+                className="button button-secondary"
+                onClick={() => trackFunnelEvent("upgrade_click", { source: "score_scan_exhausted" })}
+              >
+                {omrCopy.exhaustedUpgrade}
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        {view === "scan" && access && (hasPaidAccess || freeTrialAvailable) ? <div id="score-scan" className="converter-side">
           <div className="stack-sm">
             <p className="eyebrow">{omrCopy.eyebrow}</p>
             <h2 className="card-title">{omrCopy.title}</h2>

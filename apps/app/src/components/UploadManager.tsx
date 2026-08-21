@@ -9,6 +9,7 @@ import { API_BASE_URL, apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { accountActivationRoute } from "../lib/release";
+import { userFacingError } from "../lib/user-facing-error";
 
 type FileItem = {
   id: string;
@@ -163,7 +164,7 @@ export function UploadManager() {
         router.replace(accountActivationRoute);
         return;
       }
-      setStatus(result.error);
+      setStatus(userFacingError(result.error, locale, copy.uploadFailed));
       return;
     }
 
@@ -214,7 +215,7 @@ export function UploadManager() {
           setUploading(false);
           return;
         }
-        setStatus(nextError);
+        setStatus(userFacingError(nextError, locale, copy.uploadFailed));
         setStatusKind("error");
         setUploading(false);
         return;
@@ -230,7 +231,7 @@ export function UploadManager() {
       }
       await loadFiles();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : copy.uploadFailed);
+      setStatus(userFacingError(error instanceof Error ? error.message : null, locale, copy.uploadFailed));
       setStatusKind("error");
     } finally {
       setUploading(false);
@@ -257,7 +258,7 @@ export function UploadManager() {
         router.replace(accountActivationRoute);
         return;
       }
-      setStatus(nextError);
+      setStatus(userFacingError(nextError, locale, copy.downloadFailed));
       setStatusKind("error");
       return;
     }

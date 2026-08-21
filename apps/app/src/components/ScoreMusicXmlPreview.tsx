@@ -26,6 +26,8 @@ export function ScoreMusicXmlPreview({
   emptyLabel,
   loadingLabel,
   errorLabel,
+  retryLabel = "Try rendering again",
+  technicalDetailsLabel = "Technical details",
   deferredLabel = "This score is large. Load the complete MusicXML preview when you need the OSMD comparison view.",
   renderLabel = "Load complete preview",
   largeScoreThreshold = 5_000,
@@ -40,6 +42,8 @@ export function ScoreMusicXmlPreview({
   emptyLabel: string;
   loadingLabel: string;
   errorLabel: string;
+  retryLabel?: string;
+  technicalDetailsLabel?: string;
   deferredLabel?: string;
   renderLabel?: string;
   largeScoreThreshold?: number;
@@ -50,6 +54,7 @@ export function ScoreMusicXmlPreview({
   const zoomRef = useRef(zoom);
   const [state, setState] = useState<PreviewState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [renderAttempt, setRenderAttempt] = useState(0);
   const [boundEventCount, setBoundEventCount] = useState(0);
   const [renderRequested, setRenderRequested] = useState(false);
   const scoreEventCount = scoreJson?.metadata.noteCount ?? scoreJson?.measures.reduce((sum, measure) => sum + measure.events.length, 0) ?? 0;
@@ -147,7 +152,7 @@ export function ScoreMusicXmlPreview({
       if (activeOsmd) activeOsmd.clear();
       if (osmdRef.current === activeOsmd) osmdRef.current = null;
     };
-  }, [deferRendering, errorLabel, fileId, musicXml, onEventSelect, scoreJson, token]);
+  }, [deferRendering, errorLabel, fileId, musicXml, onEventSelect, renderAttempt, scoreJson, token]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -183,7 +188,22 @@ export function ScoreMusicXmlPreview({
         </div>
       ) : null}
       {state === "loading" ? <div className="empty-state">{loadingLabel}</div> : null}
-      {state === "error" ? <div className="empty-state">{message ?? errorLabel}</div> : null}
+      {state === "error" ? (
+        <div className="empty-state stack-sm" role="alert">
+          <p>{errorLabel}</p>
+          <div className="button-row">
+            <button type="button" className="button button-secondary" onClick={() => setRenderAttempt((value) => value + 1)}>
+              {retryLabel}
+            </button>
+          </div>
+          {message && message !== errorLabel ? (
+            <details className="technical-details">
+              <summary>{technicalDetailsLabel}</summary>
+              <p className="micro-copy">{message}</p>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
       <div ref={containerRef} className="score-osmd-canvas" data-bound-events={boundEventCount} data-review-zoom={zoom} aria-hidden={state !== "rendered"} />
     </div>
   );

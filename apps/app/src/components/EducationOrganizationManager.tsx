@@ -126,7 +126,7 @@ export function EducationOrganizationManager() {
     <section className="surface-panel stack-lg">
       <div className="stack-sm">
         <p className="eyebrow">{isChinese ? "机构权限" : "Organization access"}</p>
-        <h1 className="card-title">{isChinese ? "机构、校区与课堂人员" : "Organizations, campuses, and classroom staff"}</h1>
+        <h2 className="card-title">{isChinese ? "机构、校区与课堂人员" : "Organizations, campuses, and classroom staff"}</h2>
         <p className="body-copy">{isChinese ? "机构管理员管理校区和成员；课堂教师、助教可运营课堂，观察者保持只读。邀请邮箱会在账号登录后由服务端自动认领。" : "Organization admins manage campuses and members. Classroom teachers and assistants can operate classes; observers remain read-only. Email invitations are claimed server-side at sign-in."}</p>
       </div>
 

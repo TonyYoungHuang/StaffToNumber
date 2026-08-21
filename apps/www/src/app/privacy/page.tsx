@@ -175,8 +175,8 @@ export default async function PrivacyPage() {
         </p>
         <p className="helper-copy">
           {isChinese
-            ? "如果托管、存储、分析、支付或账号流程发生实质变化，应在新流程上线前同步更新本页。"
-            : "Material changes to hosting, storage, analytics, payments, or account workflows should trigger a policy update before the new flow goes live."}
+            ? "如我们的托管、存储、分析、支付或账号处理方式发生重大变化，本政策也会相应更新。"
+            : "We will update this policy when material changes affect hosting, storage, analytics, payments, or account handling."}
         </p>
         <div className="button-row">
           <a href={getSupportUrl("privacy", "privacy")} className="public-button secondary">
@@ -188,8 +188,8 @@ export default async function PrivacyPage() {
       <section className="access-grid">
         <Panel variant="surface" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "信任闭环" : "Trust loop"}
-            title={isChinese ? "隐私页不应孤立存在，而应与 About 页和条款页互相印证。" : "The privacy page should reinforce the about page and the terms page, not stand alone."}
+            eyebrow={isChinese ? "相关说明" : "Related information"}
+            title={isChinese ? "继续了解服务条款和产品说明" : "Continue to terms and product information"}
             body={
               isChinese
                 ? "如果访客是从搜索结果或支付流程进入这里，他们通常还会继续确认产品定位、使用边界和购买路径。"
@@ -214,8 +214,8 @@ export default async function PrivacyPage() {
           />
           <p className="body-copy">
             {isChinese
-              ? "这样用户就能从隐私政策继续看到服务条款、About 说明和开通入口，不会在信任链路中断掉。"
-              : "This keeps users moving from privacy into terms, support context, and access guidance instead of dropping out of the trust path."}
+              ? "如对数据处理、账户删除或隐私权利有疑问，请通过支持表单联系我们。"
+              : "If you have questions about data handling, account deletion, or privacy rights, contact us through the support form."}
           </p>
           <div className="button-row">
             <a href={getSupportUrl("privacy", "privacy")} className="public-button secondary">

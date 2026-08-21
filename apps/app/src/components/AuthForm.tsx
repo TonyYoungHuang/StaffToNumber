@@ -8,6 +8,7 @@ import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, setStoredToken } from "../lib/auth-storage";
+import { userFacingError } from "../lib/user-facing-error";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type AuthPayload = {
@@ -159,7 +160,7 @@ export function AuthForm({
         }).then((result) => {
           setSubmitting(false);
           if (!result.ok) {
-            setStatus(result.error);
+            setStatus(userFacingError(result.error, locale, copy.googleFailed));
             setStatusKind("error");
             return;
           }
@@ -190,7 +191,7 @@ export function AuthForm({
     setSubmitting(false);
 
     if (!result.ok) {
-      setStatus(result.error);
+      setStatus(userFacingError(result.error, locale));
       setStatusKind("error");
       return;
     }

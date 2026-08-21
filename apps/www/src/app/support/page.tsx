@@ -15,8 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
         : `Support, Contact, and Order Review | ${siteConfig.siteName}`,
     description:
       locale === "zh-CN"
-        ? "提交站内 Support 表单，处理支付订单、激活码、上传结果、隐私删除等问题，并自动收到支持确认邮件。"
-        : "Submit the on-site support form for payment issues, activation review, upload-result problems, and privacy requests, with automatic confirmation email delivery.",
+        ? "联系 ScoreTransposer 支持，处理账号、激活码、上传识别、结果下载和隐私请求。"
+        : "Contact ScoreTransposer support for account, activation, score recognition, result delivery, and privacy questions.",
     alternates: {
       canonical: "/support",
     },
@@ -110,13 +110,13 @@ export default async function SupportPage() {
           eyebrow={isChinese ? "支持 / 联系 / 核查" : "Support / Contact / Review"}
           title={
             isChinese
-              ? "站内 Support 表单：支付、激活、上传与结果问题的公开处理入口"
-              : "The public support path for payments, activation, uploads, and result-delivery issues"
+              ? "需要帮助？请告诉我们遇到了什么问题"
+              : "Need help? Tell us what happened"
           }
           body={
             isChinese
-              ? "如果你还没有接入更重的客服系统，这个页面至少应该把支持入口、问题分类、人工核查边界，以及用户需要提供的关键信息讲清楚。"
-              : "If you are not running a heavier helpdesk yet, this page should still make the support entry point, issue categories, manual-review boundaries, and required evidence completely clear."
+              ? "你可以在这里提交账号、激活、识谱、下载或隐私相关问题。信息越完整，我们越容易定位并回复。"
+              : "Submit account, activation, recognition, download, or privacy questions here. More complete details help us investigate and reply faster."
           }
           titleAs="h1"
           largeBody
@@ -174,20 +174,18 @@ export default async function SupportPage() {
           <SectionIntro
             eyebrow={isChinese ? "处理边界" : "Support boundary"}
             title={
-              isChinese
-                ? "支持覆盖已上线能力及其明确标注的部署条件"
-                : "Support covers live capabilities and their documented deployment requirements"
+              isChinese ? "我们可以帮助处理哪些问题" : "What support can help with"
             }
             body={
               isChinese
-                ? "商用站点最容易失信的地方，不只是功能缺失，而是把还没上线的能力提前当成已交付能力去承诺。"
-                : "A commercial site loses trust not only when it lacks features, but when it accidentally sells future scope as if it were already live."
+                ? "支持范围包括账户访问、激活码、文件上传、识谱任务、结果查看与下载，以及隐私请求。"
+                : "Support covers account access, activation codes, file uploads, recognition jobs, result viewing and downloads, and privacy requests."
             }
           />
           <div className="metric-grid">
             <MetricCard
-              label={isChinese ? "当前可支持" : "Live support"}
-              value={isChinese ? "当前版本" : "Current release"}
+              label={isChinese ? "产品问题" : "Product help"}
+              value={isChinese ? "账号与乐谱" : "Accounts and scores"}
               body={
                 isChinese
                   ? "账号、支付、激活码、上传、任务与结果下载问题。"
@@ -195,12 +193,12 @@ export default async function SupportPage() {
               }
             />
             <MetricCard
-              label={isChinese ? "不要过度承诺" : "Do not promise yet"}
-              value={isChinese ? "未来模块" : "Later modules"}
+              label={isChinese ? "识别说明" : "Recognition note"}
+              value={isChinese ? "候选需复核" : "Review required"}
               body={
                 isChinese
-                  ? "不要承诺复杂总谱无需校对、桌面级自由排版，或未配置外部引擎时仍可使用对应功能。"
-                  : "Do not promise review-free recognition, desktop-grade free-form engraving, or engine-backed features when their external tools are not configured."
+                  ? "自动识别结果可能需要人工校对；复杂谱面请附上原文件和问题截图。"
+                  : "Automatic recognition may need manual correction. For complex scores, include the source file and a screenshot."
               }
             />
             <MetricCard
@@ -220,13 +218,13 @@ export default async function SupportPage() {
             eyebrow={isChinese ? "提交之后" : "After submission"}
             title={
               isChinese
-                ? "Support 表单的目标，是把用户带回正确流程"
-                : "The point of the support form is to move the user back onto the right path"
+                ? "提交后会发生什么"
+                : "What happens after submission"
             }
             body={
               isChinese
-                ? "表单提交到 API 后，会生成请求编号，并向联系邮箱发送确认邮件；如果当前环境没有正式邮件服务，也会在日志里留下预览。"
-                : "After the form reaches the API, it generates a request reference and sends a confirmation email to the contact inbox; if transactional email is not configured yet, a preview is still written to logs."
+                ? "提交成功后会生成请求编号。请保存编号；如邮件通知已启用，你也会在联系邮箱收到确认。"
+                : "A successful submission creates a request reference. Keep that reference; when email notifications are available, a confirmation is also sent to your contact address."
             }
           />
           <div className="button-row">
@@ -244,11 +242,11 @@ export default async function SupportPage() {
       </section>
 
       <Panel variant="sunken" className="stack-md">
-        <h2 className="card-title">{isChinese ? "公开支持入口" : "Public support entry point"}</h2>
+        <h2 className="card-title">{isChinese ? "现在提交支持请求" : "Submit a support request"}</h2>
         <p className="body-copy">
           {isChinese
-            ? "当前比较稳妥的商用基线，是保留一个清晰的公开支持入口，让 FAQ、About、Privacy、Terms 和 Checkout 都可以回流到这里。"
-            : "A good commercial baseline is to keep one clear public support entry point and make FAQ, About, Privacy, Terms, and Checkout all flow back here when needed."}
+            ? "请先选择问题类型，并附上账号邮箱、任务号、文件名、发生时间和相关截图。"
+            : "Choose the issue type and include the account email, job reference, file name, approximate time, and relevant screenshots."}
         </p>
         <div className="button-row">
           <a href="#support-form" className="public-button primary">

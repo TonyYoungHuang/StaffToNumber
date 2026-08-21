@@ -332,7 +332,7 @@ export function DashboardClient() {
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.email}</p>
           <p className="metric-value">{profile.email}</p>
-          <p className="helper-copy">{copy.metrics.emailBody}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.emailBody : (locale === "zh-CN" ? "当前已登录，可使用一次免费单页识谱并查看候选结果。" : "Signed in. You can use one free single-page scan and view its candidate result.")}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.entitlement}</p>
@@ -341,8 +341,8 @@ export function DashboardClient() {
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.route}</p>
-          <p className="metric-value">{copy.metrics.routeValue}</p>
-          <p className="helper-copy">{copy.metrics.routeBody}</p>
+          <p className="metric-value">{profile.entitlement.status === "active" ? copy.metrics.routeValue : (locale === "zh-CN" ? "免费单页识谱" : "Free single-page scan")}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : (locale === "zh-CN" ? "免费层不包含再次识别、校对、任务处理或导出。" : "Free access does not include another scan, correction, job processing, or export.")}</p>
         </div>
       </div>
 
@@ -408,19 +408,19 @@ export function DashboardClient() {
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step1Title}</strong>
-                <p className="helper-copy">{copy.workflow.step1Body}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step1Body : (locale === "zh-CN" ? "上传一页 PDF 或一张乐谱图片，生成可查看的识别候选。" : "Upload one PDF page or score image to create a viewable recognition candidate.")}</p>
               </div>
             </div>
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step2Title}</strong>
-                <p className="helper-copy">{copy.workflow.step2Body}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step2Body : (locale === "zh-CN" ? "在“我的乐谱”查看候选；完整校对和编辑需要有效权限。" : "View the candidate in My Scores. Full correction and editing require active access.")}</p>
               </div>
             </div>
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step3Title}</strong>
-                <p className="helper-copy">{copy.workflow.step3Body}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step3Body : (locale === "zh-CN" ? "需要继续处理时，可兑换已购买的激活码；当前不提供在线付款。" : "Redeem a purchased activation code when you need full processing. Online checkout is not currently available.")}</p>
               </div>
             </div>
           </div>
@@ -440,12 +440,10 @@ export function DashboardClient() {
             <Link href={accountActivationRoute} className="button button-primary">
               {checkoutAvailable ? copy.actions.checkout : copy.actions.redeem}
             </Link>
-            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
-              {copy.actions.uploads}
+            <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
+              {profile.entitlement.status === "active" ? copy.actions.uploads : (locale === "zh-CN" ? "打开免费识谱" : "Open free scanner")}
             </Link>
-            <Link href={APP_ROUTES.jobs} className="button button-secondary">
-              {copy.actions.jobs}
-            </Link>
+            {profile.entitlement.status === "active" ? <Link href={APP_ROUTES.jobs} className="button button-secondary">{copy.actions.jobs}</Link> : null}
             {locale === "zh-CN" ? (
               <Link href={APP_ROUTES.activate} className="button button-tertiary">
                 {copy.actions.redeem}

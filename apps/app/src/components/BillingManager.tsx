@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
+import { accountActivationRoute } from "../lib/release";
+import { userFacingError } from "../lib/user-facing-error";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type Subscription = {
@@ -42,6 +45,7 @@ type Seat = {
 };
 
 type BillingPayload = { subscriptions: Subscription[]; invoices: Invoice[]; seatAssignments: Seat[] };
+type AccessPayload = { user: { entitlement: { status: "inactive" | "active" | "expired" } } };
 type QuotaUsage = {
   tier: "legacy" | "pro" | "education";
   periodStart: string;
@@ -55,6 +59,7 @@ export function BillingManager() {
   const isChinese = locale === "zh-CN";
   const [billing, setBilling] = useState<BillingPayload>({ subscriptions: [], invoices: [], seatAssignments: [] });
   const [quota, setQuota] = useState<QuotaUsage | null>(null);
+  const [entitlementStatus, setEntitlementStatus] = useState<"checking" | "inactive" | "active" | "expired">("checking");
   const [seatDrafts, setSeatDrafts] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -65,18 +70,21 @@ export function BillingManager() {
       setStatus(isChinese ? "请先登录后查看账单。" : "Sign in to view billing.");
       return;
     }
-    const [result, quotaResult] = await Promise.all([
+    const [result, quotaResult, accessResult] = await Promise.all([
       apiRequest<BillingPayload>("/api/payments/billing", { headers: { Authorization: `Bearer ${token}` } }),
       apiRequest<{ usage: QuotaUsage }>("/api/payments/billing/usage", { headers: { Authorization: `Bearer ${token}` } }),
+      apiRequest<AccessPayload>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
     ]);
     if (!result.ok) {
-      setStatus(result.error);
+      setStatus(userFacingError(result.error, locale));
       return;
     }
     setBilling(result.data);
-    if (quotaResult.ok) setQuota(quotaResult.data.usage);
+    const nextEntitlementStatus = accessResult.ok ? accessResult.data.user.entitlement.status : "inactive";
+    setEntitlementStatus(nextEntitlementStatus);
+    setQuota(nextEntitlementStatus === "active" && quotaResult.ok ? quotaResult.data.usage : null);
     setStatus(null);
-  }, [isChinese, token]);
+  }, [isChinese, locale, token]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -89,7 +97,7 @@ export function BillingManager() {
       body: JSON.stringify({ provider: "stripe" }),
     });
     setBusy(null);
-    if (!result.ok) return setStatus(result.error);
+    if (!result.ok) return setStatus(userFacingError(result.error, locale));
     window.location.href = result.data.url;
   }
 
@@ -103,7 +111,7 @@ export function BillingManager() {
       body: JSON.stringify({ email }),
     });
     setBusy(null);
-    if (!result.ok) return setStatus(result.error);
+    if (!result.ok) return setStatus(userFacingError(result.error, locale));
     setSeatDrafts((current) => ({ ...current, [subscriptionId]: "" }));
     await refresh();
   }
@@ -116,7 +124,7 @@ export function BillingManager() {
       headers: { Authorization: `Bearer ${token}` },
     });
     setBusy(null);
-    if (!result.ok) return setStatus(result.error);
+    if (!result.ok) return setStatus(userFacingError(result.error, locale));
     await refresh();
   }
 
@@ -129,17 +137,17 @@ export function BillingManager() {
       body: JSON.stringify({ atPeriodEnd: true }),
     });
     setBusy(null);
-    if (!result.ok) return setStatus(result.error);
+    if (!result.ok) return setStatus(userFacingError(result.error, locale));
     setStatus(isChinese ? "订阅将在当前计费周期结束时取消。" : "The subscription will cancel at the end of the current billing period.");
     await refresh();
   }
 
   return (
     <div className="page-stack">
-      <section className="surface-panel stack-lg">
+      {entitlementStatus === "active" ? <section className="surface-panel stack-lg">
         <div className="stack-xs">
           <p className="eyebrow">{isChinese ? "本月用量" : "Current usage"}</p>
-          <h2 className="card-title">{quota ? `${quota.tier.toUpperCase()} ${isChinese ? "套餐配额" : "plan quotas"}` : isChinese ? "正在读取套餐配额" : "Loading plan quotas"}</h2>
+          <h2 className="card-title">{quota ? (isChinese ? "当前套餐用量" : "Current plan usage") : isChinese ? "正在读取套餐用量" : "Loading plan usage"}</h2>
         </div>
         {quota ? (
           <div className="metric-grid">
@@ -147,7 +155,18 @@ export function BillingManager() {
             <QuotaMeter label={isChinese ? "文件存储" : "File storage"} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBytes(quota.storage.usedBytes)} / ${formatBytes(quota.storage.limitBytes)}`} />
           </div>
         ) : null}
-      </section>
+      </section> : entitlementStatus !== "checking" ? (
+        <section className="surface-panel stack-lg">
+          <div className="stack-sm">
+            <p className="eyebrow">{isChinese ? "免费使用状态" : "Free access status"}</p>
+            <h2 className="card-title">{isChinese ? "当前没有生效中的付费套餐" : "No paid plan is active"}</h2>
+            <p className="body-copy">{isChinese ? "免费账户可使用一次单页识谱并查看候选结果；再次处理、校对和导出需要完整权限。" : "Free accounts can use one single-page scan and view the candidate. Further processing, correction, and export require full access."}</p>
+          </div>
+          <div className="button-row">
+            <Link href={accountActivationRoute} className="button button-primary">{isChinese ? "兑换激活码" : "Unlock full access"}</Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="surface-panel stack-lg">
         <div className="section-heading-row">
@@ -155,9 +174,11 @@ export function BillingManager() {
             <p className="eyebrow">{isChinese ? "订阅" : "Subscriptions"}</p>
             <h2 className="card-title">{isChinese ? "访问权限与续费状态" : "Access and renewal status"}</h2>
           </div>
-          <button type="button" className="button button-secondary" disabled={busy === "portal"} onClick={() => void openPortal()}>
-            {isChinese ? "管理 Stripe 付款方式" : "Manage Stripe payment method"}
-          </button>
+          {billing.subscriptions.some((subscription) => subscription.provider === "stripe") ? (
+            <button type="button" className="button button-secondary" disabled={busy === "portal"} onClick={() => void openPortal()}>
+              {isChinese ? "管理 Stripe 付款方式" : "Manage Stripe payment method"}
+            </button>
+          ) : null}
         </div>
         {billing.subscriptions.length === 0 ? <div className="empty-state">{isChinese ? "当前账户还没有订阅。" : "No subscriptions are linked to this account."}</div> : billing.subscriptions.map((subscription) => {
           const seats = billing.seatAssignments.filter((seat) => seat.subscriptionId === subscription.id && seat.status === "active");

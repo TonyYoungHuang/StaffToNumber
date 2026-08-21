@@ -45,7 +45,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
         menu: "Open navigation menu", closeMenu: "Close navigation menu",
         app: siteConfig.release.productAppAvailable ? "Scan one page free" : "Launch status", buy: "Upgrade",
         brandCaption: "PDF and image score scanner",
-        footerCopy: `Scan one staff-score PDF page or image into a reviewable OMR candidate, then unlock correction, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()} workspace.`,
+        footerCopy: `Scan one staff-score PDF page or image into a reviewable OMR candidate, then unlock correction, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()}.`,
       };
 
   useEffect(() => {

@@ -381,7 +381,7 @@ export function ClassroomsManager() {
       <section className="page-banner">
         <div className="stack-sm">
           <p className="eyebrow">{copy.eyebrow}</p>
-          <h1>{copy.title}</h1>
+          <h2 className="card-title">{copy.title}</h2>
           <p className="body-copy">{copy.body}</p>
         </div>
       </section>

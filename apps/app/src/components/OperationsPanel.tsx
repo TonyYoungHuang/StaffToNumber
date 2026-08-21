@@ -87,7 +87,12 @@ export function OperationsPanel({ email: _email }: { email?: string | null }) {
           <p className="eyebrow">{copy.opsEyebrow}</p>
           <h2 className="card-title">{copy.opsTitle}</h2>
           {loading ? <p className="body-copy">{copy.opsLoading}</p> : null}
-          {error ? <p className="form-status error">{copy.opsError} {error}</p> : null}
+          {error ? (
+            <div className="stack-xs">
+              <p className="form-status error">{copy.opsError}</p>
+              <details className="technical-details"><summary>{locale === "zh-CN" ? "技术详情" : "Technical details"}</summary><p className="micro-copy">{error}</p></details>
+            </div>
+          ) : null}
           {statusPayload ? (
             <p className="micro-copy">
               {copy.opsChecked}: {formatLocal(statusPayload.checkedAt, locale)}
@@ -99,8 +104,9 @@ export function OperationsPanel({ email: _email }: { email?: string | null }) {
           {(statusPayload?.services ?? []).map((service) => (
             <div key={service.key} className="list-item">
               <div className="list-item-content">
-                <p className="item-title">{service.label}</p>
-                <p className="helper-copy">{service.message}</p>
+                <p className="item-title">{serviceLabel(service, locale)}</p>
+                <p className="helper-copy">{serviceMessage(service, locale)}</p>
+                {locale === "zh-CN" && service.message ? <details className="technical-details"><summary>技术详情</summary><p className="micro-copy">{service.message}</p></details> : null}
                 {service.checkedAt ? <p className="micro-copy">{formatLocal(service.checkedAt, locale)}</p> : null}
               </div>
               <span className={`status-chip ${mapTone(service.status)}`}>{translateStatus(service.status, locale)}</span>
@@ -177,6 +183,32 @@ function translateStatus(status: ServiceStatusItem["status"], locale: string) {
       return "Error";
     default:
       return "Disabled";
+  }
+}
+
+function serviceLabel(service: ServiceStatusItem, locale: string) {
+  if (locale !== "zh-CN") return service.label;
+  const key = `${service.key} ${service.label}`.toLowerCase();
+  if (key.includes("api")) return "应用接口";
+  if (key.includes("database") || key.includes("db")) return "数据库";
+  if (key.includes("storage")) return "文件存储";
+  if (key.includes("worker")) return "识谱处理服务";
+  if (key.includes("payment") || key.includes("stripe") || key.includes("paddle")) return "支付配置";
+  if (key.includes("mail") || key.includes("email")) return "邮件通知";
+  return "系统服务";
+}
+
+function serviceMessage(service: ServiceStatusItem, locale: string) {
+  if (locale !== "zh-CN") return service.message;
+  switch (service.status) {
+    case "ok":
+      return "运行正常。";
+    case "warning":
+      return "当前可用，但有配置或运行状态需要检查。";
+    case "error":
+      return "当前不可用，请稍后重试或联系支持。";
+    default:
+      return "当前未启用。";
   }
 }
 

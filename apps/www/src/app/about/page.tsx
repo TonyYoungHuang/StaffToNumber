@@ -37,18 +37,18 @@ export default async function AboutPage() {
     ? [
         {
           step: "01",
-          title: "从明确入口扩展为乐谱工程",
-          body: "平台以五线谱 PDF 转简谱承接主要需求，同时已经提供结构化导入、简谱互换、移调、修谱、播放练习和导出。",
+          title: "从扫描件创建可编辑乐谱",
+          body: "上传五线谱 PDF 或图片，查看识别候选，并在同一个乐谱工程中继续处理。",
         },
         {
           step: "02",
-          title: "官网负责解释并承接转化",
-          body: "公开站点负责承接搜索流量、解释真实产品边界，并在用户进入工具前先把预期说清楚。",
+          title: "先了解适用范围",
+          body: "识别结果是候选稿，复杂谱面需要人工校对；免费账户可先体验一次单页识别。",
         },
         {
           step: "03",
-          title: "应用负责真正执行工作",
-          body: "注册、激活、上传、任务追踪和结果下载仍在登录后的应用内完成。",
+          title: "在应用内完成处理",
+          body: "登录后可上传文件、查看任务和候选；获得完整权限后可继续编辑与导出。",
         },
       ]
     : [
@@ -59,13 +59,13 @@ export default async function AboutPage() {
         },
         {
           step: "02",
-          title: "The website handles explanation and conversion",
-          body: "The public site captures search traffic, explains verified product boundaries, and sets expectations before users enter the tool.",
+          title: "Understand the scope first",
+          body: "Recognition produces a candidate that may need correction. Free accounts can try one single-page scan.",
         },
         {
           step: "03",
-          title: "The app handles actual work",
-          body: "Registration, activation, uploads, job tracking, and result downloads still happen inside the authenticated app.",
+          title: "Continue in the app",
+          body: "Sign in to upload, track recognition, and view candidates; full access adds editing and exports.",
         },
       ];
 
@@ -105,33 +105,33 @@ export default async function AboutPage() {
         },
       ];
 
-  const seoNarrative = isChinese
+  const useCases = isChinese
     ? [
         {
-          title: "为什么会有人搜索“staff pdf to jianpu”",
-          body: "因为很多用户手里已经有五线谱 PDF，但教学、排练或内部流转仍更依赖简谱，所以他们会直接搜索 staff pdf to jianpu、五线谱转简谱或乐谱 PDF 转简谱这样的明确工作流。",
+          title: "已有五线谱 PDF 或图片",
+          body: "适合希望把纸质谱或 PDF 识别成结构化乐谱，再继续查看或处理的用户。",
         },
         {
-          title: "为什么 About 页也要写这些词",
-          body: "首页负责承接明确的转换意图，About 页解释它如何进入完整乐谱工程：识别结果先校对，编辑、移调、练习和导出都基于同一份结构化乐谱。",
+          title: "需要五线谱与简谱协作",
+          body: "同一份结构化乐谱可以用于五线谱查看、简谱转换、移调、练习和导出。",
         },
         {
-          title: "这页适合回答什么搜索意图",
-          body: "如果搜索者想知道这是不是一个 numbered notation converter、简谱转换器或 staff notation to numbered notation 工具，这一页会把定位、适用人群和支持方式解释清楚。",
+          title: "接受自动识别后人工复核",
+          body: "复杂节奏、低清扫描或多声部内容可能需要校对，平台会保留候选和诊断信息。",
         },
       ]
     : [
         {
-          title: "Why people search for staff PDF to Jianpu",
-          body: "Many users already have staff PDFs but still need numbered notation for teaching, rehearsal, or internal circulation. That is why they search for staff PDF to Jianpu, five-line staff to Jianpu, or music score PDF to numbered notation.",
+          title: "You already have a staff PDF or image",
+          body: "Use recognition to create a structured candidate that you can inspect and continue working with.",
         },
         {
-          title: "Why these phrases belong on the About page too",
-          body: "The homepage captures a clear conversion intent, while the About page explains how it enters a complete score project: recognition is reviewed first, and editing, transposition, practice, and export share one structured score.",
+          title: "You work with both staff and numbered notation",
+          body: "One structured score can support staff viewing, Jianpu conversion, transposition, practice, and exports.",
         },
         {
-          title: "What kind of search intent this page answers",
-          body: "If someone is asking whether this is a numbered notation converter, a Jianpu converter, or a staff notation to numbered notation tool, this page gives the contextual answer instead of just another CTA.",
+          title: "You can review automatic recognition",
+          body: "Complex rhythms, low-quality scans, and multi-part scores may need correction, so candidates and diagnostics remain reviewable.",
         },
       ];
 
@@ -171,7 +171,7 @@ export default async function AboutPage() {
             title={isChinese ? "从五线谱转简谱入口进入完整的结构化乐谱工程。" : "From staff-to-Jianpu entry point to a complete structured score workspace"}
             body={
               isChinese
-                ? "这一页让从搜索结果进入的用户先看明白：哪些能力已在应用中可用，哪些依赖外部渲染工具，以及识别候选为什么仍要人工校对。"
+                ? "你可以先确认文件类型、免费范围和识别边界，再决定是否进入应用。识别候选始终建议人工复核。"
                 : "This page shows search visitors which workflows are available in the app, which depend on external renderers, and why recognition candidates still require human review."
             }
           />
@@ -185,7 +185,7 @@ export default async function AboutPage() {
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
             eyebrow={isChinese ? "适用人群" : "Who it fits"}
-            title={isChinese ? "哪些搜索“五线谱 PDF 转简谱”的用户最适合当前版本" : "Who searches for a staff PDF to Jianpu tool and fits this release best"}
+            title={isChinese ? "哪些用户适合使用 ScoreTransposer" : "Who ScoreTransposer is for"}
           />
           <div className="metric-grid">
             <MetricCard
@@ -226,8 +226,8 @@ export default async function AboutPage() {
             title={isChinese ? "这款简谱转换工具的支持方式、联系入口和人工核查路径" : "How support works for this numbered-notation converter and activation flow"}
             body={
               isChinese
-                ? "如果你暂时不想搭更复杂的客服系统，这一页至少要把支持入口、问题类型和联系时应提供的信息说明清楚。"
-                : "If you do not want to build a heavier support system yet, the next best thing is to make the public support route, question types, and required details explicit."
+                ? "账号、激活、上传、识别和下载遇到问题时，可通过支持表单提交请求。"
+                : "Use the support form for account, activation, upload, recognition, and download questions."
             }
           />
           <div className="workflow-grid">
@@ -281,20 +281,20 @@ export default async function AboutPage() {
       <section className="access-grid">
         <Panel variant="surface" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "SEO 解释段落" : "SEO narrative / About intent"}
+            eyebrow={isChinese ? "适用场景" : "Use cases"}
             title={
               isChinese
-                ? "为什么 About 页也要覆盖 staff pdf to jianpu、五线谱转简谱这类搜索词"
-                : "Why this About page targets staff PDF to Jianpu and staff notation to numbered notation searches"
+                ? "从现有乐谱进入结构化处理流程"
+                : "Move an existing score into a structured workflow"
             }
             body={
               isChinese
-                ? "首页更偏转化，About 页则更适合承接“解释型搜索意图”：用户想先判断这是不是他们在找的五线谱 PDF 转简谱工具。"
-                : "This page helps search engines and human readers understand that the product is a real staff PDF to Jianpu workflow with clear scope, support, and activation logic."
+                ? "无论你从五线谱 PDF、图片还是简谱开始，都应先确认识别或导入结果，再继续编辑、移调、练习与导出。"
+                : "Whether you start from a staff PDF, image, or Jianpu, review the imported result before editing, transposing, practicing, or exporting."
             }
           />
           <div className="stack-md">
-            {seoNarrative.map((item) => (
+            {useCases.map((item) => (
               <Panel key={item.title} variant="sunken" className="stack-sm">
                 <h3 className="item-title">{item.title}</h3>
                 <p className="body-copy">{item.body}</p>
@@ -305,39 +305,39 @@ export default async function AboutPage() {
 
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "关键词路径" : "Keyword map"}
+            eyebrow={isChinese ? "常见起点" : "Common starting points"}
             title={
               isChinese
-                ? "哪些关键词会把同一个搜索者带到这页解释型内容"
-                : "Keyword clusters that can lead the same searcher to this About page"
+                ? "根据手头素材选择合适入口"
+                : "Choose the right entry point for your source material"
             }
           />
           <div className="metric-grid">
             <MetricCard
-              label={isChinese ? "直接搜索" : "Direct search"}
-              value="staff pdf to jianpu"
+              label={isChinese ? "PDF 或图片" : "PDF or image"}
+              value={isChinese ? "扫描识谱" : "Score recognition"}
               body={
                 isChinese
-                  ? "适合已经知道自己需要从五线谱 PDF 直接进入简谱工作流的搜索者。"
-                  : "Used by searchers who already know they need a direct route from staff PDF into Jianpu."
+                  ? "上传清晰、方向正确、边缘完整的单页乐谱，先查看识别候选。"
+                  : "Upload a clear, upright, uncropped score page and review the recognition candidate."
               }
             />
             <MetricCard
-              label={isChinese ? "中文意图" : "Chinese intent"}
-              value={isChinese ? "五线谱转简谱" : "五线谱转简谱"}
+              label={isChinese ? "五线谱与简谱" : "Staff and Jianpu"}
+              value={isChinese ? "双向转换" : "Conversion"}
               body={
                 isChinese
-                  ? "用来承接中文用户对同一条“五线谱到简谱”工作流的搜索表达。"
-                  : "Captures Chinese-language search intent for the same staff-to-numbered-notation workflow."
+                  ? "校对结构化乐谱后，再进行简谱转换、移调、播放与练习。"
+                  : "Review the structured score before converting to Jianpu, transposing, playing, or practicing."
               }
             />
             <MetricCard
-              label={isChinese ? "邻近术语" : "Adjacent term"}
-              value="numbered notation converter"
+              label={isChinese ? "备份或制谱文件" : "Notation file or backup"}
+              value={isChinese ? "继续编辑" : "Continue editing"}
               body={
                 isChinese
-                  ? "适合那些更习惯用 numbered notation 而不是 Jianpu 来描述需求的人。"
-                  : "Useful for people who think in terms of numbered notation rather than the word Jianpu."
+                  ? "已有 MusicXML、MIDI 或乐谱备份时，可在完整权限下直接导入。"
+                  : "With full access, import MusicXML, MIDI, or a score backup directly."
               }
             />
           </div>
@@ -347,7 +347,7 @@ export default async function AboutPage() {
       <section className="access-grid">
         <Panel variant="surface" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "信任中心" : "Trust center"}
+            eyebrow={isChinese ? "了解更多" : "Learn more"}
             title={isChinese ? "About 页可以继续把用户带向隐私、条款和购买说明。" : "The About page can keep the trust path moving into privacy, terms, and checkout."}
             body={
               isChinese
@@ -368,13 +368,13 @@ export default async function AboutPage() {
 
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "站内闭环" : "On-site loop"}
-            title={isChinese ? "现在这几页已经更像一个完整的信任闭环。" : "These pages now behave more like a full trust loop."}
+            eyebrow={isChinese ? "下一步" : "Next step"}
+            title={isChinese ? "先免费识别一页，或继续查看帮助说明。" : "Try one page free or continue to the help pages."}
           />
           <p className="body-copy">
             {isChinese
-              ? "首页负责解释产品，About 负责补背景和支持，隐私页解释数据处理，条款页解释服务边界，checkout 负责完成开通。"
-              : "The homepage explains the offer, the About page adds support context, privacy explains data handling, terms explains service boundaries, and checkout handles activation."}
+              ? "你可以返回首页查看功能，也可以打开应用体验免费单页识谱；隐私政策和服务条款提供数据与使用边界说明。"
+              : "Return home to review features, open the app for a free single-page scan, or read privacy and terms for data and service details."}
           </p>
           <div className="button-row">
             <Link href="/" className="public-button secondary">

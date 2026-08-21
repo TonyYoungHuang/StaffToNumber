@@ -1,8 +1,8 @@
 :root {
   color-scheme: light;
-  --font-ui: "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  --font-ui: var(--font-geist), "Noto Sans SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
   --font-headline: var(--font-ui);
-  --surface: #f7f8fc;
+  --surface: #f8f9fd;
   --surface-low: #f1f3f9;
   --surface-mid: #ffffff;
   --surface-high: #ffffff;
@@ -2380,9 +2380,9 @@ button.student-resource:disabled {
 /* ScoreTransposer commercial light system */
 :root {
   color-scheme: light;
-  --font-ui: "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  --font-ui: var(--font-geist), "Noto Sans SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
   --font-headline: var(--font-ui);
-  --surface: #f7f8fc;
+  --surface: #f8f9fd;
   --surface-low: #f1f3f9;
   --surface-mid: #ffffff;
   --surface-high: #ffffff;
@@ -3138,7 +3138,7 @@ textarea,
 }
 .visual-score-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(0, 744px) minmax(280px, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -3492,6 +3492,7 @@ textarea,
 .vexflow-score-surface {
   position: relative;
   min-height: 180px;
+  scroll-margin-top: 84px;
   overflow: auto;
   background: #dfe4ea;
   border: 1px solid var(--line-subtle, #d8dee8);
@@ -4183,6 +4184,7 @@ body .locked-field {
 
 .score-plan-card--selectable > .score-plan-card__action {
   pointer-events: none;
+  scroll-margin-top: 84px;
 }
 
 .score-plan-card__section {

@@ -35,7 +35,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         scores: "我的乐谱", scanner: "扫描识谱", editor: "在线编辑", transpose: "移调", pricing: "价格",
         classes: "课堂", help: "帮助", guide: "使用指南", contact: "联系我们", billing: "账单", upgrade: "升级",
         primaryLabel: "免费识别一页", menu: "打开导航菜单", closeMenu: "关闭导航菜单",
-        caption: "PDF / 图片五线谱识别工作台", footerTitle: "The Digital Score",
+        caption: "PDF / 图片五线谱识别工作台", footerTitle: "ScoreTransposer",
         footerCopy: "先免费识别一页 PDF 或图片，再继续校对、转简谱、移调、播放与导出。",
         footer: { register: "注册账户", activate: "兑换激活码", checkout: "在线支付", scores: "我的乐谱", classes: "课堂管理", about: "关于我们", support: "帮助与联系", privacy: "隐私说明" },
       }
@@ -43,7 +43,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         scores: "My scores", scanner: "Scanner", editor: "Editor", transpose: "Transpose", pricing: "Pricing",
         classes: "Classes", help: "Help", guide: "Guide", contact: "Contact us", billing: "Billing", upgrade: "Upgrade",
         primaryLabel: "Scan one page free", menu: "Open navigation menu", closeMenu: "Close navigation menu",
-        caption: "PDF and image score scanner", footerTitle: "The Digital Score",
+        caption: "PDF and image score scanner", footerTitle: "ScoreTransposer",
         footerCopy: "Scan one PDF page or image for free, then correct, convert, transpose, practice, and export.",
         footer: { register: "Create account", activate: "Redeem code", checkout: "Pay online", scores: "My scores", classes: "Classes", about: "About", support: "Support", privacy: "Privacy" },
       };

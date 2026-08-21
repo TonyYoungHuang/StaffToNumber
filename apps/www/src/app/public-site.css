@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  --public-bg: #f8f9fd;
+  --public-bg: var(--surface);
   --public-surface: #ffffff;
   --public-surface-soft: #f2f3fb;
   --public-surface-tint: #f4f2ff;
@@ -33,7 +33,7 @@ html {
 body {
   background: var(--public-bg);
   color: var(--public-ink);
-  font-family: var(--font-geist), "Noto Sans SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  font-family: var(--font-ui);
 }
 
 .public-frame {

@@ -116,11 +116,11 @@ export default async function TermsPage() {
       <Panel variant="surface" className="stack-lg">
         <SectionIntro
           eyebrow={isChinese ? "服务条款" : "Terms of service"}
-          title={isChinese ? "ScoreTransposer 当前服务条款" : "Launch-day service terms for ScoreTransposer"}
+          title={isChinese ? "ScoreTransposer 服务条款" : "ScoreTransposer terms of service"}
           body={
             isChinese
-              ? "这些条款定义了 scoretransposer.com 当前的商业与运营边界，包括激活开通、草稿结果交付和用户责任。"
-              : "These terms define the current commercial and operational boundaries for scoretransposer.com, including activation-gated access, draft-result delivery, and user responsibilities."
+              ? "这些条款说明 ScoreTransposer 的账户访问、激活方式、识别结果交付和用户责任。"
+              : "These terms explain ScoreTransposer account access, activation, recognition-result delivery, and user responsibilities."
           }
           titleAs="h1"
           largeBody
@@ -149,16 +149,16 @@ export default async function TermsPage() {
       </div>
 
       <Panel variant="sunken" className="stack-md">
-        <h2 className="card-title">{isChinese ? "运营提醒" : "Operational reminder"}</h2>
+        <h2 className="card-title">{isChinese ? "购买与退款说明" : "Purchase and refund notes"}</h2>
         <p className="body-copy">
           {isChinese
-            ? "请确保公开条款与你线下或其他销售渠道实际执行的激活、退款、支持和交付规则保持一致。"
-            : "Keep the public terms aligned with the exact activation, refund, support, and delivery practices you execute offline or in external sales channels."}
+            ? "激活、退款、支持和交付以购买时展示的方案说明及本条款为准。"
+            : "Activation, refunds, support, and delivery follow the offer shown at purchase and these terms."}
         </p>
         <p className="helper-copy">
           {isChinese
-            ? "如果商业模式发生变化，请在开始销售新方案前同步更新本页和相关引导文案。"
-            : "If the commercial model changes, update this page and your onboarding copy before the new offer is sold."}
+            ? "如购买方案或服务范围发生变化，我们会更新相关说明。"
+            : "We will update the relevant information when purchase options or service scope change."}
         </p>
         <div className="button-row">
           <a href={getSupportUrl("general", "terms")} className="public-button secondary">
@@ -171,7 +171,7 @@ export default async function TermsPage() {
         <Panel variant="surface" className="stack-lg">
           <SectionIntro
             eyebrow={isChinese ? "相关页面" : "Related pages"}
-            title={isChinese ? "条款页应与隐私页、About 页和购买路径一起组成完整说明。" : "The terms page works best when it connects to privacy, about, and purchase guidance."}
+            title={isChinese ? "继续查看隐私政策、产品说明和支持入口" : "Continue to privacy, product information, and support"}
             body={
               isChinese
                 ? "用户在这里确认服务边界后，通常还会继续核对数据处理方式、支持入口和真实开通路径。"
@@ -194,13 +194,13 @@ export default async function TermsPage() {
 
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "信任路径" : "Trust path"}
-            title={isChinese ? "让访客从条款继续走向支持与转化，而不是停在法律页。" : "Move visitors from legal review into support and conversion instead of ending the journey here."}
+            eyebrow={isChinese ? "需要帮助" : "Need help"}
+            title={isChinese ? "对条款或账户权限有疑问？" : "Questions about these terms or account access?"}
           />
           <p className="body-copy">
             {isChinese
-              ? "当条款、隐私、About 和 checkout 串起来之后，公开站点会更像一个完整可信的产品，而不是彼此割裂的单页。"
-              : "Once terms, privacy, about, and checkout are linked together, the public site feels like a more complete and trustworthy product surface instead of isolated pages."
+              ? "你可以继续查看隐私政策和产品说明，或通过支持表单提交具体问题。"
+              : "Continue to privacy and product information, or submit a specific question through the support form."
             }
           </p>
           <div className="button-row">

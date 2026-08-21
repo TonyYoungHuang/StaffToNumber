@@ -21,7 +21,7 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
         title: "购买与开通",
         items: [
           {
-            question: "当前真正上线的能力是什么？",
+            question: "我现在可以使用哪些功能？",
             answer:
               "注册用户可以免费识别一页五线谱 PDF 或一张图片，并查看需要人工检查的候选五线谱与基础诊断。开通后可继续多页识别、校对、简谱互换、移调、播放和完整导出。",
           },
@@ -60,12 +60,12 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
         ],
       },
       {
-        title: "支持与信任",
+        title: "支持与账号",
         items: [
           {
             question: "遇到支付或激活码问题时怎么处理？",
             answer:
-              "优先走站内 Support 表单。支付问题会进入 payment 分类，激活问题会进入 activation 分类，支持侧可以看到请求编号并跟踪状态。",
+              "请打开支持表单并选择“支付”或“激活”分类。提交后会生成请求编号，便于后续查询。",
           },
           {
             question: "Support 表单提交后会发生什么？",
@@ -126,7 +126,7 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
       ],
     },
     {
-      title: "Support and trust",
+      title: "Support and accounts",
       items: [
         {
           question: "How should I handle payment or activation-code issues?",
@@ -177,7 +177,7 @@ export default async function FaqPage() {
         {
           step: "01",
           title: "先确认产品边界",
-          body: "确认当前版本是不是你要找的五线谱 PDF 转简谱工作流，而不是泛化的乐谱编辑平台。",
+          body: "先确认你需要的是五线谱 PDF 或图片识别、简谱转换与后续乐谱处理。",
         },
         {
           step: "02",
@@ -264,8 +264,8 @@ export default async function FaqPage() {
             eyebrow={isChinese ? "继续确认" : "Keep verifying"}
             title={
               isChinese
-                ? "FAQ 不是终点，而是把用户带进更完整的信任链路"
-                : "The FAQ should move visitors into the wider trust loop"
+                ? "没有找到答案时，可以继续查看说明或联系支持"
+                : "If you did not find the answer, continue to the guides or contact support"
             }
           />
           <div className="workflow-grid">
@@ -318,16 +318,16 @@ export default async function FaqPage() {
 
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
-            eyebrow={isChinese ? "站内闭环" : "On-site loop"}
+            eyebrow={isChinese ? "相关帮助" : "Related help"}
             title={
               isChinese
-                ? "FAQ 会把访客带回支持、隐私、条款和购买页"
-                : "FAQ should flow users back into support, privacy, terms, and checkout"
+                ? "继续查看支持、隐私与服务条款"
+                : "Continue to support, privacy, and terms"
             }
             body={
               isChinese
-                ? "当 FAQ、About、Support、Privacy、Terms 和 Checkout 互相呼应时，网站更像真正的商用产品面，而不是零散页面集合。"
-                : "When FAQ, About, Support, Privacy, Terms, and Checkout reinforce each other, the site feels like a real commercial product surface instead of a collection of isolated pages."
+                ? "这些页面提供联系入口、数据处理方式和服务使用边界。"
+                : "These pages provide contact options, data-handling information, and service boundaries."
             }
           />
           <div className="button-row">

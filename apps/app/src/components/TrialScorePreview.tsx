@@ -93,10 +93,10 @@ export function TrialScorePreview() {
 
   const scoreJson = score?.pendingRevision?.scoreJson ?? score?.currentRevision?.scoreJson ?? null;
   const latestDiagnostic = diagnostics[0] ?? null;
-  const diagnosticSummary = latestDiagnostic ? summarizeTrialDiagnostic(latestDiagnostic) : null;
+  const diagnosticSummary = latestDiagnostic ? summarizeTrialDiagnostic(latestDiagnostic, locale) : null;
   const supportHref = buildSupportTemplates(locale).find((item) => item.key === "job")?.href;
   const jobLabel = job
-    ? `${job.status}${job.status === "processing" ? ` · ${job.progressPercent}%` : ""}`
+    ? `${translateJobStatus(job.status, locale)}${job.status === "processing" ? ` · ${job.progressPercent}%` : ""}`
     : locale === "zh-CN" ? "正在读取任务" : "Loading job";
 
   useEffect(() => {
@@ -140,12 +140,13 @@ export function TrialScorePreview() {
       {error ? <p className="form-status error">{error}</p> : null}
       {job?.status === "failed" ? (
         <section className="surface-panel stack-sm">
-          <p className="form-status error">{job.errorMessage ?? (locale === "zh-CN" ? "识别任务失败。" : "Recognition failed.")}</p>
+          <p className="form-status error">{locale === "zh-CN" ? "识别任务未能完成，请按下方建议检查文件。" : "Recognition did not finish. Check the file using the guidance below."}</p>
           <p className="body-copy">
             {locale === "zh-CN"
               ? "请确认页面方向正确、谱面清晰且没有大面积阴影或裁切。免费任务失败需要人工核查额度，请不要重复付款。"
               : "Check that the page is upright, sharply focused, and not heavily shadowed or cropped. A failed free job needs a manual quota review; do not start another payment."}
           </p>
+          {job.errorMessage ? <details className="technical-details"><summary>{locale === "zh-CN" ? "技术详情" : "Technical details"}</summary><p className="micro-copy">{job.errorMessage}</p></details> : null}
           {supportHref ? <a href={supportHref} className="button button-secondary">{locale === "zh-CN" ? "提交识别问题" : "Report recognition issue"}</a> : null}
         </section>
       ) : null}
@@ -156,6 +157,12 @@ export function TrialScorePreview() {
             <p className="eyebrow">{locale === "zh-CN" ? "识别诊断" : "Recognition diagnostics"}</p>
             <h2 className="card-title">{locale === "zh-CN" ? "先检查置信度和警告，再决定是否开通。" : "Review confidence and warnings before you upgrade."}</h2>
             {diagnosticSummary.message ? <p className="body-copy">{diagnosticSummary.message}</p> : null}
+            {diagnosticSummary.technicalMessage ? (
+              <details className="technical-details">
+                <summary>{locale === "zh-CN" ? "技术详情" : "Technical details"}</summary>
+                <p className="micro-copy">{diagnosticSummary.technicalMessage}</p>
+              </details>
+            ) : null}
           </div>
           <div className="metric-grid">
             <div className="metric-card">
@@ -171,7 +178,7 @@ export function TrialScorePreview() {
             <div className="metric-card">
               <p className="metric-label">{locale === "zh-CN" ? "警告数量" : "Warnings"}</p>
               <p className="metric-value">{diagnosticSummary.warnings}</p>
-              <p className="helper-copy">{diagnosticSummary.engine}</p>
+              <p className="helper-copy">{locale === "zh-CN" ? "识谱引擎诊断" : diagnosticSummary.engine}</p>
             </div>
           </div>
         </section>
@@ -189,23 +196,42 @@ export function TrialScorePreview() {
           scoreJson={scoreJson}
           emptyLabel={locale === "zh-CN" ? "任务完成后，候选五线谱会显示在这里。" : "The candidate staff preview will appear here when processing finishes."}
           loadingLabel={locale === "zh-CN" ? "正在渲染五线谱..." : "Rendering staff notation..."}
-          errorLabel={locale === "zh-CN" ? "五线谱预览无法渲染。" : "The staff preview could not be rendered."}
+          errorLabel={locale === "zh-CN" ? "识别结果不完整，暂时无法显示五线谱。请换一页更清晰、方向正确且边缘完整的乐谱，或联系支持核查。" : "The recognition result is incomplete and cannot be displayed. Try a clearer, upright, uncropped page or contact support."}
+          retryLabel={locale === "zh-CN" ? "重新渲染" : "Try rendering again"}
+          technicalDetailsLabel={locale === "zh-CN" ? "技术详情" : "Technical details"}
         />
       </section>
     </div>
   );
 }
 
-function summarizeTrialDiagnostic(input: JobsPayload["omrDiagnostics"][number]) {
+function translateJobStatus(status: JobsPayload["jobs"][number]["status"], locale: string) {
+  if (locale !== "zh-CN") return status;
+  switch (status) {
+    case "queued": return "等待处理";
+    case "processing": return "正在识别";
+    case "completed": return "识别完成";
+    case "failed": return "识别失败";
+    default: return "已取消";
+  }
+}
+
+function summarizeTrialDiagnostic(input: JobsPayload["omrDiagnostics"][number], locale: string) {
   const details = input.diagnostics;
   const warnings = Array.isArray(details.warnings) ? details.warnings.length : 0;
   const engine = typeof details.engine === "string" && details.engine.trim() ? details.engine : "OMR";
-  const message = typeof details.message === "string" && details.message.trim() ? details.message : null;
+  const technicalMessage = typeof details.message === "string" && details.message.trim() ? details.message : null;
+  const message = technicalMessage
+    ? locale === "zh-CN"
+      ? "识别引擎返回了需要人工检查的提示，建议先查看下方候选谱。"
+      : "The recognition engine returned a warning that needs a manual review."
+    : null;
   return {
     confidence: input.confidence === null ? "—" : `${Math.round(input.confidence * 100)}%`,
     pages: input.sourcePageCount ?? 1,
     warnings,
     engine,
     message,
+    technicalMessage,
   };
 }
