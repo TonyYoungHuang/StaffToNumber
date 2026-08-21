@@ -1,37 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CheckoutPlanCode } from "@score/shared";
+import type { CheckoutPlanCode, CheckoutPlanDisplay } from "@score/shared";
+import { CreditPlanCard, CreditPlanGrid } from "@score/ui";
 import { trackFunnelEvent } from "../lib/analytics";
 import { AppCheckoutClient } from "./AppCheckoutClient";
 import styles from "./AppCheckout.module.css";
-
-export type CheckoutPlanDisplay = {
-  code: CheckoutPlanCode;
-  badge: string;
-  name: string;
-  cycle: string;
-  price: string;
-  unitPrice: string;
-  credits: string;
-  audience: string;
-  benefits: string[];
-  resources: string[];
-  cta: string;
-  featured: boolean;
-};
 
 export function CheckoutPlanSelector({
   plans,
   planNote,
   isChinese,
+  initialPlanCode,
 }: {
-  plans: CheckoutPlanDisplay[];
+  plans: readonly CheckoutPlanDisplay[];
   planNote: string;
   isChinese: boolean;
+  initialPlanCode?: CheckoutPlanCode;
 }) {
-  const initialPlanCode = plans.find((plan) => plan.featured)?.code ?? plans[0]?.code;
-  const [selectedPlanCode, setSelectedPlanCode] = useState<CheckoutPlanCode | undefined>(initialPlanCode);
+  const defaultPlanCode = initialPlanCode ?? plans.find((plan) => plan.featured)?.code ?? plans[0]?.code;
+  const [selectedPlanCode, setSelectedPlanCode] = useState<CheckoutPlanCode | undefined>(defaultPlanCode);
   const selectedPlan = plans.find((plan) => plan.code === selectedPlanCode) ?? plans[0];
   const planListTracked = useRef(false);
 
@@ -67,56 +55,28 @@ export function CheckoutPlanSelector({
   return (
     <>
       <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
-        <div className={styles.planGrid} role="radiogroup" aria-label={isChinese ? "选择积分套餐" : "Choose a credit plan"}>
+        <CreditPlanGrid selectable label={isChinese ? "选择积分套餐" : "Choose a credit plan"}>
           {plans.map((plan) => {
             const isSelected = plan.code === selectedPlan.code;
             return (
-              <label
+              <CreditPlanCard
                 key={plan.code}
-                className={`${styles.planCard} ${plan.featured ? styles.featuredPlan : ""} ${isSelected ? styles.selectedPlan : ""}`}
-              >
-                <input
-                  className={styles.planInput}
+                plan={plan}
+                isChinese={isChinese}
+                selected={isSelected}
+                actionLabel={isSelected ? `${isChinese ? "已选择" : "Selected"} · ${plan.cycle}` : plan.cta}
+                control={<input
+                  className="score-plan-card__input"
                   type="radio"
                   name="checkout-plan"
                   value={plan.code}
                   checked={isSelected}
                   onChange={() => selectPlan(plan)}
-                />
-                <div className={styles.planTop}>
-                  <span className={styles.planBadge}>{plan.badge}</span>
-                  <span className={styles.planCycle}>{plan.cycle}</span>
-                </div>
-                <div className={styles.planIdentity}>
-                  <h2>{plan.name}</h2>
-                  <p>{plan.audience}</p>
-                </div>
-                <div className={styles.priceBlock}>
-                  <p className={styles.planPrice}>{plan.price}</p>
-                  <p className={styles.unitPrice}>{plan.unitPrice}</p>
-                </div>
-                <div className={styles.creditBox}>
-                  <span aria-hidden="true">⚡</span>
-                  <div>
-                    <strong>{plan.credits}</strong>
-                    <small>{isChinese ? "创建成功的后台任务计费" : "Charged for successfully created server jobs"}</small>
-                  </div>
-                </div>
-                <span className={`button ${isSelected ? "button-primary" : "button-secondary"} ${styles.planButton}`}>
-                  {isSelected ? `${isChinese ? "已选择" : "Selected"} · ${plan.cycle}` : plan.cta}
-                </span>
-                <div className={styles.cardSection}>
-                  <h3>{isChinese ? "包含能力" : "Included capabilities"}</h3>
-                  <ul className={styles.planFeatures}>{plan.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
-                </div>
-                <div className={`${styles.cardSection} ${styles.resourceSection}`}>
-                  <h3>{isChinese ? "福利与资源" : "Benefits and resources"}</h3>
-                  <ul className={styles.resourceList}>{plan.resources.map((resource) => <li key={resource}>{resource}</li>)}</ul>
-                </div>
-              </label>
+                />}
+              />
             );
           })}
-        </div>
+        </CreditPlanGrid>
 
         <div className={styles.selectedPlanBar} role="status" aria-live="polite">
           <span>{isChinese ? "当前已选" : "Selected plan"}</span>

@@ -1,4 +1,4 @@
-import { APP_ROUTES, type SupportedLocale } from "@score/shared";
+import { APP_ROUTES, type CheckoutPlanCode, type SupportedLocale } from "@score/shared";
 
 const defaultSiteUrl = "https://scoretransposer.com";
 const defaultAppUrl = "https://app.scoretransposer.com";
@@ -95,8 +95,9 @@ export const siteConfig = {
 export const publicContentLastUpdated = "2026-08-19";
 export const legalLastUpdated = "2026-08-10";
 
-export function getCheckoutUrl(locale: SupportedLocale) {
-  return getAppLoginUrl(APP_ROUTES.checkout, locale);
+export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode) {
+  const checkoutPath = planCode ? `${APP_ROUTES.checkout}?plan=${encodeURIComponent(planCode)}` : APP_ROUTES.checkout;
+  return getAppLoginUrl(checkoutPath, locale);
 }
 
 export function getAppHomeUrl() {

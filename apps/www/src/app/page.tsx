@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowNorthEastIcon, CheckSealIcon, FileStackIcon, SparkIcon } from "@score/ui";
+import { getCheckoutPlanCatalog } from "@score/shared";
+import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanCard, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
 import { readSiteLocale } from "../lib/locale";
 import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
@@ -23,7 +24,7 @@ export default async function HomePage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
   const startUrl = getAppStartConversionUrl(locale);
-  const checkoutUrl = getCheckoutUrl(locale);
+  const plans = getCheckoutPlanCatalog(locale);
 
   const copy = isChinese
     ? {
@@ -83,14 +84,11 @@ export default async function HomePage() {
           ["私人文件不会公开", "项目文件与公共案例分开，公开证据需要单独审核。"],
           ["格式和项目可以带走", "MusicXML、MIDI、简谱文本和 Score JSON 降低工具锁定。"],
         ],
-        pricingKicker: "付费方案",
-        pricingTitle: "按处理积分计费，轻量使用不再为时间买单",
-        pricingBody: "已去掉季度方案。积分按当前投产价格和真实月度任务配额换算，不虚构年度积分池。",
-        pricingPromo: "上线优惠 · 年度积分单价最高节省 35%",
-        plans: [
-          { name: "专业版 Pro", description: "偶尔识谱、移调、简谱转换的个人用户", creditPrice: "$0.13 / ¥0.83", regularCreditPrice: "$0.19 / ¥1.29", creditLabel: "每处理积分 · 年付折算", allowance: "100 积分 / 月", totalPrice: "$159 / ¥999 / 年", discount: "最高省 35%", features: ["月付：$19 / ¥129", "每月重置；未用积分不滚存", "在线查看与未提交的基础编辑为 0 积分"], action: "选择 Pro" },
-          { name: "批量版 Studio", description: "工作室、教师团队、出版与批量处理用", creditPrice: "$0.18 / ¥1.27", regularCreditPrice: "$0.26 / ¥1.80", creditLabel: "每处理积分 · 年付折算", allowance: "500 积分 / 月", totalPrice: "$1,099 / ¥7,599 / 年", discount: "省约 29%", features: ["月付：$129 / ¥899", "每月重置；未用积分不滚存", "团队、出版与批量处理使用同一任务口径"], action: "选择 Studio" },
-        ],
+        pricingKicker: "积分付费方案",
+        pricingTitle: "选择你的积分套餐",
+        pricingBody: "每个创建成功的后台处理任务消耗 1 积分。比较价格、能力与资源后，登录继续付款。",
+        pricingPromoLabel: "年付更省",
+        pricingPromoValue: "最高节省 ¥3,189",
         creditRulesTitle: "当前积分如何计算",
         creditRulesBody: "现阶段与已经投产的后台任务配额完全一致：一个创建成功的后台处理任务计 1 积分。",
         creditRules: [
@@ -169,14 +167,11 @@ export default async function HomePage() {
           ["Private files stay private", "Projects remain separate from public examples and evidence."],
           ["Formats and projects are portable", "MusicXML, MIDI, Jianpu text, and Score JSON reduce lock-in."],
         ],
-        pricingKicker: "Pricing",
-        pricingTitle: "Pay with processing credits instead of unused time",
-        pricingBody: "Quarterly billing is removed. Credits are converted from the current live prices and real monthly task allowances rather than a fictional annual pool.",
-        pricingPromo: "Launch offer · save up to 35% on annual credit pricing",
-        plans: [
-          { name: "Pro", description: "For individuals who occasionally scan, transpose, or convert scores to Jianpu", creditPrice: "$0.13 / ¥0.83", regularCreditPrice: "$0.19 / ¥1.29", creditLabel: "per processing credit · annual effective rate", allowance: "100 credits / month", totalPrice: "$159 / ¥999 / year", discount: "Save up to 35%", features: ["Monthly: $19 / ¥129", "Resets monthly; unused credits do not roll over", "Viewing and unsubmitted basic edits use 0 credits"], action: "Choose Pro" },
-          { name: "Studio", description: "For studios, teaching teams, publishing, and batch processing", creditPrice: "$0.18 / ¥1.27", regularCreditPrice: "$0.26 / ¥1.80", creditLabel: "per processing credit · annual effective rate", allowance: "500 credits / month", totalPrice: "$1,099 / ¥7,599 / year", discount: "Save about 29%", features: ["Monthly: $129 / ¥899", "Resets monthly; unused credits do not roll over", "Teams, publishing, and batch work use the same task rule"], action: "Choose Studio" },
-        ],
+        pricingKicker: "Credit pricing",
+        pricingTitle: "Choose your credit plan",
+        pricingBody: "Each successfully created server-side job uses one credit. Compare price, capabilities, and resources before signing in.",
+        pricingPromoLabel: "Save with annual",
+        pricingPromoValue: "Save up to $449",
         creditRulesTitle: "How credits are counted today",
         creditRulesBody: "The current display matches the production task quota exactly: one successfully created server-side processing job uses one credit.",
         creditRules: [
@@ -298,12 +293,23 @@ export default async function HomePage() {
       </section>
 
       <section id="pricing" className={styles.section} aria-labelledby="pricing-title">
-        <div className={styles.container}>
-          <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.pricingKicker}</p><h2 id="pricing-title">{copy.pricingTitle}</h2><p>{copy.pricingBody}</p></header>
-          <div className={styles.pricingPromo}><SparkIcon width={17} height={17} /><strong>{copy.pricingPromo}</strong></div>
-          <div className={styles.pricingGrid}>
-            {copy.plans.map((plan, planIndex) => <article key={plan.name} className={planIndex === 0 ? styles.featuredPlan : undefined}>{planIndex === 0 ? <em>{isChinese ? "推荐" : "Recommended"}</em> : null}<h3>{plan.name}</h3><p>{plan.description}</p><div className={styles.creditPrice}><span>{plan.creditLabel}</span><div><strong>{plan.creditPrice}</strong><del>{plan.regularCreditPrice}</del></div></div><div className={styles.creditAllowance}><div><span>{isChinese ? "月度积分" : "Monthly credits"}</span><strong>{plan.allowance}</strong></div><div><span>{isChinese ? "年付价格" : "Annual price"}</span><strong>{plan.totalPrice}</strong></div><b>{plan.discount}</b></div><ul>{plan.features.map((feature) => <li key={feature}><CheckSealIcon width={16} height={16} />{feature}</li>)}</ul><a href={checkoutUrl}>{plan.action}<ArrowNorthEastIcon width={16} height={16} /></a></article>)}
-          </div>
+        <div className={`${styles.container} ${styles.pricingContainer}`}>
+          <header className={styles.pricingHeader}>
+            <div><p className={styles.kicker}>{copy.pricingKicker}</p><h2 id="pricing-title">{copy.pricingTitle}</h2><p>{copy.pricingBody}</p></div>
+            <div className={styles.pricingSavings}><span>{copy.pricingPromoLabel}</span><strong>{copy.pricingPromoValue}</strong></div>
+          </header>
+          <CreditPlanGrid label={isChinese ? "积分套餐" : "Credit plans"}>
+            {plans.map((plan) => (
+              <CreditPlanCard
+                key={plan.code}
+                plan={plan}
+                isChinese={isChinese}
+                selected={plan.featured}
+                actionHref={getCheckoutUrl(locale, plan.code)}
+                headingLevel={3}
+              />
+            ))}
+          </CreditPlanGrid>
           <div className={styles.creditRules}>
             <div><p className={styles.kicker}>{isChinese ? "积分口径" : "Credit rules"}</p><h3>{copy.creditRulesTitle}</h3><p>{copy.creditRulesBody}</p></div>
             <div>{copy.creditRules.map(([amount, title, body]) => <article key={title}><strong>{amount}</strong><span>{title}</span><p>{body}</p></article>)}</div>

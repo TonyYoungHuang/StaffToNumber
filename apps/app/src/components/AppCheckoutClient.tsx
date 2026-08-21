@@ -230,7 +230,7 @@ export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedChec
         <div className="auth-card stack-lg">
           <AuthForm
             mode="login"
-            redirectTo={APP_ROUTES.checkout}
+            redirectTo={`${APP_ROUTES.checkout}?plan=${selectedPlan.code}`}
             onAuthenticated={handleAuthenticated}
           />
         </div>

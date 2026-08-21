@@ -8,7 +8,7 @@
     "build:cloudflare": "opennextjs-cloudflare build",
     "deploy:cloudflare:staging": "wrangler deploy --config wrangler.staging.jsonc",
     "start": "next start -p 3000",
-    "test": "node --import tsx --test src/lib/feature-seo.test.ts src/lib/paddle-checkout.test.ts src/lib/practice-demo-state.test.ts src/lib/public-content.test.ts",
+    "test": "node --import tsx --test src/lib/feature-seo.test.ts src/lib/paddle-checkout.test.ts src/lib/practice-demo-state.test.ts src/lib/pricing-catalog.test.ts src/lib/public-content.test.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "budget:homepage": "node scripts/check-homepage-budget.mjs"
   },
