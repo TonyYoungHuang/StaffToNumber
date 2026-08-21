@@ -14,10 +14,11 @@ type HomeHeroWorkbenchProps = {
 
 const toolLinks = [
   { zh: "在线编辑", en: "Edit online", bodyZh: "校正音高、时值、调号与小节内容", bodyEn: "Correct pitch, duration, keys, and measures", icon: "✎", href: "/score-editor" },
-  { zh: "整谱移调", en: "Transpose", bodyZh: "按目标调或半音数创建新的乐谱版本", bodyEn: "Create a new revision by key or semitone", icon: "↕", href: "/transpose-score" },
+  { zh: "转谱", en: "Convert score", bodyZh: "在 MusicXML 与 MIDI 等结构化格式间转换", bodyEn: "Convert between MusicXML, MIDI, and structured formats", icon: "⇄", href: "/musicxml-midi" },
+  { zh: "移调", en: "Transpose", bodyZh: "按目标调或半音数创建新的乐谱版本", bodyEn: "Create a new revision by key or semitone", icon: "↕", href: "/transpose-score" },
   { zh: "生成简谱", en: "Create Jianpu", bodyZh: "从同一份结构化乐谱生成可用简谱", bodyEn: "Create Jianpu from the same structured score", icon: "1·", href: "/staff-to-jianpu" },
   { zh: "乐谱转音频", en: "Score to audio", bodyZh: "播放、变速、循环并生成练习素材", bodyEn: "Play, slow down, loop, and create practice media", icon: "♪", href: "/score-to-audio" },
-  { zh: "音视频转谱", en: "Audio to score", bodyZh: "将允许使用的音视频生成待校正候选谱", bodyEn: "Create a reviewable candidate from permitted media", icon: "≈", href: "/audio-to-score" },
+  { zh: "音视频转谱", en: "Audio to score", bodyZh: "将允许使用的音视频生成待校正候选谱", bodyEn: "Create a reviewable candidate from permitted media", icon: "♫", href: "/audio-to-score" },
 ] as const;
 
 export function HomeHeroWorkbench({ isChinese, startUrl, audioAvailable }: HomeHeroWorkbenchProps) {
