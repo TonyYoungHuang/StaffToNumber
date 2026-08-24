@@ -23,6 +23,8 @@ type AuthPayload = {
 
 type GoogleCredentialResponse = { credential?: string };
 
+const WORKSPACE_ROUTE = `${APP_ROUTES.scores}#free-scan`;
+
 declare global {
   interface Window {
     google?: {
@@ -52,6 +54,10 @@ export function AuthForm({
   const { locale } = useAppLocale();
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const switchRoute = mode === "register" ? APP_ROUTES.login : APP_ROUTES.register;
+  const switchHref = redirectTo
+    ? `${switchRoute}?${new URLSearchParams({ next: redirectTo }).toString()}`
+    : switchRoute;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -65,7 +71,7 @@ export function AuthForm({
           title: mode === "register" ? "创建你的乐谱账户" : "欢迎回来",
           body:
             mode === "register"
-              ? "使用 Google，或用邮箱和密码创建账户。注册后可以免费识别一页乐谱。"
+              ? "使用 Google，或用邮箱和密码创建账户。注册后可以免费识别并编辑一页乐谱。"
               : "使用 Google 或邮箱登录，继续查看、修改和导出你的乐谱。",
           googleDivider: "或使用邮箱",
           email: "邮箱",
@@ -77,7 +83,7 @@ export function AuthForm({
           switch: mode === "register" ? "已有账户" : "还没有账户",
           footnote:
             mode === "register"
-              ? "免费预览不包含下载；多页识谱、再次处理、校对和完整导出需要开通权限。"
+              ? "免费编辑不包含下载；再次识别、多页处理、移调、简谱、音频和完整导出需要开通权限。"
               : "如你通过电商渠道购买了激活码，可在登录后继续兑换。",
           redeem: "兑换激活码（中国大陆）",
           forgot: "忘记密码",
@@ -90,7 +96,7 @@ export function AuthForm({
           title: mode === "register" ? "Create your score account" : "Welcome back",
           body:
             mode === "register"
-              ? "Continue with Google, or create an account with email and password. Your first one-page score scan is free."
+              ? "Continue with Google, or create an account with email and password. You can recognize and edit one score page for free."
               : "Continue with Google or email to view, edit, and export your scores.",
           googleDivider: "or use email",
           email: "Email",
@@ -102,7 +108,7 @@ export function AuthForm({
           switch: mode === "register" ? "Already have an account" : "Need an account",
           footnote:
             mode === "register"
-              ? "The free preview does not include downloads. More pages, correction, and full exports require access."
+              ? "Free editing does not include downloads. Another scan, more pages, transposition, Jianpu, audio, and full exports require access."
               : "If you bought an activation code through a mainland-China sales channel, redeem it after signing in.",
           redeem: "Redeem activation code (Mainland China)",
           forgot: "Forgot password",
@@ -123,9 +129,7 @@ export function AuthForm({
       router.refresh();
       return;
     }
-    const nextRoute = redirectTo ?? (payload.isNewUser || mode === "register" || payload.user.entitlement.status !== "active"
-      ? `${APP_ROUTES.scores}/new/scan`
-      : APP_ROUTES.dashboard);
+    const nextRoute = redirectTo ?? WORKSPACE_ROUTE;
     router.push(nextRoute);
     router.refresh();
   }, [copy.loginSuccess, copy.registerSuccess, mode, onAuthenticated, redirectTo, router]);
@@ -249,7 +253,7 @@ export function AuthForm({
           <button type="submit" disabled={submitting} className="button button-primary">
             {submitting ? copy.submitWaiting : copy.submit}
           </button>
-          <Link href={mode === "register" ? APP_ROUTES.login : APP_ROUTES.register} className="button button-secondary">
+          <Link href={switchHref} className="button button-secondary">
             {copy.switch}
           </Link>
         </div>

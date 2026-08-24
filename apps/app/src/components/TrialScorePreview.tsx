@@ -11,6 +11,16 @@ import { buildSupportTemplates } from "../lib/support";
 import { accountActivationRoute } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
+import { ScoreCandidateReviewWorkspace } from "./ScoreCandidateReviewWorkspace";
+
+type TrialRevision = {
+  id: string;
+  revisionNumber: number;
+  musicxmlFileId: string | null;
+  createdFrom: string;
+  createdAt: string;
+  scoreJson: ScoreJson;
+};
 
 type TrialScore = {
   id: string;
@@ -18,8 +28,8 @@ type TrialScore = {
   status: string;
   currentRevisionId: string | null;
   pendingRevisionId?: string | null;
-  currentRevision: { scoreJson?: ScoreJson } | null;
-  pendingRevision?: { scoreJson?: ScoreJson } | null;
+  currentRevision: TrialRevision | null;
+  pendingRevision?: TrialRevision | null;
 };
 
 type ScorePayload = { score: TrialScore };
@@ -38,6 +48,12 @@ type JobsPayload = {
     createdAt: string;
   }>;
 };
+type AssetsPayload = {
+  assets: Array<{
+    assetKind: string;
+    file: { id: string; originalName: string; mimeType: string };
+  }>;
+};
 
 export function TrialScorePreview() {
   const { locale } = useAppLocale();
@@ -48,13 +64,17 @@ export function TrialScorePreview() {
   const [job, setJob] = useState<JobsPayload["jobs"][number] | null>(null);
   const [diagnostics, setDiagnostics] = useState<JobsPayload["omrDiagnostics"]>([]);
   const [musicXml, setMusicXml] = useState<string | null>(null);
+  const [assets, setAssets] = useState<AssetsPayload["assets"]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!token || !scoreId) return;
-    const [scoreResult, jobsResult] = await Promise.all([
-      apiRequest<ScorePayload>(`/api/scores/${scoreId}`, { headers: { Authorization: `Bearer ${token}` } }),
-      apiRequest<JobsPayload>(`/api/scores/${scoreId}/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
+    if (!scoreId) return;
+    const authOptions = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
+    const [scoreResult, jobsResult, assetsResult] = await Promise.all([
+      apiRequest<ScorePayload>(`/api/scores/${scoreId}`, authOptions),
+      apiRequest<JobsPayload>(`/api/scores/${scoreId}/jobs`, authOptions),
+      apiRequest<AssetsPayload>(`/api/scores/${scoreId}/assets`, authOptions),
     ]);
     if (!scoreResult.ok) {
       setError(scoreResult.error);
@@ -65,6 +85,7 @@ export function TrialScorePreview() {
     const latestJob = jobsResult.ok ? jobsResult.data.jobs[0] ?? null : null;
     setJob(latestJob);
     setDiagnostics(jobsResult.ok ? jobsResult.data.omrDiagnostics : []);
+    setAssets(assetsResult.ok ? assetsResult.data.assets : []);
 
     const hasCandidate = Boolean(scoreResult.data.score.pendingRevisionId || scoreResult.data.score.pendingRevision);
     const hasCurrent = Boolean(scoreResult.data.score.currentRevisionId || scoreResult.data.score.currentRevision);
@@ -75,9 +96,7 @@ export function TrialScorePreview() {
     const previewPath = hasCandidate
       ? `/api/scores/${scoreId}/candidate/musicxml-preview`
       : `/api/scores/${scoreId}/musicxml-preview`;
-    const preview = await apiRequest<{ musicXml: string }>(previewPath, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const preview = await apiRequest<{ musicXml: string }>(previewPath, authOptions);
     setMusicXml(preview.ok ? preview.data.musicXml : null);
   }, [scoreId, token]);
 
@@ -106,16 +125,49 @@ export function TrialScorePreview() {
     });
   }, [job?.status, scoreId, scoreJson]);
 
+  const sourcePreviewAsset = assets.find((asset) => asset.assetKind === "source_pdf" || asset.assetKind === "source_image") ?? null;
+  const omrPageFiles = assets.filter((asset) => asset.assetKind === "omr_page_image").map((asset) => asset.file);
+
+  if (score?.pendingRevision?.scoreJson) {
+    return (
+      <ScoreCandidateReviewWorkspace
+        title={score.title}
+        scoreId={score.id}
+        revision={score.pendingRevision}
+        sourceFile={sourcePreviewAsset?.file ?? null}
+        pageFiles={omrPageFiles}
+        token={token}
+        locale={locale}
+        generatedMusicXml={musicXml}
+        selectedEventId={selectedEventId}
+        onEventSelect={setSelectedEventId}
+        onAccept={() => undefined}
+        onReject={() => undefined}
+        submittingAction={null}
+        actionError={error}
+        onCandidateUpdated={refresh}
+        onUndo={() => undefined}
+        onRedo={() => undefined}
+        canUndo={false}
+        canRedo={false}
+        restoring={false}
+        revisionStatus={null}
+        revisionStatusKind={null}
+        freeEditing
+      />
+    );
+  }
+
   return (
     <div className="page-stack">
       <section className="page-banner split">
         <div className="stack-sm">
-          <p className="eyebrow">{locale === "zh-CN" ? "免费 OMR 候选预览" : "Free OMR candidate preview"}</p>
+          <p className="eyebrow">{locale === "zh-CN" ? "免费编辑准备中" : "Preparing free editing"}</p>
           <h1 className="page-title">{score?.title ?? (locale === "zh-CN" ? "正在读取乐谱..." : "Loading score...")}</h1>
           <p className="body-copy large">
             {locale === "zh-CN"
-              ? "识别结果是需要人工检查的候选稿。免费层可以查看五线谱预览，但下载、校对、移调和再次识别需要开通完整权限。"
-              : "Recognition is a candidate that needs a musical review. The free tier can view the staff preview; downloads, correction, transposition, and another scan require full access."}
+              ? "识别完成后会直接进入这一页的免费编辑工作台；下载、移调、简谱、音频和再次识别需要开通完整权限。"
+              : "When recognition finishes, this page opens directly in the free editor. Downloads, transposition, Jianpu, audio, and another scan require full access."}
           </p>
         </div>
         <div className="stack-sm">
@@ -130,7 +182,7 @@ export function TrialScorePreview() {
             >
               {locale === "zh-CN" ? "开通完整功能" : "Unlock full access"}
             </Link>
-            <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-secondary">
+            <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-secondary">
               {locale === "zh-CN" ? "返回工程库" : "Back to library"}
             </Link>
           </div>
@@ -173,7 +225,7 @@ export function TrialScorePreview() {
             <div className="metric-card">
               <p className="metric-label">{locale === "zh-CN" ? "识别页数" : "Pages recognized"}</p>
               <p className="metric-value">{diagnosticSummary.pages}</p>
-              <p className="helper-copy">{locale === "zh-CN" ? "免费预览最多一页。" : "The free preview is limited to one page."}</p>
+              <p className="helper-copy">{locale === "zh-CN" ? "免费编辑最多一页。" : "Free editing is limited to one page."}</p>
             </div>
             <div className="metric-card">
               <p className="metric-label">{locale === "zh-CN" ? "警告数量" : "Warnings"}</p>

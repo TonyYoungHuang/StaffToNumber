@@ -96,7 +96,7 @@ export function ProductAnalytics() {
   return (
     <aside className="analytics-consent" aria-label={locale === "zh-CN" ? "分析 Cookie 选择" : "Analytics cookie choice"}>
       <p>
-        {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进免费识谱与升级流程。" : "We use analytics only after consent to improve the free scan and upgrade flow."}{" "}
+        {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进免费编辑与升级流程。" : "We use analytics only after consent to improve the free editing and upgrade flow."}{" "}
         <a href={`${siteUrl.replace(/\/$/u, "")}/privacy`}>{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</a>
       </p>
       <div className="button-row">

@@ -77,7 +77,7 @@ export function ScoreMusicXmlPreview({
         if (containerRef.current) containerRef.current.innerHTML = "";
         return;
       }
-      if ((!musicXml && (!fileId || !token)) || !containerRef.current) {
+      if ((!musicXml && !fileId) || !containerRef.current) {
         setState("idle");
         setMessage(null);
         setBoundEventCount(0);
@@ -94,9 +94,8 @@ export function ScoreMusicXmlPreview({
 
         if (!nextMusicXml) {
           const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/download`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            credentials: "include",
           });
 
           if (!response.ok) {

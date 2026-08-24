@@ -26,6 +26,7 @@ type DiagnosticItem = {
 };
 
 export function ScoreOmrReviewPanel({
+  scoreId,
   sourceFile,
   pageFiles = [],
   token,
@@ -35,6 +36,7 @@ export function ScoreOmrReviewPanel({
   locale,
   zoom = 1,
 }: {
+  scoreId: string;
   sourceFile: SourceFile | null;
   pageFiles?: SourceFile[];
   token: string | null;
@@ -62,7 +64,7 @@ export function ScoreOmrReviewPanel({
   const displayedFile = showOverlayPage ? orderedPageFiles[activePage - 1] ?? orderedPageFiles[0] : sourceFile ?? orderedPageFiles[activePage - 1];
 
   useEffect(() => {
-    if (!displayedFile || !token) {
+    if (!displayedFile) {
       setSourceUrl(null);
       return;
     }
@@ -71,7 +73,10 @@ export function ScoreOmrReviewPanel({
     let objectUrl: string | null = null;
     setSourceError(null);
     setSourceUrl(null);
-    void fetch(`${API_BASE_URL}/api/files/${displayedFile.id}/download`, { headers: { Authorization: `Bearer ${token}` } })
+    void fetch(`${API_BASE_URL}/api/scores/${scoreId}/assets/${displayedFile.id}/preview`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("Source preview failed.");
         objectUrl = URL.createObjectURL(await response.blob());
@@ -83,7 +88,7 @@ export function ScoreOmrReviewPanel({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [displayedFile, isChinese, token]);
+  }, [displayedFile, isChinese, scoreId, token]);
 
   useEffect(() => setImageDimensions(null), [sourceUrl]);
 

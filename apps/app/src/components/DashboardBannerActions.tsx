@@ -58,7 +58,7 @@ export function DashboardBannerActions() {
 
   return (
     <div className="page-banner-actions">
-      <Link href={`${APP_ROUTES.scores}#omr-import`} className="button button-primary">
+      <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-primary">
         {locale === "zh-CN" ? "导入 PDF 或图片" : "Import PDF or image"}
       </Link>
       <Link href={APP_ROUTES.jobs} className="button button-secondary">

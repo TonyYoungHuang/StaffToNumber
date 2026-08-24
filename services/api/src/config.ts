@@ -58,6 +58,10 @@ export const config = {
   publicSiteUrl: process.env.PUBLIC_SITE_URL ?? "http://localhost:3000",
   publicAppUrl: process.env.PUBLIC_APP_URL ?? "http://localhost:3001",
   publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:4000",
+  allowedOrigins: (process.env.ALLOWED_ORIGINS ?? `${process.env.PUBLIC_SITE_URL ?? "http://localhost:3000"},${process.env.PUBLIC_APP_URL ?? "http://localhost:3001"}`)
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   resetPasswordUrlBase: process.env.RESET_PASSWORD_URL_BASE ?? `${process.env.PUBLIC_APP_URL ?? "http://localhost:3001"}/reset-password`,
   googleClientId: process.env.GOOGLE_CLIENT_ID?.trim() ?? "",
   sessionDays: Number(process.env.SESSION_DAYS ?? 30),

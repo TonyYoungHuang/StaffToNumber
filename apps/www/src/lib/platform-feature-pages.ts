@@ -330,8 +330,8 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "OMR results are treated as editable candidates with confidence and diagnostics, not as guaranteed final scores.",
       },
       {
-        title: "One-page free preview with clear limits",
-        body: "A free account can scan one PDF page or one score image. Additional scans, multi-page recognition, correction, and full exports require paid access.",
+        title: "One-page free editing with clear limits",
+        body: "A free account can recognize and correct one PDF page or score image. Additional scans, multi-page recognition, transformations, and full exports require paid access.",
       },
     ],
     guardrail: "Scanning is import plus correction. The site should not promise perfect automatic recognition for all PDFs or photos.",

@@ -8,14 +8,14 @@ export default async function ScoresPage() {
   return (
     <section className="container page-shell">
       <div className="page-banner">
-        <p className="eyebrow">{locale === "zh-CN" ? "我的乐谱" : "My scores"}</p>
+        <p className="eyebrow">{locale === "zh-CN" ? "乐谱工作台" : "Score workspace"}</p>
         <h1 className="page-title">
-          {locale === "zh-CN" ? "继续处理你的乐谱" : "Continue working on your scores"}
+          {locale === "zh-CN" ? "识别、管理并继续处理你的乐谱" : "Scan, manage, and keep working on your scores"}
         </h1>
         <p className="body-copy large">
           {locale === "zh-CN"
-            ? "打开一份已有乐谱继续修改，或创建一份新乐谱。每一步都会自动保留修改记录。"
-            : "Open a saved score to continue editing, or create a new one. Your edit history stays available."}
+            ? "直接上传 PDF 或乐谱图片开始识别，也可以打开已有乐谱继续编辑。上传、候选结果和乐谱库都在同一个工作台。"
+            : "Upload a PDF or score image right here, or open a saved score to continue editing. Uploads, candidates, and your library stay in one workspace."}
         </p>
       </div>
       <EntitlementGate allowFreePreview>

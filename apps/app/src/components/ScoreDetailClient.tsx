@@ -4375,8 +4375,9 @@ export function ScoreDetailClient() {
       )}
 
       <div id="omr-comparison" className="score-comparison-grid">
-        <ScoreOmrReviewPanel
-          sourceFile={sourcePreviewAsset?.file ?? null}
+          <ScoreOmrReviewPanel
+            scoreId={score.id}
+            sourceFile={sourcePreviewAsset?.file ?? null}
           pageFiles={omrPageFiles}
           token={token}
           scoreJson={currentScoreJson ?? null}

@@ -136,6 +136,7 @@ export function ScoreVisualEditorPanel({
   onSelectedEventChange,
   onUpdated,
   onReload,
+  allowCookieAuth = false,
 }: {
   scoreId: string;
   token: string | null;
@@ -146,6 +147,7 @@ export function ScoreVisualEditorPanel({
   onSelectedEventChange?: (eventId: string) => void;
   onUpdated: (payload: ScorePayload, mutation: ScoreEditorCollaborationMutation) => void | Promise<void>;
   onReload?: (payload: ScorePayload) => void | Promise<void>;
+  allowCookieAuth?: boolean;
 }) {
   const { locale } = useAppLocale();
   const notes = useMemo(() => collectVisualNotes(scoreJson), [scoreJson]);
@@ -174,6 +176,7 @@ export function ScoreVisualEditorPanel({
   const [historyCommands, setHistoryCommands] = useState<ScoreCollaborationCommandSummary[]>([]);
   const [historyMutating, setHistoryMutating] = useState<"undo" | "redo" | null>(null);
   const offlineQueueSyncRef = useRef(false);
+  const hasOwnerAuth = Boolean(token || allowCookieAuth);
 
   useEffect(() => {
     const key = scoreEditorClipboardKey(scoreId);
@@ -348,12 +351,12 @@ export function ScoreVisualEditorPanel({
   }, [baseRevisionId, scoreId, shareToken, token]);
 
   useEffect(() => {
-    if (!baseRevisionId || (!token && !shareToken)) {
+    if (!baseRevisionId || (!hasOwnerAuth && !shareToken)) {
       setHistoryCommands([]);
       return;
     }
     void refreshCollaborationHistory();
-  }, [baseRevisionId, scoreId, shareToken, token]);
+  }, [baseRevisionId, hasOwnerAuth, scoreId, shareToken]);
 
   const draftMidi = midiFromPitch({ step, alter, octave });
   const selectedMidi = selectedNote ? midiFromPitch(selectedNote.pitch) : draftMidi;
@@ -566,7 +569,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function postScoreMutation(path: string, body: Record<string, unknown>, successMessage: string, busyKind: "insert" | "delete" | "reorder" | "batch") {
-    if (!token && !shareToken) {
+    if (!hasOwnerAuth && !shareToken) {
       setStatus(copy.failed);
       setStatusKind("error");
       return false;
@@ -636,7 +639,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function saveVisualEdit() {
-    if ((!token && !shareToken) || !selectedNote) {
+    if ((!hasOwnerAuth && !shareToken) || !selectedNote) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -727,7 +730,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function refreshCollaborationHistory() {
-    if ((!token && !shareToken) || !baseRevisionId) return;
+    if ((!hasOwnerAuth && !shareToken) || !baseRevisionId) return;
     const historyPath = shareToken
       ? `/api/scores/shared/${encodeURIComponent(shareToken)}/collaboration/commands`
       : `/api/scores/${scoreId}/collaboration/commands`;
@@ -739,7 +742,7 @@ export function ScoreVisualEditorPanel({
 
   async function applyCollaborationHistory(action: "undo" | "redo") {
     const target = action === "undo" ? undoTarget : redoTarget;
-    if ((!token && !shareToken) || !baseRevisionId || !target) return;
+    if ((!hasOwnerAuth && !shareToken) || !baseRevisionId || !target) return;
     const operationId = crypto.randomUUID();
     const historyPath = shareToken
       ? `/api/scores/shared/${encodeURIComponent(shareToken)}/collaboration/history`
@@ -801,7 +804,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function flushOfflineQueue(scopeOverride?: string) {
-    if (offlineQueueSyncRef.current || (!token && !shareToken)) return;
+    if (offlineQueueSyncRef.current || (!hasOwnerAuth && !shareToken)) return;
     const initialBaseRevisionId = baseRevisionId;
     if (!initialBaseRevisionId) return;
     offlineQueueSyncRef.current = true;
@@ -865,7 +868,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function reapplyConflictToLatest() {
-    if (!pendingConflict || (!token && !shareToken)) return;
+    if (!pendingConflict || (!hasOwnerAuth && !shareToken)) return;
     const latestRevisionId = pendingConflict.payload.score.currentRevisionId;
     if (!latestRevisionId) return;
     setResolvingConflict(true);

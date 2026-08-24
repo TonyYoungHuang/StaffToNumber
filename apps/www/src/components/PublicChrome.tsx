@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ArrowNorthEastIcon,
   SiteShellFooter,
@@ -22,9 +23,11 @@ type NavigatorWithPerformanceSignals = Navigator & {
 };
 
 export function PublicChrome({ children, announcement }: { children: ReactNode; announcement: PublicAnnouncement | null }) {
+  const pathname = usePathname();
   const { locale } = useSiteLocale();
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const appUrl = getAppStartConversionUrl(locale);
+  const homepageScanUrl = "/#home-workbench";
   const loginUrl = getAppLoginUrl(undefined, locale);
   const checkoutUrl = getCheckoutUrl(locale);
   const homeSections = { workflow: "/#workflow", useCases: "/#cases", pricing: "/#pricing" } as const;
@@ -34,18 +37,18 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
         help: "帮助", guide: "使用指南", contact: "联系我们", discord: "Discord 社群", login: "登录",
         faq: "问答", about: "关于 / 支持", support: "支持", terms: "条款", privacy: "隐私", copyright: "版权投诉",
         menu: "打开导航菜单", closeMenu: "关闭导航菜单",
-        app: siteConfig.release.productAppAvailable ? "免费识别一页" : "上线状态", buy: "升级套餐",
+        app: siteConfig.release.productAppAvailable ? "免费编辑" : "上线状态", buy: "升级套餐",
         brandCaption: "PDF / 图片五线谱识别工作台",
-        footerCopy: "上传一页五线谱 PDF 或图片，先查看可校对的 OMR 候选；开通后继续编辑、简谱互换、移调、播放与完整导出。",
+        footerCopy: "上传一页五线谱 PDF 或图片，免费识别并校对 OMR 候选；开通后继续再次识别、简谱互换、移调、播放与完整导出。",
       }
     : {
         scanner: "Scanner", editor: "Editor", transpose: "Transpose", education: "Education", pricing: "Pricing",
         help: "Help", guide: "Guide", contact: "Contact us", discord: "Discord", login: "Sign in",
         faq: "FAQ", about: "About", support: "Support", terms: "Terms", privacy: "Privacy", copyright: "Copyright",
         menu: "Open navigation menu", closeMenu: "Close navigation menu",
-        app: siteConfig.release.productAppAvailable ? "Scan one page free" : "Launch status", buy: "Upgrade",
+        app: siteConfig.release.productAppAvailable ? "Edit for free" : "Launch status", buy: "Upgrade",
         brandCaption: "PDF and image score scanner",
-        footerCopy: `Scan one staff-score PDF page or image into a reviewable OMR candidate, then unlock correction, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()}.`,
+        footerCopy: `Recognize and correct one staff-score PDF page or image for free, then unlock another scan, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()}.`,
       };
 
   useEffect(() => {
@@ -101,7 +104,16 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true, desktopOnly: true }] : []),
     { href: loginUrl, label: copy.login, tone: "secondary", desktopOnly: true },
     ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.buy, tone: "tertiary" as const }] : []),
-    { href: appUrl, label: copy.app, tone: "primary", icon: <ArrowNorthEastIcon width={16} height={16} /> },
+    {
+      href: homepageScanUrl,
+      label: copy.app,
+      tone: "primary",
+      icon: <ArrowNorthEastIcon width={16} height={16} />,
+      onClick: pathname === "/" ? (event) => {
+        event.preventDefault();
+        window.dispatchEvent(new Event("scoretransposer:start-free-scan"));
+      } : undefined,
+    },
   ];
   const footerLinks = [
     { href: homeSections.workflow, label: locale === "zh-CN" ? "使用流程" : "How it works" },

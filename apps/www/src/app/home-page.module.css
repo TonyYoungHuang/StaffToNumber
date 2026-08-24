@@ -224,7 +224,7 @@
 
 .modeTabs button {
   position: relative;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 9px;
   border: 0;
   border-radius: 10px;
@@ -238,13 +238,13 @@
 
 .modeTabs button small {
   position: absolute;
-  top: -9px;
+  top: 2px;
   right: 3px;
   padding: 2px 5px;
   border-radius: 999px;
   background: #fff1c5;
   color: #92570d;
-  font-size: 10px;
+  font-size: 8px;
 }
 
 .modeTabs .activeTab {
@@ -259,6 +259,7 @@
 
 .dropZone {
   display: grid;
+  width: 100%;
   min-height: 220px;
   padding: 22px 24px;
   place-items: center;
@@ -267,15 +268,22 @@
   border-radius: 17px;
   background: linear-gradient(155deg, #fff, #faf9ff);
   color: var(--home-ink);
+  font: inherit;
   text-align: center;
   text-decoration: none;
   transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+  cursor: pointer;
 }
 
 .dropZone:hover {
   transform: translateY(-2px);
   border-color: #9186ea;
   box-shadow: 0 16px 34px rgba(70, 58, 158, 0.09);
+}
+
+.dropZone:disabled {
+  cursor: progress;
+  opacity: 0.82;
 }
 
 .uploadIcon {
@@ -339,7 +347,109 @@
   font-weight: 830;
   text-decoration: none;
   box-shadow: 0 10px 22px rgba(80, 76, 224, 0.2);
+  width: 100%;
+  border: 0;
+  cursor: pointer;
 }
+
+.workbenchAction:disabled { cursor: progress; opacity: 0.78; }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.recognitionPanel {
+  display: grid;
+  gap: 11px;
+  margin-top: 10px;
+  padding: 16px;
+  border: 1px solid #dedaf9;
+  border-radius: 15px;
+  background: #fbfaff;
+}
+
+.recognitionPanel > p { margin: 0; color: var(--home-copy); font-size: 13px; line-height: 1.55; }
+
+.recognitionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.recognitionHeading > div { display: grid; gap: 3px; min-width: 0; }
+.recognitionHeading small { color: var(--home-brand-strong); font-size: 10px; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
+.recognitionHeading strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.recognitionHeading > span { flex: 0 0 auto; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 820; }
+.statusWorking { background: #fff2cd; color: #85530d; }
+.statusDone { background: #e4f7ed; color: #17704e; }
+.statusError { background: #ffebeb; color: #a42d35; }
+
+.progressTrack { height: 7px; overflow: hidden; border-radius: 999px; background: #e8e6f6; }
+.progressTrack span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--home-brand), #3e76ee); transition: width 260ms ease; }
+.recognitionError { color: #a42d35 !important; }
+
+.candidatePlaceholder,
+.candidateCanvas {
+  min-height: 160px;
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid #e0e2ec;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.candidatePlaceholder { display: grid; place-items: center; padding: 28px; color: #747d91; font-size: 13px; text-align: center; }
+.candidateCanvas { padding: 10px; }
+.candidateCanvas :global(svg) { display: block; max-width: 100%; }
+
+.recognitionActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.recognitionActions a,
+.recognitionActions button { display: inline-flex; min-height: 38px; padding: 0 13px; align-items: center; justify-content: center; gap: 6px; border: 1px solid #d7d9e6; border-radius: 10px; background: #fff; color: var(--home-brand-strong); font: inherit; font-size: 12px; font-weight: 820; text-decoration: none; cursor: pointer; }
+.recognitionActions a { border-color: transparent; background: var(--home-brand); color: #fff; }
+
+.authBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: rgba(17, 23, 42, 0.56);
+  backdrop-filter: blur(8px);
+}
+
+.authDialog {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 34px 90px rgba(14, 18, 38, 0.3);
+}
+
+.authDialog h2 { margin: 0; font-size: 27px; letter-spacing: -0.035em; }
+.authDialog > p:not(.kicker) { margin: 9px 0 0; color: var(--home-copy); font-size: 14px; line-height: 1.6; }
+.authClose { position: absolute; top: 14px; right: 14px; display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #e0e2ea; border-radius: 999px; background: #fff; color: #596277; font-size: 23px; cursor: pointer; }
+.authTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-top: 20px; padding: 4px; border-radius: 11px; background: #f0f1f6; }
+.authTabs button { min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: #667087; font: inherit; font-size: 13px; font-weight: 820; cursor: pointer; }
+.authTabs button[aria-selected="true"] { background: #fff; color: var(--home-brand-strong); box-shadow: 0 4px 12px rgba(36, 42, 74, 0.08); }
+.authDialog form { display: grid; gap: 13px; margin-top: 16px; }
+.authDialog label { display: grid; gap: 6px; color: var(--home-ink); font-size: 12px; font-weight: 800; }
+.authDialog input { min-height: 44px; padding: 0 12px; border: 1px solid #d8dbe7; border-radius: 10px; background: #fff; color: var(--home-ink); font: inherit; }
+.authDialog form > button { min-height: 44px; border: 0; border-radius: 10px; background: linear-gradient(135deg, var(--home-brand), #4268ee); color: #fff; font: inherit; font-size: 13px; font-weight: 850; cursor: pointer; }
+.authDialog form > button:disabled { cursor: progress; opacity: 0.74; }
+.authError { margin-top: 12px !important; padding: 10px 12px; border-radius: 9px; background: #fff0f0; color: #a42d35 !important; }
 
 .toolRail {
   display: grid;
@@ -880,6 +990,8 @@
   .creditRules > div:last-child { grid-template-columns: 1fr; }
   .finalSection { padding-inline: 14px; }
   .finalCard { padding: 27px; }
+  .recognitionHeading { align-items: flex-start; flex-direction: column; }
+  .authDialog { padding: 24px 18px; }
 }
 
 @media (max-width: 360px) {

@@ -440,8 +440,8 @@ export function DashboardClient() {
             <Link href={accountActivationRoute} className="button button-primary">
               {checkoutAvailable ? copy.actions.checkout : copy.actions.redeem}
             </Link>
-            <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
-              {profile.entitlement.status === "active" ? copy.actions.uploads : (locale === "zh-CN" ? "打开免费识谱" : "Open free scanner")}
+            <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-primary">
+              {profile.entitlement.status === "active" ? copy.actions.uploads : (locale === "zh-CN" ? "打开免费编辑" : "Open free editing")}
             </Link>
             {profile.entitlement.status === "active" ? <Link href={APP_ROUTES.jobs} className="button button-secondary">{copy.actions.jobs}</Link> : null}
             {locale === "zh-CN" ? (

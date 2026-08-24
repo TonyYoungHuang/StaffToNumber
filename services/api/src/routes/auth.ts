@@ -1,8 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { config } from "../config.js";
 import { createSalt, createToken, hashPassword, verifyPassword } from "../lib/auth.js";
 import { buildPasswordResetEmail, sendTransactionalEmail } from "../lib/email.js";
 import { verifyGoogleCredential } from "../lib/google-auth.js";
+import { buildExpiredSessionCookie, buildSessionCookie } from "../lib/session-cookie.js";
 import {
   completePasswordReset,
   createPasswordResetToken,
@@ -34,6 +35,14 @@ function validateCredentials(email: unknown, password: unknown) {
   return null;
 }
 
+function attachSessionCookie(reply: FastifyReply, token: string) {
+  reply.header("Set-Cookie", buildSessionCookie({
+    token,
+    publicApiUrl: config.publicApiUrl,
+    sessionDays: config.sessionDays,
+  }));
+}
+
 export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/register", async (request, reply) => {
     const body = (request.body ?? {}) as { email?: string; password?: string };
@@ -54,6 +63,7 @@ export async function authRoutes(app: FastifyInstance) {
     const user = createUser(email, passwordHash, salt);
     const token = createToken();
     createSession(user!.id, token, config.sessionDays);
+    attachSessionCookie(reply, token);
 
     return reply.code(201).send({
       token,
@@ -78,6 +88,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const token = createToken();
     createSession(user.id, token, config.sessionDays);
+    attachSessionCookie(reply, token);
 
     return reply.send({
       token,
@@ -115,6 +126,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const token = createToken();
     createSession(user.id, token, config.sessionDays);
+    attachSessionCookie(reply, token);
 
     return reply.code(isNewUser ? 201 : 200).send({
       token,
@@ -148,6 +160,8 @@ export async function authRoutes(app: FastifyInstance) {
       if (request.sessionToken) {
         revokeSession(request.sessionToken);
       }
+
+      reply.header("Set-Cookie", buildExpiredSessionCookie(config.publicApiUrl));
 
       return reply.send({ ok: true });
     },

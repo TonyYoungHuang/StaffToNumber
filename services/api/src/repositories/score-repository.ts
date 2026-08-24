@@ -661,6 +661,7 @@ export function createOmrImportScoreDocument(input: {
         engine: "audiveris",
         sourceOriginalName: input.sourceOriginalName,
         sourceFileKind: input.sourceFileKind,
+        freeTrial: Boolean(input.freeTrial),
       }),
       context?.requestId ?? null,
       context?.traceId ?? null,

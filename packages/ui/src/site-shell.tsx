@@ -22,6 +22,7 @@ export type SiteShellAction = {
   external?: boolean;
   icon?: React.ReactNode;
   desktopOnly?: boolean;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 };
 
 function externalLinkProps(external?: boolean) {
@@ -114,6 +115,7 @@ export function SiteShellHeader({
               key={`${action.label}:${action.href}`}
               href={action.href}
               className={`site-shell-button ${action.tone ?? "secondary"}${action.desktopOnly ? " is-desktop-only" : ""}`}
+              onClick={action.onClick}
               {...externalLinkProps(action.external)}
             >
               {action.label}

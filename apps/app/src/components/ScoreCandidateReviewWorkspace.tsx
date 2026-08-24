@@ -9,6 +9,7 @@ import { ScoreOmrReviewPanel } from "./ScoreOmrReviewPanel";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
 import { ScoreVisualEditorPanel } from "./ScoreVisualEditorPanel";
 import { projectSynchronizedScroll } from "../lib/score-review-viewport";
+import { accountActivationRoute } from "../lib/release";
 
 type CandidateRevision = {
   id: string;
@@ -47,6 +48,7 @@ export function ScoreCandidateReviewWorkspace({
   restoring,
   revisionStatus,
   revisionStatusKind,
+  freeEditing = false,
 }: {
   title: string;
   scoreId: string;
@@ -70,6 +72,7 @@ export function ScoreCandidateReviewWorkspace({
   restoring: boolean;
   revisionStatus: string | null;
   revisionStatusKind: "success" | "error" | null;
+  freeEditing?: boolean;
 }) {
   const isChinese = locale === "zh-CN";
   const comparisonRef = useRef<HTMLDivElement | null>(null);
@@ -113,24 +116,38 @@ export function ScoreCandidateReviewWorkspace({
     <div className="page-stack">
       <div className="page-banner split">
         <div className="stack-md">
-          <p className="eyebrow">{isChinese ? "候选乐谱待审核" : "Candidate score review"}</p>
+          <p className="eyebrow">
+            {freeEditing ? (isChinese ? "免费编辑" : "Free editing") : (isChinese ? "候选乐谱待审核" : "Candidate score review")}
+          </p>
           <h1 className="page-title">{title}</h1>
           <p className="body-copy large">
-            {isChinese
-              ? `识别结果 v${revision.revisionNumber} 尚未成为正式版本。请核对原件和诊断后再接受。`
-              : `Recognition result v${revision.revisionNumber} is not an official revision yet. Compare it with the source before accepting.`}
+            {freeEditing
+              ? isChinese
+                ? `已进入免费单页编辑工程。识别结果 v${revision.revisionNumber} 可直接校对，修改会自动保存为候选版本。`
+                : `You are in the free single-page editor. Recognition result v${revision.revisionNumber} can be corrected now, and changes are saved as candidate revisions.`
+              : isChinese
+                ? `识别结果 v${revision.revisionNumber} 尚未成为正式版本。请核对原件和诊断后再接受。`
+                : `Recognition result v${revision.revisionNumber} is not an official revision yet. Compare it with the source before accepting.`}
           </p>
         </div>
         <div className="page-banner-actions">
           <Link href={APP_ROUTES.scores} className="button button-secondary">
             {isChinese ? "返回乐谱库" : "Back to scores"}
           </Link>
-          <button type="button" className="button button-secondary" onClick={onReject} disabled={submittingAction !== null}>
-            {submittingAction === "reject" ? (isChinese ? "正在拒绝..." : "Rejecting...") : isChinese ? "拒绝候选" : "Reject candidate"}
-          </button>
-          <button type="button" className="button button-primary" onClick={onAccept} disabled={submittingAction !== null}>
-            {submittingAction === "accept" ? (isChinese ? "正在接受..." : "Accepting...") : isChinese ? "接受为正式版本" : "Accept as official revision"}
-          </button>
+          {freeEditing ? (
+            <Link href={accountActivationRoute} className="button button-primary">
+              {isChinese ? "开通完整功能" : "Unlock full access"}
+            </Link>
+          ) : (
+            <>
+              <button type="button" className="button button-secondary" onClick={onReject} disabled={submittingAction !== null}>
+                {submittingAction === "reject" ? (isChinese ? "正在拒绝..." : "Rejecting...") : isChinese ? "拒绝候选" : "Reject candidate"}
+              </button>
+              <button type="button" className="button button-primary" onClick={onAccept} disabled={submittingAction !== null}>
+                {submittingAction === "accept" ? (isChinese ? "正在接受..." : "Accepting...") : isChinese ? "接受为正式版本" : "Accept as official revision"}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -141,18 +158,22 @@ export function ScoreCandidateReviewWorkspace({
         <p className="eyebrow">{isChinese ? "安全状态" : "Safety state"}</p>
         <h2 className="card-title">{isChinese ? "候选版本不会覆盖已有正式版本" : "The candidate cannot overwrite an existing official revision"}</h2>
         <p className="body-copy">
-          {isChinese
-            ? "修谱操作会继续生成候选修订，不会修改正式版本。接受操作会复制最新候选并创建正式修订；移调、播放和导出将在接受后开放。"
-            : "Corrections create new candidate revisions without changing the official score. Accepting copies the latest candidate into an official revision; transposition, playback, and export unlock afterward."}
+          {freeEditing
+            ? isChinese
+              ? "免费账户可校对这一页的音符、节奏、小节属性和标记，所有修改都会保存。再次识别、移调、简谱、音频和完整导出仍需开通。"
+              : "A free account can correct notes, rhythm, measure attributes, and markings on this page, and every change is saved. Another scan, transposition, Jianpu, audio, and full exports still require access."
+            : isChinese
+              ? "修谱操作会继续生成候选修订，不会修改正式版本。接受操作会复制最新候选并创建正式修订；移调、播放和导出将在接受后开放。"
+              : "Corrections create new candidate revisions without changing the official score. Accepting copies the latest candidate into an official revision; transposition, playback, and export unlock afterward."}
         </p>
-        <div className="button-row" role="group" aria-label={isChinese ? "候选修谱撤销与重做" : "Candidate correction undo and redo"}>
+        {!freeEditing ? <div className="button-row" role="group" aria-label={isChinese ? "候选修谱撤销与重做" : "Candidate correction undo and redo"}>
           <button type="button" className="button button-secondary button-ghost" onClick={onUndo} disabled={!canUndo || restoring}>
             {isChinese ? "撤销修正" : "Undo correction"}
           </button>
           <button type="button" className="button button-secondary button-ghost" onClick={onRedo} disabled={!canRedo || restoring}>
             {isChinese ? "重做修正" : "Redo correction"}
           </button>
-        </div>
+        </div> : null}
       </section>
 
       <div className="score-review-view-controls" role="group" aria-label={isChinese ? "校对视图" : "Review viewport"}>
@@ -172,6 +193,7 @@ export function ScoreCandidateReviewWorkspace({
 
       <div ref={comparisonRef} className="score-comparison-grid" data-review-zoom={reviewZoom}>
         <ScoreOmrReviewPanel
+          scoreId={scoreId}
           sourceFile={sourceFile}
           pageFiles={pageFiles}
           token={token}
@@ -215,6 +237,7 @@ export function ScoreCandidateReviewWorkspace({
         onUpdated={() => {
           void onCandidateUpdated();
         }}
+        allowCookieAuth={freeEditing}
       />
 
       <ScoreCorrectionPanel

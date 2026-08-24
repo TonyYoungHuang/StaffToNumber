@@ -25,7 +25,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
           </p>
           <div className="button-row">
             <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
-              {locale === "zh-CN" ? "继续使用免费预览" : "Continue with the free preview"}
+              {locale === "zh-CN" ? "继续免费编辑" : "Continue free editing"}
             </Link>
           </div>
         </div>

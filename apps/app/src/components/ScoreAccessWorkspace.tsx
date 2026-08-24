@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
-import { getStoredToken } from "../lib/auth-storage";
 import { ScoreDetailClient } from "./ScoreDetailClient";
 import { TrialScorePreview } from "./TrialScorePreview";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -15,21 +14,14 @@ type AccessPayload = {
 
 export function ScoreAccessWorkspace() {
   const { locale } = useAppLocale();
-  const token = useMemo(() => getStoredToken(), []);
   const [access, setAccess] = useState<"checking" | "paid" | "preview" | "error">("checking");
 
   useEffect(() => {
-    if (!token) {
-      setAccess("error");
-      return;
-    }
-    apiRequest<AccessPayload>("/api/auth/me", {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((result) => {
+    apiRequest<AccessPayload>("/api/auth/me").then((result) => {
       if (!result.ok) setAccess("error");
       else setAccess(result.data.user.entitlement.status === "active" ? "paid" : "preview");
     });
-  }, [token]);
+  }, []);
 
   if (access === "paid") return <ScoreDetailClient />;
   if (access === "preview") return <TrialScorePreview />;

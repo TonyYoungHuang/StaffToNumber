@@ -37,7 +37,7 @@ export default async function HomePage() {
           ["开放格式可以带走", "以 MusicXML 交换，并支持 MIDI 与项目快照。"],
         ],
         heroCases: "先看真实案例",
-        facts: [["免费起步", "识别第一页"], ["输入", "PDF／图片／MusicXML"], ["继续处理", "编辑／简谱／移调／播放"]],
+        facts: [["免费起步", "识别并编辑一页"], ["输入", "PDF／图片／MusicXML"], ["继续处理", "编辑／简谱／移调／播放"]],
         stepsKicker: "三步使用",
         stepsTitle: "从原始文件到可以继续使用，只需三步",
         steps: [
@@ -108,7 +108,7 @@ export default async function HomePage() {
         ],
         finalKicker: "从最难确认的一页开始",
         finalTitle: "先看真实结果，再决定是否处理整份乐谱。",
-        finalAction: "免费识别第一页",
+        finalAction: "免费编辑",
       }
     : {
         heroKicker: "AI recognition and structured score workspace",
@@ -120,7 +120,7 @@ export default async function HomePage() {
           ["Portable open formats", "Exchange with MusicXML and keep MIDI and project snapshots."],
         ],
         heroCases: "See real examples",
-        facts: [["Free start", "Scan the first page"], ["Inputs", "PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
+        facts: [["Free start", "Recognize and edit one page"], ["Inputs", "PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
         stepsKicker: "Three-step workflow",
         stepsTitle: "Go from a source file to a usable score in three steps",
         steps: [
@@ -191,7 +191,7 @@ export default async function HomePage() {
         ],
         finalKicker: "Start with the hardest page",
         finalTitle: "See a real result before processing the full score.",
-        finalAction: "Scan the first page free",
+        finalAction: "Edit for free",
       };
 
   const softwareSchema = {
@@ -218,7 +218,7 @@ export default async function HomePage() {
               {copy.heroTitle.map((line) => <span className={styles.heroTitleLine} key={line}>{line}</span>)}
             </h1>
           </div>
-          <HomeHeroWorkbench isChinese={isChinese} startUrl={startUrl} audioAvailable={siteConfig.release.audioTranscriptionAvailable} />
+          <HomeHeroWorkbench isChinese={isChinese} appUrl={siteConfig.appUrl} startUrl={startUrl} audioAvailable={siteConfig.release.audioTranscriptionAvailable} />
         </div>
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
       </section>
@@ -322,7 +322,7 @@ export default async function HomePage() {
         <div className={`${styles.container} ${styles.faqLayout}`}><header className={styles.faqHeading}><p className={styles.kicker}>{copy.faqKicker}</p><h2 id="faq-title">{copy.faqTitle}</h2></header><div className={styles.faqList}>{copy.faqs.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></div>
       </section>
 
-      <section className={styles.finalSection}><div className={`${styles.container} ${styles.finalCard}`}><div><span>{copy.finalKicker}</span><h2>{copy.finalTitle}</h2></div><a href={startUrl}>{copy.finalAction}<ArrowNorthEastIcon width={18} height={18} /></a></div></section>
+      <section className={styles.finalSection}><div className={`${styles.container} ${styles.finalCard}`}><div><span>{copy.finalKicker}</span><h2>{copy.finalTitle}</h2></div><a href="#home-workbench">{copy.finalAction}<ArrowNorthEastIcon width={18} height={18} /></a></div></section>
     </div>
   );
 }

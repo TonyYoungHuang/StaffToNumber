@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default async function UploadPage() {
-  redirect("/scores/new/scan");
+  redirect("/scores#free-scan");
 }

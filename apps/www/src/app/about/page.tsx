@@ -369,7 +369,7 @@ export default async function AboutPage() {
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
             eyebrow={isChinese ? "下一步" : "Next step"}
-            title={isChinese ? "先免费识别一页，或继续查看帮助说明。" : "Try one page free or continue to the help pages."}
+            title={isChinese ? "先免费编辑一页，或继续查看帮助说明。" : "Edit one page for free or continue to the help pages."}
           />
           <p className="body-copy">
             {isChinese

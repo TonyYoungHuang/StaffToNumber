@@ -4,6 +4,7 @@ import { resolveAuthReturnPath } from "./auth-return";
 
 test("accepts supported authenticated app return paths", () => {
   assert.equal(resolveAuthReturnPath("/checkout"), "/checkout");
+  assert.equal(resolveAuthReturnPath("/scores#free-scan"), "/scores#free-scan");
   assert.equal(resolveAuthReturnPath("/scores/project-1?tab=edit#measure-4"), "/scores/project-1?tab=edit#measure-4");
   assert.equal(resolveAuthReturnPath(["/billing", "/dashboard"]), "/billing");
 });

@@ -42,7 +42,15 @@ validateRuntimeConfig();
 const app = Fastify({ logger: true, trustProxy: config.trustProxy });
 
 await app.register(cors, {
-  origin: true,
+  origin(origin, callback) {
+    if (!origin || config.allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    const isLocalDevelopmentOrigin = config.nodeEnv === "development" && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/u.test(origin);
+    callback(null, isLocalDevelopmentOrigin);
+  },
+  credentials: true,
 });
 
 await app.register(multipart, {

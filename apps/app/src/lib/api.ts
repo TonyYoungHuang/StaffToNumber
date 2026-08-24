@@ -12,6 +12,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       ...options,
       headers,
       cache: "no-store",
+      credentials: "include",
     });
 
     const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
@@ -45,6 +46,7 @@ export async function apiMultipartRequest<T>(path: string, formData: FormData, t
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
       cache: "no-store",
+      credentials: "include",
     });
     const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
     if (!response.ok) return { ok: false, error: payload?.error ?? "Upload failed.", status: response.status, ...(payload ? { data: payload } : {}) };
@@ -59,6 +61,7 @@ export async function downloadAuthenticatedFile(path: string, token: string, fal
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
+      credentials: "include",
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { error?: string } | null;

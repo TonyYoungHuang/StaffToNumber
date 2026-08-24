@@ -8,6 +8,7 @@ import {
   FreeTrialLimitError,
   FreeTrialPageLimitError,
   getFreeTrialAccess,
+  isFreeTrialScoreDocumentForUser,
 } from "./free-trial.js";
 
 function insertUser(id: string, email: string) {
@@ -65,4 +66,34 @@ test("the free PDF preview accepts one page and rejects a multi-page source", as
       && error.code === "FREE_TRIAL_PAGE_LIMIT_EXCEEDED"
       && error.actualPages === 2,
   );
+});
+
+test("free editing access is scoped to the marked OMR project and its owner", () => {
+  initDb();
+  const suffix = crypto.randomUUID();
+  const userId = `free-edit-owner-${suffix}`;
+  const otherUserId = `free-edit-other-${suffix}`;
+  const documentId = `free-edit-document-${suffix}`;
+  const paidDocumentId = `paid-document-${suffix}`;
+  const now = new Date().toISOString();
+  insertUser(userId, `${suffix}-owner@trial.test`);
+  insertUser(otherUserId, `${suffix}-other@trial.test`);
+
+  db.prepare(`
+    INSERT INTO score_documents (id, user_id, title, status, created_at, updated_at)
+    VALUES (?, ?, 'Free editing project', 'candidate', ?, ?),
+           (?, ?, 'Paid project', 'candidate', ?, ?)
+  `).run(documentId, userId, now, now, paidDocumentId, userId, now, now);
+  db.prepare(`
+    INSERT INTO score_jobs (id, user_id, document_id, job_type, status, params_json, created_at, updated_at)
+    VALUES (?, ?, ?, 'omr_import', 'completed', ?, ?, ?),
+           (?, ?, ?, 'omr_import', 'completed', ?, ?, ?)
+  `).run(
+    `free-edit-job-${suffix}`, userId, documentId, JSON.stringify({ freeTrial: true }), now, now,
+    `paid-job-${suffix}`, userId, paidDocumentId, JSON.stringify({ freeTrial: false }), now, now,
+  );
+
+  assert.equal(isFreeTrialScoreDocumentForUser(documentId, userId), true);
+  assert.equal(isFreeTrialScoreDocumentForUser(documentId, otherUserId), false);
+  assert.equal(isFreeTrialScoreDocumentForUser(paidDocumentId, userId), false);
 });

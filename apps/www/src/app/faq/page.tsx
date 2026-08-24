@@ -23,7 +23,7 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
           {
             question: "我现在可以使用哪些功能？",
             answer:
-              "注册用户可以免费识别一页五线谱 PDF 或一张图片，并查看需要人工检查的候选五线谱与基础诊断。开通后可继续多页识别、校对、简谱互换、移调、播放和完整导出。",
+              "注册用户可以免费识别并编辑一页五线谱 PDF 或一张图片，直接校对需要人工检查的候选五线谱。开通后可继续再次或多页识别、简谱互换、移调、播放和完整导出。",
           },
           {
             question: "国际用户和中国大陆用户的购买路径一样吗？",
@@ -89,13 +89,13 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
         {
           question: "What is actually live today?",
           answer:
-            "A registered user can scan one staff-score PDF page or image for free and review a staff candidate with basic diagnostics. Paid access continues into multi-page OMR, correction, Jianpu conversion, transposition, playback, and full export.",
+            "A registered user can recognize and edit one staff-score PDF page or image for free, including candidate correction and basic diagnostics. Paid access adds another or multi-page scan, Jianpu conversion, transposition, playback, and full export.",
         },
         {
           question: "Do international and mainland-China users follow the same path?",
           answer: checkoutAvailable
             ? "Not exactly. International customers can pay online directly, while mainland-China customers can also continue through activation-code distribution and redeem inside the app."
-            : "Online checkout is not open yet. It will be enabled after Paddle production payments, refunds, and entitlement delivery pass verification; the free one-page experience remains available.",
+            : "Online checkout is not open yet. It will be enabled after Paddle production payments, refunds, and entitlement delivery pass verification; free one-page editing remains available.",
         },
         {
           question: "What do I receive after payment?",

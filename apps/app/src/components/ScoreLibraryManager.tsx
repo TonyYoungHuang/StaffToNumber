@@ -175,8 +175,8 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           accessLoading: "正在读取免费额度...",
           exhaustedEyebrow: "免费额度已用完",
           exhaustedTitle: "本账户的一次免费单页识别已经使用。",
-          exhaustedBody: "你仍可在“我的乐谱”查看免费候选；再次识别、多页处理、校对和导出需要开通完整权限。",
-          exhaustedLibrary: "查看免费候选",
+          exhaustedBody: "你仍可在“我的乐谱”继续编辑这份免费候选；再次识别、多页处理、移调、简谱、音频和导出需要开通完整权限。",
+          exhaustedLibrary: "继续免费编辑",
           exhaustedUpgrade: "兑换激活码",
         }
       : {
@@ -194,10 +194,10 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           importing: "Uploading...",
            clear: "Choose another file",
           accessLoading: "Checking free-scan availability...",
-          exhaustedEyebrow: "Free scan used",
+          exhaustedEyebrow: "Free editing scan used",
           exhaustedTitle: "This account has used its one free single-page scan.",
-          exhaustedBody: "You can still view the free candidate in My Scores. Another scan, multi-page processing, correction, and export require full access.",
-          exhaustedLibrary: "View free candidate",
+          exhaustedBody: "You can keep editing the free candidate in My Scores. Another scan, multi-page processing, transposition, Jianpu, audio, and export require full access.",
+          exhaustedLibrary: "Continue free editing",
           exhaustedUpgrade: "Unlock full access",
         };
   const scoreJsonCopy =
@@ -684,38 +684,89 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
   const statusTone = status ? statusKind : null;
   const hasPaidAccess = access?.entitlement.status === "active";
   const freeTrialAvailable = access?.freeTrial.available ?? false;
+  const scanWorkspace = (
+    <>
+      {access === null ? <div className="empty-state">{omrCopy.accessLoading}</div> : null}
 
-  return (
-    <div className="page-stack">
-      {view === "library" && access && !hasPaidAccess ? (
-        <section className="surface-panel stack-sm">
-          <p className="eyebrow">{locale === "zh-CN" ? "免费单页预览" : "Free one-page preview"}</p>
-          <h2 className="card-title">
-            {freeTrialAvailable
-              ? locale === "zh-CN" ? "你可以免费识别一页 PDF 或一张乐谱图片。" : "You can scan one PDF page or one score image for free."
-              : locale === "zh-CN" ? "免费预览已经使用。" : "Your free preview has been used."}
-          </h2>
-          <p className="body-copy">
-            {locale === "zh-CN"
-              ? "免费层可以查看识别后的五线谱，但不提供下载。再次识别、多页处理、校对和完整导出需要开通权限。"
-              : "The free tier shows the recognized staff score without downloads. Additional scans, multi-page processing, correction, and exports require access."}
-          </p>
+      {access && !hasPaidAccess && !freeTrialAvailable ? (
+        <div className="converter-side stack-lg" role="status">
+          <div className="stack-sm">
+            <p className="eyebrow">{omrCopy.exhaustedEyebrow}</p>
+            <h2 className="card-title">{omrCopy.exhaustedTitle}</h2>
+            <p className="body-copy">{omrCopy.exhaustedBody}</p>
+          </div>
           <div className="button-row">
-            <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
-              {freeTrialAvailable
-                ? locale === "zh-CN" ? "开始免费预览" : "Start free preview"
-                : locale === "zh-CN" ? "查看试用工程" : "View trial project"}
-            </Link>
+            <Link href={`${APP_ROUTES.scores}#saved-scores`} className="button button-primary">{omrCopy.exhaustedLibrary}</Link>
             <Link
               href={accountActivationRoute}
               className="button button-secondary"
-              onClick={() => trackFunnelEvent("upgrade_click", { source: "score_library_trial_banner" })}
+              onClick={() => trackFunnelEvent("upgrade_click", { source: "score_scan_exhausted" })}
             >
-              {locale === "zh-CN" ? "开通完整功能" : "Unlock full access"}
+              {omrCopy.exhaustedUpgrade}
             </Link>
           </div>
-        </section>
+        </div>
       ) : null}
+
+      {access && (hasPaidAccess || freeTrialAvailable) ? <div id="score-scan" className="converter-side">
+        <div className="stack-sm">
+          <p className="eyebrow">
+            {!hasPaidAccess && freeTrialAvailable
+              ? locale === "zh-CN" ? "登录成功 · 免费编辑" : "Signed in · edit for free"
+              : omrCopy.eyebrow}
+          </p>
+          <h2 className="card-title">{omrCopy.title}</h2>
+          <p className="body-copy">
+            {!hasPaidAccess && freeTrialAvailable
+              ? locale === "zh-CN"
+                ? "直接在这里上传一页 PDF 或一张乐谱图片。识别后可免费校对候选五线谱；下载、再次识别、移调、简谱和音频需要开通。"
+                : "Upload one PDF page or score image here, then correct the recognized candidate for free. Downloads, another scan, transposition, Jianpu, and audio require access."
+              : omrCopy.body}
+          </p>
+        </div>
+
+        <label htmlFor="score-scan-input" className="file-dropzone">
+          <div className="stack-xs">
+            <p className="dropzone-title">{omrCopy.dropTitle}</p>
+            <p className="dropzone-copy">{omrCopy.dropBody}</p>
+          </div>
+          <span className="status-chip tone-amber">PDF / JPG</span>
+        </label>
+        <input
+          id="score-scan-input"
+          className="sr-only"
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/*"
+          onChange={(event) => setSelectedOmrFile(event.target.files?.[0] ?? null)}
+        />
+
+        {selectedOmrFile ? (
+          <div className="mini-card stack-sm">
+            <p className="metric-label">{omrCopy.selected}</p>
+            <p className="item-title">{selectedOmrFile.name}</p>
+            <p className="helper-copy">{formatSize(selectedOmrFile.size)}</p>
+          </div>
+        ) : (
+          <div className="empty-state">{omrCopy.empty}</div>
+        )}
+
+        <div className="button-row">
+          <button type="button" disabled={omrImporting || (!hasPaidAccess && !freeTrialAvailable)} className="button button-primary" onClick={() => void handleOmrImport()}>
+            {omrImporting ? omrCopy.importing : omrCopy.button}
+          </button>
+          <button type="button" className="button button-secondary" onClick={() => setSelectedOmrFile(null)}>
+            {omrCopy.clear}
+          </button>
+        </div>
+      </div> : null}
+
+      {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+    </>
+  );
+
+  return (
+    <div className="page-stack">
+      {view === "library" ? <section id="free-scan" className="surface-panel stack-lg">{scanWorkspace}</section> : null}
 
       {view === "library" ? <div className="metric-grid">
         <div className="metric-card">
@@ -867,69 +918,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           </div>
         </div> : null}
 
-        {view === "scan" && access === null ? <div className="empty-state">{omrCopy.accessLoading}</div> : null}
-
-        {view === "scan" && access && !hasPaidAccess && !freeTrialAvailable ? (
-          <div className="converter-side stack-lg" role="status">
-            <div className="stack-sm">
-              <p className="eyebrow">{omrCopy.exhaustedEyebrow}</p>
-              <h2 className="card-title">{omrCopy.exhaustedTitle}</h2>
-              <p className="body-copy">{omrCopy.exhaustedBody}</p>
-            </div>
-            <div className="button-row">
-              <Link href={APP_ROUTES.scores} className="button button-primary">{omrCopy.exhaustedLibrary}</Link>
-              <Link
-                href={accountActivationRoute}
-                className="button button-secondary"
-                onClick={() => trackFunnelEvent("upgrade_click", { source: "score_scan_exhausted" })}
-              >
-                {omrCopy.exhaustedUpgrade}
-              </Link>
-            </div>
-          </div>
-        ) : null}
-
-        {view === "scan" && access && (hasPaidAccess || freeTrialAvailable) ? <div id="score-scan" className="converter-side">
-          <div className="stack-sm">
-            <p className="eyebrow">{omrCopy.eyebrow}</p>
-            <h2 className="card-title">{omrCopy.title}</h2>
-            <p className="body-copy">{omrCopy.body}</p>
-          </div>
-
-          <label htmlFor="score-scan-input" className="file-dropzone">
-            <div className="stack-xs">
-              <p className="dropzone-title">{omrCopy.dropTitle}</p>
-              <p className="dropzone-copy">{omrCopy.dropBody}</p>
-            </div>
-            <span className="status-chip tone-amber">PDF / JPG</span>
-          </label>
-          <input
-            id="score-scan-input"
-            className="sr-only"
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/*"
-            onChange={(event) => setSelectedOmrFile(event.target.files?.[0] ?? null)}
-          />
-
-          {selectedOmrFile ? (
-            <div className="mini-card stack-sm">
-              <p className="metric-label">{omrCopy.selected}</p>
-              <p className="item-title">{selectedOmrFile.name}</p>
-              <p className="helper-copy">{formatSize(selectedOmrFile.size)}</p>
-            </div>
-          ) : (
-            <div className="empty-state">{omrCopy.empty}</div>
-          )}
-
-          <div className="button-row">
-            <button type="button" disabled={omrImporting || (!hasPaidAccess && !freeTrialAvailable)} className="button button-primary" onClick={() => void handleOmrImport()}>
-              {omrImporting ? omrCopy.importing : omrCopy.button}
-            </button>
-            <button type="button" className="button button-secondary" onClick={() => setSelectedOmrFile(null)}>
-              {omrCopy.clear}
-            </button>
-          </div>
-        </div> : null}
+        {view === "scan" ? scanWorkspace : null}
 
         {view === "audio" && hasPaidAccess && audioTranscriptionAvailable ? <div id="audio-import" className="converter-side">
           <div className="stack-sm">
@@ -1021,7 +1010,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           </div>
         </form> : null}
 
-        {view === "library" ? <div className="preview-side">
+        {view === "library" ? <div id="saved-scores" className="preview-side">
           <div className="stack-sm">
             <p className="eyebrow">{copy.list.eyebrow}</p>
             <h2 className="card-title">{copy.list.title}</h2>
@@ -1056,7 +1045,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           </div>
         </div> : null}
 
-        {view !== "library" && view !== "musicxml" && status && statusTone ? (
+        {view !== "library" && view !== "musicxml" && view !== "scan" && status && statusTone ? (
           <p className={`form-status ${statusTone}`}>{status}</p>
         ) : null}
       </section>

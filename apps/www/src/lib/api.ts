@@ -13,6 +13,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
         ...(options.headers ?? {}),
       },
       cache: "no-store",
+      credentials: "include",
     });
 
     const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 
@@ -55,18 +54,7 @@ export function EntitlementGate({
   );
 
   useEffect(() => {
-    const token = getStoredToken();
-    if (!token) {
-      setStatus("redirecting");
-      router.replace(APP_ROUTES.login);
-      return;
-    }
-
-    apiRequest<MePayload>("/api/auth/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }).then((result) => {
+    apiRequest<MePayload>("/api/auth/me").then((result) => {
       if (!result.ok) {
         setStatus("redirecting");
         router.replace(APP_ROUTES.login);

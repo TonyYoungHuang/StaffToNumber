@@ -129,7 +129,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     ],
     details: [
       { title: "候选稿而不是最终答案", body: "识别结果保留置信度和诊断信息，方便人工修正。" },
-      { title: "免费预览一页", body: "免费账户可以识别一页 PDF 或一张乐谱图片；更多页面和完整导出需要相应权限。" },
+      { title: "免费编辑一页", body: "免费账户可以识别并校对一页 PDF 或一张乐谱图片；再次识别、更多页面和完整导出需要相应权限。" },
     ],
     guardrail: "识谱是“导入加校正”的流程，不承诺所有 PDF 和照片都能自动得到完美结果。",
   },
@@ -152,7 +152,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
   pricing: {
     title: "ScoreTransposer 价格与积分套餐",
     eyebrow: "识谱、转换与工程处理权限",
-    description: "先免费识别一页，再按积分套餐继续识谱、校正、简谱转换、移调、播放和完整导出。",
+    description: "先免费识别并编辑一页，再按积分套餐继续再次识谱、简谱转换、移调、播放和完整导出。",
     modules: ["在线付款", "激活码", "账户权限", "付费能力控制"],
     workflow: [
       { title: "选择积分套餐", body: "根据个人处理或批量工作选择月付或年付方案。" },
@@ -192,7 +192,7 @@ export function getFeaturePageUi(locale: SupportedLocale) {
     return {
       home: "Home",
       unavailable: "Pending production verification",
-      actions: { upload: "Scan one page free", checkout: "View access options", scores: "Open score projects", unavailable: "Check release availability" },
+      actions: { upload: "Edit for free", checkout: "View access options", scores: "Open score projects", unavailable: "Check release availability" },
       pricing: "Pricing",
       moduleEyebrow: "Platform modules",
       moduleTitle: "Built on MusicXML and Score JSON",
@@ -227,7 +227,7 @@ export function getFeaturePageUi(locale: SupportedLocale) {
   return {
     home: "首页",
     unavailable: "等待生产环境验证",
-    actions: { upload: "免费识别一页", checkout: "查看积分套餐", scores: "打开我的乐谱", unavailable: "查看功能开放状态" },
+    actions: { upload: "免费编辑", checkout: "查看积分套餐", scores: "打开我的乐谱", unavailable: "查看功能开放状态" },
     pricing: "价格",
     moduleEyebrow: "平台模块",
     moduleTitle: "基于 MusicXML 与 Score JSON",

@@ -16,7 +16,7 @@ export class FreeTrialLimitError extends Error {
   readonly trial: FreeTrialAccess;
 
   constructor(trial: FreeTrialAccess) {
-    super("The free score preview has already been used. Upgrade to process another score.");
+    super("The free editing scan has already been used. Upgrade to process another score.");
     this.name = "FreeTrialLimitError";
     this.trial = trial;
   }
@@ -29,7 +29,7 @@ export class FreeTrialPageLimitError extends Error {
   readonly maxSourcePages: number;
 
   constructor(actualPages: number, maxSourcePages: number) {
-    super(`The free preview accepts up to ${maxSourcePages} PDF page. Upgrade to process multi-page scores.`);
+    super(`Free editing accepts up to ${maxSourcePages} PDF page. Upgrade to process multi-page scores.`);
     this.name = "FreeTrialPageLimitError";
     this.actualPages = actualPages;
     this.maxSourcePages = maxSourcePages;
@@ -58,6 +58,25 @@ export function assertFreeTrialOmrAvailable(userId: string) {
   const trial = getFreeTrialAccess(userId);
   if (!trial.available) throw new FreeTrialLimitError(trial);
   return trial;
+}
+
+export function isFreeTrialScoreDocumentForUser(documentId: string, userId: string) {
+  const jobs = db.prepare(`
+    SELECT params_json
+    FROM score_jobs
+    WHERE document_id = ? AND user_id = ? AND job_type = 'omr_import'
+    ORDER BY created_at ASC
+  `).all(documentId, userId) as Array<{ params_json: string | null }>;
+
+  return jobs.some((job) => {
+    if (!job.params_json) return false;
+    try {
+      const params = JSON.parse(job.params_json) as { freeTrial?: unknown };
+      return params.freeTrial === true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 export async function assertFreeTrialPdfPageLimit(source: Uint8Array, maxSourcePages: number) {

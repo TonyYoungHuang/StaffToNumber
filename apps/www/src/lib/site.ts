@@ -142,8 +142,7 @@ export function getAppActivateUrl() {
 
 export function getAppStartConversionUrl(locale?: SupportedLocale) {
   if (siteConfig.release.productAppAvailable) {
-    const scorePath = `${APP_ROUTES.scores}#omr-import`;
-    return locale ? getAppLocaleHandoffUrl(scorePath, locale) : `${buildUrl(siteConfig.appUrl, APP_ROUTES.scores)}#omr-import`;
+    return getAppLoginUrl(`${APP_ROUTES.scores}#free-scan`, locale);
   }
 
   return getSupportUrl("general", "upload-launch-access");

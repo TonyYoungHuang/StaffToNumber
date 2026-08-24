@@ -3,6 +3,8 @@ import fp from "fastify-plugin";
 import { config } from "../config.js";
 import { getUserProfile } from "../repositories/auth-repository.js";
 import { findActiveSessionByToken } from "../repositories/auth-repository.js";
+import { readSessionCookie } from "../lib/session-cookie.js";
+import { isFreeTrialScoreDocumentForUser } from "../lib/free-trial.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -14,6 +16,7 @@ declare module "fastify" {
   interface FastifyInstance {
     requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireScorePreviewAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireScoreEditingAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireActiveEntitlement: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
@@ -30,7 +33,7 @@ function readBearerToken(request: FastifyRequest) {
 
 export const authPlugin = fp(async (app) => {
   app.decorate("requireAuth", async (request: FastifyRequest, reply: FastifyReply) => {
-    const token = readBearerToken(request);
+    const token = readBearerToken(request) ?? readSessionCookie(request, config.publicApiUrl);
 
     if (!token) {
       reply.code(401).send({ error: "Unauthorized" });
@@ -71,6 +74,19 @@ export const authPlugin = fp(async (app) => {
     const profile = getUserProfile(request.authUserId);
     if (!profile || profile.accountStatus !== "active") {
       reply.code(403).send({ error: "An active account is required." });
+    }
+  });
+
+  app.decorate("requireScoreEditingAccess", async (request: FastifyRequest, reply: FastifyReply) => {
+    await app.requireScorePreviewAccess(request, reply);
+    if (reply.sent || !request.authUserId) return;
+
+    const profile = getUserProfile(request.authUserId);
+    if (profile?.entitlement.status === "active") return;
+
+    const documentId = (request.params as { id?: unknown } | null)?.id;
+    if (typeof documentId !== "string" || !isFreeTrialScoreDocumentForUser(documentId, request.authUserId)) {
+      reply.code(403).send({ error: "An active entitlement or this account's free editing project is required." });
     }
   });
 

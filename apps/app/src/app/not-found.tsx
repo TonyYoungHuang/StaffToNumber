@@ -21,14 +21,14 @@ export default async function NotFound() {
           body={
             isChinese
               ? "你可以返回免费识谱入口、工作台首页或升级状态页继续。"
-              : "Return to the free scanner, studio homepage, or upgrade status to continue."
+              : "Return to free editing, the studio homepage, or upgrade status to continue."
           }
           titleAs="h1"
           largeBody
         />
         <div className="button-row">
           <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
-            {isChinese ? "免费识别一页" : "Scan one page free"}
+            {isChinese ? "免费编辑" : "Edit for free"}
           </Link>
           <Link href={APP_ROUTES.home} className="button button-secondary">
             {isChinese ? "工作台首页" : "Studio home"}

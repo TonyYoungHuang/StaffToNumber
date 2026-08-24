@@ -540,7 +540,7 @@ export function ScoreCorrectionPanel({
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!token || !selectedEvent) {
+    if (!selectedEvent) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -552,7 +552,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/note`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -602,7 +602,7 @@ export function ScoreCorrectionPanel({
   async function handleSavePartSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!token || !selectedPart) {
+    if (!selectedPart) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -615,7 +615,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/part`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -641,7 +641,7 @@ export function ScoreCorrectionPanel({
   async function handleSaveMeasureAttributes(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!token || !selectedMeasure) {
+    if (!selectedMeasure) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -653,7 +653,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/measure-attributes`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -686,7 +686,7 @@ export function ScoreCorrectionPanel({
   }
 
   async function saveHarmony(clear = false) {
-    if (!token || !selectedMeasure) {
+    if (!selectedMeasure) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -698,7 +698,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/harmony`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
@@ -730,7 +730,7 @@ export function ScoreCorrectionPanel({
   }
 
   async function saveDynamic(clear = false) {
-    if (!token || !selectedMeasure) {
+    if (!selectedMeasure) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -742,7 +742,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/dynamics`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
@@ -772,7 +772,7 @@ export function ScoreCorrectionPanel({
   }
 
   async function saveTempo(clear = false) {
-    if (!token || !selectedMeasure) {
+    if (!selectedMeasure) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -784,7 +784,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/tempo`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
@@ -817,7 +817,7 @@ export function ScoreCorrectionPanel({
   }
 
   async function saveWedge(clear = false) {
-    if (!token || !selectedMeasure) {
+    if (!selectedMeasure) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -829,7 +829,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/wedge`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
@@ -860,7 +860,7 @@ export function ScoreCorrectionPanel({
   }
 
   async function saveBarline(clear = false) {
-    if (!token || !selectedMeasure) {
+    if (!selectedMeasure) {
       setStatus(copy.failed);
       setStatusKind("error");
       return;
@@ -872,7 +872,7 @@ export function ScoreCorrectionPanel({
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}/edit/barline`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
