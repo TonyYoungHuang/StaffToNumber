@@ -160,6 +160,8 @@ const apiContainerEntrypoint = [
 
 export class ApiContainer extends ObservableContainer {
   static outboundByHost = {
+    "www.googleapis.com": (request: Request) => fetch(request),
+    "accounts.google.com": (request: Request) => fetch(request),
     "api.stripe.com": (request: Request) => fetch(request),
     "api.paddle.com": (request: Request) => fetch(request),
     "sandbox-api.paddle.com": (request: Request) => fetch(request),

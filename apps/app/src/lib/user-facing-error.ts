@@ -12,6 +12,11 @@ const ERROR_COPY: Array<{ pattern: RegExp; zh: string; en: string }> = [
     en: "The email or password is incorrect. Please try again.",
   },
   {
+    pattern: /google sign-in could not be verified/iu,
+    zh: "Google 登录验证失败，请重新选择账号后再试。",
+    en: "Google sign-in could not be verified. Choose the account and try again.",
+  },
+  {
     pattern: /uploaded file content does not match a supported file type/iu,
     zh: "文件内容与支持的格式不符，请重新选择有效的乐谱 PDF 或图片。",
     en: "The file contents do not match a supported score format. Choose another PDF or image.",
