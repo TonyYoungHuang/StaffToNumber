@@ -33,7 +33,7 @@ const environmentConfig = environment === "production"
       collaborationUrl: "wss://collab.scoretransposer.com",
       publicLaunchReady: "true",
       productAppAvailable: "true",
-      checkoutAvailable: "false",
+      checkoutAvailable: "true",
       omrAvailable: "true",
       audioTranscriptionAvailable: "false",
       teachingAvailable: "true",

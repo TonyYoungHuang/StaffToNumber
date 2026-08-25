@@ -61,10 +61,11 @@ export function CreditPlanCard({
     plan.featured ? "score-plan-card--featured" : "",
     selected ? "score-plan-card--selected" : "",
     control ? "score-plan-card--selectable" : "",
+    actionHref ? "score-plan-card--linked" : "",
   ].filter(Boolean).join(" ");
 
-  return (
-    <Wrapper className={className}>
+  const content = (
+    <>
       {control}
       <div className="score-plan-card__top">
         <span className="score-plan-card__badge">{plan.badge}</span>
@@ -85,11 +86,7 @@ export function CreditPlanCard({
           <small>{isChinese ? "创建成功的后台任务计费" : "Charged for successfully created server jobs"}</small>
         </div>
       </div>
-      {actionHref ? (
-        <a className={`score-plan-card__action ${selected ? "score-plan-card__action--selected" : ""}`} href={actionHref}>{label}<span aria-hidden="true">↗</span></a>
-      ) : (
-        <span className={`score-plan-card__action ${selected ? "score-plan-card__action--selected" : ""}`}>{label}</span>
-      )}
+      <span className={`score-plan-card__action ${selected ? "score-plan-card__action--selected" : ""}`}>{label}<span aria-hidden="true">↗</span></span>
       <div className="score-plan-card__section">
         <SectionHeading>{isChinese ? "包含能力" : "Included capabilities"}</SectionHeading>
         <ul className="score-plan-card__features">
@@ -102,6 +99,12 @@ export function CreditPlanCard({
           {plan.resources.map((resource) => <li key={resource}>{resource}</li>)}
         </ul>
       </div>
-    </Wrapper>
+    </>
   );
+
+  if (actionHref) {
+    return <a className={className} href={actionHref}>{content}</a>;
+  }
+
+  return <Wrapper className={className}>{content}</Wrapper>;
 }

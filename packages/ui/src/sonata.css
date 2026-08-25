@@ -4003,8 +4003,13 @@ body .locked-field {
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.score-plan-card--selectable {
+.score-plan-card--selectable,
+.score-plan-card--linked {
   cursor: pointer;
+}
+
+.score-plan-card--linked {
+  text-decoration: none;
 }
 
 .score-plan-card--featured {
@@ -4028,11 +4033,13 @@ body .locked-field {
 }
 
 .score-plan-card--selectable:hover,
+.score-plan-card--linked:hover,
 .score-plan-card:has(.score-plan-card__action:hover) {
   border-color: rgba(91, 76, 229, 0.55);
 }
 
 .score-plan-card--selectable:focus-within,
+.score-plan-card--linked:focus-visible,
 .score-plan-card:has(.score-plan-card__action:focus-visible) {
   outline: 3px solid rgba(91, 76, 229, 0.2);
   outline-offset: 3px;
