@@ -2,7 +2,7 @@
 
 ## 目标与边界
 
-当前只上线一个个人订阅购买入口，验证用户是否愿意购买。Stripe 的代码和配置接口保留，但不要求现在完成 Stripe Live 审核。首发不做学校套餐、自助退款、优惠券和复杂税务页面。
+当前通过一个个人订阅购买入口提供 Starter 与 Converter Pro 两个付费层级、四个计费周期价格。Stripe 的代码和配置接口保留，但不要求现在完成 Stripe Live 审核。首发不做学校套餐、自助退款、优惠券和复杂税务页面。
 
 代码链路为：注册用户点击升级 → API 创建 Paddle Transaction → Paddle Checkout 收款 → 签名 Webhook 更新订单和订阅 → 当前账户自动获得付费权益 → 用户继续 OMR、校对和完整导出。
 
@@ -12,6 +12,8 @@
 - Live 收款仍需 Paddle 完成网站、业务和身份审核。中国大陆不在 Paddle 当前公布的不支持供应商国家清单中，但最终是否接受账户以 Paddle 审核结果为准。
 - Paddle 当前公布的出款方式是银行电汇或 Payoneer，并支持 CNY 出款币种。要实际收到出款，仍需在 Payout Settings 填写有效的收款资料；不要把“余额暂存在平台”视为一定可以无限期跳过出款审核的承诺。
 - 因此最省事的顺序是：Sandbox 验证代码 → 免费版获客 → 出现真实升级意向时完成 Live 审核和出款设置 → 做一笔 Live 小额付款与退款 → 打开生产结账。
+- 不要等待 Live 审核结束才开始技术配置。审核期间完成 Sandbox 的产品、四个价格、默认付款链接、Webhook 和订阅生命周期测试；但生产 `PAYMENT_PROVIDERS` 必须继续为空。
+- Sandbox 与 Live 是完全分开的目录和凭据。审核通过后必须在 Live 重新创建或核对两个产品和四个价格，并替换为 Live `pri_...`、API Key、Client-side Token 与 Endpoint Secret。
 
 ## 1. Paddle 后台准备
 
@@ -22,6 +24,7 @@
 3. 将默认支付链接设置为对应环境的 `/checkout/paddle`：
    - Sandbox：`https://staging.scoretransposer.com/checkout/paddle`
    - Live：`https://scoretransposer.com/checkout/paddle`
+   - 除站内新订单外，还要测试 Paddle 只携 `_ptxn` 的付款方式更新或催款链接；确认默认付款页不会要求站内 `order_id`、公开 token 或自定义 `success_url` 才能打开合法交易。
 4. 创建 API Key，至少允许读取/创建 Transaction，以及读取/取消 Subscription。
 5. 创建 Client-side Token。它可以交给浏览器使用，但不能替代 API Key。
 6. 创建 Notification Destination：
@@ -88,6 +91,8 @@
 9. 以上步骤在 Live 用一笔小额真实付款再验证一次，随后退款。
 
 只有九项全部通过，才保持生产结账开关为 `true`。否则立即把 `PAYMENT_PROVIDERS` 和 `NEXT_PUBLIC_CHECKOUT_AVAILABLE` 关闭；这不会影响免费体验。
+
+在提交或等待域名审核期间，同时核对公开价格页、服务条款、隐私政策、支持邮箱和退款说明。页面必须明确月付／年付自动续费、取消入口、取消生效时间，以及 Free 不要求先购买或兑换激活码。
 
 ## 5. 首单后的判断
 

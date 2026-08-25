@@ -6,9 +6,24 @@ import { readSiteLocale } from "../../lib/locale";
 import { getAppScoreProjectsUrl, siteConfig } from "../../lib/site";
 
 export const metadata: Metadata = {
-  title: `Public-domain sheet music library | ${siteConfig.siteName}`,
-  description: "Browse a rights-aware public-domain and CC0 sheet music catalog by instrument, ensemble, era, and difficulty.",
+  title: `Public Domain Sheet Music Library | ${siteConfig.siteName}`,
+  description: "Browse a rights-aware public domain sheet music library for classical, piano, orchestral, vocal, and a-cappella scores by instrument, ensemble, and era.",
+  keywords: ["public domain sheet music", "public domain sheet music library", "free sheet music", "free sheet music PDF", "free classical sheet music PDF", "public domain sheet music PDF", "classical sheet music", "piano sheet music", "orchestral sheet music", "choral sheet music", "MusicXML sheet music"],
   alternates: { canonical: "/library" },
+  openGraph: {
+    title: `Public Domain Sheet Music Library | ${siteConfig.siteName}`,
+    description: "Browse rights-aware classical, piano, orchestral, vocal, and a-cappella score records by instrument, ensemble, and era.",
+    url: `${siteConfig.siteUrl}/library`,
+    siteName: siteConfig.siteName,
+    type: "website",
+    images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: "Public domain sheet music score preview" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `Public Domain Sheet Music Library | ${siteConfig.siteName}`,
+    description: "Browse a rights-aware public domain sheet music library by instrument, ensemble, and era.",
+    images: ["/product/score-preview-output-real.png"],
+  },
 };
 
 type LibrarySearchParams = Record<string, string | string[] | undefined>;
@@ -53,8 +68,8 @@ export default async function PublicScoreLibraryPage({ searchParams }: { searchP
       }
     : {
         eyebrow: "Open score library",
-        title: "Find public-domain scores by instrument, ensemble, and era",
-        body: "This first catalog covers rights-reviewed work records for classical, orchestral, piano, vocal, and a-cappella music. Only explicitly CC0 files are hosted here; other records link to the source collection for edition-level review.",
+        title: "Public domain sheet music for classical ensembles and instruments",
+        body: "Search rights-reviewed records for classical, orchestral, piano, vocal, and a-cappella sheet music. Only explicitly CC0 files are hosted here; other records link to the source collection for edition-level review.",
         catalog: "Curated catalog",
         catalogBody: "Search by title or composer and filter by instrument, ensemble, or era.",
         query: "Title or composer",
@@ -69,7 +84,7 @@ export default async function PublicScoreLibraryPage({ searchParams }: { searchP
         downloadable: "Downloadable here",
         sourceLinked: "Source-linked",
         rights: "Work rights",
-        why: "Why are some records not downloadable here?",
+        why: "How does this library handle free classical sheet music?",
         whyBody: "A composer's work can be public domain while a modern edition, arrangement, scan, or transcription remains protected or region-restricted. ScoreTransposer tracks work-, edition-, and file-level rights separately and does not mirror unknown files.",
         start: "Open my score workspace",
       };

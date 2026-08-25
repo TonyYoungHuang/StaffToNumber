@@ -110,7 +110,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       "Transpose sheet music online by semitones, target key, or instrument profile. Keep the original score, create a new revision, and review range and spelling.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-24",
+    updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/transpose-score",
     keywords: ["transpose sheet music", "transpose sheet music online", "change sheet music key", "online score transposition", "乐谱移调"],
@@ -144,16 +144,16 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   {
     slug: "score-editor",
     title: "Online Sheet Music Editor",
-    eyebrow: "OSMD preview plus structured correction",
+    eyebrow: "Create, correct, and collaborate on notation",
     description:
-      "Create and correct sheet music in a browser-based music notation editor. Import MusicXML, MIDI, Jianpu, or scanned candidates, then save editable revisions.",
+      "Create, correct, co-edit, and extract parts from sheet music in an online notation editor. Import MusicXML, MIDI, Jianpu, or scans as editable revisions.",
     status: "Beta",
     releaseRequirement: "core",
     updatedAt: "2026-08-24",
     primaryAction: "scores",
     canonical: "/score-editor",
-    keywords: ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "online score editor", "五线谱编辑器"],
-    modules: ["OSMD preview", "Score JSON revisions", "Correction panel", "Version restore"],
+    keywords: ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation", "五线谱编辑器"],
+    modules: ["OSMD preview", "Score JSON revisions", "Correction panel", "Part Copy Generator Beta", "Version restore", "Real-time collaboration Beta"],
     workflow: [
       {
         title: "Import a structured score",
@@ -177,22 +177,30 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         title: "Structured music score maker",
         body: "Create or correct notes with rendered-note selection, pitch and duration dragging, insertion, deletion, and property editing. Desktop-grade free-form engraving and full layout control remain in progress.",
       },
+      {
+        title: "Collaborative sheet music editor Beta",
+        body: "Invite role-aware collaborators to a shared score with presence, conflict handling, and an offline change queue. Real-time collaboration remains a Beta workflow and should be tested before a large ensemble session.",
+      },
+      {
+        title: "Extract parts from a score Beta",
+        body: "Select one or more parts and split the full score into an independent practice project. Part copies preserve their source reference but do not yet follow later edits to the full score.",
+      },
     ],
     guardrail: "Editing is built on Score JSON/MusicXML, not on PDF text or image pixels.",
   },
   {
     slug: "score-to-audio",
-    title: "Playback & Practice Mode",
-    eyebrow: "Playback, loops, and studio-rendered exports",
+    title: "Sheet Music to MP3 & WAV Converter",
+    eyebrow: "Online playback, practice feedback, and MP3 export",
     description:
-      "Open structured notation in an online sheet music player, control tempo, loops, metronome and parts, then export MIDI, WAV, or MP3 practice audio.",
+      "Convert sheet music to MP3 or WAV in an online score player. Control tempo, loops, metronome and parts, then export reusable practice audio.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-24",
+    updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/score-to-audio",
-    keywords: ["sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "乐谱播放器", "乐谱生成音频"],
-    modules: ["Tone.js playback", "Playback timeline", "MIDI export", "WAV/MP3 renderer"],
+    keywords: ["sheet music to mp3", "sheet music to mp3 converter", "sheet music to mp3 online", "musicxml to mp3", "musicxml to mp3 converter", "musicxml to wav", "sheet music to audio", "sheet music to audio converter", "convert sheet music to mp3", "sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "music practice recording app", "sheet music practice app", "practice sheet music online", "乐谱播放器", "乐谱生成音频"],
+    modules: ["Tone.js playback", "Playback timeline", "Browser recording Beta", "Practice feedback Beta", "MIDI export", "WAV/MP3 renderer"],
     workflow: [
       {
         title: "Generate playback events",
@@ -200,7 +208,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       },
       {
         title: "Practice in the browser",
-        body: "Control tempo, loop ranges, metronome, count-in, solo/mute, and per-part volume before exporting.",
+        body: "Control tempo, loop ranges, metronome, count-in, solo/mute, and per-part volume. The Beta practice recorder adds reviewable pitch and timing observations for monophonic practice.",
       },
       {
         title: "Export practice materials",
@@ -213,8 +221,12 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "After a scanned candidate is corrected, students can focus on one part, slow down difficult measures, and export a practice clip for review.",
       },
       {
-        title: "High-quality audio when the renderer is configured",
+        title: "Convert sheet music to MP3 or WAV",
         body: "Queued WAV and MP3 export requires FluidSynth, a configured SoundFont, and ffmpeg. The server reports a configuration error instead of substituting lower-quality browser synthesis.",
+      },
+      {
+        title: "Music practice app with recording feedback Beta",
+        body: "Record a monophonic exercise in the browser and compare reviewable pitch and timing observations with the selected score passage. This is practice guidance, not a certified performance grade.",
       },
     ],
     guardrail: "This feature generates audio from structured scores; audio-to-score transcription is available as a separate experimental import path.",
@@ -260,17 +272,17 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "musicxml-midi",
-    title: "MusicXML & MIDI Converter",
-    eyebrow: "Import, export, and project backups",
+    title: "MusicXML Editor & MIDI/PDF Converter",
+    eyebrow: "Open-format editing, conversion, and print export",
     description:
-      "Use an online MusicXML editor and converter to import MusicXML or MIDI, correct the structured score, convert MusicXML to MIDI, and export portable files.",
+      "Edit MusicXML or MIDI online, correct the score, convert MusicXML to MIDI, and export portable MusicXML, PDF, SVG, PNG, or Score JSON files.",
     status: "Available",
     releaseRequirement: "core",
-    updatedAt: "2026-08-24",
+    updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/musicxml-midi",
-    keywords: ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "MusicXML converter"],
-    modules: ["MusicXML import/export", "MIDI import/export", "Score JSON snapshot", "OSMD preview"],
+    keywords: ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "MusicXML converter", "musicxml to pdf", "export sheet music to pdf", "sheet music svg", "sheet music png"],
+    modules: ["MusicXML import/export", "MIDI import/export", "PDF/SVG/PNG renderer", "Score JSON snapshot", "OSMD preview"],
     workflow: [
       {
         title: "Import MusicXML, MXL, MIDI, or Score JSON",
@@ -293,6 +305,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       {
         title: "MusicXML to MIDI and MIDI to sheet music",
         body: "Convert MusicXML to MIDI for playback or import MIDI to sheet music as a structural draft. Tracks, tempo, time signatures, program hints, chords, and ties remain editable.",
+      },
+      {
+        title: "MusicXML to PDF, SVG, and PNG export",
+        body: "Render page-aware PDF files and high-resolution SVG or PNG score images from an immutable revision when the MuseScore rendering service is configured.",
       },
     ],
     guardrail: "Complex engraving from MIDI still needs human review and correction.",
@@ -377,25 +393,25 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "teaching",
-    title: "Music teacher assignments",
-    eyebrow: "Share, submit, review, and comment",
+    title: "Music Notation Software for Students",
+    eyebrow: "Classes, assignments, practice, and feedback",
     description:
-      "Create read-only score links, assign practice tasks, collect student submissions, review recordings, add timed comments, and use reusable rubric templates.",
+      "Use music education software to manage classes, assign notation practice, collect recordings, apply rubrics, give timed feedback, and pilot LTI links.",
     status: "Beta",
     releaseRequirement: "teaching",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/teaching",
-    keywords: ["music teacher assignments", "score sharing", "乐谱教学作业"],
-    modules: ["Share links", "Assignments", "Student submissions", "Rubrics"],
+    keywords: ["music notation software for students", "music education software", "music education platform", "music classroom apps", "music teacher software", "music notation software for schools", "music composition assignments", "music performance assessment", "online music assignments", "music teacher management software", "music practice app for teachers", "educational music software", "score sharing", "乐谱教学作业"],
+    modules: ["Classes", "Share links", "Assignments", "Student submissions", "Recordings", "Rubrics", "LTI pilot"],
     workflow: [
       {
         title: "Create a score project",
         body: "Import or scan a score, correct it, and keep it as the teacher-owned source of truth.",
       },
       {
-        title: "Share and assign",
-        body: "Generate a read-only student link, add instructions and due dates, and attach rubric criteria.",
+        title: "Create a class and assign practice",
+        body: "Organize learners in a class, generate a read-only score link, add instructions and due dates, and attach reusable rubric criteria.",
       },
       {
         title: "Review submissions",
@@ -408,11 +424,11 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "The first pass keeps submissions lightweight while storing private review tokens for students to retrieve feedback.",
       },
       {
-        title: "Classroom expansion path",
-        body: "Authenticated student accounts, class folders, notifications, and richer media annotation remain future work.",
+        title: "Classroom / School Beta",
+        body: "Class rosters, assignments, submissions, recordings, rubrics, feedback, and an LTI pilot are available as Beta workflows with role-aware access.",
       },
     ],
-    guardrail: "Current teaching workflows are project-level and assignment-level; full classroom roles are planned later.",
+    guardrail: "Classroom and School workflows are Beta. Test roster permissions, notifications, recording consent, and the limited LTI pilot before a production-wide rollout.",
   },
   {
     slug: "pricing",

@@ -29,10 +29,11 @@ const termsSections = [
     ],
   },
   {
-    title: "Accounts and activation",
+    title: "Accounts and subscription access",
     points: [
-      "Users must create an account and redeem a valid activation code before using the conversion workflow.",
-      "Activation access is tied to the purchased entitlement period and may be suspended for fraud, abuse, charge disputes, or policy violations.",
+      "A registered Free account may create one complete score project within the published monthly job and storage limits; no payment card or activation code is required for that free project.",
+      "Paid access may be activated automatically after the payment provider confirms a subscription, or by redeeming a valid activation code issued through an authorized channel.",
+      "Subscription or activation access is tied to the applicable entitlement period and may be suspended for fraud, abuse, charge disputes, or policy violations.",
       "Customers are responsible for keeping account credentials confidential and for all activity performed through their account.",
     ],
   },
@@ -45,11 +46,12 @@ const termsSections = [
     ],
   },
   {
-    title: "Refunds and support",
+    title: "Billing, renewal, cancellation, and refunds",
     points: [
-      "Refund decisions should follow the support and payment policy communicated to the customer at the time of sale.",
-      "Support for the first release is limited to the published workflow, account access, upload handling, and result delivery questions.",
-      "Draft output is part of the intended safety model for low-confidence source material and does not by itself indicate service failure.",
+      "Starter and Converter Pro are recurring subscriptions billed monthly or annually at the price, currency, tax, and billing interval shown at checkout.",
+      "Unless canceled, the subscription renews automatically and the payment provider charges the saved payment method at the start of each new billing period.",
+      "Customers may cancel from Billing or contact support before the next renewal. Cancellation stops future renewal; paid access normally remains available through the end of the current paid period unless a refund, charge dispute, fraud review, or legal requirement causes earlier action.",
+      "Refund requests may be submitted through support. Eligibility follows the purchase terms shown at checkout, the payment provider's applicable rules, and mandatory consumer law; approved refunds are reflected in Billing and a full refund may end the related paid entitlement.",
     ],
   },
   {
@@ -77,10 +79,11 @@ export default async function TermsPage() {
           ],
         },
         {
-          title: "账号与激活",
+          title: "账号与订阅开通",
           points: [
-            "用户在使用转换流程前，需要先注册账号并兑换有效激活码。",
-            "访问权限与购买的授权期限绑定；如发生欺诈、滥用、拒付争议或违反政策，权限可能被暂停。",
+            "注册 Free 账号后，可以在公开的月度任务和存储限制内创建一个完整乐谱项目；该免费项目不要求绑定支付卡或兑换激活码。",
+            "付费订阅可在支付渠道确认付款后自动开通，也可以通过授权渠道发放的有效激活码开通。",
+            "订阅或激活权限与对应授权期限绑定；如发生欺诈、滥用、拒付争议或违反政策，权限可能被暂停。",
             "用户需自行妥善保管账号凭证，并对该账号下发生的行为负责。",
           ],
         },
@@ -93,11 +96,12 @@ export default async function TermsPage() {
           ],
         },
         {
-          title: "退款与支持",
+          title: "计费、续费、取消与退款",
           points: [
-            "退款应以销售时向客户说明的支持与支付政策为准。",
-            "首发版本的支持范围，主要限于已公开工作流、账号访问、上传处理和结果交付问题。",
-            "对于低置信度源文件，草稿结果属于预期内的安全模型，本身不等同于服务失败。",
+            "Starter 与 Converter Pro 是按月或按年计费的自动续费订阅，价格、币种、税费和计费周期以结账页展示为准。",
+            "如未取消，支付渠道会在每个新计费周期开始时使用已保存的付款方式自动扣款。",
+            "用户可在账单中心取消，或在下次续费前联系支持。取消会停止后续续费；除退款、拒付、欺诈审查或法律要求导致提前处理外，已付权益通常保留到当前付费周期结束。",
+            "可通过支持入口提交退款申请。是否符合条件，以购买时展示的条款、支付渠道适用规则及强制性消费者法律为准；获批退款会同步到账单，全额退款可能结束对应付费权益。",
           ],
         },
         {
@@ -119,8 +123,8 @@ export default async function TermsPage() {
           title={isChinese ? "ScoreTransposer 服务条款" : "ScoreTransposer terms of service"}
           body={
             isChinese
-              ? "这些条款说明 ScoreTransposer 的账户访问、激活方式、识别结果交付和用户责任。"
-              : "These terms explain ScoreTransposer account access, activation, recognition-result delivery, and user responsibilities."
+              ? "这些条款说明 ScoreTransposer 的免费项目、订阅开通、自动续费、取消、结果交付和用户责任。"
+              : "These terms explain ScoreTransposer free access, subscription activation, automatic renewal, cancellation, result delivery, and user responsibilities."
           }
           titleAs="h1"
           largeBody
@@ -152,13 +156,13 @@ export default async function TermsPage() {
         <h2 className="card-title">{isChinese ? "购买与退款说明" : "Purchase and refund notes"}</h2>
         <p className="body-copy">
           {isChinese
-            ? "激活、退款、支持和交付以购买时展示的方案说明及本条款为准。"
-            : "Activation, refunds, support, and delivery follow the offer shown at purchase and these terms."}
+            ? "订阅价格、计费周期、税费和支付方式以结账页为准；取消和退款按本条款、购买时展示内容及支付渠道规则处理。"
+            : "Subscription price, billing interval, tax, and payment method follow checkout; cancellation and refunds follow these terms, the purchase disclosure, and provider rules."}
         </p>
         <p className="helper-copy">
           {isChinese
-            ? "如购买方案或服务范围发生变化，我们会更新相关说明。"
-            : "We will update the relevant information when purchase options or service scope change."}
+            ? "如套餐、价格、续费方式或服务范围发生实质变化，我们会更新相关说明。"
+            : "We will update these disclosures when plans, prices, renewal mechanics, or service scope change materially."}
         </p>
         <div className="button-row">
           <a href={getSupportUrl("general", "terms")} className="public-button secondary">

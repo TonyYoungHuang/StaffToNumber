@@ -23,7 +23,22 @@ export async function generateMetadata({ params }: { params: Promise<ScoreParams
   return {
     title: searchableTitle.length <= 60 ? searchableTitle : `${score.title.en} | ${siteConfig.siteName}`,
     description,
+    keywords: [score.title.en, `${score.title.en} sheet music`, score.composer.en, `${score.composer.en} sheet music`, "public domain sheet music"],
     alternates: { canonical: `/library/${score.slug}` },
+    openGraph: {
+      title: searchableTitle,
+      description,
+      url: `${siteConfig.siteUrl}/library/${score.slug}`,
+      siteName: siteConfig.siteName,
+      type: "website",
+      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: `${score.title.en} sheet music preview` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: searchableTitle,
+      description,
+      images: ["/product/score-preview-output-real.png"],
+    },
   };
 }
 
@@ -57,14 +72,25 @@ export default async function PublicScoreDetailPage({ params }: { params: Promis
         notice: "Source-linked records are not mirrored here. Review the source page's edition license and regional terms before importing any file.",
       };
   const sourceIsExternal = score.sourceUrl.startsWith("http");
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "MusicComposition",
-    name: score.title[locale],
-    composer: { "@type": "Person", name: score.composer[locale] },
-    description: score.description[locale],
-    url: `${siteConfig.siteUrl}/library/${score.slug}`,
-  };
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: isChinese ? "首页" : "Home", item: siteConfig.siteUrl },
+        { "@type": "ListItem", position: 2, name: isChinese ? "公版乐谱曲库" : "Public domain sheet music library", item: `${siteConfig.siteUrl}/library` },
+        { "@type": "ListItem", position: 3, name: score.title[locale], item: `${siteConfig.siteUrl}/library/${score.slug}` },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicComposition",
+      name: score.title[locale],
+      composer: { "@type": "Person", name: score.composer[locale] },
+      description: score.description[locale],
+      url: `${siteConfig.siteUrl}/library/${score.slug}`,
+    },
+  ];
 
   return (
     <div className="public-container page-stack">

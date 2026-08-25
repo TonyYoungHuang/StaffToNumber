@@ -54,15 +54,16 @@ test("suggestions preserve the page intent and related workflow links", () => {
 
 test("commercial keyword clusters have one intentional feature-page owner", () => {
   const expectedKeywords: Record<string, string[]> = {
-    "score-editor": ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor"],
+    "score-editor": ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "extract parts from score", "split score into parts", "collaborative sheet music editor", "collaborative music notation software"],
     "pdf-score-scanner": ["sheet music scanner", "scan sheet music", "sheet music scanner online free"],
     "pdf-to-musicxml": ["pdf to musicxml", "pdf to musicxml converter", "image to musicxml"],
     "transpose-score": ["transpose sheet music", "transpose sheet music online", "change sheet music key"],
-    "musicxml-midi": ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music"],
-    "score-to-audio": ["sheet music player", "scan sheet music and play"],
+    "musicxml-midi": ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "musicxml to pdf", "export sheet music to pdf", "sheet music svg", "sheet music png"],
+    "score-to-audio": ["sheet music to mp3", "sheet music to mp3 converter", "musicxml to mp3", "sheet music to audio converter", "sheet music player", "scan sheet music and play", "music practice recording app"],
     "audio-to-score": ["audio to sheet music", "mp3 to midi", "audio to sheet music AI"],
     "staff-to-jianpu": ["staff to jianpu"],
     "jianpu-to-staff": ["jianpu to staff notation"],
+    teaching: ["music notation software for students", "music education software", "music education platform", "music teacher software"],
   };
 
   for (const [slug, terms] of Object.entries(expectedKeywords)) {

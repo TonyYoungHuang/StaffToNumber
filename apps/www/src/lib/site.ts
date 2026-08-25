@@ -101,7 +101,7 @@ export const siteConfig = {
 } as const;
 
 export const publicContentLastUpdated = "2026-08-25";
-export const legalLastUpdated = "2026-08-10";
+export const legalLastUpdated = "2026-08-25";
 
 export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode) {
   const checkoutPath = planCode ? `${APP_ROUTES.checkout}?plan=${encodeURIComponent(planCode)}` : APP_ROUTES.checkout;

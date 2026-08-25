@@ -55,9 +55,9 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
   },
   "score-editor": {
     title: "在线乐谱编辑与校正",
-    eyebrow: "创建、导入并校正结构化乐谱",
-    description: "从 MusicXML、MIDI、简谱或识谱候选创建乐谱工程，再修改音符、拍号、歌词、和弦、力度、连线和小节。",
-    modules: ["五线谱预览", "Score JSON 版本", "校正面板", "历史恢复"],
+    eyebrow: "创建、校正并协作编辑结构化乐谱",
+    description: "从 MusicXML、MIDI、简谱或识谱候选创建乐谱工程，修改乐谱、提取声部分谱，并通过 Beta 协作功能共同编辑。",
+    modules: ["五线谱预览", "Score JSON 版本", "校正面板", "声部分谱副本 Beta", "历史恢复", "多人实时协作 Beta"],
     workflow: [
       { title: "导入结构化乐谱", body: "从 MusicXML、MIDI、简谱、Score JSON 或已确认的识谱候选稿开始。" },
       { title: "选择并修改内容", body: "编辑音符、休止符、小节属性、和弦、速度、力度、歌词、连线与小节线。" },
@@ -66,22 +66,25 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     details: [
       { title: "为识谱校正而设计", body: "扫描识别很难永远完美，因此先修正错误，再播放、转换或导出。" },
       { title: "支持交互式校正", body: "可选择音符、拖动音高与时值、插入、删除并修改结构化属性；完整桌面排版能力仍在持续建设。" },
+      { title: "多人协作乐谱编辑器 Beta", body: "通过在线状态、冲突处理、离线变更队列与角色权限共同编辑乐谱；大型合奏排练前应先进行小范围测试。" },
+      { title: "从总谱提取声部 Beta", body: "选择一个或多个声部，把总谱拆分成独立练习工程；分谱副本保留来源关系，但暂不会跟随总谱后续修改。" },
     ],
     guardrail: "编辑建立在 Score JSON 与 MusicXML 上，不会直接修改 PDF 文字或图片像素。",
   },
   "score-to-audio": {
-    title: "练习播放模式",
-    eyebrow: "播放、循环与音频导出",
-    description: "把结构化乐谱变成浏览器播放及 MIDI、WAV 或 MP3 练习文件，并控制速度、循环、节拍器和声部。",
-    modules: ["浏览器播放", "播放时间线", "MIDI 导出", "WAV／MP3 渲染"],
+    title: "乐谱转音频与 MP3",
+    eyebrow: "在线播放、练习反馈与音频导出",
+    description: "把结构化乐谱变成浏览器播放及 MIDI、WAV 或 MP3 练习文件，控制速度、循环、节拍器和声部，并试用单旋律录音反馈。",
+    modules: ["浏览器播放", "播放时间线", "浏览器录音 Beta", "练习反馈 Beta", "MIDI 导出", "WAV／MP3 渲染"],
     workflow: [
       { title: "生成播放事件", body: "系统把 Score JSON 转换为包含速度、小节、力度、连音和反复信息的时间事件。" },
-      { title: "在浏览器中练习", body: "调节速度、循环范围、节拍器、预备拍、独奏／静音与各声部音量。" },
+      { title: "在浏览器中练习", body: "调节速度、循环范围、节拍器、预备拍、独奏／静音与各声部音量；Beta 录音功能还会给出需要人工复核的单旋律音高和节奏观察。" },
       { title: "导出练习素材", body: "从固定的乐谱版本和当前练习设置生成可重复的 MIDI、WAV 或 MP3。" },
     ],
     details: [
       { title: "适合合唱与乐队排练", body: "单独播放一个声部、放慢困难小节，并导出练习片段。" },
-      { title: "服务器配置完成后提供高质量音频", body: "WAV 与 MP3 需要已配置的 FluidSynth、SoundFont 和 ffmpeg；配置缺失时会明确提示。" },
+      { title: "把乐谱导出为 MP3 或 WAV", body: "WAV 与 MP3 需要已配置的 FluidSynth、SoundFont 和 ffmpeg；配置缺失时会明确提示。" },
+      { title: "浏览器录音与练习反馈 Beta", body: "录制单旋律练习，并把可复核的音高与节奏观察和所选乐段对照；它是练习辅助，不是认证考试评分。" },
     ],
     guardrail: "该功能从结构化乐谱生成音频；音视频转谱属于另一项实验性导入能力。",
   },
@@ -103,9 +106,9 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
   },
   "musicxml-midi": {
     title: "MusicXML 与 MIDI 转换",
-    eyebrow: "导入、导出与工程备份",
-    description: "使用 MusicXML 交换乐谱、Score JSON 保存编辑工程，并支持 MIDI 导入导出与可迁移备份。",
-    modules: ["MusicXML 导入导出", "MIDI 导入导出", "Score JSON 快照", "五线谱预览"],
+    eyebrow: "开放格式编辑、转换与打印导出",
+    description: "在线编辑 MusicXML 或 MIDI，校正结构化乐谱，并导出 MusicXML、MIDI、PDF、SVG、PNG 或 Score JSON 文件。",
+    modules: ["MusicXML 导入导出", "MIDI 导入导出", "PDF／SVG／PNG 渲染", "Score JSON 快照", "五线谱预览"],
     workflow: [
       { title: "导入开放格式", body: "从 MusicXML、MXL、MIDI 或 Score JSON 创建可重复使用的乐谱工程。" },
       { title: "统一为 Score JSON", body: "播放、简谱、移调、校正和导出都读取同一份结构化模型。" },
@@ -114,6 +117,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     details: [
       { title: "保留导入来源", body: "工程元数据会记录乐谱来自 MusicXML、简谱、MIDI 或快照。" },
       { title: "MIDI 导入是结构化草稿", body: "系统提取轨道、速度、拍号、音色、和弦与跨小节连音，结果仍可校正。" },
+      { title: "MusicXML 导出 PDF、SVG 与 PNG", body: "配置 MuseScore 渲染服务后，可以从固定乐谱版本生成带页面设置的 PDF 和高分辨率 SVG／PNG 图片。" },
     ],
     guardrail: "从 MIDI 生成复杂排版仍需要人工检查和校正。",
   },
@@ -150,20 +154,20 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "PDF 转 MusicXML 首先生成可编辑候选稿；复杂排版、低清扫描、手写谱与密集多声部仍需人工检查。",
   },
   teaching: {
-    title: "音乐教师作业与反馈",
-    eyebrow: "分享、提交、批改与评论",
-    description: "分享只读乐谱、布置练习、收集学生提交、批改录音，并使用带时间点的评论和评分标准。",
-    modules: ["乐谱分享", "练习作业", "学生提交", "评分标准"],
+    title: "面向师生的乐谱与音乐课堂软件",
+    eyebrow: "班级、作业、练习与反馈",
+    description: "管理班级、分享乐谱、布置练习、收集学生录音和提交，并使用评分标准、带时间点的反馈与 LTI 试点。",
+    modules: ["班级管理", "乐谱分享", "练习作业", "学生提交", "学生录音", "评分标准", "LTI 试点"],
     workflow: [
       { title: "创建乐谱工程", body: "导入或识别乐谱并完成校正，把教师版本作为统一来源。" },
-      { title: "分享并布置任务", body: "创建只读学生链接，填写要求与截止时间，并添加评分标准。" },
+      { title: "创建班级并布置练习", body: "组织学生名单，创建只读乐谱链接，填写要求与截止时间，并添加可复用的评分标准。" },
       { title: "批改学生提交", body: "学生提交文字、链接、练习时长或演奏文件，教师评分并提供带时间点的反馈。" },
     ],
     details: [
       { title: "学生可轻量提交", body: "初期流程不强制学生登录，并使用私密查询凭证查看反馈。" },
-      { title: "支持后续课堂扩展", body: "学生账户、班级文件夹、通知和更丰富的媒体批注将继续扩展。" },
+      { title: "Classroom / School Beta", body: "班级名单、作业、提交、录音、评分标准、反馈与 LTI 试点以 Beta 形式开放，并使用角色权限控制。" },
     ],
-    guardrail: "当前教学功能以乐谱工程和作业为中心，更完整的课堂角色仍在持续建设。",
+    guardrail: "Classroom／School 仍是 Beta；正式全校推广前请先验证名单权限、通知、录音授权和范围有限的 LTI 试点。",
   },
   pricing: {
     title: "ScoreTransposer 价格与积分套餐",
