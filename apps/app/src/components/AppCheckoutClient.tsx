@@ -43,7 +43,7 @@ const schoolCheckoutAvailable = process.env.NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABL
 export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedCheckoutPlan }) {
   const { locale } = useAppLocale();
   const [sessionState, setSessionState] = useState<"checking" | "ready" | "signedOut">("checking");
-  const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
+  const [provider, setProvider] = useState<PaymentProvider>(providers.find((item) => liveProviders.has(item)) ?? providers[0] ?? "stripe");
   const [status, setStatus] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [loading, setLoading] = useState(false);
   const [planKind, setPlanKind] = useState<"individual" | "school">("individual");
@@ -74,7 +74,7 @@ export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedChec
             available: "已开通",
             building: "正在建设",
             waiting: "等待正式商户验收",
-            button: "继续到安全支付",
+            button: "在当前页面进入安全支付",
             intentButton: "通知站长我的付款需求",
             loading: "正在跳转支付页面...",
             checking: "正在检查登录状态...",
@@ -83,7 +83,7 @@ export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedChec
             signInBody: "使用 Google 或邮箱登录。登录成功后会留在本页，继续查看 Stripe 与 Paddle；未正式开通的渠道不会扣款。",
             signInPoints: ["确认积分套餐归属到正确账户", "支付需求只允许已登录用户提交", "Google 登录和邮箱登录均可使用"],
             selectedPlan: "当前选择",
-            accountNote: "Google 账户用于确认订阅归属；银行卡、Google Pay 或其他付款方式由所选支付渠道提供。",
+            accountNote: "Google 账户用于确认订阅归属；银行卡、Google Pay 或其他付款方式由所选支付渠道提供。支付会在当前标签页打开，不依赖浏览器弹窗。",
             intentNote: "点击按钮后，后台会先向站长发送一封付款意向邮件。只有已经正式开通的渠道才会继续跳转；建设中的渠道不会扣款。",
             providerBuilding: (name: string) => `${name} 正式支付正在建设。你的付款需求已经通知站长，当前没有产生扣款。`,
             notificationFailed: "暂时无法把付款需求通知站长，请稍后重试。没有产生扣款。",
@@ -106,7 +106,7 @@ export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedChec
             available: "Live",
             building: "In development",
             waiting: "Awaiting live merchant approval",
-            button: "Continue to secure payment",
+            button: "Continue to secure payment in this tab",
             intentButton: "Notify the owner of my purchase request",
             loading: "Redirecting to the payment page...",
             checking: "Checking your sign-in status...",
@@ -115,7 +115,7 @@ export function AppCheckoutClient({ selectedPlan }: { selectedPlan: SelectedChec
             signInBody: "Continue with Google or email. You will stay on this page after sign-in and can then review Stripe and Paddle. A provider that is not live never charges you.",
             signInPoints: ["Attach credits to the correct account", "Only signed-in customers can submit purchase intent", "Use either Google or email sign-in"],
             selectedPlan: "Selected plan",
-            accountNote: "Your Google account identifies who receives the subscription. Cards, Google Pay, and other payment methods are offered by the selected payment provider.",
+            accountNote: "Your Google account identifies who receives the subscription. Cards, Google Pay, and other payment methods are offered by the selected payment provider. Checkout opens in this tab and does not rely on a browser popup.",
             intentNote: "The server emails the owner before continuing. Only a live provider redirects to checkout; a provider under construction never charges you.",
             providerBuilding: (name: string) => `${name} live checkout is under construction. The owner received your purchase request and no charge was created.`,
             notificationFailed: "The owner could not be notified. Please try again later. No charge was created.",

@@ -38,6 +38,14 @@ export function CheckoutPlanSelector({
     });
   }, [plans]);
 
+  useEffect(() => {
+    if (!initialPlanCode) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("checkout-action")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialPlanCode]);
+
   function selectPlan(plan: PricingPlanDisplay) {
     setSelectedPlanCode(plan.code);
     trackFunnelEvent("select_item", {
@@ -48,6 +56,15 @@ export function CheckoutPlanSelector({
         item_name: plan.name,
         item_variant: plan.cycle,
       }],
+    });
+  }
+
+  function continueWithPlan(plan: PricingPlanDisplay) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("plan", plan.code);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    window.requestAnimationFrame(() => {
+      document.getElementById("checkout-action")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -65,7 +82,9 @@ export function CheckoutPlanSelector({
                 plan={plan}
                 isChinese={isChinese}
                 selected={isSelected}
-                actionLabel={isSelected ? `${isChinese ? "已选择" : "Selected"} · ${plan.cycle}` : plan.cta}
+                actionLabel={isSelected && plan.code !== "free"
+                  ? isChinese ? `继续购买 ${plan.name} ${plan.cycle}` : `Continue with ${plan.name} ${plan.cycle}`
+                  : plan.cta}
                 control={<input
                   className="score-plan-card__input"
                   type="radio"
@@ -73,6 +92,8 @@ export function CheckoutPlanSelector({
                   value={plan.code}
                   checked={isSelected}
                   onChange={() => selectPlan(plan)}
+                  onClick={() => continueWithPlan(plan)}
+                  aria-controls="checkout-action"
                 />}
               />
             );
@@ -90,7 +111,7 @@ export function CheckoutPlanSelector({
 
       <div className={styles.checkoutActionWrap}>
         {selectedPlan.code === "free" ? (
-          <section className={`${styles.paymentPanel} stack-lg`} aria-labelledby="free-plan-title">
+          <section id="checkout-action" className={`${styles.paymentPanel} stack-lg`} aria-labelledby="free-plan-title">
             <div className="stack-sm">
               <p className="eyebrow">Free</p>
               <h2 id="free-plan-title" className={styles.sectionHeading}>
