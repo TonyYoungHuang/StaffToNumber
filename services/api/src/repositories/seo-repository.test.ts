@@ -10,13 +10,17 @@ process.env.STORAGE_DIR = path.join(testDir, "storage");
 
 const { db, initDb } = await import("../db.js");
 const {
+  createAudienceEvidenceSnapshot,
   createSeoContentReviewDecision,
   createSeoSearchSnapshot,
+  getAudienceEvidenceReport,
   getSeoSearchDashboard,
+  listAudienceEvidenceSnapshots,
   listSeoContentReviews,
   listSeoSearchSnapshots,
   registerSeoContentManifest,
 } = await import("./seo-repository.js");
+const { normalizeAudienceEvidenceImport } = await import("../lib/audience-evidence.js");
 
 initDb();
 
@@ -64,6 +68,64 @@ test("dashboard returns an explicit empty state before any selected snapshot exi
   assert.equal(dashboard.snapshot, null);
   assert.deepEqual(dashboard.queries, []);
   assert.deepEqual(dashboard.pages, []);
+});
+
+test("audience evidence snapshot cross-checks aggregate edge and GA4 exports with completed backend work", () => {
+  const createdAt = "2026-08-24T08:00:00.000Z";
+  for (const id of ["audience-user-1", "audience-user-2"]) {
+    db.prepare("INSERT INTO users (id, email, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, 'hash', 'salt', ?, ?)")
+      .run(id, `${id}@example.test`, createdAt, createdAt);
+  }
+  db.prepare(`
+    INSERT INTO score_jobs (id, user_id, job_type, status, created_at, updated_at, completed_at)
+    VALUES ('audience-score-job', 'audience-user-1', 'omr_import', 'completed', ?, ?, ?)
+  `).run(createdAt, createdAt, createdAt);
+  db.prepare(`
+    INSERT INTO score_jobs (id, user_id, job_type, status, created_at, updated_at, completed_at)
+    VALUES ('outside-period-job', 'audience-user-2', 'omr_import', 'completed', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z')
+  `).run();
+  const evidence = normalizeAudienceEvidenceImport({
+    cloudflare: {
+      exportedAt: "2026-08-25T09:00:00Z",
+      periodUniqueIpCount: 12,
+      rows: [
+        { date: "2026-08-24", classification: "likely_human", asn: 13335, requests: 60, uniqueIpCount: 10 },
+        { date: "2026-08-24", classification: "likely_automated", asn: 16509, requests: 40, uniqueIpCount: 2 },
+      ],
+    },
+    ga4: {
+      startDate: "2026-08-24",
+      endDate: "2026-08-24",
+      exportedAt: "2026-08-25T09:05:00Z",
+      activeUsers: 8,
+      engagedSessions: 5,
+      eventCount: 40,
+      keyEvents: 2,
+      internalTrafficExcluded: true,
+      consentMode: "consent_required",
+      topEvents: [{ eventName: "free_omr_preview_viewed", eventCount: 1, activeUsers: 1 }],
+    },
+  });
+  assert.ok(evidence);
+
+  const report = createAudienceEvidenceSnapshot({
+    propertyUri: "https://scoretransposer.com",
+    startDate: "2026-08-24",
+    endDate: "2026-08-24",
+    importedBy: "test-admin",
+    evidence,
+  });
+  assert.ok(report);
+  assert.equal(report.backend.registrations, 2);
+  assert.equal(report.backend.completedScoreJobs, 1);
+  assert.equal(report.backend.completedJobUsers, 1);
+  assert.equal(report.methodology.canProveEveryActiveUserIsHuman, false);
+  const snapshotId = report.snapshot.id;
+  assert.equal(typeof snapshotId, "string");
+  assert.equal(getAudienceEvidenceReport(snapshotId as string)?.assessment.signalLevel, "strong_cross_source_product_use_signal");
+  assert.equal(listAudienceEvidenceSnapshots()[0].id, snapshotId);
+  assert.equal(listSeoSearchSnapshots().some((snapshot) => snapshot.id === snapshotId), false, "audience imports must not replace the latest search-console snapshot");
+  assert.equal(getSeoSearchDashboard(snapshotId as string).snapshot, null);
 });
 
 test("content approvals are bound to an exact manifest hash and become stale after content changes", () => {

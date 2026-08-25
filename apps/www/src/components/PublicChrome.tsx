@@ -13,6 +13,7 @@ import {
   type SiteShellNavItem,
 } from "@score/ui";
 import type { PublicAnnouncement } from "../lib/public-content";
+import { localizePublicHref, localizePublicPath } from "../lib/locale-routing";
 import { getAppLoginUrl, getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
@@ -26,11 +27,15 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   const pathname = usePathname();
   const { locale } = useSiteLocale();
   const [announcementVisible, setAnnouncementVisible] = useState(false);
-  const appUrl = getAppStartConversionUrl(locale);
-  const homepageScanUrl = "/#home-workbench";
+  const appUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
+  const homepageScanUrl = localizePublicHref("/#home-workbench", locale);
   const loginUrl = getAppLoginUrl(undefined, locale);
   const checkoutUrl = getCheckoutUrl(locale);
-  const homeSections = { workflow: "/#workflow", useCases: "/#cases", pricing: "/#pricing" } as const;
+  const homeSections = {
+    workflow: localizePublicHref("/#workflow", locale),
+    useCases: localizePublicHref("/#cases", locale),
+    pricing: localizePublicHref("/#pricing", locale),
+  } as const;
   const copy = locale === "zh-CN"
     ? {
         scanner: "扫描识谱", features: "功能", library: "曲库", education: "教学", pricing: "价格",
@@ -38,6 +43,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
         faq: "问答", about: "关于 / 支持", support: "支持", terms: "条款", privacy: "隐私", copyright: "版权投诉",
         menu: "打开导航菜单", closeMenu: "关闭导航菜单",
         app: siteConfig.release.productAppAvailable ? "免费编辑" : "上线状态", buy: "升级套餐",
+        brandLabel: "ScoreTransposer 首页",
         brandCaption: "PDF / 图片五线谱识别工作台",
         footerCopy: "上传一份完整多页五线谱 PDF 或图片，免费创建一个可校正、播放、转换、分享与导出的乐谱项目。",
       }
@@ -47,6 +53,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
         faq: "FAQ", about: "About", support: "Support", terms: "Terms", privacy: "Privacy", copyright: "Copyright",
         menu: "Open navigation menu", closeMenu: "Close navigation menu",
         app: siteConfig.release.productAppAvailable ? "Edit for free" : "Launch status", buy: "Upgrade",
+        brandLabel: "ScoreTransposer home",
         brandCaption: "PDF and image score scanner",
         footerCopy: `Create one free project from a complete staff-score PDF or image, then correct, convert, transpose, play, share, and export it in the ${sonataCopy.currentScope.toLowerCase()}.`,
       };
@@ -91,12 +98,12 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   }
 
   const navItems: SiteShellNavItem[] = [
-    { href: "/pdf-score-scanner", label: copy.scanner },
-    { href: "/features", label: copy.features },
-    { href: "/library", label: copy.library },
+    { href: localizePublicHref("/pdf-score-scanner", locale), label: copy.scanner },
+    { href: localizePublicHref("/features", locale), label: copy.features },
+    { href: localizePublicHref("/library", locale), label: copy.library },
     { href: homeSections.pricing, label: copy.pricing },
-    { label: copy.help, children: [{ href: "/how-to-read-sheet-music", label: copy.guide }, { href: "/numbered-notation-converter", label: copy.numberedNotation }, { href: "/support", label: copy.contact }] },
-    ...(siteConfig.release.teachingAvailable ? [{ href: "/teaching", label: copy.education }] : []),
+    { label: copy.help, children: [{ href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide }, { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation }, { href: localizePublicHref("/support", locale), label: copy.contact }] },
+    ...(siteConfig.release.teachingAvailable ? [{ href: localizePublicHref("/teaching", locale), label: copy.education }] : []),
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true }] : []),
     { href: loginUrl, label: copy.login },
   ];
@@ -109,7 +116,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
       label: copy.app,
       tone: "primary",
       icon: <ArrowNorthEastIcon width={16} height={16} />,
-      onClick: pathname === "/" ? (event) => {
+      onClick: pathname === localizePublicPath("/", locale) ? (event) => {
         event.preventDefault();
         window.dispatchEvent(new Event("scoretransposer:start-free-scan"));
       } : undefined,
@@ -119,16 +126,16 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     { href: homeSections.workflow, label: locale === "zh-CN" ? "使用流程" : "How it works" },
     { href: homeSections.useCases, label: locale === "zh-CN" ? "使用场景" : "Use cases" },
     { href: homeSections.pricing, label: copy.pricing },
-    { href: "/features", label: copy.features },
-    { href: "/library", label: copy.library },
-    { href: "/faq", label: copy.faq },
-    { href: "/how-to-read-sheet-music", label: copy.guide },
-    { href: "/numbered-notation-converter", label: copy.numberedNotation },
-    { href: "/about", label: copy.about },
-    { href: "/support", label: copy.support },
-    { href: "/privacy", label: copy.privacy },
-    { href: "/terms", label: copy.terms },
-    { href: "/copyright-complaint", label: copy.copyright },
+    { href: localizePublicHref("/features", locale), label: copy.features },
+    { href: localizePublicHref("/library", locale), label: copy.library },
+    { href: localizePublicHref("/faq", locale), label: copy.faq },
+    { href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide },
+    { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation },
+    { href: localizePublicHref("/about", locale), label: copy.about },
+    { href: localizePublicHref("/support", locale), label: copy.support },
+    { href: localizePublicHref("/privacy", locale), label: copy.privacy },
+    { href: localizePublicHref("/terms", locale), label: copy.terms },
+    { href: localizePublicHref("/copyright-complaint", locale), label: copy.copyright },
     ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.buy }] : []),
     { href: appUrl, label: copy.app },
   ];
@@ -141,13 +148,14 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
           <div className="public-container public-announcement-inner">
             <span className="public-announcement-label">{locale === "zh-CN" ? "限时活动" : "Live event"}</span>
             <p>{announcementCopy.label}</p>
-            <a href={announcement.href}>{announcementCopy.action}<ArrowNorthEastIcon width={14} height={14} /></a>
+            <a href={localizePublicHref(announcement.href, locale)}>{announcementCopy.action}<ArrowNorthEastIcon width={14} height={14} /></a>
             <button type="button" onClick={dismissAnnouncement} aria-label={locale === "zh-CN" ? "关闭活动公告" : "Dismiss event announcement"}>×</button>
           </div>
         </aside>
       ) : null}
       <SiteShellHeader
-        brandHref="/"
+        brandHref={localizePublicPath("/", locale)}
+        brandLabel={copy.brandLabel}
         brandCaption={copy.brandCaption}
         navItems={navItems}
         actions={actions}

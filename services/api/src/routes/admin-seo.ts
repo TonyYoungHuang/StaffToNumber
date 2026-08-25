@@ -1,8 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import {
+  createAudienceEvidenceSnapshot,
   createSeoContentReviewDecision,
   createSeoSearchSnapshot,
+  getAudienceEvidenceReport,
   getSeoSearchDashboard,
+  listAudienceEvidenceSnapshots,
   listSeoContentReviews,
   listSeoSearchSnapshots,
   registerSeoContentManifest,
@@ -12,6 +15,7 @@ import {
   type SeoSearchMetricInput,
   type SeoSearchProvider,
 } from "../repositories/seo-repository.js";
+import { audienceEvidenceReportCsv, normalizeAudienceEvidenceImport } from "../lib/audience-evidence.js";
 
 const providers = new Set<SeoSearchProvider>(["google_search_console", "baidu_ziyuan", "bing_webmaster", "manual"]);
 const reviewStatuses = new Set<SeoContentReviewStatus>(["in_review", "approved", "changes_requested"]);
@@ -115,6 +119,53 @@ function normalizeManifest(value: unknown): SeoContentManifestItemInput[] | null
 }
 
 export async function adminSeoRoutes(app: FastifyInstance) {
+  app.get("/admin/seo/audience-evidence", { preHandler: app.requireAdmin }, async (request) => {
+    const query = (request.query ?? {}) as { snapshotId?: string; limit?: string };
+    const limit = Number(query.limit ?? 20);
+    return {
+      snapshots: listAudienceEvidenceSnapshots(Number.isFinite(limit) ? limit : 20),
+      report: getAudienceEvidenceReport(query.snapshotId?.trim() || null),
+    };
+  });
+
+  app.get("/admin/seo/audience-evidence/export", { preHandler: app.requireAdmin }, async (request, reply) => {
+    const query = (request.query ?? {}) as { snapshotId?: string; format?: string };
+    const report = getAudienceEvidenceReport(query.snapshotId?.trim() || null);
+    if (!report) return reply.code(404).send({ error: "Audience evidence snapshot not found." });
+    if (query.format?.trim().toLowerCase() !== "csv") return { report };
+    reply.header("content-type", "text/csv; charset=utf-8");
+    reply.header("content-disposition", `attachment; filename="audience-evidence-${report.snapshot.id}.csv"`);
+    return reply.send(audienceEvidenceReportCsv(report));
+  });
+
+  app.post("/admin/seo/audience-evidence/import", { preHandler: app.requireAdmin }, async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const propertyUri = typeof body.propertyUri === "string" ? body.propertyUri.trim() : "";
+    const evidence = normalizeAudienceEvidenceImport(body);
+    const startDate = isIsoDate(body.startDate) ? body.startDate : null;
+    const endDate = isIsoDate(body.endDate) ? body.endDate : null;
+    if (!propertyUri || propertyUri.length > 2048 || !startDate || !endDate || !evidence) {
+      return reply.code(400).send({ error: "A valid period plus aggregated Cloudflare and GA4 evidence export is required." });
+    }
+    if (startDate > endDate) {
+      return reply.code(400).send({ error: "Start date must not be after end date." });
+    }
+    if (evidence.ga4.startDate !== startDate || evidence.ga4.endDate !== endDate) {
+      return reply.code(400).send({ error: "The GA4 export period must exactly match the report period." });
+    }
+    if (evidence.cloudflare.rows.some((row) => row.date < startDate || row.date > endDate)) {
+      return reply.code(400).send({ error: "Every Cloudflare segment date must fall inside the reporting period." });
+    }
+    const report = createAudienceEvidenceSnapshot({
+      propertyUri,
+      startDate,
+      endDate,
+      importedBy: request.adminId ?? "admin-api",
+      evidence,
+    });
+    return reply.code(201).send({ report, snapshots: listAudienceEvidenceSnapshots(20) });
+  });
+
   app.get("/admin/seo/search", { preHandler: app.requireAdmin }, async (request) => {
     const query = (request.query ?? {}) as { snapshotId?: string; limit?: string };
     const limit = Number(query.limit ?? 25);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Panel, SectionIntro, WorkflowStep } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { siteConfig } from "../../lib/site";
 
 const canonicalPath = "/how-to-read-sheet-music";
@@ -27,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     keywords,
-    alternates: { canonical: canonicalPath },
+    alternates: getLocalizedAlternates(canonicalPath, locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,
       follow: siteConfig.release.publicLaunchReady,
@@ -42,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: `${siteConfig.siteUrl}${canonicalPath}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale),
       siteName: siteConfig.siteName,
       locale: chinese ? "zh_CN" : "en_US",
       type: "article",
@@ -157,7 +158,7 @@ export default async function HowToReadSheetMusicPage() {
       description: copy.intro,
       inLanguage: locale,
       dateModified: "2026-08-24",
-      mainEntityOfPage: `${siteConfig.siteUrl}${canonicalPath}`,
+      mainEntityOfPage: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale),
       author: { "@type": "Organization", name: siteConfig.siteName },
       publisher: { "@type": "Organization", name: siteConfig.siteName },
       keywords: keywords.join(", "),
@@ -166,8 +167,8 @@ export default async function HowToReadSheetMusicPage() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: chinese ? "首页" : "Home", item: siteConfig.siteUrl },
-        { "@type": "ListItem", position: 2, name: copy.title, item: `${siteConfig.siteUrl}${canonicalPath}` },
+        { "@type": "ListItem", position: 1, name: chinese ? "首页" : "Home", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: copy.title, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale) },
       ],
     },
     {
@@ -227,9 +228,9 @@ export default async function HowToReadSheetMusicPage() {
       <section className="surface-panel stack-lg">
         <SectionIntro eyebrow={chinese ? "继续练习" : "Practice"} title={copy.practiceTitle} body={copy.practiceBody} />
         <div className="button-row">
-          <Link className="public-button primary" href="/score-editor">{copy.edit}</Link>
-          <Link className="public-button secondary" href="/pdf-score-scanner">{copy.scan}</Link>
-          <Link className="public-button tertiary" href="/score-to-audio">{copy.play}</Link>
+          <Link className="public-button primary" href={localizePublicHref("/score-editor", locale)}>{copy.edit}</Link>
+          <Link className="public-button secondary" href={localizePublicHref("/pdf-score-scanner", locale)}>{copy.scan}</Link>
+          <Link className="public-button tertiary" href={localizePublicHref("/score-to-audio", locale)}>{copy.play}</Link>
         </div>
       </section>
 

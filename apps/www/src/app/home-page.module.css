@@ -30,6 +30,12 @@
   padding: clamp(46px, 4.4vw, 64px) clamp(20px, 5vw, 72px);
 }
 
+.page > .section:not(.hero),
+.page > .finalSection {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
 .container {
   width: min(1280px, 100%);
   margin-inline: auto;
@@ -748,7 +754,7 @@
   background: #fafbfe;
 }
 
-.pipeline small { color: #858da0; font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
+.pipeline small { color: var(--home-copy); font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
 .pipeline strong { margin-top: 8px; font-size: 17px; }
 .pipeline i { position: absolute; top: 50%; right: -24px; color: #8c80e8; font-size: 20px; font-style: normal; transform: translateY(-50%); }
 .pipeline .pipelineCore { border-color: #cfc8ff; background: #f3f0ff; }
@@ -897,7 +903,12 @@
   font-size: 15px;
 }
 
-.priceNote { margin: 13px 0 0; color: #6f778b; font-size: 13px; line-height: 1.55; text-align: center; }
+.priceNote { margin: 13px 0 0; color: #5f687b; font-size: 13px; line-height: 1.55; text-align: center; }
+
+.page :global(.score-plan-card__price small),
+.page :global(.score-plan-card__credits small) {
+  color: var(--home-copy);
+}
 
 .creditRules {
   display: grid;
@@ -950,6 +961,9 @@
 @media (max-width: 820px) {
   .section { padding: 48px 18px; }
   .hero { padding-top: 34px; padding-bottom: 24px; }
+  .heroGlowOne,
+  .heroGlowTwo { display: none; }
+  .workbench { backdrop-filter: none; }
   .heroCopy h1 { font-size: clamp(34px, 8vw, 48px); }
   .heroTitleEnglish { font-size: clamp(30px, 5.4vw, 40px) !important; }
   .heroTitleLine { display: block; }

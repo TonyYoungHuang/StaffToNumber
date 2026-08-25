@@ -3,28 +3,36 @@ import Link from "next/link";
 import { MetricCard, Panel, SectionIntro, StatusPill } from "@score/ui";
 import { filterPublicScores, listPublicScoreFacets, publicScoreLibrary } from "../../lib/public-score-library";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getAppScoreProjectsUrl, siteConfig } from "../../lib/site";
 
-export const metadata: Metadata = {
-  title: `Public Domain Sheet Music Library | ${siteConfig.siteName}`,
-  description: "Browse a rights-aware public domain sheet music library for classical, piano, orchestral, vocal, and a-cappella scores by instrument, ensemble, and era.",
-  keywords: ["public domain sheet music", "public domain sheet music library", "free sheet music", "free sheet music PDF", "free classical sheet music PDF", "public domain sheet music PDF", "classical sheet music", "piano sheet music", "orchestral sheet music", "choral sheet music", "MusicXML sheet music"],
-  alternates: { canonical: "/library" },
-  openGraph: {
-    title: `Public Domain Sheet Music Library | ${siteConfig.siteName}`,
-    description: "Browse rights-aware classical, piano, orchestral, vocal, and a-cappella score records by instrument, ensemble, and era.",
-    url: `${siteConfig.siteUrl}/library`,
-    siteName: siteConfig.siteName,
-    type: "website",
-    images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: "Public domain sheet music score preview" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `Public Domain Sheet Music Library | ${siteConfig.siteName}`,
-    description: "Browse a rights-aware public domain sheet music library by instrument, ensemble, and era.",
-    images: ["/product/score-preview-output-real.png"],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await readSiteLocale();
+  const isChinese = locale === "zh-CN";
+  const title = isChinese ? `免费公版五线谱曲库 | ${siteConfig.siteName}` : `Public Domain Sheet Music Library | ${siteConfig.siteName}`;
+  const description = isChinese
+    ? "按乐器、编制和时期浏览经过权利核对的免费公版五线谱，包括古典、钢琴、交响、声乐、合唱与阿卡贝拉乐谱。"
+    : "Browse a rights-aware public domain sheet music library for classical, piano, orchestral, vocal, and a-cappella scores by instrument, ensemble, and era.";
+  return {
+    title,
+    description,
+    keywords: isChinese
+      ? ["免费五线谱", "公版乐谱", "古典乐谱", "钢琴五线谱", "交响乐总谱", "合唱乐谱", "MusicXML 乐谱"]
+      : ["public domain sheet music", "public domain sheet music library", "free sheet music", "free sheet music PDF", "free classical sheet music PDF", "public domain sheet music PDF", "classical sheet music", "piano sheet music", "orchestral sheet music", "choral sheet music", "MusicXML sheet music"],
+    alternates: getLocalizedAlternates("/library", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale),
+      siteName: siteConfig.siteName,
+      locale: isChinese ? "zh_CN" : "en_US",
+      alternateLocale: isChinese ? ["en_US"] : ["zh_CN"],
+      type: "website",
+      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: isChinese ? "免费公版五线谱预览" : "Public domain sheet music score preview" }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: ["/product/score-preview-output-real.png"] },
+  };
+}
 
 type LibrarySearchParams = Record<string, string | string[] | undefined>;
 
@@ -94,12 +102,12 @@ export default async function PublicScoreLibraryPage({ searchParams }: { searchP
     "@type": "CollectionPage",
     name: copy.title,
     description: copy.body,
-    url: `${siteConfig.siteUrl}/library`,
+    url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale),
     mainEntity: scores.map((score) => ({
       "@type": "MusicComposition",
       name: score.title[locale],
       composer: { "@type": "Person", name: score.composer[locale] },
-      url: `${siteConfig.siteUrl}/library/${score.slug}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
     })),
   };
 
@@ -116,12 +124,12 @@ export default async function PublicScoreLibraryPage({ searchParams }: { searchP
 
       <section className="surface-panel stack-lg">
         <SectionIntro eyebrow={copy.catalog} title={`${scores.length} ${copy.results}`} body={copy.catalogBody} />
-        <form className="form-grid" action="/library" method="get">
+        <form className="form-grid" action={localizePublicHref("/library", locale)} method="get">
           <label className="field-group wide"><span>{copy.query}</span><input className="field-control" type="search" name="q" defaultValue={query} /></label>
           <label className="field-group"><span>{copy.instrument}</span><select className="field-control" name="instrument" defaultValue={instrument}><option value="">{copy.all}</option>{facets.instruments.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="field-group"><span>{copy.ensemble}</span><select className="field-control" name="ensemble" defaultValue={ensemble}><option value="">{copy.all}</option>{facets.ensembles.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="field-group"><span>{copy.era}</span><select className="field-control" name="era" defaultValue={era}><option value="">{copy.all}</option>{facets.eras.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <div className="button-row wide"><button className="public-button primary" type="submit">{copy.search}</button><Link className="public-button tertiary" href="/library">{copy.clear}</Link></div>
+          <div className="button-row wide"><button className="public-button primary" type="submit">{copy.search}</button><Link className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.clear}</Link></div>
         </form>
       </section>
 
@@ -138,7 +146,7 @@ export default async function PublicScoreLibraryPage({ searchParams }: { searchP
               <p className="body-copy">{score.description[locale]}</p>
               <p className="helper-copy">{score.era} · {score.ensemble} · {score.difficulty}</p>
               <p className="helper-copy">{score.instruments.join(" · ")}</p>
-              <Link className="public-button secondary" href={`/library/${score.slug}`}>{copy.details}</Link>
+              <Link className="public-button secondary" href={localizePublicHref(`/library/${score.slug}`, locale)}>{copy.details}</Link>
             </div>
           </article>
         ))}

@@ -16,7 +16,10 @@ test("current feature inventory has unique routes and no blocking SEO errors", (
   assert.equal(report.metrics.uniqueDescriptions, platformFeaturePages.length);
   assert.equal(report.metrics.uniqueCanonicals, platformFeaturePages.length);
   assert.deepEqual(report.issues.filter((issue) => issue.severity === "error"), []);
-  assert.equal(report.publishReady, false, "human review warnings must keep publication approval explicit");
+  assert.equal(report.metrics.approved, 0);
+  assert.equal(report.publishReady, false, "AI evidence prechecks must not replace explicit product-owner approval");
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.status === "in_review"));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.approvalBasis?.includes("AI evidence precheck completed")));
 });
 
 test("audit detects duplicate metadata, broken internal links, and missing schema", () => {

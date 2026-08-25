@@ -12,6 +12,7 @@ import {
   writeAnalyticsConsent,
 } from "../lib/analytics";
 import { useSiteLocale } from "./SiteLocaleProvider";
+import { localizePublicHref } from "../lib/locale-routing";
 
 const seoLandingPaths = new Set([
   "/staff-to-jianpu",
@@ -135,7 +136,7 @@ export function ProductionAnalytics() {
     <aside className="analytics-consent" aria-label={locale === "zh-CN" ? "分析 Cookie 选择" : "Analytics cookie choice"}>
       <p>
         {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进搜索落地和产品流程。" : "We use analytics only after consent to improve search landing pages and product flows."}{" "}
-        <Link href="/privacy">{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</Link>
+        <Link href={localizePublicHref("/privacy", locale)}>{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</Link>
       </p>
       <div className="button-row">
         <button type="button" className="public-button primary" onClick={() => choose("granted")}>{locale === "zh-CN" ? "同意" : "Accept"}</button>

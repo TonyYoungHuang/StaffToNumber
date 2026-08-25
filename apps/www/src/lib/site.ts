@@ -39,6 +39,31 @@ function normalizeDiscordInviteUrl(value: string | undefined) {
   }
 }
 
+function optionalPublicText(value: string | undefined, max = 240) {
+  return value?.trim().slice(0, max) ?? "";
+}
+
+function normalizeCountryCode(value: string | undefined) {
+  const normalized = value?.trim().toUpperCase() ?? "";
+  return /^[A-Z]{2}$/u.test(normalized) ? normalized : "";
+}
+
+function normalizeSameAs(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => {
+      if (!entry || entry.length > 2048) return false;
+      try {
+        const url = new URL(entry);
+        return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 12);
+}
+
 function buildUrl(baseUrl: string, pathname: string) {
   return new URL(pathname, `${stripTrailingSlash(baseUrl)}/`).toString();
 }
@@ -60,6 +85,15 @@ export const siteConfig = {
   chinaCheckoutUrl: resolvedChinaCheckoutUrl,
   discordInviteUrl: normalizeDiscordInviteUrl(process.env.NEXT_PUBLIC_DISCORD_INVITE_URL),
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@scoretransposer.com",
+  operator: {
+    legalName: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_LEGAL_NAME),
+    registrationIdentifier: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_REGISTRATION_ID, 120),
+    addressCountry: normalizeCountryCode(process.env.NEXT_PUBLIC_OPERATOR_COUNTRY_CODE),
+    addressRegion: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_ADDRESS_REGION, 120),
+    addressLocality: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_ADDRESS_LOCALITY, 120),
+    postalCode: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_POSTAL_CODE, 40),
+    sameAs: normalizeSameAs(process.env.NEXT_PUBLIC_OPERATOR_SAME_AS),
+  },
   title: "Sheet Music Converter, Editor & Transposer | ScoreTransposer",
   description:
     "Convert, correct, transpose, play, and export staff notation and Jianpu in a MusicXML-first online sheet music workspace.",

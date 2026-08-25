@@ -4,6 +4,7 @@ import { getPricingPlanCatalog } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanCard, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
 import { readSiteLocale } from "../lib/locale";
+import { getLocalizedAbsoluteUrl, localizePublicHref } from "../lib/locale-routing";
 import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import styles from "./home-page.module.css";
 
@@ -23,7 +24,7 @@ const featureDemos = [
 export default async function HomePage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
-  const startUrl = getAppStartConversionUrl(locale);
+  const startUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
   const plans = getPricingPlanCatalog(locale);
 
   const copy = isChinese
@@ -200,7 +201,7 @@ export default async function HomePage() {
     name: siteConfig.siteName,
     applicationCategory: "MultimediaApplication",
     operatingSystem: "Web",
-    url: siteConfig.siteUrl,
+    url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale),
     description: siteConfig.description,
     featureList: copy.capabilities.map(([title]) => title),
   };
@@ -249,7 +250,7 @@ export default async function HomePage() {
                   <div className={styles.demoCopy}>
                     <strong>{title}</strong>
                     <small>{body}</small>
-                    <Link href={`/${demo.slug}`}>{copy.demosAction}<ArrowNorthEastIcon width={14} height={14} /></Link>
+                    <Link href={localizePublicHref(`/${demo.slug}`, locale)}>{copy.demosAction}<ArrowNorthEastIcon width={14} height={14} /></Link>
                   </div>
                 </article>
               );
@@ -271,7 +272,7 @@ export default async function HomePage() {
           <div className={styles.caseGrid}>
             {copy.cases.map(([eyebrow, title, body], index) => {
               const image = caseImages[index];
-              return <article key={eyebrow} className={styles.caseCard}><Link href={`/${image.slug}`} className={styles.caseMedia}><Image src={image.image} alt={isChinese ? image.altZh : image.altEn} width={1425} height={891} sizes="(max-width: 820px) 92vw, 31vw" /></Link><div className={styles.caseBody}><span>{eyebrow}</span><h3>{title}</h3><p>{body}</p><Link href={`/${image.slug}`}>{copy.caseAction} →</Link></div></article>;
+              return <article key={eyebrow} className={styles.caseCard}><Link href={localizePublicHref(`/${image.slug}`, locale)} className={styles.caseMedia}><Image src={image.image} alt={isChinese ? image.altZh : image.altEn} width={1425} height={891} sizes="(max-width: 820px) 92vw, 31vw" /></Link><div className={styles.caseBody}><span>{eyebrow}</span><h3>{title}</h3><p>{body}</p><Link href={localizePublicHref(`/${image.slug}`, locale)}>{copy.caseAction} →</Link></div></article>;
             })}
           </div>
         </div>
@@ -281,7 +282,7 @@ export default async function HomePage() {
         <div className={styles.container}>
           <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.engineKicker}</p><h2 id="engine-title">{copy.engineTitle}</h2><p>{copy.engineBody}</p></header>
           <div className={styles.pipeline}>{copy.pipeline.map(([label, value], index) => <div key={label} className={index === copy.pipeline.length - 1 ? styles.pipelineCore : undefined}><small>{label}</small><strong>{value}</strong>{index < copy.pipeline.length - 1 ? <i aria-hidden="true">→</i> : null}</div>)}</div>
-          <div className={styles.capabilityGrid}>{copy.capabilities.map(([title, body, href]) => <Link href={href} key={title}><strong>{title}</strong><span>{body}</span><ArrowNorthEastIcon width={15} height={15} /></Link>)}</div>
+          <div className={styles.capabilityGrid}>{copy.capabilities.map(([title, body, href]) => <Link href={localizePublicHref(href, locale)} key={title}><strong>{title}</strong><span>{body}</span><ArrowNorthEastIcon width={15} height={15} /></Link>)}</div>
         </div>
       </section>
 

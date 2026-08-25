@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { MetricCard, Panel, SectionIntro, StatusPill } from "@score/ui";
 import { findPublicScore, publicScoreLibrary } from "../../../lib/public-score-library";
 import { readSiteLocale } from "../../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../../lib/locale-routing";
 import { getAppScoreProjectsUrl, siteConfig } from "../../../lib/site";
 
 type ScoreParams = { scoreSlug: string };
@@ -15,23 +16,32 @@ export async function generateMetadata({ params }: { params: Promise<ScoreParams
   const { scoreSlug } = await params;
   const score = findPublicScore(scoreSlug);
   if (!score) return {};
-  const descriptiveSuffix = " View instrumentation, source, edition, rights, and workspace options in ScoreTransposer.";
-  const description = score.description.en.length >= 120
-    ? score.description.en
-    : `${score.description.en}${descriptiveSuffix}`;
-  const searchableTitle = `${score.title.en} sheet music | ${siteConfig.siteName}`;
+  const locale = await readSiteLocale();
+  const isChinese = locale === "zh-CN";
+  const localizedDescription = score.description[locale];
+  const descriptiveSuffix = isChinese
+    ? " 查看乐器编制、来源版本、版权状态和 ScoreTransposer 乐谱工作台选项。"
+    : " View instrumentation, source, edition, rights, and workspace options in ScoreTransposer.";
+  const description = localizedDescription.length >= (isChinese ? 55 : 120) ? localizedDescription : `${localizedDescription}${descriptiveSuffix}`;
+  const searchableTitle = isChinese
+    ? `${score.title[locale]} 五线谱 | ${siteConfig.siteName}`
+    : `${score.title.en} sheet music | ${siteConfig.siteName}`;
   return {
-    title: searchableTitle.length <= 60 ? searchableTitle : `${score.title.en} | ${siteConfig.siteName}`,
+    title: searchableTitle.length <= 60 ? searchableTitle : `${score.title[locale]} | ${siteConfig.siteName}`,
     description,
-    keywords: [score.title.en, `${score.title.en} sheet music`, score.composer.en, `${score.composer.en} sheet music`, "public domain sheet music"],
-    alternates: { canonical: `/library/${score.slug}` },
+    keywords: isChinese
+      ? [score.title[locale], `${score.title[locale]} 五线谱`, score.composer[locale], `${score.composer[locale]} 乐谱`, "免费公版五线谱"]
+      : [score.title.en, `${score.title.en} sheet music`, score.composer.en, `${score.composer.en} sheet music`, "public domain sheet music"],
+    alternates: getLocalizedAlternates(`/library/${score.slug}`, locale),
     openGraph: {
       title: searchableTitle,
       description,
-      url: `${siteConfig.siteUrl}/library/${score.slug}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
       siteName: siteConfig.siteName,
+      locale: isChinese ? "zh_CN" : "en_US",
+      alternateLocale: isChinese ? ["en_US"] : ["zh_CN"],
       type: "website",
-      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: `${score.title.en} sheet music preview` }],
+      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: isChinese ? `${score.title[locale]} 五线谱预览` : `${score.title.en} sheet music preview` }],
     },
     twitter: {
       card: "summary_large_image",
@@ -77,9 +87,9 @@ export default async function PublicScoreDetailPage({ params }: { params: Promis
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: isChinese ? "首页" : "Home", item: siteConfig.siteUrl },
-        { "@type": "ListItem", position: 2, name: isChinese ? "公版乐谱曲库" : "Public domain sheet music library", item: `${siteConfig.siteUrl}/library` },
-        { "@type": "ListItem", position: 3, name: score.title[locale], item: `${siteConfig.siteUrl}/library/${score.slug}` },
+        { "@type": "ListItem", position: 1, name: isChinese ? "首页" : "Home", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: isChinese ? "公版乐谱曲库" : "Public domain sheet music library", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale) },
+        { "@type": "ListItem", position: 3, name: score.title[locale], item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale) },
       ],
     },
     {
@@ -88,7 +98,7 @@ export default async function PublicScoreDetailPage({ params }: { params: Promis
       name: score.title[locale],
       composer: { "@type": "Person", name: score.composer[locale] },
       description: score.description[locale],
-      url: `${siteConfig.siteUrl}/library/${score.slug}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
     },
   ];
 
@@ -117,7 +127,7 @@ export default async function PublicScoreDetailPage({ params }: { params: Promis
             <a className="public-button secondary" href={score.sourceUrl} target={sourceIsExternal ? "_blank" : undefined} rel={sourceIsExternal ? "noreferrer" : undefined}>{copy.openSource}</a>
           ) : null}
           <a className="public-button tertiary" href={getAppScoreProjectsUrl(locale)}>{copy.workspace}</a>
-          <a className="public-button tertiary" href="/library">{copy.back}</a>
+          <a className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.back}</a>
         </div>
       </section>
     </div>

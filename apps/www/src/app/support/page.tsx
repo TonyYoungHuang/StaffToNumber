@@ -3,22 +3,39 @@ import Link from "next/link";
 import { MetricCard, Panel, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
 import { SupportRequestForm } from "../../components/SupportRequestForm";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getCheckoutUrl, siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
+  const title =
+    locale === "zh-CN"
+      ? `支持 / 联系我们 / 订单核查 | ${siteConfig.siteName}`
+      : `Support, Contact, and Order Review | ${siteConfig.siteName}`;
+  const description =
+    locale === "zh-CN"
+      ? "联系 ScoreTransposer 支持，处理账号、激活码、上传识别、结果下载和隐私请求。"
+      : "Contact ScoreTransposer support for account, activation, score recognition, result delivery, and privacy questions.";
+  const socialImage = "/product/score-preview-output-real.png";
 
   return {
-    title:
-      locale === "zh-CN"
-        ? `支持 / 联系我们 / 订单核查 | ${siteConfig.siteName}`
-        : `Support, Contact, and Order Review | ${siteConfig.siteName}`,
-    description:
-      locale === "zh-CN"
-        ? "联系 ScoreTransposer 支持，处理账号、激活码、上传识别、结果下载和隐私请求。"
-        : "Contact ScoreTransposer support for account, activation, score recognition, result delivery, and privacy questions.",
-    alternates: {
-      canonical: "/support",
+    title,
+    description,
+    alternates: getLocalizedAlternates("/support", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/support", locale),
+      siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      type: "website",
+      images: [{ url: socialImage, width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
     },
   };
 }
@@ -87,7 +104,7 @@ export default async function SupportPage() {
             "@context": "https://schema.org",
             "@type": "ContactPage",
             name: `${siteConfig.siteName} Support`,
-            url: `${siteConfig.siteUrl}/support`,
+            url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/support", locale),
             mainEntity: {
               "@type": "Organization",
               name: siteConfig.siteName,
@@ -125,7 +142,7 @@ export default async function SupportPage() {
           <a href="#support-form" className="public-button primary">
             {isChinese ? "提交支持请求" : "Submit support request"}
           </a>
-          <Link href="/faq" className="public-button secondary">
+          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">
             {isChinese ? "查看 FAQ" : "Open FAQ"}
           </Link>
           {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看购买路径" : "View checkout path"}</a> : null}
@@ -228,13 +245,13 @@ export default async function SupportPage() {
             }
           />
           <div className="button-row">
-            <Link href="/about" className="public-button secondary">
+            <Link href={localizePublicHref("/about", locale)} className="public-button secondary">
               {isChinese ? "查看 About" : "Open about"}
             </Link>
-            <Link href="/privacy" className="public-button tertiary">
+            <Link href={localizePublicHref("/privacy", locale)} className="public-button tertiary">
               {isChinese ? "隐私政策" : "Privacy"}
             </Link>
-            <Link href="/terms" className="public-button tertiary">
+            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">
               {isChinese ? "服务条款" : "Terms"}
             </Link>
           </div>
@@ -252,7 +269,7 @@ export default async function SupportPage() {
           <a href="#support-form" className="public-button primary">
             {isChinese ? "填写 Support 表单" : "Open support form"}
           </a>
-          <Link href="/faq" className="public-button secondary">
+          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">
             {isChinese ? "常见问题" : "FAQ"}
           </Link>
           {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "购买 / 开通" : "Checkout"}</a> : null}

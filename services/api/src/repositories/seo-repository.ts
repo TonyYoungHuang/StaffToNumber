@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../db.js";
+import {
+  buildAudienceEvidenceReport,
+  normalizeAudienceEvidenceImport,
+  type BackendAudienceEvidence,
+  type NormalizedAudienceEvidenceImport,
+} from "../lib/audience-evidence.js";
 
-export type SeoSearchProvider = "google_search_console" | "baidu_ziyuan" | "bing_webmaster" | "manual";
+export type SeoSearchProvider = "google_search_console" | "baidu_ziyuan" | "bing_webmaster" | "manual" | "audience_evidence";
 
 export type SeoSearchMetricInput = {
   query: string | null;
@@ -207,18 +213,18 @@ export function getSeoSearchSnapshot(snapshotId: string) {
 
 export function listSeoSearchSnapshots(limit = 20) {
   const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
-  return (db.prepare("SELECT * FROM seo_search_snapshots ORDER BY imported_at DESC LIMIT ?").all(safeLimit) as SnapshotRow[]).map(mapSnapshot);
+  return (db.prepare("SELECT * FROM seo_search_snapshots WHERE provider <> 'audience_evidence' ORDER BY imported_at DESC LIMIT ?").all(safeLimit) as SnapshotRow[]).map(mapSnapshot);
 }
 
 export function getSeoSearchDashboard(snapshotId?: string | null, limit = 25) {
   const snapshot = snapshotId
     ? getSeoSearchSnapshot(snapshotId)
     : (() => {
-        const row = db.prepare("SELECT * FROM seo_search_snapshots ORDER BY imported_at DESC LIMIT 1").get() as SnapshotRow | undefined;
+        const row = db.prepare("SELECT * FROM seo_search_snapshots WHERE provider <> 'audience_evidence' ORDER BY imported_at DESC LIMIT 1").get() as SnapshotRow | undefined;
         return row ? mapSnapshot(row) : null;
       })();
 
-  if (!snapshot) {
+  if (!snapshot || snapshot.provider === "audience_evidence") {
     return { snapshot: null, totals: { clicks: 0, impressions: 0, ctr: 0, position: 0 }, queries: [], pages: [], indexIssues: [] };
   }
 
@@ -270,6 +276,102 @@ export function getSeoSearchDashboard(snapshotId?: string | null, limit = 25) {
     pages: selectAggregate("page_url"),
     indexIssues,
   };
+}
+
+function endDateExclusive(endDate: string) {
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return end.toISOString();
+}
+
+function countValue(sql: string, ...parameters: unknown[]) {
+  const row = db.prepare(sql).get(...parameters) as { count?: number | string } | undefined;
+  return Number(row?.count ?? 0);
+}
+
+function collectBackendAudienceEvidence(startDate: string, endDate: string): BackendAudienceEvidence {
+  const start = `${startDate}T00:00:00.000Z`;
+  const end = endDateExclusive(endDate);
+  return {
+    calculatedAt: new Date().toISOString(),
+    registrations: countValue("SELECT COUNT(*) AS count FROM users WHERE created_at >= ? AND created_at < ?", start, end),
+    completedLegacyJobs: countValue("SELECT COUNT(*) AS count FROM jobs WHERE status = 'completed' AND completed_at >= ? AND completed_at < ?", start, end),
+    completedScoreJobs: countValue("SELECT COUNT(*) AS count FROM score_jobs WHERE status = 'completed' AND completed_at >= ? AND completed_at < ?", start, end),
+    completedJobUsers: countValue(`
+      SELECT COUNT(*) AS count FROM (
+        SELECT user_id FROM jobs WHERE status = 'completed' AND completed_at >= ? AND completed_at < ?
+        UNION
+        SELECT user_id FROM score_jobs WHERE status = 'completed' AND completed_at >= ? AND completed_at < ?
+      ) completed_users
+    `, start, end, start, end),
+  };
+}
+
+function normalizedStoredBackend(value: unknown): BackendAudienceEvidence | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const calculatedAt = typeof source.calculatedAt === "string" && !Number.isNaN(Date.parse(source.calculatedAt))
+    ? source.calculatedAt
+    : null;
+  const integer = (item: unknown) => Number.isSafeInteger(Number(item)) && Number(item) >= 0 ? Number(item) : null;
+  const registrations = integer(source.registrations);
+  const completedLegacyJobs = integer(source.completedLegacyJobs);
+  const completedScoreJobs = integer(source.completedScoreJobs);
+  const completedJobUsers = integer(source.completedJobUsers);
+  if (!calculatedAt || registrations == null || completedLegacyJobs == null || completedScoreJobs == null || completedJobUsers == null) return null;
+  return { calculatedAt, registrations, completedLegacyJobs, completedScoreJobs, completedJobUsers };
+}
+
+export function createAudienceEvidenceSnapshot(input: {
+  propertyUri: string;
+  startDate: string;
+  endDate: string;
+  importedBy: string;
+  evidence: NormalizedAudienceEvidenceImport;
+}) {
+  const snapshotId = randomUUID();
+  const importedAt = new Date().toISOString();
+  db.exec("BEGIN");
+  try {
+    const backend = collectBackendAudienceEvidence(input.startDate, input.endDate);
+    const sourceMetadata = { ...input.evidence, backend };
+    db.prepare(`
+      INSERT INTO seo_search_snapshots
+        (id, provider, property_uri, start_date, end_date, imported_by, imported_at, row_count, issue_count, source_metadata_json)
+      VALUES (?, 'audience_evidence', ?, ?, ?, ?, ?, ?, 0, ?)
+    `).run(
+      snapshotId,
+      input.propertyUri,
+      input.startDate,
+      input.endDate,
+      input.importedBy,
+      importedAt,
+      input.evidence.cloudflare.rows.length + input.evidence.ga4.topEvents.length,
+      JSON.stringify(sourceMetadata),
+    );
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  return getAudienceEvidenceReport(snapshotId);
+}
+
+export function listAudienceEvidenceSnapshots(limit = 20) {
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  return (db.prepare("SELECT * FROM seo_search_snapshots WHERE provider = 'audience_evidence' ORDER BY imported_at DESC LIMIT ?").all(safeLimit) as SnapshotRow[]).map(mapSnapshot);
+}
+
+export function getAudienceEvidenceReport(snapshotId?: string | null) {
+  const row = snapshotId
+    ? db.prepare("SELECT * FROM seo_search_snapshots WHERE id = ? AND provider = 'audience_evidence'").get(snapshotId) as SnapshotRow | undefined
+    : db.prepare("SELECT * FROM seo_search_snapshots WHERE provider = 'audience_evidence' ORDER BY imported_at DESC LIMIT 1").get() as SnapshotRow | undefined;
+  if (!row) return null;
+  const metadata = parseJsonRecord(row.source_metadata_json);
+  const evidence = normalizeAudienceEvidenceImport(metadata);
+  const backend = normalizedStoredBackend(metadata?.backend);
+  if (!evidence || !backend) return null;
+  return buildAudienceEvidenceReport({ snapshot: { ...mapSnapshot(row) }, evidence, backend });
 }
 
 function mapContentReview(row: ContentReviewRow | undefined) {

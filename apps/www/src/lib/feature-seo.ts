@@ -29,11 +29,24 @@ export type FeatureSeoRecord = {
     status: FeatureSeoReviewStatus;
     factsReviewedAt: string | null;
     approvedBy: string | null;
+    reviewerRole: "product_owner" | "product_operations" | null;
+    approvalBasis: string | null;
     generatedWithAi: boolean;
   };
 };
 
 const commonSchemas: FeatureSchemaType[] = [...requiredFeatureSchemas];
+
+function featureEvidencePrecheck(approvalBasis: string): FeatureSeoRecord["review"] {
+  return {
+    status: "in_review",
+    factsReviewedAt: null,
+    approvedBy: null,
+    reviewerRole: null,
+    approvalBasis: `AI evidence precheck completed on 2026-08-25: ${approvalBasis} Awaiting product-owner confirmation.`,
+    generatedWithAi: true,
+  };
+}
 
 export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
   "staff-to-jianpu": {
@@ -46,8 +59,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       src: "/product/feature-staff-to-jianpu-real.png",
       width: 1425,
       height: 891,
-      alt: "Rendered five-line staff preview used as the source for staff-to-Jianpu conversion",
-      evidence: "Captured from a local MusicXML score project in the running product.",
+      alt: "Structured Jianpu preview generated from the current score revision",
+      evidence: "Captured from the running product's staff-to-Jianpu panel; it demonstrates the generated Jianpu preview, not recognition accuracy.",
       capturedAt: "2026-08-19",
     },
     example: {
@@ -55,7 +68,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "1=C 4/4 | 1 2 3 5 |",
       notes: "Pitch, duration, key and measure data are read from Score JSON rather than PDF text.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing Jianpu preview capture, Score JSON conversion path, native example, and the boundary that conversion starts from a reviewed structured score."),
   },
   "jianpu-to-staff": {
     searchIntent: "Turn structured numbered notation into an editable five-line staff score.",
@@ -76,7 +89,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "MusicXML and Score JSON containing C4 D4 E4 G4",
       notes: "The structured Jianpu parser creates the same revision model used by the editor and exports.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing structured Jianpu import capture, parser-backed example, and the boundary that free-form or ambiguous numbered notation may require correction."),
   },
   "transpose-score": {
     searchIntent: "Transpose a structured score to a target key or instrument transposition.",
@@ -97,7 +110,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "D major, D4 E4 F-sharp4 A4, stored as a new revision",
       notes: "The current implementation supports semitone, target-key and transposing-instrument modes.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing transpose controls, deterministic two-semitone example, revision creation path, and range or accidental-spelling limits shown in the product."),
   },
   "score-editor": {
     searchIntent: "Create, correct, and collaboratively edit structured sheet music in a browser.",
@@ -118,7 +131,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Corrected event: F-sharp4 eighth note in a new revision",
       notes: "Selection, insertion, deletion, drag editing and structured properties operate on Score JSON.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing measure editor capture and structured edit tests; approval is limited to correction, event editing, revisions, and collaboration rather than a MuseScore-scale engraving promise."),
   },
   "score-to-audio": {
     searchIntent: "Convert a sheet music project into configurable playback, MP3, WAV, and practice feedback.",
@@ -139,7 +152,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Browser practice playback plus reproducible MIDI, WAV or MP3 export",
       notes: "High-quality server audio requires FluidSynth, a SoundFont and ffmpeg.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing playback and export controls plus deterministic audio examples; server WAV or MP3 quality remains bounded by FluidSynth, SoundFont, and ffmpeg availability."),
   },
   "audio-to-score": {
     searchIntent: "Create an editable draft score from an owned or permitted audio recording.",
@@ -151,8 +164,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       src: "/product/feature-audio-to-score-real.png",
       width: 885,
       height: 885,
-      alt: "Audio to sheet music workspace used to review an AI-assisted transcription candidate",
-      evidence: "Captured from the candidate and revision workspace used after transcription.",
+      alt: "Shared score-job queue used for OMR, audio transcription, and export processing",
+      evidence: "Captured from the running product's unified job queue. The image proves the reviewable job workflow, while Basic Pitch output quality remains experimental and is not evidenced by this screenshot.",
       capturedAt: "2026-08-19",
     },
     example: {
@@ -160,7 +173,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Basic Pitch MIDI candidate and first-pass editable Score JSON",
       notes: "Polyphony, reverb and noisy accompaniment can reduce accuracy and require correction.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing unified job-queue capture and Basic Pitch worker path; the page remains bounded to an experimental candidate flow using permitted sources and human correction."),
   },
   "musicxml-midi": {
     searchIntent: "Edit MusicXML and convert portable score formats into MIDI, PDF, SVG, PNG, or project backups.",
@@ -172,8 +185,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       src: "/product/feature-musicxml-midi-real.png",
       width: 1425,
       height: 891,
-      alt: "Online MusicXML editor showing a score before MIDI, PDF, SVG, PNG, and Score JSON export",
-      evidence: "Captured from a real MusicXML import and OSMD render in the local product.",
+      alt: "Score project export center with MusicXML files and the structured visual editor",
+      evidence: "Captured from a real project export center and editor. Format availability is verified separately by native example and export-path tests rather than inferred from the screenshot alone.",
       capturedAt: "2026-08-19",
     },
     example: {
@@ -181,7 +194,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Normalized revision with MusicXML, MIDI and Score JSON downloads",
       notes: "MIDI engraving is a structural draft and remains reviewable in the editor.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing export-center capture, native MusicXML and MIDI examples, and export implementation boundaries; MIDI engraving remains a reviewable structural draft."),
   },
   "pdf-score-scanner": {
     searchIntent: "Scan a PDF or score image into editable structured notation.",
@@ -202,7 +215,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Audiveris MusicXML candidate with diagnostics, confidence and editable Score JSON",
       notes: "Recognition is an import-and-correct workflow; it is not advertised as universally perfect.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing source-versus-candidate OMR capture, diagnostics, accepted input types, and the explicit import-plus-correction boundary."),
   },
   "pdf-to-musicxml": {
     searchIntent: "Convert a PDF or sheet music image into reviewable, editable MusicXML.",
@@ -214,8 +227,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       src: "/product/score-workspace-real.png",
       width: 1265,
       height: 2437,
-      alt: "Editable MusicXML score workspace after PDF sheet music conversion",
-      evidence: "Captured from the running score workspace after recognizing and importing a test score.",
+      alt: "Structured score workspace showing a rendered MusicXML revision and practice controls",
+      evidence: "Captured from an existing product score workspace. PDF recognition quality is evidenced by the separate OMR comparison capture and remains subject to correction.",
       capturedAt: "2026-08-19",
     },
     example: {
@@ -223,7 +236,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Reviewable MusicXML candidate and editable Score JSON revision",
       notes: "The source and OMR diagnostics remain attached so recognition mistakes can be corrected before MusicXML export.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing structured workspace capture, MusicXML example, OMR diagnostics workflow, and the boundary that conversion yields a candidate rather than guaranteed publication-ready notation."),
   },
   teaching: {
     searchIntent: "Manage a music class, assign score-based practice, collect performances, and return structured feedback.",
@@ -235,8 +248,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       src: "/product/feature-teaching-real.png",
       width: 1425,
       height: 891,
-      alt: "Teacher score workspace with sharing, assignment and submission review tools",
-      evidence: "Captured from the score project used as the source for teaching workflows.",
+      alt: "Teacher score-assignment form with due date, practice settings, and rubric controls",
+      evidence: "Captured from the running assignment workflow. Classroom and School remain Beta and are not presented as a completed institution-wide LMS replacement.",
       capturedAt: "2026-08-19",
     },
     example: {
@@ -244,7 +257,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Student submission, timed feedback, rubric result and progress record",
       notes: "Classroom management exists separately from project-level share and assignment controls.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing assignment capture and teaching repository tests; the published scope remains Beta for classes, assignments, submissions, feedback, and progress records."),
   },
   pricing: {
     searchIntent: "Understand product access, paid boundaries and supported purchase paths.",
@@ -256,8 +269,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       src: "/product/feature-pricing-real.png",
       width: 1425,
       height: 891,
-      alt: "Authenticated score workspace unlocked by an active product entitlement",
-      evidence: "Captured from the running product experience users receive after access is granted.",
+      alt: "Account billing page showing plan quotas, subscription state, and billing management controls",
+      evidence: "Captured from the running billing surface. It demonstrates quota and subscription-state UI, while checkout remains disabled until the production payment loop is verified.",
       capturedAt: "2026-08-19",
     },
     example: {
@@ -265,7 +278,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       output: "Entitled score workspace with premium rendering and project history",
       notes: "Displayed price and currency remain deployment configuration values.",
     },
-    review: { status: "in_review", factsReviewedAt: null, approvedBy: null, generatedWithAi: true },
+    review: featureEvidencePrecheck("Checked the existing billing capture, configured plan catalog, quota tests, and the explicit boundary that production checkout stays unavailable until Live verification."),
   },
 };
 
@@ -385,13 +398,19 @@ export function auditFeatureSeo(
     if (!record.example.input || !record.example.output || !record.example.notes) {
       add({ slug: page.slug, field: "example", severity: "error", message: "Input/output case evidence is incomplete.", suggestion: "Add a reproducible input, output and boundary note." });
     }
-    if (record.review.status !== "approved" || !record.review.factsReviewedAt || !record.review.approvedBy) {
+    if (
+      record.review.status !== "approved"
+      || !record.review.factsReviewedAt
+      || !record.review.approvedBy
+      || !record.review.reviewerRole
+      || !record.review.approvalBasis
+    ) {
       add({
         slug: page.slug,
         field: "review",
         severity: "warning",
         message: `Human review state is ${record.review.status}.`,
-        suggestion: "Fact-check product claims and examples, then record reviewer and approval date before production publication.",
+        suggestion: "Fact-check product claims and examples, then record the date, reviewer role, evidence basis, and approver before production publication.",
       });
     }
   }

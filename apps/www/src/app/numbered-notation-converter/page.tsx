@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Panel, SectionIntro } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { siteConfig } from "../../lib/site";
 
 const canonicalPath = "/numbered-notation-converter";
@@ -26,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     keywords,
-    alternates: { canonical: canonicalPath },
+    alternates: getLocalizedAlternates(canonicalPath, locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,
       follow: siteConfig.release.publicLaunchReady,
@@ -41,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: `${siteConfig.siteUrl}${canonicalPath}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale),
       siteName: siteConfig.siteName,
       locale: chinese ? "zh_CN" : "en_US",
       type: "website",
@@ -107,7 +108,7 @@ export default async function NumberedNotationConverterPage() {
       "@type": "WebPage",
       name: copy.title,
       description: copy.intro,
-      url: `${siteConfig.siteUrl}${canonicalPath}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale),
       inLanguage: locale,
       keywords: keywords.join(", "),
     },
@@ -115,8 +116,8 @@ export default async function NumberedNotationConverterPage() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: chinese ? "首页" : "Home", item: siteConfig.siteUrl },
-        { "@type": "ListItem", position: 2, name: copy.title, item: `${siteConfig.siteUrl}${canonicalPath}` },
+        { "@type": "ListItem", position: 1, name: chinese ? "首页" : "Home", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: copy.title, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale) },
       ],
     },
     {
@@ -141,11 +142,11 @@ export default async function NumberedNotationConverterPage() {
       <section className="split-layout">
         <Panel className="stack-lg">
           <SectionIntro eyebrow={chinese ? "转换方向一" : "Direction one"} title={copy.staffTitle} body={copy.staffBody} />
-          <Link className="public-button primary" href="/staff-to-jianpu">{copy.staffAction}</Link>
+          <Link className="public-button primary" href={localizePublicHref("/staff-to-jianpu", locale)}>{copy.staffAction}</Link>
         </Panel>
         <Panel className="stack-lg">
           <SectionIntro eyebrow={chinese ? "转换方向二" : "Direction two"} title={copy.jianpuTitle} body={copy.jianpuBody} />
-          <Link className="public-button primary" href="/jianpu-to-staff">{copy.jianpuAction}</Link>
+          <Link className="public-button primary" href={localizePublicHref("/jianpu-to-staff", locale)}>{copy.jianpuAction}</Link>
         </Panel>
       </section>
 

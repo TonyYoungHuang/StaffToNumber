@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { MetricCard, Panel, SectionIntro, WorkflowStep } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
 
 type FaqItem = {
@@ -150,18 +151,34 @@ function buildFaqGroups(isChinese: boolean, checkoutAvailable: boolean): FaqGrou
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
+  const title =
+    locale === "zh-CN"
+      ? `乐谱扫描、简谱互换、移调与导出常见问题 | ${siteConfig.siteName}`
+      : `Sheet Music Converter and Editor FAQ | ${siteConfig.siteName}`;
+  const description =
+    locale === "zh-CN"
+      ? "查看乐谱扫描校对、五线谱与简谱互换、移调、编辑、播放、导出、购买和支持流程的常见问题。"
+      : "Read common questions about score scanning, Jianpu conversion, transposition, editing, playback, exports, access, and support.";
+  const socialImage = "/product/score-preview-output-real.png";
 
   return {
-    title:
-      locale === "zh-CN"
-        ? `乐谱扫描、简谱互换、移调与导出常见问题 | ${siteConfig.siteName}`
-        : `Sheet Music Converter and Editor FAQ | ${siteConfig.siteName}`,
-    description:
-      locale === "zh-CN"
-        ? "查看乐谱扫描校对、五线谱与简谱互换、移调、编辑、播放、导出、购买和支持流程的常见问题。"
-        : "Read common questions about score scanning, Jianpu conversion, transposition, editing, playback, exports, access, and support.",
-    alternates: {
-      canonical: "/faq",
+    title,
+    description,
+    alternates: getLocalizedAlternates("/faq", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/faq", locale),
+      siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      type: "website",
+      images: [{ url: socialImage, width: 1265, height: 712, alt: "ScoreTransposer rendered score preview" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
     },
   };
 }
@@ -228,10 +245,10 @@ export default async function FaqPage() {
         />
         <div className="button-row">
           {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button primary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
-          <Link href={getSupportUrl("general", "faq-top")} className="public-button secondary">
+          <Link href={localizePublicHref(getSupportUrl("general", "faq-top"), locale)} className="public-button secondary">
             {isChinese ? "打开支持页" : "Open support"}
           </Link>
-          <a href={getSupportUrl("general", "faq-top")} className="public-button tertiary">
+          <a href={localizePublicHref(getSupportUrl("general", "faq-top"), locale)} className="public-button tertiary">
             {isChinese ? "联系支持" : "Contact support"}
           </a>
         </div>
@@ -258,8 +275,8 @@ export default async function FaqPage() {
             <MetricCard label={isChinese ? "继续处理" : "Continue"} value={isChinese ? "编辑与移调" : "Edit & transpose"} body={isChinese ? "确认结果后继续修改、播放和导出。" : "Correct, play, transpose, and export the accepted score."} />
           </div>
           <div className="button-row">
-            <Link href="/pdf-score-scanner" className="public-button secondary">{isChinese ? "查看扫描识谱" : "Open sheet music scanner"}</Link>
-            <Link href="/numbered-notation-converter" className="public-button tertiary">{isChinese ? "查看简谱转换" : "Open numbered notation converter"}</Link>
+            <Link href={localizePublicHref("/pdf-score-scanner", locale)} className="public-button secondary">{isChinese ? "查看扫描识谱" : "Open sheet music scanner"}</Link>
+            <Link href={localizePublicHref("/numbered-notation-converter", locale)} className="public-button tertiary">{isChinese ? "查看简谱转换" : "Open numbered notation converter"}</Link>
           </div>
         </Panel>
 
@@ -307,13 +324,13 @@ export default async function FaqPage() {
             }
           />
           <div className="button-row">
-            <Link href={getSupportUrl("general", "faq-bottom")} className="public-button primary">
+            <Link href={localizePublicHref(getSupportUrl("general", "faq-bottom"), locale)} className="public-button primary">
               {isChinese ? "打开支持" : "Open support"}
             </Link>
-            <a href={getSupportUrl("general", "faq-bottom")} className="public-button secondary">
+            <a href={localizePublicHref(getSupportUrl("general", "faq-bottom"), locale)} className="public-button secondary">
               {isChinese ? "提交支持请求" : "Open support request"}
             </a>
-            <Link href="/about" className="public-button tertiary">
+            <Link href={localizePublicHref("/about", locale)} className="public-button tertiary">
               {isChinese ? "查看 About" : "Open about"}
             </Link>
             {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看购买路径" : "Checkout"}</a> : null}
@@ -335,13 +352,13 @@ export default async function FaqPage() {
             }
           />
           <div className="button-row">
-            <Link href="/privacy" className="public-button secondary">
+            <Link href={localizePublicHref("/privacy", locale)} className="public-button secondary">
               {isChinese ? "隐私政策" : "Privacy"}
             </Link>
-            <Link href="/terms" className="public-button tertiary">
+            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">
               {isChinese ? "服务条款" : "Terms"}
             </Link>
-            <Link href="/support" className="public-button tertiary">
+            <Link href={localizePublicHref("/support", locale)} className="public-button tertiary">
               {isChinese ? "支持页" : "Support page"}
             </Link>
           </div>

@@ -7,7 +7,9 @@ import { PublicChrome } from "../components/PublicChrome";
 import { SiteLocaleProvider } from "../components/SiteLocaleProvider";
 import { ProductionAnalytics } from "../components/ProductionAnalytics";
 import { readSiteLocale } from "../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates } from "../lib/locale-routing";
 import { getActivePublicAnnouncement } from "../lib/public-content";
+import { buildOrganizationSchema } from "../lib/organization-schema";
 import { siteConfig } from "../lib/site";
 
 const geist = Geist({
@@ -17,8 +19,12 @@ const geist = Geist({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = siteConfig.title;
-  const description = siteConfig.description;
+  const locale = await readSiteLocale();
+  const title = locale === "zh-CN" ? `在线五线谱编辑、识别、移调与导出 | ${siteConfig.siteName}` : siteConfig.title;
+  const description = locale === "zh-CN"
+    ? "在线识别、校正、编辑、移调、播放并导出五线谱与简谱；以 MusicXML 和结构化乐谱工程连接 PDF、图片、MIDI 与音频工作流。"
+    : siteConfig.description;
+  const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale);
 
   return {
     metadataBase: new URL(siteConfig.siteUrl),
@@ -26,9 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     applicationName: siteConfig.siteName,
     keywords: [...siteConfig.keywords],
-    alternates: {
-      canonical: "/",
-    },
+    alternates: getLocalizedAlternates("/", locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,
       follow: siteConfig.release.publicLaunchReady,
@@ -50,9 +54,9 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: siteConfig.siteUrl,
+      url: canonicalUrl,
       siteName: siteConfig.siteName,
-      locale: "en_US",
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
       type: "website",
       images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
     },
@@ -75,21 +79,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: siteConfig.siteName,
-              url: siteConfig.siteUrl,
-              email: siteConfig.supportEmail,
-              contactPoint: [
-                {
-                  "@type": "ContactPoint",
-                  contactType: "customer support",
-                  email: siteConfig.supportEmail,
-                  availableLanguage: ["English", "Chinese"],
-                },
-              ],
-            }),
+            __html: JSON.stringify(buildOrganizationSchema(siteConfig)),
           }}
         />
         <SiteLocaleProvider locale={locale}>

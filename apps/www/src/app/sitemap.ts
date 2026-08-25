@@ -1,7 +1,28 @@
 import type { MetadataRoute } from "next";
 import { isFeatureIndexable, platformFeaturePages } from "../lib/platform-feature-pages";
+import { localizePublicPath } from "../lib/locale-routing";
 import { publicContentLastUpdated, siteConfig } from "../lib/site";
 import { publicScoreLibrary } from "../lib/public-score-library";
+
+function addLocalizedEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
+  return entries.flatMap((entry) => {
+    const pathname = new URL(entry.url).pathname;
+    const englishUrl = new URL(localizePublicPath(pathname, "en"), `${siteConfig.siteUrl}/`).toString();
+    const chineseUrl = new URL(localizePublicPath(pathname, "zh-CN"), `${siteConfig.siteUrl}/`).toString();
+    const alternates = {
+      languages: {
+        en: englishUrl,
+        "zh-CN": chineseUrl,
+        "x-default": englishUrl,
+      },
+    };
+
+    return [
+      { ...entry, url: englishUrl, alternates },
+      { ...entry, url: chineseUrl, alternates },
+    ];
+  });
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   if (!siteConfig.release.publicLaunchReady) return [];
@@ -77,7 +98,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  return [
+  return addLocalizedEntries([
     ...staticPages,
     ...platformFeaturePages.filter(isFeatureIndexable).map((page) => ({
       url: `${siteConfig.siteUrl}${page.canonical}`,
@@ -91,5 +112,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: score.featured ? 0.75 : 0.65,
     })),
-  ];
+  ]);
 }

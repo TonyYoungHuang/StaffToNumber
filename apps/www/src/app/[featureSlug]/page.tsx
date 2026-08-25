@@ -7,6 +7,7 @@ import { getFeaturePageUi, localizeFeatureEvidence, localizeFeaturePage } from "
 import { findPlatformFeaturePage, isFeatureAvailable, isFeatureIndexable, platformFeaturePages } from "../../lib/platform-feature-pages";
 import { getAppScoreProjectsUrl, getAppStartConversionUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 
 type FeatureRouteParams = {
@@ -15,12 +16,12 @@ type FeatureRouteParams = {
 
 function actionUrl(page: NonNullable<ReturnType<typeof findPlatformFeaturePage>>, locale: Awaited<ReturnType<typeof readSiteLocale>>) {
   if (!isFeatureAvailable(page)) {
-    return getSupportUrl("general", `${page.slug}-release-status`);
+    return localizePublicHref(getSupportUrl("general", `${page.slug}-release-status`), locale);
   }
 
   const action = page.primaryAction;
   if (action === "upload") {
-    return getAppStartConversionUrl(locale);
+    return localizePublicHref(getAppStartConversionUrl(locale), locale);
   }
 
   if (action === "checkout") {
@@ -75,14 +76,14 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
   }
   const locale = await readSiteLocale();
   const page = localizeFeaturePage(sourcePage, locale);
+  const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
+  const socialImage = localizePublicHref(`${page.canonical}/opengraph-image`, locale);
 
   return {
     title: `${page.title} | ${siteConfig.siteName}`,
     description: page.description,
     keywords: page.keywords,
-    alternates: {
-      canonical: page.canonical,
-    },
+    alternates: getLocalizedAlternates(page.canonical, locale),
     robots: {
       index: isFeatureIndexable(page),
       follow: isFeatureIndexable(page),
@@ -97,16 +98,18 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
     openGraph: {
       title: `${page.title} | ${siteConfig.siteName}`,
       description: page.description,
-      url: `${siteConfig.siteUrl}${page.canonical}`,
+      url: canonicalUrl,
       siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      alternateLocale: locale === "zh-CN" ? ["en_US"] : ["zh_CN"],
       type: "website",
-      images: [{ url: `${page.canonical}/opengraph-image`, width: 1200, height: 630, alt: page.title }],
+      images: [{ url: socialImage, width: 1200, height: 630, alt: page.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${page.title} | ${siteConfig.siteName}`,
       description: page.description,
-      images: [`${page.canonical}/opengraph-image`],
+      images: [socialImage],
     },
   };
 }
@@ -129,6 +132,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
     notFound();
   }
   const seo = localizeFeatureEvidence(sourceSeo, locale);
+  const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
   const relatedPages = sourceSeo.relatedSlugs
     .map((slug) => findPlatformFeaturePage(slug))
     .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)))
@@ -152,8 +156,8 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: ui.home, item: siteConfig.siteUrl },
-        { "@type": "ListItem", position: 2, name: page.title, item: `${siteConfig.siteUrl}${page.canonical}` },
+        { "@type": "ListItem", position: 1, name: ui.home, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: page.title, item: canonicalUrl },
       ],
     },
     {
@@ -181,7 +185,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       applicationCategory: "MultimediaApplication",
       applicationSubCategory: "Music notation software",
       operatingSystem: "Web browser",
-      url: `${siteConfig.siteUrl}${page.canonical}`,
+      url: canonicalUrl,
       description: page.description,
       inLanguage: locale,
       keywords: page.keywords.join(", "),
@@ -191,7 +195,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   ];
 
   return (
-    <div className="public-container page-stack">
+    <div className={`public-container page-stack${page.slug === "teaching" ? " feature-teaching-page" : ""}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className="page-banner split">
         <SectionIntro eyebrow={page.eyebrow} title={page.title} body={page.description} titleAs="h1" largeBody />
@@ -203,7 +207,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
             <a href={ctaUrl} className="public-button primary">
               {actionLabel(sourcePage, locale)}
             </a>
-            {siteConfig.release.checkoutAvailable ? <a href="/pricing" className="public-button tertiary">{ui.pricing}</a> : null}
+            {siteConfig.release.checkoutAvailable ? <a href={localizePublicHref("/pricing", locale)} className="public-button tertiary">{ui.pricing}</a> : null}
           </div>
         </Panel>
       </section>
@@ -295,7 +299,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         <SectionIntro eyebrow={ui.relatedEyebrow} title={ui.relatedTitle} body={ui.relatedBody} />
         <div className="metric-grid">
           {relatedPages.map((relatedPage) => (
-            <a key={relatedPage.slug} href={relatedPage.canonical} className="list-item">
+            <a key={relatedPage.slug} href={localizePublicHref(relatedPage.canonical, locale)} className="list-item">
               <div className="list-item-content">
                 <h3 className="item-title">{relatedPage.title}</h3>
                 <p className="item-meta">{relatedPage.description}</p>

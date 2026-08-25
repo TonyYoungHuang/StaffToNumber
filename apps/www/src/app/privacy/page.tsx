@@ -2,19 +2,36 @@
 import Link from "next/link";
 import { Panel, SectionIntro, StatusPill } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getCheckoutUrl, getSupportUrl, legalLastUpdated, siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
+  const title = locale === "zh-CN" ? `在线乐谱平台隐私政策 | ${siteConfig.siteName}` : `Music Notation Platform Privacy Policy | ${siteConfig.siteName}`;
+  const description =
+    locale === "zh-CN"
+      ? "查看在线乐谱平台如何处理账号信息、上传乐谱、音频视频、生成结果和支持记录，以及数据导出、删除宽限期与文件保留规则。"
+      : "Learn how the music notation platform handles account data, uploaded scores and media, generated outputs, exports, deletion grace periods, and retention.";
+  const socialImage = "/product/score-preview-output-real.png";
 
   return {
-    title: locale === "zh-CN" ? `在线乐谱平台隐私政策 | ${siteConfig.siteName}` : `Music Notation Platform Privacy Policy | ${siteConfig.siteName}`,
-    description:
-      locale === "zh-CN"
-        ? "查看在线乐谱平台如何处理账号信息、上传乐谱、音频视频、生成结果和支持记录，以及数据导出、删除宽限期与文件保留规则。"
-        : "Learn how the music notation platform handles account data, uploaded scores and media, generated outputs, exports, deletion grace periods, and retention.",
-    alternates: {
-      canonical: "/privacy",
+    title,
+    description,
+    alternates: getLocalizedAlternates("/privacy", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/privacy", locale),
+      siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      type: "website",
+      images: [{ url: socialImage, width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
     },
   };
 }
@@ -145,7 +162,7 @@ export default async function PrivacyPage() {
         />
         <div className="button-row">
           <StatusPill tone="cyan">{isChinese ? `更新于 ${legalLastUpdated}` : `Last updated ${legalLastUpdated}`}</StatusPill>
-          <Link href="/terms" className="public-button secondary">
+          <Link href={localizePublicHref("/terms", locale)} className="public-button secondary">
             {isChinese ? "查看服务条款" : "View terms of service"}
           </Link>
         </div>
@@ -179,7 +196,7 @@ export default async function PrivacyPage() {
             : "We will update this policy when material changes affect hosting, storage, analytics, payments, or account handling."}
         </p>
         <div className="button-row">
-          <a href={getSupportUrl("privacy", "privacy")} className="public-button secondary">
+          <a href={localizePublicHref(getSupportUrl("privacy", "privacy"), locale)} className="public-button secondary">
             {isChinese ? "提交隐私请求" : "Open privacy support"}
           </a>
         </div>
@@ -197,10 +214,10 @@ export default async function PrivacyPage() {
             }
           />
           <div className="button-row">
-            <Link href="/about" className="public-button secondary">
+            <Link href={localizePublicHref("/about", locale)} className="public-button secondary">
               {isChinese ? "打开 About / 支持页" : "Open about and support"}
             </Link>
-            <Link href="/terms" className="public-button tertiary">
+            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">
               {isChinese ? "打开服务条款" : "Open terms"}
             </Link>
             {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
@@ -218,10 +235,10 @@ export default async function PrivacyPage() {
               : "If you have questions about data handling, account deletion, or privacy rights, contact us through the support form."}
           </p>
           <div className="button-row">
-            <a href={getSupportUrl("privacy", "privacy")} className="public-button secondary">
+            <a href={localizePublicHref(getSupportUrl("privacy", "privacy"), locale)} className="public-button secondary">
               {isChinese ? "联系支持" : "Contact support"}
             </a>
-            <Link href="/" className="public-button tertiary">
+            <Link href={localizePublicHref("/", locale)} className="public-button tertiary">
               {isChinese ? "返回首页" : "Back to homepage"}
             </Link>
           </div>

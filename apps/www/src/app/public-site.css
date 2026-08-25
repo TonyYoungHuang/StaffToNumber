@@ -43,6 +43,23 @@ body {
   color: var(--public-ink);
 }
 
+.feature-teaching-page > section:not(:first-of-type) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 620px;
+}
+
+.public-frame .status-chip.tone-green {
+  border-color: #acd8c1;
+  background: #e3f4ea;
+  color: #126342;
+}
+
+.public-frame .status-chip.tone-amber {
+  border-color: #e7c778;
+  background: #fff5dc;
+  color: #805000;
+}
+
 .public-announcement {
   position: relative;
   z-index: 60;

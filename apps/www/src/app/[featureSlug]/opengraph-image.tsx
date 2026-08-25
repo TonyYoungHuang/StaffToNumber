@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 import { notFound } from "next/navigation";
+import { localizeFeaturePage } from "../../lib/feature-page-localization";
+import { readSiteLocale } from "../../lib/locale";
 import { findPlatformFeaturePage } from "../../lib/platform-feature-pages";
 
 export const alt = "ScoreTransposer sheet music tool";
@@ -8,10 +10,12 @@ export const contentType = "image/png";
 
 export default async function OpenGraphImage({ params }: { params: Promise<{ featureSlug: string }> }) {
   const { featureSlug } = await params;
-  const page = findPlatformFeaturePage(featureSlug);
-  if (!page) {
+  const sourcePage = findPlatformFeaturePage(featureSlug);
+  if (!sourcePage) {
     notFound();
   }
+  const locale = await readSiteLocale();
+  const page = localizeFeaturePage(sourcePage, locale);
 
   return new ImageResponse(
     <div

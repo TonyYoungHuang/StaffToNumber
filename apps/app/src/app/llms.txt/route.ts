@@ -6,13 +6,13 @@ const content = `# ScoreTransposer
 - App overview: https://app.scoretransposer.com/
 - Sign in: https://app.scoretransposer.com/login
 - Create an account: https://app.scoretransposer.com/register
-- Product website: https://www.scoretransposer.com/
-- About: https://www.scoretransposer.com/about
-- Support: https://www.scoretransposer.com/support
-- Privacy: https://www.scoretransposer.com/privacy
+- Product website: https://scoretransposer.com/
+- About: https://scoretransposer.com/about
+- Support: https://scoretransposer.com/support
+- Privacy: https://scoretransposer.com/privacy
 
 ## Product facts
-- A new account can recognize one PDF page or one score image for free.
+- A Free account can create one complete score project from one complete multi-page staff-score PDF or one score image. That project includes the currently available correction, playback, transposition, Jianpu, version, sharing, and export tools; paid plans add processing and storage capacity.
 - Recognition results require human review, especially for complex, blurry, or handwritten notation.
 - Users can correct notes, convert staff and numbered notation, transpose, practice with playback, and export common formats.
 - Google and email/password account access are supported when the deployment's Google OAuth client is configured.
@@ -20,7 +20,7 @@ const content = `# ScoreTransposer
 
 ## Contact
 - Support: support@scoretransposer.com
-- Last updated: 2026-08-19
+- Last updated: 2026-08-25
 `;
 
 export function GET() {

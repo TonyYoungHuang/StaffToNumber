@@ -31,6 +31,7 @@ function externalLinkProps(external?: boolean) {
 
 export function SiteShellHeader({
   brandHref,
+  brandLabel,
   brandCaption,
   navItems,
   actions,
@@ -41,6 +42,7 @@ export function SiteShellHeader({
   linkComponent,
 }: {
   brandHref: string;
+  brandLabel?: string;
   brandCaption: string;
   navItems: SiteShellNavItem[];
   actions: SiteShellAction[];
@@ -56,7 +58,12 @@ export function SiteShellHeader({
   return (
     <header className="site-shell-header">
       <div className="site-shell-container site-shell-header-inner">
-        <LinkComponent href={brandHref} className="site-shell-brand" onClick={() => setMenuOpen(false)}>
+        <LinkComponent
+          href={brandHref}
+          className="site-shell-brand"
+          aria-label={brandLabel ?? "ScoreTransposer home"}
+          onClick={() => setMenuOpen(false)}
+        >
           <span className="site-shell-brand-mark" aria-hidden="true">
             <BrandIcon width={22} height={22} />
           </span>

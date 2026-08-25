@@ -2,26 +2,43 @@
 import Link from "next/link";
 import { MetricCard, Panel, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getAppRegisterUrl, getCheckoutUrl, getSafeAppUrl, getSupportUrl, siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
+  const title =
+    locale === "zh-CN"
+      ? `关于在线乐谱工作台、联系与支持 | ${siteConfig.siteName}`
+      : `About ${siteConfig.siteName}: Online Sheet Music Workspace`;
+  const description =
+    locale === "zh-CN"
+      ? "了解这款 MusicXML 乐谱工作台的扫描校对、简谱互换、移调、编辑、播放、导出和教学能力，以及开通与支持流程。"
+      : "Learn about the MusicXML-first workspace for scan review, Jianpu conversion, transposition, editing, playback, export, teaching, access, and support.";
+  const socialImage = "/product/feature-score-editor-real.png";
 
   return {
-    title:
-      locale === "zh-CN"
-        ? `关于在线乐谱工作台、联系与支持 | ${siteConfig.siteName}`
-        : `About ${siteConfig.siteName}: Online Sheet Music Workspace`,
-    description:
-      locale === "zh-CN"
-        ? "了解这款 MusicXML 乐谱工作台的扫描校对、简谱互换、移调、编辑、播放、导出和教学能力，以及开通与支持流程。"
-        : "Learn about the MusicXML-first workspace for scan review, Jianpu conversion, transposition, editing, playback, export, teaching, access, and support.",
+    title,
+    description,
     keywords:
       locale === "zh-CN"
         ? ["五线谱转简谱", "乐谱 PDF 转简谱", "staff pdf to jianpu", "简谱转换器", "numbered notation converter"]
         : ["staff pdf to jianpu", "staff notation to numbered notation", "numbered notation converter", "five-line staff to jianpu", "music score converter"],
-    alternates: {
-      canonical: "/about",
+    alternates: getLocalizedAlternates("/about", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/about", locale),
+      siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      type: "website",
+      images: [{ url: socialImage, width: 1425, height: 891, alt: "ScoreTransposer online sheet music editor workspace" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
     },
   };
 }
@@ -29,9 +46,21 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AboutPage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
-  const appUrl = getSafeAppUrl("about");
-  const registerUrl = getAppRegisterUrl();
+  const appUrl = localizePublicHref(getSafeAppUrl("about"), locale);
+  const registerUrl = localizePublicHref(getAppRegisterUrl(), locale);
   const checkoutUrl = getCheckoutUrl(locale);
+  const operatorLocation = [
+    siteConfig.operator.addressLocality,
+    siteConfig.operator.addressRegion,
+    siteConfig.operator.addressCountry,
+    siteConfig.operator.postalCode,
+  ].filter(Boolean).join(", ");
+  const operatorDetail = [
+    siteConfig.operator.registrationIdentifier
+      ? `${isChinese ? "登记编号" : "Registration"}: ${siteConfig.operator.registrationIdentifier}`
+      : "",
+    operatorLocation,
+  ].filter(Boolean).join(" · ");
 
   const currentFit = isChinese
     ? [
@@ -48,7 +77,7 @@ export default async function AboutPage() {
         {
           step: "03",
           title: "在应用内完成处理",
-          body: "登录后可上传文件、查看任务和候选；获得完整权限后可继续编辑与导出。",
+          body: "登录后可上传文件、查看任务和候选；免费项目内可继续使用当前已开放的编辑、播放、移调、简谱、版本、分享和导出工具，付费套餐增加处理与存储额度。",
         },
       ]
     : [
@@ -65,7 +94,7 @@ export default async function AboutPage() {
         {
           step: "03",
           title: "Continue in the app",
-          body: "Sign in to upload, track recognition, and view candidates; full access adds editing and exports.",
+          body: "Sign in to upload and review candidates; the free project includes the currently available editing, playback, transposition, Jianpu, version, sharing, and export tools, while paid plans add processing and storage capacity.",
         },
       ];
 
@@ -158,7 +187,7 @@ export default async function AboutPage() {
           <a href={appUrl} className="public-button secondary">
             {isChinese ? "打开应用" : "Open app"}
           </a>
-          <a href={getSupportUrl("general", "about")} className="public-button tertiary">
+          <a href={localizePublicHref(getSupportUrl("general", "about"), locale)} className="public-button tertiary">
             {isChinese ? "联系支持" : "Contact support"}
           </a>
         </div>
@@ -235,14 +264,33 @@ export default async function AboutPage() {
               <WorkflowStep key={item.step} step={item.step} title={item.title} body={item.body} />
             ))}
           </div>
+          <div className="metric-grid" aria-label={isChinese ? "公开运营信息" : "Public operator information"}>
+            <MetricCard
+              label={isChinese ? "服务品牌" : "Service brand"}
+              value={siteConfig.siteName}
+              body={isChinese ? `官方主站：${siteConfig.siteUrl}` : `Canonical website: ${siteConfig.siteUrl}`}
+            />
+            <MetricCard
+              label={isChinese ? "客户支持" : "Customer support"}
+              value={siteConfig.supportEmail}
+              body={isChinese ? "账号、文件、隐私、版权与订单问题统一由该支持入口受理。" : "This contact handles account, file, privacy, copyright, and order-support requests."}
+            />
+            {siteConfig.operator.legalName ? (
+              <MetricCard
+                label={isChinese ? "法律运营主体" : "Legal operator"}
+                value={siteConfig.operator.legalName}
+                body={operatorDetail || (isChinese ? "该名称由生产环境的公开运营配置提供。" : "This name is supplied by the production public-operator configuration.")}
+              />
+            ) : null}
+          </div>
           <div className="button-row">
-            <a href={getSupportUrl("general", "about")} className="public-button secondary">
+            <a href={localizePublicHref(getSupportUrl("general", "about"), locale)} className="public-button secondary">
               {isChinese ? "提交支持请求" : "Open support request"}
             </a>
-            <Link href="/privacy" className="public-button tertiary">
+            <Link href={localizePublicHref("/privacy", locale)} className="public-button tertiary">
               {isChinese ? "打开隐私政策" : "Open privacy policy"}
             </Link>
-            <Link href="/terms" className="public-button tertiary">
+            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">
               {isChinese ? "打开服务条款" : "Open terms of service"}
             </Link>
           </div>
@@ -336,8 +384,8 @@ export default async function AboutPage() {
               value={isChinese ? "继续编辑" : "Continue editing"}
               body={
                 isChinese
-                  ? "已有 MusicXML、MIDI 或乐谱备份时，可在完整权限下直接导入。"
-                  : "With full access, import MusicXML, MIDI, or a score backup directly."
+                  ? "已有 MusicXML、MIDI 或乐谱备份时，可按当前套餐公布的输入格式直接导入。"
+                  : "Import MusicXML, MIDI, or a score backup directly when that input format is included in the current plan."
               }
             />
           </div>
@@ -356,10 +404,10 @@ export default async function AboutPage() {
             }
           />
           <div className="button-row">
-            <Link href="/privacy" className="public-button secondary">
+            <Link href={localizePublicHref("/privacy", locale)} className="public-button secondary">
               {isChinese ? "查看隐私政策" : "Open privacy policy"}
             </Link>
-            <Link href="/terms" className="public-button tertiary">
+            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">
               {isChinese ? "查看服务条款" : "Open terms"}
             </Link>
             {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
@@ -377,7 +425,7 @@ export default async function AboutPage() {
               : "Return home to review features, open the app to create one complete free score project, or read privacy and terms for data and service details."}
           </p>
           <div className="button-row">
-            <Link href="/" className="public-button secondary">
+            <Link href={localizePublicHref("/", locale)} className="public-button secondary">
               {isChinese ? "返回首页" : "Back to homepage"}
             </Link>
             <a href={appUrl} className="public-button tertiary">

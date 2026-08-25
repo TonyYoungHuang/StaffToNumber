@@ -39,6 +39,7 @@ deploy/cloudflare/secrets.staging.json
 deploy/cloudflare/secrets.production.json
 services/cloudflare-gateway/worker-configuration.d.ts
 apps/*/.open-next/
+apps/*/.wrangler/
 apps/*/cloudflare-env.d.ts
 apps/*/AGENTS.md
 apps/*/CLAUDE.md

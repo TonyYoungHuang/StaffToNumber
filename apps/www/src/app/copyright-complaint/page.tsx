@@ -1,15 +1,38 @@
 import type { Metadata } from "next";
 import { CopyrightComplaintForm } from "../../components/CopyrightComplaintForm";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates } from "../../lib/locale-routing";
 import { siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
+  const title = locale === "zh-CN" ? `版权与侵权投诉 | ${siteConfig.siteName}` : `Copyright Complaint Process | ${siteConfig.siteName}`;
+  const description =
+    locale === "zh-CN"
+      ? "提交乐谱、录音或分享链接的版权投诉，获取受理编号和私密查询码，并在线查看公开处理进度。"
+      : "Submit a copyright complaint about a score, recording, or shared link, receive a private tracking code, and view public case updates.";
+  const socialImage = "/product/score-preview-output-real.png";
+
   return {
-    title: locale === "zh-CN" ? `版权与侵权投诉 | ${siteConfig.siteName}` : `Copyright Complaint Process | ${siteConfig.siteName}`,
-    description: locale === "zh-CN" ? "提交乐谱、录音或分享链接的版权投诉，获取受理编号和私密查询码，并在线查看公开处理进度。" : "Submit a copyright complaint about a score, recording, or shared link, receive a private tracking code, and view public case updates.",
-    alternates: { canonical: "/copyright-complaint" },
+    title,
+    description,
+    alternates: getLocalizedAlternates("/copyright-complaint", locale),
     robots: { index: true, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/copyright-complaint", locale),
+      siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      type: "website",
+      images: [{ url: socialImage, width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
+    },
   };
 }
 
@@ -22,7 +45,7 @@ export default async function CopyrightComplaintPage() {
     { question: isChinese ? "提交后会自动删除内容吗？" : "Does submission automatically remove content?", answer: isChinese ? "不会。平台会先核验材料，并通过公开处理记录说明补充材料、采取措施或驳回的原因。" : "No. The platform reviews the materials and records requests for information, action, or rejection reasons in the public case history." },
   ];
   const jsonLd = [
-    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: isChinese ? "首页" : "Home", item: siteConfig.siteUrl }, { "@type": "ListItem", position: 2, name: isChinese ? "版权投诉" : "Copyright complaint", item: `${siteConfig.siteUrl}/copyright-complaint` }] },
+    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: isChinese ? "首页" : "Home", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) }, { "@type": "ListItem", position: 2, name: isChinese ? "版权投诉" : "Copyright complaint", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/copyright-complaint", locale) }] },
     { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faq.map((item) => ({ "@type": "Question", name: item.question, acceptedAnswer: { "@type": "Answer", text: item.answer } })) },
   ];
   return (

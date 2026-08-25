@@ -2,19 +2,36 @@
 import Link from "next/link";
 import { Panel, SectionIntro, StatusPill } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getCheckoutUrl, getSupportUrl, legalLastUpdated, siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
+  const title = locale === "zh-CN" ? `全功能乐谱平台服务条款 | ${siteConfig.siteName}` : `Music Notation Platform Terms of Service | ${siteConfig.siteName}`;
+  const description =
+    locale === "zh-CN"
+      ? "查看 MusicXML 乐谱平台的导入识别、编辑、移调、简谱、播放、导出、教学、版权和可接受使用规则。"
+      : "Review the MusicXML platform terms for import, editing, transposition, Jianpu, playback, export, education, copyright, and acceptable use.";
+  const socialImage = "/product/feature-pricing-real.png";
 
   return {
-    title: locale === "zh-CN" ? `全功能乐谱平台服务条款 | ${siteConfig.siteName}` : `Music Notation Platform Terms of Service | ${siteConfig.siteName}`,
-    description:
-      locale === "zh-CN"
-        ? "查看 MusicXML 乐谱平台的导入识别、编辑、移调、简谱、播放、导出、教学、版权和可接受使用规则。"
-        : "Review the MusicXML platform terms for import, editing, transposition, Jianpu, playback, export, education, copyright, and acceptable use.",
-    alternates: {
-      canonical: "/terms",
+    title,
+    description,
+    alternates: getLocalizedAlternates("/terms", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/terms", locale),
+      siteName: siteConfig.siteName,
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      type: "website",
+      images: [{ url: socialImage, width: 1425, height: 891, alt: "ScoreTransposer plans and product access" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
     },
   };
 }
@@ -131,7 +148,7 @@ export default async function TermsPage() {
         />
         <div className="button-row">
           <StatusPill tone="cyan">{isChinese ? `更新于 ${legalLastUpdated}` : `Last updated ${legalLastUpdated}`}</StatusPill>
-          <Link href="/privacy" className="public-button secondary">
+          <Link href={localizePublicHref("/privacy", locale)} className="public-button secondary">
             {isChinese ? "查看隐私政策" : "View privacy policy"}
           </Link>
         </div>
@@ -165,7 +182,7 @@ export default async function TermsPage() {
             : "We will update these disclosures when plans, prices, renewal mechanics, or service scope change materially."}
         </p>
         <div className="button-row">
-          <a href={getSupportUrl("general", "terms")} className="public-button secondary">
+          <a href={localizePublicHref(getSupportUrl("general", "terms"), locale)} className="public-button secondary">
             {isChinese ? "提交支持请求" : "Open support request"}
           </a>
         </div>
@@ -183,13 +200,13 @@ export default async function TermsPage() {
             }
           />
           <div className="button-row">
-            <Link href="/privacy" className="public-button secondary">
+            <Link href={localizePublicHref("/privacy", locale)} className="public-button secondary">
               {isChinese ? "打开隐私政策" : "Open privacy policy"}
             </Link>
-            <Link href="/copyright-complaint" className="public-button secondary">
+            <Link href={localizePublicHref("/copyright-complaint", locale)} className="public-button secondary">
               {isChinese ? "提交版权投诉" : "Submit copyright complaint"}
             </Link>
-            <Link href="/about" className="public-button tertiary">
+            <Link href={localizePublicHref("/about", locale)} className="public-button tertiary">
               {isChinese ? "打开 About / 支持页" : "Open about and support"}
             </Link>
             {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看开通路径" : "View checkout path"}</a> : null}
@@ -208,10 +225,10 @@ export default async function TermsPage() {
             }
           </p>
           <div className="button-row">
-            <a href={getSupportUrl("general", "terms")} className="public-button secondary">
+            <a href={localizePublicHref(getSupportUrl("general", "terms"), locale)} className="public-button secondary">
               {isChinese ? "联系支持" : "Contact support"}
             </a>
-            <Link href="/" className="public-button tertiary">
+            <Link href={localizePublicHref("/", locale)} className="public-button tertiary">
               {isChinese ? "返回首页" : "Back to homepage"}
             </Link>
           </div>

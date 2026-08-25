@@ -1,56 +1,36 @@
 ﻿"use client";
 
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { type SupportedLocale } from "@score/shared";
+import { localizePublicPath } from "../lib/locale-routing";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 const locales: SupportedLocale[] = ["en", "zh-CN"];
 
 export function SiteLocaleSwitcher() {
-  const router = useRouter();
-  const { locale, setLocale } = useSiteLocale();
-  const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { locale } = useSiteLocale();
+  const query = searchParams.toString();
 
   return (
-    <div className={`locale-switcher${isPending ? " is-pending" : ""}`} role="group" aria-label="Language switcher" aria-busy={isPending}>
+    <nav className="locale-switcher" aria-label={locale === "zh-CN" ? "语言切换" : "Language switcher"}>
       {locales.map((item) => {
         const isActive = item === locale;
         return (
-          <button
+          <a
             key={item}
-            type="button"
+            href={`${localizePublicPath(pathname, item)}${query ? `?${query}` : ""}`}
+            hrefLang={item}
+            lang={item}
             className={`locale-switcher-button${isActive ? " is-active" : ""}`}
-            onClick={() => {
-              if (item === locale) {
-                return;
-              }
-
-              setLocale(item);
-              startTransition(async () => {
-                try {
-                  const response = await fetch("/api/locale", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ locale: item }),
-                  });
-                  if (!response.ok) {
-                    setLocale(locale);
-                    return;
-                  }
-                  router.refresh();
-                } catch {
-                  setLocale(locale);
-                }
-              });
-            }}
-            aria-pressed={isActive}
+            aria-current={isActive ? "page" : undefined}
           >
             {item === "zh-CN" ? "简体中文" : "EN"}
-          </button>
+          </a>
         );
       })}
-    </div>
+    </nav>
   );
 }
 

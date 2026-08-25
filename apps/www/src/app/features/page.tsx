@@ -1,37 +1,37 @@
 import type { Metadata } from "next";
 import { Panel, SectionIntro, StatusPill } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
+import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { getAppScoreProjectsUrl, siteConfig } from "../../lib/site";
 
-export const metadata: Metadata = {
-  title: `Sheet Music Software & Online Tools | ${siteConfig.siteName}`,
-  description: "Explore online sheet music software for notation editing, part extraction, collaboration, practice feedback, classroom work, and PDF, MP3, SVG, or PNG export.",
-  keywords: [
-    "online sheet music software",
-    "extract parts from score",
-    "split score into parts",
-    "collaborative music notation software",
-    "music practice app",
-    "export sheet music to PDF",
-    "sheet music to MP3",
-    "music classroom software",
-  ],
-  alternates: { canonical: "/features" },
-  openGraph: {
-    title: `Sheet Music Software & Online Tools | ${siteConfig.siteName}`,
-    description: "Explore notation editing, part extraction, collaboration, practice feedback, classroom work, and score export in one browser workspace.",
-    url: `${siteConfig.siteUrl}/features`,
-    siteName: siteConfig.siteName,
-    type: "website",
-    images: [{ url: "/product/feature-score-editor-real.png", width: 1425, height: 891, alt: "ScoreTransposer online sheet music editor and feature workspace" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `Sheet Music Software & Online Tools | ${siteConfig.siteName}`,
-    description: "Notation editing, part extraction, collaboration, practice feedback, classroom tools, and score export in one browser workspace.",
-    images: ["/product/feature-score-editor-real.png"],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await readSiteLocale();
+  const isChinese = locale === "zh-CN";
+  const title = isChinese ? `在线五线谱软件与乐谱工具 | ${siteConfig.siteName}` : `Sheet Music Software & Online Tools | ${siteConfig.siteName}`;
+  const description = isChinese
+    ? "集中使用在线五线谱编辑、分谱提取、多人协作、练习反馈、音乐课堂和 PDF、MP3、SVG、PNG 乐谱导出工具。"
+    : "Explore online sheet music software for notation editing, part extraction, collaboration, practice feedback, classroom work, and PDF, MP3, SVG, or PNG export.";
+
+  return {
+    title,
+    description,
+    keywords: isChinese
+      ? ["在线五线谱软件", "五线谱编辑器", "乐谱工具", "总谱提取声部", "多人协作乐谱", "乐谱转 MP3", "乐谱导出 PDF"]
+      : ["online sheet music software", "extract parts from score", "split score into parts", "collaborative music notation software", "music practice app", "export sheet music to PDF", "sheet music to MP3", "music classroom software"],
+    alternates: getLocalizedAlternates("/features", locale),
+    openGraph: {
+      title,
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/features", locale),
+      siteName: siteConfig.siteName,
+      locale: isChinese ? "zh_CN" : "en_US",
+      alternateLocale: isChinese ? ["en_US"] : ["zh_CN"],
+      type: "website",
+      images: [{ url: "/product/feature-score-editor-real.png", width: 1425, height: 891, alt: isChinese ? "ScoreTransposer 在线五线谱编辑与功能工作台" : "ScoreTransposer online sheet music editor and feature workspace" }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: ["/product/feature-score-editor-real.png"] },
+  };
+}
 
 const formalFeatures = [
   { id: "online-editor", en: "Online Sheet Music Editor", zh: "在线乐谱编辑与校正", href: "/score-editor", bodyEn: "Edit notes, rhythm, lyrics, harmony, dynamics, score structure, and correction candidates.", bodyZh: "编辑音符、节奏、歌词、和弦、力度、乐谱结构和识谱候选稿。" },
@@ -69,7 +69,7 @@ export default async function FeaturesPage() {
       position: index + 1,
       name: isChinese ? feature.zh : feature.en,
       description: isChinese ? feature.bodyZh : feature.bodyEn,
-      url: `${siteConfig.siteUrl}${feature.href}`,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, feature.href, locale),
     })),
   };
 
@@ -82,10 +82,10 @@ export default async function FeaturesPage() {
       </section>
       <section className="list-grid">
         {formalFeatures.map((feature) => (
-          <article className="list-item" id={feature.id} key={feature.id}><div className="list-item-content stack-sm"><StatusPill tone="green">{copy.available}</StatusPill><h2 className="item-title">{isChinese ? feature.zh : feature.en}</h2><p className="body-copy">{isChinese ? feature.bodyZh : feature.bodyEn}</p><a className="public-button secondary" href={feature.href}>{copy.open}</a></div></article>
+          <article className="list-item" id={feature.id} key={feature.id}><div className="list-item-content stack-sm"><StatusPill tone="green">{copy.available}</StatusPill><h2 className="item-title">{isChinese ? feature.zh : feature.en}</h2><p className="body-copy">{isChinese ? feature.bodyZh : feature.bodyEn}</p><a className="public-button secondary" href={localizePublicHref(feature.href, locale)}>{copy.open}</a></div></article>
         ))}
       </section>
-      <section className="surface-panel stack-lg"><SectionIntro eyebrow={copy.beta} title={copy.betaTitle} body={copy.betaBody} /><div className="list-grid">{betaFeatures.map((feature) => <article className="list-item" id={feature.id} key={feature.id}><div className="list-item-content stack-sm"><StatusPill tone="amber">Beta</StatusPill><h2 className="item-title">{isChinese ? feature.zh : feature.en}</h2><p className="body-copy">{isChinese ? feature.bodyZh : feature.bodyEn}</p><a className="public-button tertiary" href={feature.href}>{copy.open}</a></div></article>)}</div></section>
+      <section className="surface-panel stack-lg"><SectionIntro eyebrow={copy.beta} title={copy.betaTitle} body={copy.betaBody} /><div className="list-grid">{betaFeatures.map((feature) => <article className="list-item" id={feature.id} key={feature.id}><div className="list-item-content stack-sm"><StatusPill tone="amber">Beta</StatusPill><h2 className="item-title">{isChinese ? feature.zh : feature.en}</h2><p className="body-copy">{isChinese ? feature.bodyZh : feature.bodyEn}</p><a className="public-button tertiary" href={localizePublicHref(feature.href, locale)}>{copy.open}</a></div></article>)}</div></section>
     </div>
   );
 }

@@ -27,6 +27,17 @@ const requiredFeaturePaths = String(args["required-paths"] || "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
+const expectedSitemapCount = args["expected-sitemap-count"] == null
+  ? null
+  : Number(args["expected-sitemap-count"]);
+const socialMetadataPaths = new Set([
+  "/about",
+  "/faq",
+  "/support",
+  "/privacy",
+  "/terms",
+  "/copyright-complaint",
+]);
 const issues = [];
 const pages = [];
 
@@ -52,6 +63,13 @@ function absoluteUrl(value, pageUrl) {
   }
 }
 
+function comparableUrl(value, pageUrl) {
+  const absolute = absoluteUrl(value, pageUrl);
+  if (!absolute) return null;
+  const parsed = new URL(absolute);
+  return parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : parsed.toString();
+}
+
 async function inspectPage(url, sitemapEntry = null) {
   const scope = new URL(url).pathname || "/";
   let response;
@@ -66,6 +84,13 @@ async function inspectPage(url, sitemapEntry = null) {
   const title = $("head title").first().text().trim();
   const description = $('meta[name="description"]').attr("content")?.trim() || "";
   const canonical = absoluteUrl($('link[rel="canonical"]').attr("href") || "", response.url);
+  const documentLanguage = ($("html").attr("lang") || "").trim();
+  const languageAlternates = Object.fromEntries(
+    $('link[rel="alternate"][hreflang]').toArray().map((node) => [
+      ($(node).attr("hreflang") || "").trim(),
+      absoluteUrl($(node).attr("href") || "", response.url),
+    ]).filter(([language, href]) => Boolean(language && href)),
+  );
   const robots = ($('meta[name="robots"]').attr("content") || "").toLowerCase();
   const indexable = !robots.includes("noindex");
   const h1Count = $("h1").length;
@@ -88,16 +113,38 @@ async function inspectPage(url, sitemapEntry = null) {
     }
   });
   const ogImage = absoluteUrl($('meta[property="og:image"]').attr("content") || "", response.url);
+  const ogUrl = absoluteUrl($('meta[property="og:url"]').attr("content") || "", response.url);
   const twitterImage = absoluteUrl($('meta[name="twitter:image"]').attr("content") || "", response.url);
+  const twitterCard = ($('meta[name="twitter:card"]').attr("content") || "").trim();
   const hasGoogleSiteVerification = Boolean($('meta[name="google-site-verification"]').attr("content")?.trim());
+  const chineseDocument = documentLanguage.toLowerCase() === "zh-cn";
+  const titleLengthRange = chineseDocument ? { minimum: 10, maximum: 45 } : { minimum: 25, maximum: 65 };
+  const descriptionLengthRange = chineseDocument ? { minimum: 30, maximum: 90 } : { minimum: 100, maximum: 170 };
 
   if (response.status !== 200) issue("error", scope, `Expected HTTP 200, received ${response.status}.`);
   if (!title) issue("error", scope, "Missing document title.");
-  else if (title.length < 25 || title.length > 65) issue("warning", scope, `Title length is ${title.length}; review the search snippet.`);
+  else if (title.length < titleLengthRange.minimum || title.length > titleLengthRange.maximum) issue("warning", scope, `Title length is ${title.length}; review the search snippet.`);
   if (!description) issue("error", scope, "Missing meta description.");
-  else if (description.length < 100 || description.length > 170) issue("warning", scope, `Meta description length is ${description.length}; review the search snippet.`);
+  else if (description.length < descriptionLengthRange.minimum || description.length > descriptionLengthRange.maximum) issue("warning", scope, `Meta description length is ${description.length}; review the search snippet.`);
   if (!canonical) issue("error", scope, "Missing or invalid canonical URL.");
   else if (new URL(canonical).pathname !== new URL(response.url).pathname) issue("error", scope, `Canonical points to ${canonical}.`);
+  if (sitemapEntry && indexable) {
+    const isChinesePath = scope === "/zh-cn" || scope.startsWith("/zh-cn/");
+    const englishPath = isChinesePath ? scope.slice("/zh-cn".length) || "/" : scope;
+    const chinesePath = englishPath === "/" ? "/zh-cn" : `/zh-cn${englishPath}`;
+    const pageOrigin = canonical ? new URL(canonical).origin : new URL(response.url).origin;
+    const expectedAlternates = {
+      en: comparableUrl(englishPath, pageOrigin),
+      "zh-CN": comparableUrl(chinesePath, pageOrigin),
+      "x-default": comparableUrl(englishPath, pageOrigin),
+    };
+    const expectedLanguage = isChinesePath ? "zh-CN" : "en";
+    if (documentLanguage !== expectedLanguage) issue("error", scope, `Expected html lang=${expectedLanguage}, received ${documentLanguage || "none"}.`);
+    for (const [language, expectedHref] of Object.entries(expectedAlternates)) {
+      const actualHref = comparableUrl(languageAlternates[language] || "", response.url);
+      if (actualHref !== expectedHref) issue("error", scope, `hreflang ${language} points to ${actualHref || "nothing"}; expected ${expectedHref}.`);
+    }
+  }
   if (h1Count !== 1) issue("error", scope, `Expected exactly one H1, found ${h1Count}.`);
   if (h2Count === 0) issue("warning", scope, "No H2 headings found.");
   for (const image of images) {
@@ -106,6 +153,15 @@ async function inspectPage(url, sitemapEntry = null) {
   }
   if (indexable && !ogImage) issue("error", scope, "Indexable page is missing an Open Graph image.");
   if (indexable && !twitterImage) issue("warning", scope, "Indexable page is missing a Twitter image.");
+  const socialBasePath = scope.startsWith("/zh-cn/") ? scope.slice("/zh-cn".length) : scope;
+  if (socialMetadataPaths.has(socialBasePath)) {
+    if (comparableUrl(ogUrl || "", response.url) !== comparableUrl(canonical || "", response.url)) {
+      issue("error", scope, `Open Graph URL ${ogUrl || "is missing"}; expected the page canonical ${canonical || "URL"}.`);
+    }
+    if (twitterCard !== "summary_large_image") {
+      issue("error", scope, `Expected twitter:card=summary_large_image, received ${twitterCard || "nothing"}.`);
+    }
+  }
   if (sitemapEntry && !indexable) issue("error", scope, "Sitemap contains a noindex page.");
   if (sitemapEntry?.lastmod) {
     const lastModified = new Date(sitemapEntry.lastmod);
@@ -113,15 +169,19 @@ async function inspectPage(url, sitemapEntry = null) {
     else if (lastModified.valueOf() > Date.now() + 86400000) issue("error", scope, "Sitemap lastmod is in the future.");
   }
 
-  const result = { url, finalUrl: response.url, status: response.status, title, description, canonical, robots, indexable, hasGoogleSiteVerification, h1Count, h2Count, images, links, schemaTypes, ogImage, twitterImage };
+  const result = { url, finalUrl: response.url, status: response.status, title, description, canonical, documentLanguage, languageAlternates, robots, indexable, hasGoogleSiteVerification, h1Count, h2Count, images, links, schemaTypes, ogImage, ogUrl, twitterImage, twitterCard };
   pages.push(result);
   return result;
 }
 
 async function inspectAsset(url, scope, label) {
   if (!url) return;
+  const sourceUrl = new URL(url);
+  const targetUrl = args["map-sitemap-to-base"]
+    ? new URL(`${sourceUrl.pathname}${sourceUrl.search}`, baseUrl).toString()
+    : sourceUrl.toString();
   try {
-    const response = await request(url, { method: "HEAD" });
+    const response = await request(targetUrl, { method: "HEAD" });
     if (!response.ok) issue("error", scope, `${label} returned HTTP ${response.status}: ${url}.`);
     const contentType = response.headers.get("content-type") || "";
     if (label.includes("image") && !contentType.startsWith("image/")) issue("error", scope, `${label} is not an image: ${contentType || "unknown type"}.`);
@@ -150,6 +210,9 @@ try {
     const $xml = cheerio.load(xml, { xmlMode: true });
     sitemapEntries = $xml("url").toArray().map((node) => ({ loc: $xml(node).find("loc").text().trim(), lastmod: $xml(node).find("lastmod").text().trim() }));
     if (sitemapEntries.length === 0) issue("error", "sitemap", "sitemap.xml contains no URLs.");
+    if (Number.isInteger(expectedSitemapCount) && sitemapEntries.length !== expectedSitemapCount) {
+      issue("error", "sitemap", `Expected ${expectedSitemapCount} URLs, received ${sitemapEntries.length}.`);
+    }
   }
 } catch (error) {
   issue("error", "sitemap", `sitemap.xml request failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -161,15 +224,50 @@ try {
   if (!robotsResponse.ok) issue("error", "robots", `robots.txt returned HTTP ${robotsResponse.status}.`);
   if (!/sitemap:\s*https?:\/\//iu.test(robotsText)) issue("error", "robots", "robots.txt does not declare an absolute sitemap URL.");
   if (!robotsText.includes("/seo-audit") || !robotsText.includes("/operations-checklist")) issue("warning", "robots", "Internal audit routes are not explicitly disallowed.");
+  if (args["require-ai-crawlers"]) {
+    for (const userAgent of ["GPTBot", "ClaudeBot", "Google-Extended"]) {
+      const blocks = robotsText.split(/(?:\r?\n){2,}/u).filter((block) => new RegExp(`^User-agent:\\s*${userAgent.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\s*$`, "imu").test(block));
+      if (blocks.some((block) => /^Disallow:\s*\/$/imu.test(block))) {
+        issue("error", "robots", `${userAgent} is explicitly disallowed; disable Cloudflare managed robots/AI blocking before release.`);
+      }
+    }
+  }
 } catch (error) {
   issue("error", "robots", `robots.txt request failed: ${error instanceof Error ? error.message : String(error)}`);
 }
 
 const crawlTargets = new Map([[baseUrl.toString(), null]]);
-for (const entry of sitemapEntries) crawlTargets.set(new URL(entry.loc).toString(), entry);
+for (const entry of sitemapEntries) {
+  const sitemapUrl = new URL(entry.loc);
+  const crawlUrl = args["map-sitemap-to-base"]
+    ? new URL(`${sitemapUrl.pathname}${sitemapUrl.search}`, baseUrl).toString()
+    : sitemapUrl.toString();
+  crawlTargets.set(crawlUrl, entry);
+}
+
+if (args["require-canonical-host"]) {
+  const auditPaths = [
+    "/canonical-host-audit?source=release",
+    "/product/score-preview-output-real.png?source=release",
+  ];
+  for (const auditPath of auditPaths) {
+    const expectedLocation = `https://scoretransposer.com${auditPath}`;
+    for (const origin of ["http://scoretransposer.com", "http://www.scoretransposer.com", "https://www.scoretransposer.com"]) {
+      try {
+        const response = await request(`${origin}${auditPath}`, { redirect: "manual" });
+        const location = absoluteUrl(response.headers.get("location") || "", `${origin}${auditPath}`);
+        if (![301, 308].includes(response.status) || location !== expectedLocation) {
+          issue("error", "canonical-host", `${origin}${auditPath} returned ${response.status} -> ${location || "no Location"}; expected 301/308 -> ${expectedLocation}.`);
+        }
+      } catch (error) {
+        issue("error", "canonical-host", `${origin}${auditPath} redirect check failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  }
+}
 for (const pathname of requiredFeaturePaths) {
   const requiredUrl = new URL(pathname, baseUrl).toString();
-  const sitemapEntry = sitemapEntries.find((entry) => new URL(entry.loc).toString() === requiredUrl) ?? null;
+  const sitemapEntry = sitemapEntries.find((entry) => new URL(entry.loc).pathname === new URL(requiredUrl).pathname) ?? null;
   if (!sitemapEntry) issue("error", new URL(requiredUrl).pathname, "Required acquisition page is absent from sitemap.xml.");
   crawlTargets.set(requiredUrl, sitemapEntry);
 }

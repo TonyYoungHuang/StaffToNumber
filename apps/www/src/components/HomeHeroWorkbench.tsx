@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
+import { localizePublicHref } from "../lib/locale-routing";
 import styles from "../app/home-page.module.css";
 import { HomeCandidatePreview } from "./HomeCandidatePreview";
 
@@ -54,6 +55,7 @@ function localizedApiError(error: string | undefined, isChinese: boolean, fallba
 }
 
 export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable }: HomeHeroWorkbenchProps) {
+  const locale = isChinese ? "zh-CN" : "en";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<WorkbenchMode>("recognize");
   const [session, setSession] = useState<SessionState>("checking");
@@ -260,10 +262,10 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
             <span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList} aria-label={isChinese ? "支持格式" : "Supported formats"}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span>
           </button>
         ) : (
-          <a className={styles.dropZone} href={activeMode.href}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span></a>
+          <a className={styles.dropZone} href={localizePublicHref(activeMode.href, locale)}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span></a>
         )}
 
-        {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={activeMode.href}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
+        {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
         {mode === "recognize" && (uploadProgress !== null || job || recognitionError) ? (
           <section className={styles.recognitionPanel} aria-live="polite">
@@ -277,7 +279,7 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
         ) : null}
       </div>
 
-      <nav className={styles.toolRail} aria-label={isChinese ? "可用乐谱功能" : "Available score tools"}>{toolLinks.map((tool) => <a key={tool.href} href={tool.href}><span aria-hidden="true">{tool.icon}</span><strong>{isChinese ? tool.zh : tool.en}</strong><small>{isChinese ? tool.bodyZh : tool.bodyEn}</small><ArrowNorthEastIcon width={17} height={17} /></a>)}</nav>
+      <nav className={styles.toolRail} aria-label={isChinese ? "可用乐谱功能" : "Available score tools"}>{toolLinks.map((tool) => <a key={tool.href} href={localizePublicHref(tool.href, locale)}><span aria-hidden="true">{tool.icon}</span><strong>{isChinese ? tool.zh : tool.en}</strong><small>{isChinese ? tool.bodyZh : tool.bodyEn}</small><ArrowNorthEastIcon width={17} height={17} /></a>)}</nav>
       <p className={styles.workbenchStatus}><CheckSealIcon width={15} height={15} />{session === "checking" ? copy.checking : session === "authenticated" ? copy.signedIn : copy.signInFirst}</p>
 
       {authOpen ? (
