@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { CheckoutPlanCode, CheckoutPlanDisplay } from "@score/shared";
+import { APP_ROUTES, type CheckoutPlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
 import { CreditPlanCard, CreditPlanGrid } from "@score/ui";
 import { trackFunnelEvent } from "../lib/analytics";
 import { AppCheckoutClient } from "./AppCheckoutClient";
@@ -13,13 +14,13 @@ export function CheckoutPlanSelector({
   isChinese,
   initialPlanCode,
 }: {
-  plans: readonly CheckoutPlanDisplay[];
+  plans: readonly PricingPlanDisplay[];
   planNote: string;
   isChinese: boolean;
   initialPlanCode?: CheckoutPlanCode;
 }) {
   const defaultPlanCode = initialPlanCode ?? plans.find((plan) => plan.featured)?.code ?? plans[0]?.code;
-  const [selectedPlanCode, setSelectedPlanCode] = useState<CheckoutPlanCode | undefined>(defaultPlanCode);
+  const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | undefined>(defaultPlanCode);
   const selectedPlan = plans.find((plan) => plan.code === selectedPlanCode) ?? plans[0];
   const planListTracked = useRef(false);
 
@@ -37,7 +38,7 @@ export function CheckoutPlanSelector({
     });
   }, [plans]);
 
-  function selectPlan(plan: CheckoutPlanDisplay) {
+  function selectPlan(plan: PricingPlanDisplay) {
     setSelectedPlanCode(plan.code);
     trackFunnelEvent("select_item", {
       item_list_id: "credit_plans",
@@ -88,7 +89,34 @@ export function CheckoutPlanSelector({
       </section>
 
       <div className={styles.checkoutActionWrap}>
-        <AppCheckoutClient selectedPlan={selectedPlan} />
+        {selectedPlan.code === "free" ? (
+          <section className={`${styles.paymentPanel} stack-lg`} aria-labelledby="free-plan-title">
+            <div className="stack-sm">
+              <p className="eyebrow">Free</p>
+              <h2 id="free-plan-title" className={styles.sectionHeading}>
+                {isChinese ? "免费创建你的第一份完整乐谱" : "Create your first complete score for free"}
+              </h2>
+              <p className="body-copy large">
+                {isChinese
+                  ? "无需付款或信用卡。免费方案长期保留一个完整乐谱项目，并包含每月 25 个后台任务。"
+                  : "No payment or card is required. Free keeps one complete score project with 25 server jobs each month."}
+              </p>
+            </div>
+            <div className="button-row">
+              <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
+                {isChinese ? "免费创建乐谱" : "Create a score for free"}
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <AppCheckoutClient selectedPlan={{
+            code: selectedPlan.code as CheckoutPlanCode,
+            name: selectedPlan.name,
+            cycle: selectedPlan.cycle,
+            price: selectedPlan.price,
+            credits: selectedPlan.credits,
+          }} />
+        )}
       </div>
     </>
   );

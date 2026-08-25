@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { APP_ROUTES, getCheckoutPlanCatalog, isCheckoutPlanCode } from "@score/shared";
+import { APP_ROUTES, getPricingPlanCatalog, isCheckoutPlanCode } from "@score/shared";
 import { CheckoutPlanSelector } from "../../components/CheckoutPlanSelector";
 import styles from "../../components/AppCheckout.module.css";
 import { readAppLocale } from "../../lib/locale";
@@ -34,7 +34,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
   }
 
   const isChinese = locale === "zh-CN";
-  const plans = getCheckoutPlanCatalog(locale);
+  const plans = getPricingPlanCatalog(locale);
   const params = await searchParams;
   const requestedPlan = Array.isArray(params.plan) ? params.plan[0] : params.plan;
   const initialPlanCode = isCheckoutPlanCode(requestedPlan) ? requestedPlan : undefined;
