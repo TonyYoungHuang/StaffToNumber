@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { config } from "../config.js";
 import { db, initDb } from "../db.js";
 import { processBillingWebhookEvent } from "../repositories/billing-repository.js";
 import {
@@ -17,7 +18,7 @@ function insertUser(id: string, email: string) {
   `).run(id, email, now, now);
 }
 
-test("legacy processing and storage quotas reject excess usage", () => {
+test("free processing and storage quotas reject excess usage", () => {
   initDb();
   const suffix = crypto.randomUUID();
   const userId = `quota-legacy-${suffix}`;
@@ -31,7 +32,7 @@ test("legacy processing and storage quotas reject excess usage", () => {
   }
 
   const usage = getPlanQuotaUsage(userId);
-  assert.equal(usage.tier, "legacy");
+  assert.equal(usage.tier, "free");
   assert.equal(usage.jobs.used, 25);
   assert.equal(usage.jobs.remaining, 0);
   assert.throws(
@@ -44,7 +45,7 @@ test("legacy processing and storage quotas reject excess usage", () => {
   );
 });
 
-test("an active personal subscription receives the pro quota", () => {
+test("an active Starter subscription receives 50 monthly jobs", () => {
   initDb();
   const suffix = crypto.randomUUID();
   const userId = `quota-pro-${suffix}`;
@@ -67,8 +68,78 @@ test("an active personal subscription receives the pro quota", () => {
   });
 
   const usage = getPlanQuotaUsage(userId);
-  assert.equal(usage.tier, "pro");
-  assert.equal(usage.jobs.limit, 100);
+  assert.equal(usage.tier, "starter");
+  assert.equal(usage.jobs.limit, 50);
   assert.equal(usage.storage.limitBytes, 10 * 1024 * 1024 * 1024);
   assert.doesNotThrow(() => assertProcessingQuota(userId));
+});
+
+test("a known Starter price stays on Starter quotas even when legacy seat metadata is greater than one", () => {
+  initDb();
+  const suffix = crypto.randomUUID();
+  const userId = `quota-starter-seats-${suffix}`;
+  const planRef = `price-starter-${suffix}`;
+  insertUser(userId, `${suffix}@quota.test`);
+  const previousPlanRef = config.stripeStarterMonthlyPriceId;
+  config.stripeStarterMonthlyPriceId = planRef;
+  try {
+    processBillingWebhookEvent(db, {
+      provider: "stripe",
+      eventId: `evt-starter-seats-${suffix}`,
+      eventType: "customer.subscription.created",
+      rawPayload: `quota-${suffix}`,
+      customer: { providerCustomerId: `cus-starter-seats-${suffix}`, userId },
+      subscription: {
+        providerSubscriptionId: `sub-starter-seats-${suffix}`,
+        providerCustomerId: `cus-starter-seats-${suffix}`,
+        userId,
+        status: "active",
+        planRef,
+        seatQuantity: 3,
+        currentPeriodEnd: new Date(Date.now() + 31 * 86_400_000).toISOString(),
+      },
+    });
+
+    const usage = getPlanQuotaUsage(userId);
+    assert.equal(usage.tier, "starter");
+    assert.equal(usage.jobs.limit, 50);
+    assert.equal(usage.storage.limitBytes, 10 * 1024 * 1024 * 1024);
+  } finally {
+    config.stripeStarterMonthlyPriceId = previousPlanRef;
+  }
+});
+
+test("a Converter Pro price reference receives 200 monthly jobs", () => {
+  initDb();
+  const suffix = crypto.randomUUID();
+  const userId = `quota-converter-pro-${suffix}`;
+  const planRef = `price-converter-pro-${suffix}`;
+  insertUser(userId, `${suffix}@quota.test`);
+  const previousPlanRef = config.stripeConverterProMonthlyPriceId;
+  config.stripeConverterProMonthlyPriceId = planRef;
+  try {
+    processBillingWebhookEvent(db, {
+      provider: "stripe",
+      eventId: `evt-converter-pro-${suffix}`,
+      eventType: "customer.subscription.created",
+      rawPayload: `quota-${suffix}`,
+      customer: { providerCustomerId: `cus-converter-pro-${suffix}`, userId },
+      subscription: {
+        providerSubscriptionId: `sub-converter-pro-${suffix}`,
+        providerCustomerId: `cus-converter-pro-${suffix}`,
+        userId,
+        status: "active",
+        planRef,
+        seatQuantity: 1,
+        currentPeriodEnd: new Date(Date.now() + 31 * 86_400_000).toISOString(),
+      },
+    });
+
+    const usage = getPlanQuotaUsage(userId);
+    assert.equal(usage.tier, "converter-pro");
+    assert.equal(usage.jobs.limit, 200);
+    assert.equal(usage.storage.limitBytes, 50 * 1024 * 1024 * 1024);
+  } finally {
+    config.stripeConverterProMonthlyPriceId = previousPlanRef;
+  }
 });

@@ -32,19 +32,19 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   const copy = locale === "zh-CN"
     ? {
-        scores: "我的乐谱", scanner: "扫描识谱", editor: "在线编辑", transpose: "移调", pricing: "价格",
+        scores: "我的乐谱", scanner: "扫描识谱", editor: "在线编辑", transpose: "移调", library: "曲库", pricing: "价格",
         classes: "课堂", help: "帮助", guide: "使用指南", contact: "联系我们", billing: "账单", upgrade: "升级",
         primaryLabel: "免费编辑", menu: "打开导航菜单", closeMenu: "关闭导航菜单",
         caption: "PDF / 图片五线谱识别工作台", footerTitle: "ScoreTransposer",
-        footerCopy: "免费识别并编辑一页 PDF 或图片；再次识别、转简谱、移调、播放与导出需开通。",
+        footerCopy: "免费从一份完整多页 PDF 或图片创建一个终身乐谱项目，并继续校正、转简谱、移调、播放、分享与导出。",
         footer: { register: "注册账户", activate: "兑换激活码", checkout: "在线支付", scores: "我的乐谱", classes: "课堂管理", about: "关于我们", support: "帮助与联系", privacy: "隐私说明" },
       }
     : {
-        scores: "My scores", scanner: "Scanner", editor: "Editor", transpose: "Transpose", pricing: "Pricing",
+        scores: "My scores", scanner: "Scanner", editor: "Editor", transpose: "Transpose", library: "Score library", pricing: "Pricing",
         classes: "Classes", help: "Help", guide: "Guide", contact: "Contact us", billing: "Billing", upgrade: "Upgrade",
         primaryLabel: "Edit for free", menu: "Open navigation menu", closeMenu: "Close navigation menu",
         caption: "PDF and image score scanner", footerTitle: "ScoreTransposer",
-        footerCopy: "Recognize and edit one PDF page or image for free; unlock another scan, conversion, transposition, practice, and export.",
+        footerCopy: "Create one lifetime free score project from a complete PDF or image, then correct, convert, transpose, play, share, and export it.",
         footer: { register: "Create account", activate: "Redeem code", checkout: "Pay online", scores: "My scores", classes: "Classes", about: "About", support: "Support", privacy: "Privacy" },
       };
 
@@ -53,6 +53,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     { href: publicHref("/pdf-score-scanner"), label: copy.scanner },
     { href: publicHref("/score-editor"), label: copy.editor },
     { href: publicHref("/transpose-score"), label: copy.transpose },
+    { href: publicHref("/library"), label: copy.library },
     { href: publicHref("/#pricing"), label: copy.pricing },
     { label: copy.help, children: [{ href: publicHref("/#workflow"), label: copy.guide }, { href: publicHref("/support"), label: copy.contact }] },
     ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: copy.classes, active: pathname.startsWith(APP_ROUTES.classrooms) }] : []),

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { ScoreDetailClient } from "./ScoreDetailClient";
-import { TrialScorePreview } from "./TrialScorePreview";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type AccessPayload = {
@@ -23,8 +22,7 @@ export function ScoreAccessWorkspace() {
     });
   }, []);
 
-  if (access === "paid") return <ScoreDetailClient />;
-  if (access === "preview") return <TrialScorePreview />;
+  if (access === "paid" || access === "preview") return <ScoreDetailClient />;
   return (
     <div className="surface-panel stack-sm">
       <p className="eyebrow">

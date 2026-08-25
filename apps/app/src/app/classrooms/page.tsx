@@ -9,8 +9,8 @@ export default async function ClassroomsPage() {
   return (
     <section className="container page-shell">
       <div className="page-banner">
-        <p className="eyebrow">{locale === "zh-CN" ? "教学工作台" : "Teaching workspace"}</p>
-        <h1 className="page-title">{locale === "zh-CN" ? "课堂与机构管理" : "Classrooms and organizations"}</h1>
+        <p className="eyebrow">Classroom / School Beta</p>
+        <h1 className="page-title">{locale === "zh-CN" ? "课堂与学校协作 Beta" : "Classroom / School Beta"}</h1>
         <p className="body-copy large">{locale === "zh-CN" ? "集中管理课堂、学生名册、资源、通知和教学协作。" : "Manage classrooms, rosters, resources, notifications, and teaching collaboration."}</p>
       </div>
       <EntitlementGate deniedMode="panel">

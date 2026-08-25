@@ -168,6 +168,7 @@ export function buildFeatureExampleFile(
     "audio-to-score": { input: wavFile, output: midiFile },
     "musicxml-midi": { input: () => musicXmlFile(), output: midiFile },
     "pdf-score-scanner": { input: scorePngFile, output: () => musicXmlFile() },
+    "pdf-to-musicxml": { input: scorePngFile, output: () => musicXmlFile() },
     teaching: {
       input: () => jsonFile({ scoreRevision: "demo-revision", instructions: "Practice measures 1-4 at 80 BPM.", dueAt: "2026-07-22T12:00:00Z" }),
       output: () => jsonFile({ submissionStatus: "submitted", practiceMinutes: 18, rubricScore: 4, feedback: "Rhythm is steady; review measure 3." }),

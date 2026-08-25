@@ -47,8 +47,8 @@ function localizedApiError(error: string | undefined, isChinese: boolean, fallba
   if (/email already registered/iu.test(message)) return "该邮箱已经注册，请切换到登录。";
   if (/valid email address/iu.test(message)) return "请输入有效的邮箱地址。";
   if (/password must be at least 8/iu.test(message)) return "密码至少需要 8 个字符。";
-  if (/free.*(?:trial|scan).*(?:used|limit|remaining)|another scan/iu.test(message)) return "本账户的一次免费识别额度已经使用；再次识别需要开通完整权限。";
-  if (/page.*(?:limit|count)|single.page|one page/iu.test(message)) return "免费识别仅支持一页 PDF，请选择单页文件。";
+  if (/free.*(?:trial|scan).*(?:used|limit|remaining)|another scan/iu.test(message)) return "本账户的一个永久免费乐谱项目已经创建；升级后可以处理更多乐谱。";
+  if (/page.*(?:limit|count)|single.page|one page/iu.test(message)) return "PDF 文档暂时无法完成验证，请检查文件是否完整、可打开且未加密。";
   if (/file content|supported file type|no pdf or image/iu.test(message)) return "文件内容与支持格式不符，请选择有效的乐谱 PDF 或图片。";
   return fallback;
 }
@@ -74,23 +74,23 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
   const copy = isChinese
     ? {
         modes: [
-          { id: "recognize" as const, label: "乐谱识别", title: "上传 PDF 或乐谱图片", body: "登录后直接在本页上传一页，识别完成即可进入免费编辑工作台校对候选谱。", formats: ["PDF", "PNG", "JPG", "WEBP", "TIFF"], action: "免费编辑", href: "" },
+          { id: "recognize" as const, label: "乐谱识别", title: "上传 PDF 或乐谱图片", body: "登录后上传一份完整多页 PDF 或一张乐谱图片，创建可长期校正、播放、转换与导出的免费项目。", formats: ["PDF", "PNG", "JPG", "WEBP", "TIFF"], action: "免费创建", href: "" },
           { id: "process" as const, label: "乐谱处理", title: "导入结构化乐谱", body: "使用同一个乐谱工程继续编辑、移调、生成简谱、播放和导出。", formats: ["MusicXML", "MXL", "MIDI", "Score JSON"], action: "进入乐谱工作台", href: startUrl },
           { id: "transcribe" as const, label: "音视频转谱", title: "导入音乐或视频文件", body: "生成需要人工复核的 MIDI 与五线谱候选；复杂多声部内容仍需校正。", formats: ["MP3", "WAV", "M4A", "MP4", "MOV"], action: audioAvailable ? "开始生成候选谱" : "查看实验能力状态", href: audioAvailable ? startUrl : "/audio-to-score", experimental: true },
         ],
-        checking: "正在检查登录状态...", signedIn: "已登录，可直接选择一页乐谱开始识别。", signInFirst: "先登录或注册，完成后仍停留在首页。",
-        authTitle: "登录后免费编辑", authBody: "登录成功后窗口会关闭，仍停留在首页选择一页乐谱；识别完成即可直接校对。", login: "登录", register: "注册", email: "邮箱", password: "密码（至少 8 位）", submitting: "请稍候...", authFailed: "登录未完成，请检查邮箱、密码或网络后重试。", close: "关闭登录窗口",
+        checking: "正在检查登录状态...", signedIn: "已登录，可选择一份完整乐谱创建免费项目。", signInFirst: "先登录或注册，完成后仍停留在首页。",
+        authTitle: "登录后免费创建", authBody: "登录成功后窗口会关闭，仍停留在首页选择一份完整 PDF 或乐谱图片；识别完成即可校正并继续使用项目功能。", login: "登录", register: "注册", email: "邮箱", password: "密码（至少 8 位）", submitting: "请稍候...", authFailed: "登录未完成，请检查邮箱、密码或网络后重试。", close: "关闭登录窗口",
         uploading: "正在安全上传", queued: "已进入识别队列", processing: "正在识别乐谱", completed: "候选谱已生成", failed: "识别未完成", cancelled: "识别已取消",
         candidateTitle: "免费编辑候选", candidateBody: "这是待人工核对的候选稿。进入工程后可免费修改音符、节奏和小节属性。", previewLoading: "正在生成可编辑的五线谱候选...", openProject: "开始免费编辑", retry: "重新选择文件", invalidFile: "请选择 PDF、PNG、JPG、WEBP 或 TIFF 乐谱文件。", uploadFailed: "上传未完成，请检查文件或网络后重试。",
       }
     : {
         modes: [
-          { id: "recognize" as const, label: "Recognize", title: "Upload a PDF or score image", body: "Sign in, upload one page here, then open the free editor to correct the recognized staff candidate.", formats: ["PDF", "PNG", "JPG", "WEBP", "TIFF"], action: "Edit for free", href: "" },
+          { id: "recognize" as const, label: "Recognize", title: "Upload a PDF or score image", body: "Sign in and upload one complete multi-page PDF or score image. Keep the free project for correction, playback, conversion, sharing, and export.", formats: ["PDF", "PNG", "JPG", "WEBP", "TIFF"], action: "Create for free", href: "" },
           { id: "process" as const, label: "Process score", title: "Import structured notation", body: "Keep editing, transposing, converting, playing, and exporting inside one score project.", formats: ["MusicXML", "MXL", "MIDI", "Score JSON"], action: "Open score workspace", href: startUrl },
           { id: "transcribe" as const, label: "Audio to score", title: "Import audio or video", body: "Create a MIDI and notation candidate for review; dense polyphony still requires correction.", formats: ["MP3", "WAV", "M4A", "MP4", "MOV"], action: audioAvailable ? "Create a candidate" : "Check experimental status", href: audioAvailable ? startUrl : "/audio-to-score", experimental: true },
         ],
         checking: "Checking sign-in status...", signedIn: "Signed in. Choose one score page to begin.", signInFirst: "Sign in or register first; you will stay on this homepage.",
-        authTitle: "Sign in to edit for free", authBody: "After authentication, this dialog closes. Choose one page on the homepage, then correct it in the free editor.", login: "Sign in", register: "Register", email: "Email", password: "Password (8+ characters)", submitting: "Please wait...", authFailed: "Sign-in did not finish. Check your email, password, or connection and try again.", close: "Close sign-in dialog",
+        authTitle: "Sign in to create for free", authBody: "After authentication, this dialog closes. Choose one complete PDF or score image, then correct it and use the current project-level tools.", login: "Sign in", register: "Register", email: "Email", password: "Password (8+ characters)", submitting: "Please wait...", authFailed: "Sign-in did not finish. Check your email, password, or connection and try again.", close: "Close sign-in dialog",
         uploading: "Uploading securely", queued: "Waiting in recognition queue", processing: "Recognizing score", completed: "Candidate ready", failed: "Recognition did not finish", cancelled: "Recognition cancelled",
         candidateTitle: "Free editing candidate", candidateBody: "This candidate needs a musical review. Open the project to correct notes, rhythm, and measure attributes for free.", previewLoading: "Creating an editable staff candidate...", openProject: "Start editing for free", retry: "Choose another file", invalidFile: "Choose a PDF, PNG, JPG, WEBP, or TIFF score file.", uploadFailed: "The upload did not finish. Check the file or connection and try again.",
       };

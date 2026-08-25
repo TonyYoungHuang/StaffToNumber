@@ -108,13 +108,28 @@ function readPaymentStatuses() {
       key: "stripe",
       label: "Stripe",
       enabled: config.paymentProviders.includes("stripe"),
-      configured: Boolean(config.stripeSecretKey && config.stripePriceId && config.stripeWebhookSecret),
+      configured: Boolean(
+        config.stripeSecretKey
+        && config.stripeWebhookSecret
+        && config.stripeStarterMonthlyPriceId
+        && config.stripeStarterAnnualPriceId
+        && config.stripeConverterProMonthlyPriceId
+        && config.stripeConverterProAnnualPriceId
+      ),
     },
     {
       key: "paddle",
       label: "Paddle",
       enabled: config.paymentProviders.includes("paddle"),
-      configured: Boolean(config.paddleApiKey && config.paddlePriceId && config.paddleWebhookSecret && config.paddleDefaultPaymentLink),
+      configured: Boolean(
+        config.paddleApiKey
+        && config.paddleWebhookSecret
+        && config.paddleStarterMonthlyPriceId
+        && config.paddleStarterAnnualPriceId
+        && config.paddleConverterProMonthlyPriceId
+        && config.paddleConverterProAnnualPriceId
+        && config.paddleDefaultPaymentLink
+      ),
     },
   ];
 

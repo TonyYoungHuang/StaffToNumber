@@ -122,30 +122,33 @@ export const config = {
   emailReplyTo: process.env.EMAIL_REPLY_TO ?? process.env.SUPPORT_EMAIL ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   adminApiKey: process.env.ADMIN_API_KEY ?? "",
-  paymentProviders: (process.env.PAYMENT_PROVIDERS ?? "stripe,paddle")
+  paymentProviders: (process.env.PAYMENT_PROVIDERS ?? "")
     .split(",")
     .map((provider) => provider.trim())
     .filter(Boolean),
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-  stripePriceId: process.env.STRIPE_PRICE_ID ?? "",
-  stripeSchoolPriceId: process.env.STRIPE_SCHOOL_PRICE_ID ?? "",
+  stripeStarterMonthlyPriceId: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID?.trim() ?? "",
+  stripeStarterAnnualPriceId: process.env.STRIPE_STARTER_ANNUAL_PRICE_ID?.trim() ?? "",
+  stripeConverterProMonthlyPriceId: process.env.STRIPE_CONVERTER_PRO_MONTHLY_PRICE_ID?.trim() ?? "",
+  stripeConverterProAnnualPriceId: process.env.STRIPE_CONVERTER_PRO_ANNUAL_PRICE_ID?.trim() ?? "",
   stripeManagedPaymentsEnabled: process.env.STRIPE_MANAGED_PAYMENTS_ENABLED === "true",
   paddleApiKey: process.env.PADDLE_API_KEY ?? "",
   paddleWebhookSecret: process.env.PADDLE_WEBHOOK_SECRET ?? "",
-  paddlePriceId: process.env.PADDLE_PRICE_ID ?? "",
-  paddleSchoolPriceId: process.env.PADDLE_SCHOOL_PRICE_ID ?? "",
+  paddleStarterMonthlyPriceId: process.env.PADDLE_STARTER_MONTHLY_PRICE_ID?.trim() ?? "",
+  paddleStarterAnnualPriceId: process.env.PADDLE_STARTER_ANNUAL_PRICE_ID?.trim() ?? "",
+  paddleConverterProMonthlyPriceId: process.env.PADDLE_CONVERTER_PRO_MONTHLY_PRICE_ID?.trim() ?? "",
+  paddleConverterProAnnualPriceId: process.env.PADDLE_CONVERTER_PRO_ANNUAL_PRICE_ID?.trim() ?? "",
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT ?? "sandbox",
   paddleDefaultPaymentLink: process.env.PADDLE_DEFAULT_PAYMENT_LINK ?? "",
   paymentBillingMode: process.env.PAYMENT_BILLING_MODE === "one_time" ? "payment" as const : "subscription" as const,
   freeTrialOmrJobs: positiveInteger(process.env.FREE_TRIAL_OMR_JOBS, 1),
-  freeTrialMaxSourcePages: positiveInteger(process.env.FREE_TRIAL_MAX_SOURCE_PAGES, 1),
-  quotaLegacyJobsPerMonth: positiveInteger(process.env.QUOTA_LEGACY_JOBS_PER_MONTH, 25),
-  quotaProJobsPerMonth: positiveInteger(process.env.QUOTA_PRO_JOBS_PER_MONTH, 100),
-  quotaEducationJobsPerMonth: positiveInteger(process.env.QUOTA_EDUCATION_JOBS_PER_MONTH, 500),
-  quotaLegacyStorageBytes: positiveInteger(process.env.QUOTA_LEGACY_STORAGE_BYTES, 1024 * 1024 * 1024),
-  quotaProStorageBytes: positiveInteger(process.env.QUOTA_PRO_STORAGE_BYTES, 10 * 1024 * 1024 * 1024),
-  quotaEducationStorageBytes: positiveInteger(process.env.QUOTA_EDUCATION_STORAGE_BYTES, 50 * 1024 * 1024 * 1024),
+  quotaFreeJobsPerMonth: positiveInteger(process.env.QUOTA_FREE_JOBS_PER_MONTH ?? process.env.QUOTA_LEGACY_JOBS_PER_MONTH, 25),
+  quotaStarterJobsPerMonth: positiveInteger(process.env.QUOTA_STARTER_JOBS_PER_MONTH ?? process.env.QUOTA_PRO_JOBS_PER_MONTH, 50),
+  quotaConverterProJobsPerMonth: positiveInteger(process.env.QUOTA_CONVERTER_PRO_JOBS_PER_MONTH ?? process.env.QUOTA_EDUCATION_JOBS_PER_MONTH, 200),
+  quotaFreeStorageBytes: positiveInteger(process.env.QUOTA_FREE_STORAGE_BYTES ?? process.env.QUOTA_LEGACY_STORAGE_BYTES, 1024 * 1024 * 1024),
+  quotaStarterStorageBytes: positiveInteger(process.env.QUOTA_STARTER_STORAGE_BYTES ?? process.env.QUOTA_PRO_STORAGE_BYTES, 10 * 1024 * 1024 * 1024),
+  quotaConverterProStorageBytes: positiveInteger(process.env.QUOTA_CONVERTER_PRO_STORAGE_BYTES ?? process.env.QUOTA_EDUCATION_STORAGE_BYTES, 50 * 1024 * 1024 * 1024),
   ltiEnabled: process.env.LTI_ENABLED === "true",
   ltiPrivateKeyBase64: process.env.LTI_PRIVATE_KEY_BASE64 ?? "",
   ltiKeyId: process.env.LTI_KEY_ID ?? "score-lti-1",
@@ -178,12 +181,18 @@ export function validateRuntimeConfig() {
   if (config.paymentProviders.includes("stripe")) {
     if (!config.stripeSecretKey) failures.push("STRIPE_SECRET_KEY is required when Stripe is enabled");
     if (!config.stripeWebhookSecret) failures.push("STRIPE_WEBHOOK_SECRET is required when Stripe is enabled");
-    if (!config.stripePriceId) failures.push("STRIPE_PRICE_ID is required when Stripe is enabled");
+    if (!config.stripeStarterMonthlyPriceId) failures.push("STRIPE_STARTER_MONTHLY_PRICE_ID is required when Stripe is enabled");
+    if (!config.stripeStarterAnnualPriceId) failures.push("STRIPE_STARTER_ANNUAL_PRICE_ID is required when Stripe is enabled");
+    if (!config.stripeConverterProMonthlyPriceId) failures.push("STRIPE_CONVERTER_PRO_MONTHLY_PRICE_ID is required when Stripe is enabled");
+    if (!config.stripeConverterProAnnualPriceId) failures.push("STRIPE_CONVERTER_PRO_ANNUAL_PRICE_ID is required when Stripe is enabled");
   }
   if (config.paymentProviders.includes("paddle")) {
     if (!config.paddleApiKey) failures.push("PADDLE_API_KEY is required when Paddle is enabled");
     if (!config.paddleWebhookSecret) failures.push("PADDLE_WEBHOOK_SECRET is required when Paddle is enabled");
-    if (!config.paddlePriceId) failures.push("PADDLE_PRICE_ID is required when Paddle is enabled");
+    if (!config.paddleStarterMonthlyPriceId) failures.push("PADDLE_STARTER_MONTHLY_PRICE_ID is required when Paddle is enabled");
+    if (!config.paddleStarterAnnualPriceId) failures.push("PADDLE_STARTER_ANNUAL_PRICE_ID is required when Paddle is enabled");
+    if (!config.paddleConverterProMonthlyPriceId) failures.push("PADDLE_CONVERTER_PRO_MONTHLY_PRICE_ID is required when Paddle is enabled");
+    if (!config.paddleConverterProAnnualPriceId) failures.push("PADDLE_CONVERTER_PRO_ANNUAL_PRICE_ID is required when Paddle is enabled");
     if (!config.paddleDefaultPaymentLink) failures.push("PADDLE_DEFAULT_PAYMENT_LINK is required when Paddle is enabled");
   }
   if (config.ltiEnabled) {

@@ -12,6 +12,7 @@ import {
   createStripeBillingPortalSession,
   createStripeCheckoutSession,
   expireStripeCheckoutSession,
+  getCheckoutPriceId,
   isPaymentProviderEnabled,
   retrievePaddleTransaction,
   retrieveStripeCheckoutSession,
@@ -211,10 +212,10 @@ export async function paymentRoutes(app: FastifyInstance) {
       if (!isProvider(body.provider)) {
         return reply.code(400).send({ error: "Payment provider is required." });
       }
-      if (body.planCode !== undefined && !isCheckoutPlanCode(body.planCode)) {
+      if (!isCheckoutPlanCode(body.planCode)) {
         return reply.code(400).send({ error: "A valid checkout plan is required." });
       }
-      const planCode = isCheckoutPlanCode(body.planCode) ? body.planCode : null;
+      const planCode = body.planCode;
 
       const profile = request.authUserId ? getUserProfile(request.authUserId) : null;
       const customerEmail = profile?.email ?? null;
@@ -280,7 +281,8 @@ export async function paymentRoutes(app: FastifyInstance) {
         return reply.code(503).send({ error: "Unable to persist the payment order safely." });
       }
 
-      const providerEnabled = isPaymentProviderEnabled(body.provider);
+      const priceId = getCheckoutPriceId(body.provider, planCode);
+      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode);
       if (!reusable) {
         try {
           await sendCheckoutIntentAlert(app, {
@@ -324,7 +326,7 @@ export async function paymentRoutes(app: FastifyInstance) {
             userId: request.authUserId,
             organizationId,
             seatQuantity,
-            priceId: organizationId ? config.stripeSchoolPriceId || config.stripePriceId : config.stripePriceId,
+            priceId: priceId!,
           });
           attachStripeCheckoutSession(order.id, session.id, session.url ?? null);
           await persistLocalPaymentOrder(order.id);
@@ -344,7 +346,7 @@ export async function paymentRoutes(app: FastifyInstance) {
           userId: request.authUserId,
           organizationId,
           seatQuantity,
-          priceId: organizationId ? config.paddleSchoolPriceId || config.paddlePriceId : config.paddlePriceId,
+          priceId: priceId!,
         });
         const checkoutUrl = buildPaddleCheckoutRedirectUrl({
           checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
@@ -371,13 +373,18 @@ export async function paymentRoutes(app: FastifyInstance) {
   );
 
   app.post("/payments/checkout", async (request, reply) => {
-    const body = (request.body ?? {}) as { provider?: PaymentProvider; email?: string; locale?: string };
+    const body = (request.body ?? {}) as { provider?: PaymentProvider; email?: string; locale?: string; planCode?: unknown };
 
     if (!isProvider(body.provider)) {
       return reply.code(400).send({ error: "Payment provider is required." });
     }
+    if (!isCheckoutPlanCode(body.planCode)) {
+      return reply.code(400).send({ error: "A valid checkout plan is required." });
+    }
+    const planCode = body.planCode;
 
-    if (!isPaymentProviderEnabled(body.provider)) {
+    const priceId = getCheckoutPriceId(body.provider, planCode);
+    if (!isPaymentProviderEnabled(body.provider, planCode) || !priceId) {
       return reply.code(400).send({ error: "This payment provider is not enabled." });
     }
 
@@ -398,6 +405,7 @@ export async function paymentRoutes(app: FastifyInstance) {
         header: request.headers["idempotency-key"],
         userId: account.id,
         provider: body.provider,
+        planCode,
       });
     } catch (error) {
       return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid idempotency key." });
@@ -437,6 +445,7 @@ export async function paymentRoutes(app: FastifyInstance) {
           publicToken: order.public_token,
           customerEmail: account.email,
           userId: account.id,
+          priceId,
         });
         attachStripeCheckoutSession(order.id, session.id, session.url ?? null);
         await persistLocalPaymentOrder(order.id);
@@ -454,6 +463,7 @@ export async function paymentRoutes(app: FastifyInstance) {
         publicToken: order.public_token,
         customerEmail: account.email,
         userId: account.id,
+        priceId,
       });
       const checkoutUrl = buildPaddleCheckoutRedirectUrl({
         checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,

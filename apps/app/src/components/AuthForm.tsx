@@ -71,7 +71,7 @@ export function AuthForm({
           title: mode === "register" ? "创建你的乐谱账户" : "欢迎回来",
           body:
             mode === "register"
-              ? "使用 Google，或用邮箱和密码创建账户。注册后可以免费识别并编辑一页乐谱。"
+              ? "使用 Google，或用邮箱和密码创建账户。注册后可以从一份完整 PDF 或乐谱图片创建终身免费项目。"
               : "使用 Google 或邮箱登录，继续查看、修改和导出你的乐谱。",
           googleDivider: "或使用邮箱",
           email: "邮箱",
@@ -83,7 +83,7 @@ export function AuthForm({
           switch: mode === "register" ? "已有账户" : "还没有账户",
           footnote:
             mode === "register"
-              ? "免费编辑不包含下载；再次识别、多页处理、移调、简谱、音频和完整导出需要开通权限。"
+              ? "免费方案只限一个完整乐谱项目；该项目可使用现有校正、播放、移调、简谱、版本、分享和导出能力，每月最多 25 个后台任务。"
               : "如你通过电商渠道购买了激活码，可在登录后继续兑换。",
           redeem: "兑换激活码（中国大陆）",
           forgot: "忘记密码",
@@ -96,7 +96,7 @@ export function AuthForm({
           title: mode === "register" ? "Create your score account" : "Welcome back",
           body:
             mode === "register"
-              ? "Continue with Google, or create an account with email and password. You can recognize and edit one score page for free."
+              ? "Continue with Google, or create an account with email and password. Create one lifetime free project from a complete PDF or score image."
               : "Continue with Google or email to view, edit, and export your scores.",
           googleDivider: "or use email",
           email: "Email",
@@ -108,7 +108,7 @@ export function AuthForm({
           switch: mode === "register" ? "Already have an account" : "Need an account",
           footnote:
             mode === "register"
-              ? "Free editing does not include downloads. Another scan, more pages, transposition, Jianpu, audio, and full exports require access."
+              ? "Free includes one complete lifetime score project with current correction, playback, transposition, Jianpu, version, sharing, and export tools, plus up to 25 server jobs monthly."
               : "If you bought an activation code through a mainland-China sales channel, redeem it after signing in.",
           redeem: "Redeem activation code (Mainland China)",
           forgot: "Forgot password",

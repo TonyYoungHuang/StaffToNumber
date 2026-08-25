@@ -67,7 +67,7 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
 
   const copy = isChinese
     ? {
-        title: "浏览器直接录音",
+        title: "浏览器录音与练习反馈 Beta",
         device: "麦克风",
         defaultDevice: "系统默认麦克风",
         countIn: "预备拍",
@@ -101,7 +101,7 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
         jump: "试听此音",
       }
     : {
-        title: "Record in this browser",
+        title: "Browser Recording & Practice Feedback Beta",
         device: "Microphone",
         defaultDevice: "System default microphone",
         countIn: "Count-in",

@@ -332,7 +332,7 @@ export function DashboardClient() {
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.email}</p>
           <p className="metric-value">{profile.email}</p>
-          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.emailBody : (locale === "zh-CN" ? "当前已登录，可使用一次免费单页识谱并查看候选结果。" : "Signed in. You can use one free single-page scan and view its candidate result.")}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.emailBody : (locale === "zh-CN" ? "当前已登录，可从一份完整 PDF 或乐谱图片创建终身免费项目。" : "Signed in. You can create one lifetime free project from a complete PDF or score image.")}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.entitlement}</p>
@@ -341,8 +341,8 @@ export function DashboardClient() {
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.route}</p>
-          <p className="metric-value">{profile.entitlement.status === "active" ? copy.metrics.routeValue : (locale === "zh-CN" ? "免费单页识谱" : "Free single-page scan")}</p>
-          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : (locale === "zh-CN" ? "免费层不包含再次识别、校对、任务处理或导出。" : "Free access does not include another scan, correction, job processing, or export.")}</p>
+          <p className="metric-value">{profile.entitlement.status === "active" ? copy.metrics.routeValue : (locale === "zh-CN" ? "一个完整免费项目" : "One complete free project")}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : (locale === "zh-CN" ? "免费项目开放现有项目级功能，每月最多 25 个后台任务；升级后可处理更多乐谱。" : "The free project includes current project-level tools and up to 25 server jobs monthly. Upgrade to process more scores.")}</p>
         </div>
       </div>
 
@@ -408,19 +408,19 @@ export function DashboardClient() {
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step1Title}</strong>
-                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step1Body : (locale === "zh-CN" ? "上传一页 PDF 或一张乐谱图片，生成可查看的识别候选。" : "Upload one PDF page or score image to create a viewable recognition candidate.")}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step1Body : (locale === "zh-CN" ? "上传一份完整多页 PDF 或一张乐谱图片，生成可校正的识别候选。" : "Upload one complete multi-page PDF or score image to create a correctable recognition candidate.")}</p>
               </div>
             </div>
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step2Title}</strong>
-                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step2Body : (locale === "zh-CN" ? "在“我的乐谱”查看候选；完整校对和编辑需要有效权限。" : "View the candidate in My Scores. Full correction and editing require active access.")}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step2Body : (locale === "zh-CN" ? "在“我的乐谱”校正候选，并继续播放、移调、转简谱、保留版本、分享和导出。" : "Correct the candidate in My Scores, then continue with playback, transposition, Jianpu, versions, sharing, and export.")}</p>
               </div>
             </div>
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step3Title}</strong>
-                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step3Body : (locale === "zh-CN" ? "需要继续处理时，可兑换已购买的激活码；当前不提供在线付款。" : "Redeem a purchased activation code when you need full processing. Online checkout is not currently available.")}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step3Body : (locale === "zh-CN" ? "需要创建更多乐谱或更高月度任务容量时，再选择 Starter、Converter Pro 或兑换已有激活码。" : "Choose Starter, Converter Pro, or redeem an existing activation code when you need more scores or monthly job capacity.")}</p>
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@ export default async function NewScorePage() {
     {
       source: "scan",
       title: isChinese ? "识别 PDF 或乐谱图片" : "Scan a PDF or score image",
-      body: isChinese ? "适合纸质谱、扫描件和 PDF。新账户可免费识别并编辑一页。" : "For printed music, scans, and PDFs. New accounts can recognize and edit one page for free.",
+      body: isChinese ? "适合纸质谱、扫描件和 PDF。新账户可从一份完整多页 PDF 或一张图片创建终身免费项目。" : "For printed music, scans, and PDFs. New accounts can create one lifetime free project from a complete multi-page PDF or score image.",
       recommended: true,
     },
     {

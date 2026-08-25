@@ -43,7 +43,7 @@ export default async function AboutPage() {
         {
           step: "02",
           title: "先了解适用范围",
-          body: "识别结果是候选稿，复杂谱面需要人工校对；免费账户可先体验一次单页识别。",
+          body: "识别结果是候选稿，复杂谱面需要人工校对；免费账户可用一份完整 PDF 或乐谱图片创建终身项目。",
         },
         {
           step: "03",
@@ -60,7 +60,7 @@ export default async function AboutPage() {
         {
           step: "02",
           title: "Understand the scope first",
-          body: "Recognition produces a candidate that may need correction. Free accounts can try one single-page scan.",
+          body: "Recognition produces a candidate that may need correction. Free accounts can create one lifetime project from a complete PDF or score image.",
         },
         {
           step: "03",
@@ -318,7 +318,7 @@ export default async function AboutPage() {
               value={isChinese ? "扫描识谱" : "Score recognition"}
               body={
                 isChinese
-                  ? "上传清晰、方向正确、边缘完整的单页乐谱，先查看识别候选。"
+                  ? "上传清晰、方向正确、边缘完整的一份多页 PDF 或乐谱图片，先查看并校正识别候选。"
                   : "Upload a clear, upright, uncropped score page and review the recognition candidate."
               }
             />
@@ -369,12 +369,12 @@ export default async function AboutPage() {
         <Panel variant="glass" className="stack-lg">
           <SectionIntro
             eyebrow={isChinese ? "下一步" : "Next step"}
-            title={isChinese ? "先免费编辑一页，或继续查看帮助说明。" : "Edit one page for free or continue to the help pages."}
+            title={isChinese ? "先免费创建一个完整乐谱项目，或继续查看帮助说明。" : "Create one complete score project for free or continue to the help pages."}
           />
           <p className="body-copy">
             {isChinese
-              ? "你可以返回首页查看功能，也可以打开应用体验免费单页识谱；隐私政策和服务条款提供数据与使用边界说明。"
-              : "Return home to review features, open the app for a free single-page scan, or read privacy and terms for data and service details."}
+              ? "你可以返回首页查看功能，也可以打开应用创建一个完整免费乐谱项目；隐私政策和服务条款提供数据与使用边界说明。"
+              : "Return home to review features, open the app to create one complete free score project, or read privacy and terms for data and service details."}
           </p>
           <div className="button-row">
             <Link href="/" className="public-button secondary">

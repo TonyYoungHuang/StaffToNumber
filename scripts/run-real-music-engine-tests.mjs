@@ -39,6 +39,9 @@ const toolEnvironment = {
 runSuite("engine qualification", {
   ...toolEnvironment,
   MUSIC_ENGINE_QUALIFICATION_REQUIRED: "true",
+  MUSIC_ENGINE_QUALIFICATION_TIMEOUT_MS: process.env.MUSIC_ENGINE_QUALIFICATION_TIMEOUT_MS?.trim() || "120000",
+  MUSIC_ENGINE_OPTIONAL_TOOL_IDS: process.env.MUSIC_ENGINE_OPTIONAL_TOOL_IDS?.trim() || "",
+  MUSIC_ENGINE_OPTIONAL_TOOL_TIMEOUT_MS: process.env.MUSIC_ENGINE_OPTIONAL_TOOL_TIMEOUT_MS?.trim() || "30000",
   MUSIC_ENGINE_QUALIFICATION_REPORT: "artifacts/music-engine-qualification.json",
 }, ["node", "scripts/qualify-music-engines.mjs"]);
 

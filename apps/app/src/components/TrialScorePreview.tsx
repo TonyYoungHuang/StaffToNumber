@@ -166,8 +166,8 @@ export function TrialScorePreview() {
           <h1 className="page-title">{score?.title ?? (locale === "zh-CN" ? "正在读取乐谱..." : "Loading score...")}</h1>
           <p className="body-copy large">
             {locale === "zh-CN"
-              ? "识别完成后会直接进入这一页的免费编辑工作台；下载、移调、简谱、音频和再次识别需要开通完整权限。"
-              : "When recognition finishes, this page opens directly in the free editor. Downloads, transposition, Jianpu, audio, and another scan require full access."}
+              ? "识别完成后会进入完整免费项目，可继续校正、播放、移调、转简谱、保留版本、分享和导出；升级用于处理更多乐谱。"
+              : "When recognition finishes, the complete free project opens for correction, playback, transposition, Jianpu, versions, sharing, and export. Upgrade to process more scores."}
           </p>
         </div>
         <div className="stack-sm">
@@ -225,7 +225,7 @@ export function TrialScorePreview() {
             <div className="metric-card">
               <p className="metric-label">{locale === "zh-CN" ? "识别页数" : "Pages recognized"}</p>
               <p className="metric-value">{diagnosticSummary.pages}</p>
-              <p className="helper-copy">{locale === "zh-CN" ? "免费编辑最多一页。" : "Free editing is limited to one page."}</p>
+              <p className="helper-copy">{locale === "zh-CN" ? "免费项目支持一份完整多页 PDF。" : "The free project supports one complete multi-page PDF."}</p>
             </div>
             <div className="metric-card">
               <p className="metric-label">{locale === "zh-CN" ? "警告数量" : "Warnings"}</p>

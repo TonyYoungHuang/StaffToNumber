@@ -86,6 +86,13 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
     robots: {
       index: isFeatureIndexable(page),
       follow: isFeatureIndexable(page),
+      googleBot: {
+        index: isFeatureIndexable(page),
+        follow: isFeatureIndexable(page),
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
     openGraph: {
       title: `${page.title} | ${siteConfig.siteName}`,
@@ -154,6 +161,8 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       "@type": "HowTo",
       name: page.title,
       description: page.description,
+      inLanguage: locale,
+      keywords: page.keywords.join(", "),
       step: page.workflow.map((item, index) => ({ "@type": "HowToStep", position: index + 1, name: item.title, text: item.body })),
     },
     {
@@ -174,14 +183,10 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       operatingSystem: "Web browser",
       url: `${siteConfig.siteUrl}${page.canonical}`,
       description: page.description,
+      inLanguage: locale,
+      keywords: page.keywords.join(", "),
       featureList: page.modules,
       screenshot: `${siteConfig.siteUrl}${seo.screenshot.src}`,
-      offers: {
-        "@type": "Offer",
-        priceCurrency: siteConfig.priceCurrency,
-        ...(siteConfig.priceAmount ? { price: siteConfig.priceAmount } : {}),
-        url: `${siteConfig.siteUrl}/pricing`,
-      },
     },
   ];
 
@@ -265,7 +270,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
             {page.details.map((item) => (
               <div key={item.title} className="list-item">
                 <div className="list-item-content">
-                  <p className="item-title">{item.title}</p>
+                  <h3 className="item-title">{item.title}</h3>
                   <p className="item-meta">{item.body}</p>
                 </div>
               </div>
@@ -292,7 +297,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
           {relatedPages.map((relatedPage) => (
             <a key={relatedPage.slug} href={relatedPage.canonical} className="list-item">
               <div className="list-item-content">
-                <p className="item-title">{relatedPage.title}</p>
+                <h3 className="item-title">{relatedPage.title}</h3>
                 <p className="item-meta">{relatedPage.description}</p>
               </div>
             </a>

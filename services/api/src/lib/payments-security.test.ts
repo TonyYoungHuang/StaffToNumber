@@ -7,8 +7,23 @@ import {
   hashPaymentOrderToken,
   normalizeStripeCredential,
   normalizeWebhookSigningSecret,
+  resolveCheckoutPriceId,
   stripeSessionMatchesPaymentOrder,
 } from "./payments.js";
+
+test("each paid plan resolves only its own provider Price ID and missing IDs fail closed", () => {
+  const priceIds = {
+    "starter-monthly": "price_starter_monthly",
+    "starter-annual": "price_starter_annual",
+    "converter-pro-monthly": "price_converter_pro_monthly",
+    "converter-pro-annual": "price_converter_pro_annual",
+  };
+  assert.equal(resolveCheckoutPriceId("starter-monthly", priceIds), "price_starter_monthly");
+  assert.equal(resolveCheckoutPriceId("starter-annual", priceIds), "price_starter_annual");
+  assert.equal(resolveCheckoutPriceId("converter-pro-monthly", priceIds), "price_converter_pro_monthly");
+  assert.equal(resolveCheckoutPriceId("converter-pro-annual", priceIds), "price_converter_pro_annual");
+  assert.equal(resolveCheckoutPriceId("starter-monthly", { ...priceIds, "starter-monthly": "  " }), null);
+});
 
 test("Paddle checkout links carry the order return context without changing the transaction", () => {
   const checkoutUrl = buildPaddleCheckoutRedirectUrl({

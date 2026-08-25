@@ -33,22 +33,22 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   const homeSections = { workflow: "/#workflow", useCases: "/#cases", pricing: "/#pricing" } as const;
   const copy = locale === "zh-CN"
     ? {
-        scanner: "扫描识谱", editor: "在线编辑", transpose: "移调", education: "教学", pricing: "价格",
-        help: "帮助", guide: "使用指南", contact: "联系我们", discord: "Discord 社群", login: "登录",
+        scanner: "扫描识谱", features: "功能", library: "曲库", education: "教学", pricing: "价格",
+        help: "帮助", guide: "五线谱入门", numberedNotation: "五线谱与简谱转换", contact: "联系我们", discord: "Discord 社群", login: "登录",
         faq: "问答", about: "关于 / 支持", support: "支持", terms: "条款", privacy: "隐私", copyright: "版权投诉",
         menu: "打开导航菜单", closeMenu: "关闭导航菜单",
         app: siteConfig.release.productAppAvailable ? "免费编辑" : "上线状态", buy: "升级套餐",
         brandCaption: "PDF / 图片五线谱识别工作台",
-        footerCopy: "上传一页五线谱 PDF 或图片，免费识别并校对 OMR 候选；开通后继续再次识别、简谱互换、移调、播放与完整导出。",
+        footerCopy: "上传一份完整多页五线谱 PDF 或图片，免费创建一个可校正、播放、转换、分享与导出的乐谱项目。",
       }
     : {
-        scanner: "Scanner", editor: "Editor", transpose: "Transpose", education: "Education", pricing: "Pricing",
-        help: "Help", guide: "Guide", contact: "Contact us", discord: "Discord", login: "Sign in",
+        scanner: "Sheet music scanner", features: "Features", library: "Score library", education: "Education", pricing: "Pricing",
+        help: "Help", guide: "How to read sheet music", numberedNotation: "Numbered notation converter", contact: "Contact us", discord: "Discord", login: "Sign in",
         faq: "FAQ", about: "About", support: "Support", terms: "Terms", privacy: "Privacy", copyright: "Copyright",
         menu: "Open navigation menu", closeMenu: "Close navigation menu",
         app: siteConfig.release.productAppAvailable ? "Edit for free" : "Launch status", buy: "Upgrade",
         brandCaption: "PDF and image score scanner",
-        footerCopy: `Recognize and correct one staff-score PDF page or image for free, then unlock another scan, conversion, transposition, playback, and export in the ${sonataCopy.currentScope.toLowerCase()}.`,
+        footerCopy: `Create one free project from a complete staff-score PDF or image, then correct, convert, transpose, play, share, and export it in the ${sonataCopy.currentScope.toLowerCase()}.`,
       };
 
   useEffect(() => {
@@ -92,10 +92,10 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
 
   const navItems: SiteShellNavItem[] = [
     { href: "/pdf-score-scanner", label: copy.scanner },
-    { href: "/score-editor", label: copy.editor },
-    { href: "/transpose-score", label: copy.transpose },
+    { href: "/features", label: copy.features },
+    { href: "/library", label: copy.library },
     { href: homeSections.pricing, label: copy.pricing },
-    { label: copy.help, children: [{ href: homeSections.workflow, label: copy.guide }, { href: "/support", label: copy.contact }] },
+    { label: copy.help, children: [{ href: "/how-to-read-sheet-music", label: copy.guide }, { href: "/numbered-notation-converter", label: copy.numberedNotation }, { href: "/support", label: copy.contact }] },
     ...(siteConfig.release.teachingAvailable ? [{ href: "/teaching", label: copy.education }] : []),
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true }] : []),
     { href: loginUrl, label: copy.login },
@@ -119,7 +119,11 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     { href: homeSections.workflow, label: locale === "zh-CN" ? "使用流程" : "How it works" },
     { href: homeSections.useCases, label: locale === "zh-CN" ? "使用场景" : "Use cases" },
     { href: homeSections.pricing, label: copy.pricing },
+    { href: "/features", label: copy.features },
+    { href: "/library", label: copy.library },
     { href: "/faq", label: copy.faq },
+    { href: "/how-to-read-sheet-music", label: copy.guide },
+    { href: "/numbered-notation-converter", label: copy.numberedNotation },
     { href: "/about", label: copy.about },
     { href: "/support", label: copy.support },
     { href: "/privacy", label: copy.privacy },

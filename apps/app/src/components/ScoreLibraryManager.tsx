@@ -58,7 +58,6 @@ type AccessPayload = {
       omrJobsLimit: number;
       omrJobsRemaining: number;
       available: boolean;
-      maxSourcePages: number;
     };
   };
 };
@@ -174,9 +173,9 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
            clear: "重新选择",
           accessLoading: "正在读取免费额度...",
           exhaustedEyebrow: "免费额度已用完",
-          exhaustedTitle: "本账户的一次免费单页识别已经使用。",
-          exhaustedBody: "你仍可在“我的乐谱”继续编辑这份免费候选；再次识别、多页处理、移调、简谱、音频和导出需要开通完整权限。",
-          exhaustedLibrary: "继续免费编辑",
+          exhaustedTitle: "本账户的一个永久免费乐谱项目已经创建。",
+          exhaustedBody: "这份完整乐谱仍可继续校正、播放、移调、转简谱、保留版本、分享和导出；升级只用于创建和处理更多乐谱。",
+          exhaustedLibrary: "继续使用免费乐谱",
           exhaustedUpgrade: "兑换激活码",
         }
       : {
@@ -195,9 +194,9 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
            clear: "Choose another file",
           accessLoading: "Checking free-scan availability...",
           exhaustedEyebrow: "Free editing scan used",
-          exhaustedTitle: "This account has used its one free single-page scan.",
-          exhaustedBody: "You can keep editing the free candidate in My Scores. Another scan, multi-page processing, transposition, Jianpu, audio, and export require full access.",
-          exhaustedLibrary: "Continue free editing",
+          exhaustedTitle: "This account has created its one lifetime free score project.",
+          exhaustedBody: "Keep correcting, playing, transposing, converting, versioning, sharing, and exporting that complete score. Upgrade only to create and process more scores.",
+          exhaustedLibrary: "Continue with the free score",
           exhaustedUpgrade: "Unlock full access",
         };
   const scoreJsonCopy =
@@ -719,8 +718,8 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           <p className="body-copy">
             {!hasPaidAccess && freeTrialAvailable
               ? locale === "zh-CN"
-                ? "直接在这里上传一页 PDF 或一张乐谱图片。识别后可免费校对候选五线谱；下载、再次识别、移调、简谱和音频需要开通。"
-                : "Upload one PDF page or score image here, then correct the recognized candidate for free. Downloads, another scan, transposition, Jianpu, and audio require access."
+                ? "直接上传一份完整多页 PDF 或一张乐谱图片，创建终身免费的乐谱项目。该项目可继续校正、播放、移调、转简谱、分享和导出。"
+                : "Upload one complete multi-page PDF or score image to create your lifetime free score project. Keep correcting, playing, transposing, converting, sharing, and exporting it."
               : omrCopy.body}
           </p>
         </div>

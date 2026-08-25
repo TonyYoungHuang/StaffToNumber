@@ -8,7 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: ["/", "/login", "/register", "/llms.txt"],
       disallow: ["/activate", "/admin", "/billing", "/checkout", "/classrooms", "/dashboard", "/forgot-password", "/jobs", "/reset-password", "/scores", "/student"],
     },
-    sitemap: `${appUrl}/sitemap.xml`,
     host: appUrl,
   };
 }

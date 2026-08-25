@@ -46,8 +46,9 @@ type Seat = {
 
 type BillingPayload = { subscriptions: Subscription[]; invoices: Invoice[]; seatAssignments: Seat[] };
 type AccessPayload = { user: { entitlement: { status: "inactive" | "active" | "expired" } } };
+type QuotaTier = "free" | "starter" | "converter-pro" | "legacy" | "pro" | "education";
 type QuotaUsage = {
-  tier: "legacy" | "pro" | "education";
+  tier: QuotaTier;
   periodStart: string;
   periodEnd: string;
   jobs: { used: number; limit: number; remaining: number };
@@ -82,7 +83,7 @@ export function BillingManager() {
     setBilling(result.data);
     const nextEntitlementStatus = accessResult.ok ? accessResult.data.user.entitlement.status : "inactive";
     setEntitlementStatus(nextEntitlementStatus);
-    setQuota(nextEntitlementStatus === "active" && quotaResult.ok ? quotaResult.data.usage : null);
+    setQuota(quotaResult.ok ? quotaResult.data.usage : null);
     setStatus(null);
   }, [isChinese, locale, token]);
 
@@ -147,7 +148,7 @@ export function BillingManager() {
       {entitlementStatus === "active" ? <section className="surface-panel stack-lg">
         <div className="stack-xs">
           <p className="eyebrow">{isChinese ? "本月用量" : "Current usage"}</p>
-          <h2 className="card-title">{quota ? (isChinese ? "当前套餐用量" : "Current plan usage") : isChinese ? "正在读取套餐用量" : "Loading plan usage"}</h2>
+          <h2 className="card-title">{quota ? `${isChinese ? "当前套餐用量" : "Current plan usage"} · ${quotaTierLabel(quota.tier, locale)}` : isChinese ? "正在读取套餐用量" : "Loading plan usage"}</h2>
         </div>
         {quota ? (
           <div className="metric-grid">
@@ -160,7 +161,8 @@ export function BillingManager() {
           <div className="stack-sm">
             <p className="eyebrow">{isChinese ? "免费使用状态" : "Free access status"}</p>
             <h2 className="card-title">{isChinese ? "当前没有生效中的付费套餐" : "No paid plan is active"}</h2>
-            <p className="body-copy">{isChinese ? "免费账户可使用一次单页识谱并查看候选结果；再次处理、校对和导出需要完整权限。" : "Free accounts can use one single-page scan and view the candidate. Further processing, correction, and export require full access."}</p>
+            <p className="body-copy">{isChinese ? "免费账户可用一份完整多页 PDF 或乐谱图片创建终身项目，并在该项目内校正、播放、移调、转简谱、分享和导出；每月最多 25 个后台任务。" : "Free accounts can create one lifetime project from a complete multi-page PDF or score image and keep using its correction, playback, transposition, Jianpu, sharing, and export tools, with up to 25 server jobs monthly."}</p>
+            {quota ? <QuotaMeter label={isChinese ? "本月后台任务" : "Server jobs this month"} used={quota.jobs.used} limit={quota.jobs.limit} value={`${quota.jobs.used} / ${quota.jobs.limit}`} /> : null}
           </div>
           <div className="button-row">
             <Link href={accountActivationRoute} className="button button-primary">{isChinese ? "兑换激活码" : "Unlock full access"}</Link>
@@ -228,6 +230,13 @@ export function BillingManager() {
       {status ? <p className="form-status error">{status}</p> : null}
     </div>
   );
+}
+
+function quotaTierLabel(tier: QuotaTier, locale: string) {
+  const normalized = tier === "legacy" ? "free" : tier === "pro" ? "starter" : tier === "education" ? "converter-pro" : tier;
+  if (normalized === "free") return "Free";
+  if (normalized === "starter") return "Starter";
+  return locale === "zh-CN" ? "Converter Pro" : "Converter Pro";
 }
 
 function formatDate(value: string, locale: string) {

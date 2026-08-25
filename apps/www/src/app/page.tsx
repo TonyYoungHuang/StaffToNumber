@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getCheckoutPlanCatalog } from "@score/shared";
+import { getPricingPlanCatalog } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanCard, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
 import { readSiteLocale } from "../lib/locale";
@@ -24,7 +24,7 @@ export default async function HomePage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
   const startUrl = getAppStartConversionUrl(locale);
-  const plans = getCheckoutPlanCatalog(locale);
+  const plans = getPricingPlanCatalog(locale);
 
   const copy = isChinese
     ? {
@@ -37,7 +37,7 @@ export default async function HomePage() {
           ["开放格式可以带走", "以 MusicXML 交换，并支持 MIDI 与项目快照。"],
         ],
         heroCases: "先看真实案例",
-        facts: [["免费起步", "识别并编辑一页"], ["输入", "PDF／图片／MusicXML"], ["继续处理", "编辑／简谱／移调／播放"]],
+        facts: [["永久免费", "一个完整乐谱项目"], ["输入", "完整 PDF／图片／MusicXML"], ["继续处理", "编辑／简谱／移调／播放"]],
         stepsKicker: "三步使用",
         stepsTitle: "从原始文件到可以继续使用，只需三步",
         steps: [
@@ -88,15 +88,15 @@ export default async function HomePage() {
         pricingTitle: "选择你的积分套餐",
         pricingBody: "每个创建成功的后台处理任务消耗 1 积分。比较价格、能力与资源后，登录继续付款。",
         pricingPromoLabel: "年付更省",
-        pricingPromoValue: "最高节省 ¥3,189",
+        pricingPromoValue: "年付节省约 45%～49%",
         creditRulesTitle: "当前积分如何计算",
         creditRulesBody: "现阶段与已经投产的后台任务配额完全一致：一个创建成功的后台处理任务计 1 积分。",
         creditRules: [
-          ["0 积分", "查看与基础编辑", "浏览乐谱、播放控制，以及尚未提交到后台的编辑。"],
-          ["1 积分／次", "后台处理任务", "PDF／图片识谱、整谱移调、五线谱转简谱和已开放的服务器端导出。"],
-          ["每月重置", "套餐额度", "Pro 每月 100 积分；Studio 每月 500 积分，当前未使用额度不滚存。"],
+          ["$0", "一个完整免费项目", "一份完整多页 PDF 或乐谱图片可终身使用现有项目级功能，每月最多 25 个后台任务。"],
+          ["1 积分／任务", "实际创建的后台任务", "PDF／图片识谱、异步渲染及持久化导出等真正进入任务队列的处理；同步移调或简谱预览不固定扣分。"],
+          ["每月重置", "套餐额度", "Starter 每月 50 积分；Converter Pro 每月 200 积分，未使用额度不滚存。"],
         ],
-        priceNote: "当前单价分别按 Pro 每月 100 次、Studio 每月 500 次的真实任务配额换算。登录后可以选择 Stripe 或 Paddle；未正式开通的渠道只会发送付款需求通知，不会扣款。",
+        priceNote: "Free、Starter 与 Converter Pro 使用相同的现有项目级能力，主要区别是可创建和处理的乐谱容量。登录后可选择已完成配置的 Stripe 或 Paddle；缺少对应套餐 Price ID 时不会进入支付。",
         faqKicker: "FAQ",
         faqTitle: "开始前常见问题",
         faqs: [
@@ -106,13 +106,13 @@ export default async function HomePage() {
           ["音视频转谱现在可用吗？", "该能力按实验功能开放，并会明确支持格式、配额与人工校正边界。"],
           ["上传文件会被公开吗？", "不会。私人项目不会自动进入公共案例。"],
         ],
-        finalKicker: "从最难确认的一页开始",
-        finalTitle: "先看真实结果，再决定是否处理整份乐谱。",
+        finalKicker: "从一份完整乐谱开始",
+        finalTitle: "免费创建一个完整项目，再决定是否处理更多乐谱。",
         finalAction: "免费编辑",
       }
     : {
         heroKicker: "AI recognition and structured score workspace",
-        heroTitle: ["AI reads your score.", "Edit, convert, and play it next."],
+        heroTitle: ["Online sheet music converter and editor.", "Scan, transpose, play, and export."],
         heroIntro: ["Upload a PDF, score image, MusicXML file, or audio/video source.", "Create a reviewable structured score.", "Then edit, transpose, convert, play, and export it."],
         heroPoints: [
           ["Reviewable results", "Keep source evidence, diagnostics, and uncertain positions together."],
@@ -120,7 +120,7 @@ export default async function HomePage() {
           ["Portable open formats", "Exchange with MusicXML and keep MIDI and project snapshots."],
         ],
         heroCases: "See real examples",
-        facts: [["Free start", "Recognize and edit one page"], ["Inputs", "PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
+        facts: [["Free forever", "One complete score project"], ["Inputs", "Complete PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
         stepsKicker: "Three-step workflow",
         stepsTitle: "Go from a source file to a usable score in three steps",
         steps: [
@@ -171,15 +171,15 @@ export default async function HomePage() {
         pricingTitle: "Choose your credit plan",
         pricingBody: "Each successfully created server-side job uses one credit. Compare price, capabilities, and resources before signing in.",
         pricingPromoLabel: "Save with annual",
-        pricingPromoValue: "Save up to $449",
+        pricingPromoValue: "Save about 45%–49% annually",
         creditRulesTitle: "How credits are counted today",
         creditRulesBody: "The current display matches the production task quota exactly: one successfully created server-side processing job uses one credit.",
         creditRules: [
-          ["0 credits", "Viewing and basic editing", "Browse scores, control playback, and make edits that have not been submitted to the server."],
-          ["1 credit / job", "Server-side processing", "PDF/image recognition, whole-score transposition, staff-to-Jianpu, and currently available server exports."],
-          ["Monthly reset", "Plan allowance", "Pro includes 100 credits per month; Studio includes 500. Unused allowance does not roll over today."],
+          ["$0", "One complete free project", "Use one complete multi-page PDF or score image with all current project-level tools for life, with up to 25 server jobs monthly."],
+          ["1 credit / job", "Jobs actually created", "OMR, asynchronous rendering, and persisted exports count when they enter the job queue. Synchronous transposition or Jianpu preview does not automatically spend a credit."],
+          ["Monthly reset", "Plan allowance", "Starter includes 50 credits per month; Converter Pro includes 200. Unused allowance does not roll over."],
         ],
-        priceNote: "Unit prices use the real allowance of 100 monthly Pro jobs and 500 monthly Studio jobs. After sign-in, customers can choose Stripe or Paddle; a provider that is not live only emails the purchase request and never creates a charge.",
+        priceNote: "Free, Starter, and Converter Pro use the same current project-level tools; the main difference is score-processing capacity. Checkout proceeds only when the selected Stripe or Paddle plan has its own configured Price ID.",
         faqKicker: "FAQ",
         faqTitle: "Questions before you start",
         faqs: [
@@ -189,8 +189,8 @@ export default async function HomePage() {
           ["Is audio-to-score available now?", "It opens as an experimental capability with explicit format, quota, and correction boundaries."],
           ["Will my uploads become public?", "No. Private projects do not automatically become public examples."],
         ],
-        finalKicker: "Start with the hardest page",
-        finalTitle: "See a real result before processing the full score.",
+        finalKicker: "Start with one complete score",
+        finalTitle: "Create one complete project for free, then decide whether to process more scores.",
         finalAction: "Edit for free",
       };
 
@@ -305,7 +305,7 @@ export default async function HomePage() {
                 plan={plan}
                 isChinese={isChinese}
                 selected={plan.featured}
-                actionHref={getCheckoutUrl(locale, plan.code)}
+                actionHref={plan.code === "free" ? startUrl : getCheckoutUrl(locale, plan.code)}
                 headingLevel={3}
               />
             ))}

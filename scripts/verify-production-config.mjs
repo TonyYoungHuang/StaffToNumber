@@ -34,8 +34,8 @@ if (!present("NEXT_PUBLIC_CLARITY_PROJECT_ID")) warnings.push("NEXT_PUBLIC_CLARI
 
 if (flag("NEXT_PUBLIC_CHECKOUT_AVAILABLE")) {
   httpsUrl("NEXT_PUBLIC_CHECKOUT_URL");
-  if (!present("NEXT_PUBLIC_PRICE_AMOUNT")) failures.push("NEXT_PUBLIC_PRICE_AMOUNT is required when checkout is available.");
-  if (!present("NEXT_PUBLIC_PRICE_CURRENCY")) failures.push("NEXT_PUBLIC_PRICE_CURRENCY is required when checkout is available.");
+  if (!present("NEXT_PUBLIC_PAYMENT_PROVIDERS")) failures.push("NEXT_PUBLIC_PAYMENT_PROVIDERS is required when checkout is available.");
+  if (!present("NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS")) failures.push("NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS is required when checkout is available.");
 }
 
 if (!process.argv.includes("--skip-git")) {

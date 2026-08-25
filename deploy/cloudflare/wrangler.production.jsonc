@@ -27,7 +27,6 @@
     "S3_KEY_PREFIX": "production",
     "EMAIL_DELIVERY_ENABLED": "true",
     "FREE_TRIAL_OMR_JOBS": "1",
-    "FREE_TRIAL_MAX_SOURCE_PAGES": "1",
     "PAYMENT_PROVIDERS": "",
     "STRIPE_MANAGED_PAYMENTS_ENABLED": "false",
     "PADDLE_ENVIRONMENT": "production",

@@ -17,8 +17,8 @@
 
 先在 Sandbox 完成以下配置，再在 Live 重复一次：
 
-1. 创建 `ScoreTransposer Personal` 产品。
-2. 创建一个 USD 9.99/月的循环价格，保存 `pri_...` Price ID。
+1. 创建 `ScoreTransposer Starter` 与 `ScoreTransposer Converter Pro` 产品。
+2. 分别创建四个 USD 循环价格，并逐一保存 Paddle 返回的 `pri_...` Price ID：Starter `$7.99/月`、`$49/年`；Converter Pro `$14.99/月`、`$99/年`。四个 ID 不得复用或使用占位值。
 3. 将默认支付链接设置为对应环境的 `/checkout/paddle`：
    - Sandbox：`https://staging.scoretransposer.com/checkout/paddle`
    - Live：`https://scoretransposer.com/checkout/paddle`
@@ -49,9 +49,12 @@
 
 - `PADDLE_API_KEY`
 - `PADDLE_WEBHOOK_SECRET`
-- `PADDLE_PRICE_ID`
+- `PADDLE_STARTER_MONTHLY_PRICE_ID`
+- `PADDLE_STARTER_ANNUAL_PRICE_ID`
+- `PADDLE_CONVERTER_PRO_MONTHLY_PRICE_ID`
+- `PADDLE_CONVERTER_PRO_ANNUAL_PRICE_ID`
 
-当前阶段不设置 `PADDLE_SCHOOL_PRICE_ID`。环境变量使用：
+环境变量使用：
 
 - Sandbox：`PADDLE_ENVIRONMENT=sandbox`
 - Live：`PADDLE_ENVIRONMENT=production`
@@ -74,8 +77,8 @@
 
 必须逐项通过：
 
-1. 新注册用户能完成一次免费单页 OMR，但不能导出。
-2. 升级按钮打开 Paddle Checkout，价格、币种和循环周期正确。
+1. 新注册用户能用一份完整多页 PDF 创建唯一免费项目，并在该项目内完成校正、播放、移调、简谱、版本、分享与已开放导出；第二次免费 OMR 必须被拒绝。
+2. 四个 planCode 分别打开自己的 Paddle Price，价格、币种和循环周期正确，任何 Price ID 缺失时都不得进入 Checkout。
 3. 使用 Paddle Sandbox 测试卡付款后进入站内成功页。
 4. Webhook 返回 2xx，同一个事件重复投递不会重复开通。
 5. `/auth/me` 的 entitlement 为 `active`，provider 为 `paddle`。

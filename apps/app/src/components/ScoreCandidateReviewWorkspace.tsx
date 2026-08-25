@@ -123,8 +123,8 @@ export function ScoreCandidateReviewWorkspace({
           <p className="body-copy large">
             {freeEditing
               ? isChinese
-                ? `已进入免费单页编辑工程。识别结果 v${revision.revisionNumber} 可直接校对，修改会自动保存为候选版本。`
-                : `You are in the free single-page editor. Recognition result v${revision.revisionNumber} can be corrected now, and changes are saved as candidate revisions.`
+                ? `已进入永久免费乐谱工程。识别结果 v${revision.revisionNumber} 可直接校对，修改会自动保存为候选版本。`
+                : `You are in the lifetime free score project. Recognition result v${revision.revisionNumber} can be corrected now, and changes are saved as candidate revisions.`
               : isChinese
                 ? `识别结果 v${revision.revisionNumber} 尚未成为正式版本。请核对原件和诊断后再接受。`
                 : `Recognition result v${revision.revisionNumber} is not an official revision yet. Compare it with the source before accepting.`}
@@ -136,7 +136,7 @@ export function ScoreCandidateReviewWorkspace({
           </Link>
           {freeEditing ? (
             <Link href={accountActivationRoute} className="button button-primary">
-              {isChinese ? "开通完整功能" : "Unlock full access"}
+              {isChinese ? "处理更多乐谱" : "Process more scores"}
             </Link>
           ) : (
             <>
@@ -160,8 +160,8 @@ export function ScoreCandidateReviewWorkspace({
         <p className="body-copy">
           {freeEditing
             ? isChinese
-              ? "免费账户可校对这一页的音符、节奏、小节属性和标记，所有修改都会保存。再次识别、移调、简谱、音频和完整导出仍需开通。"
-              : "A free account can correct notes, rhythm, measure attributes, and markings on this page, and every change is saved. Another scan, transposition, Jianpu, audio, and full exports still require access."
+              ? "免费账户可校对整份乐谱的音符、节奏、小节属性和标记，并继续使用播放、移调、简谱、版本、分享和已开放导出；升级用于创建更多乐谱。"
+              : "A free account can correct the complete score and continue with playback, transposition, Jianpu, versions, sharing, and available exports. Upgrade to create more score projects."
             : isChinese
               ? "修谱操作会继续生成候选修订，不会修改正式版本。接受操作会复制最新候选并创建正式修订；移调、播放和导出将在接受后开放。"
               : "Corrections create new candidate revisions without changing the official score. Accepting copies the latest candidate into an official revision; transposition, playback, and export unlock afterward."}

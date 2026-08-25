@@ -60,13 +60,21 @@ export const siteConfig = {
   chinaCheckoutUrl: resolvedChinaCheckoutUrl,
   discordInviteUrl: normalizeDiscordInviteUrl(process.env.NEXT_PUBLIC_DISCORD_INVITE_URL),
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@scoretransposer.com",
-  priceAmount: process.env.NEXT_PUBLIC_PRICE_AMOUNT ?? "",
-  priceCurrency: process.env.NEXT_PUBLIC_PRICE_CURRENCY ?? "USD",
   title: "Sheet Music Converter, Editor & Transposer | ScoreTransposer",
   description:
     "Convert, correct, transpose, play, and export staff notation and Jianpu in a MusicXML-first online sheet music workspace.",
   keywords: [
     "score transposer",
+    "sheet music maker",
+    "sheet music editor",
+    "music score maker",
+    "music notation software",
+    "sheet music scanner",
+    "pdf to musicxml",
+    "image to musicxml",
+    "sheet music player",
+    "audio to sheet music",
+    "how to read sheet music",
     "staff pdf to jianpu",
     "staff notation to numbered notation",
     "five-line staff to jianpu",
@@ -92,7 +100,7 @@ export const siteConfig = {
   },
 } as const;
 
-export const publicContentLastUpdated = "2026-08-19";
+export const publicContentLastUpdated = "2026-08-25";
 export const legalLastUpdated = "2026-08-10";
 
 export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode) {

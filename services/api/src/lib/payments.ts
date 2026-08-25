@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
-import type { PaymentProvider } from "@score/shared";
+import type { CheckoutPlanCode, PaymentProvider } from "@score/shared";
 import { config } from "../config.js";
 
 type PaddleTransactionResponse = {
@@ -38,7 +38,7 @@ type StripeCheckoutSessionInput = {
   userId?: string | null;
   organizationId?: string | null;
   seatQuantity?: number;
-  priceId?: string;
+  priceId: string;
 };
 
 type ManagedPaymentsCheckoutParams = Stripe.Checkout.SessionCreateParams & {
@@ -86,8 +86,35 @@ export function listEnabledPaymentProviders() {
   return config.paymentProviders.filter((provider): provider is PaymentProvider => provider === "stripe" || provider === "paddle");
 }
 
-export function isPaymentProviderEnabled(provider: PaymentProvider) {
-  return listEnabledPaymentProviders().includes(provider);
+export type CheckoutPlanPriceIds = Record<CheckoutPlanCode, string>;
+
+export function resolveCheckoutPriceId(planCode: CheckoutPlanCode, priceIds: CheckoutPlanPriceIds) {
+  const priceId = priceIds[planCode]?.trim() ?? "";
+  return priceId || null;
+}
+
+function configuredCheckoutPriceIds(provider: PaymentProvider): CheckoutPlanPriceIds {
+  return provider === "stripe"
+    ? {
+        "starter-monthly": config.stripeStarterMonthlyPriceId,
+        "starter-annual": config.stripeStarterAnnualPriceId,
+        "converter-pro-monthly": config.stripeConverterProMonthlyPriceId,
+        "converter-pro-annual": config.stripeConverterProAnnualPriceId,
+      }
+    : {
+        "starter-monthly": config.paddleStarterMonthlyPriceId,
+        "starter-annual": config.paddleStarterAnnualPriceId,
+        "converter-pro-monthly": config.paddleConverterProMonthlyPriceId,
+        "converter-pro-annual": config.paddleConverterProAnnualPriceId,
+      };
+}
+
+export function getCheckoutPriceId(provider: PaymentProvider, planCode: CheckoutPlanCode) {
+  return resolveCheckoutPriceId(planCode, configuredCheckoutPriceIds(provider));
+}
+
+export function isPaymentProviderEnabled(provider: PaymentProvider, planCode: CheckoutPlanCode) {
+  return listEnabledPaymentProviders().includes(provider) && Boolean(getCheckoutPriceId(provider, planCode));
 }
 
 export function getPaddleClientEnvironment() {
@@ -98,7 +125,7 @@ export function buildStripeCheckoutSessionParams(
   input: StripeCheckoutSessionInput,
   options: { managedPaymentsEnabled?: boolean } = {},
 ) {
-  const priceId = normalizeStripeCredential(input.priceId ?? config.stripePriceId);
+  const priceId = normalizeStripeCredential(input.priceId);
   if (!priceId) {
     throw new Error("Stripe is not configured.");
   }
@@ -231,9 +258,9 @@ export async function createPaddleTransaction(input: {
   userId?: string | null;
   organizationId?: string | null;
   seatQuantity?: number;
-  priceId?: string;
+  priceId: string;
 }) {
-  const priceId = input.priceId ?? config.paddlePriceId;
+  const priceId = input.priceId.trim();
   if (!config.paddleApiKey || !priceId || !config.paddleDefaultPaymentLink) {
     throw new Error("Paddle is not configured.");
   }

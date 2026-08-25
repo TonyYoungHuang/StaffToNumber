@@ -20,8 +20,8 @@ export default async function RegisterPage({
       title={locale === "zh-CN" ? "创建账户" : "Create your account"}
       description={
         locale === "zh-CN"
-          ? "使用 Google 或邮箱创建账户，即可免费识别并编辑一页五线谱 PDF 或一张图片。"
-          : "Create an account with Google or email to recognize and edit one staff-score PDF page or image for free."
+          ? "使用 Google 或邮箱创建账户，即可从一份完整多页五线谱 PDF 或一张图片创建终身免费的乐谱项目。"
+          : "Create an account with Google or email and build one lifetime free project from a complete staff-score PDF or image."
       }
     >
       <AuthForm mode="register" redirectTo={redirectTo ?? undefined} />

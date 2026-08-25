@@ -38,7 +38,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "简谱转五线谱当前使用结构化文本输入，并非任意扫描简谱图片识别。",
   },
   "transpose-score": {
-    title: "在线整谱移调",
+    title: "智能乐谱移调",
     eyebrow: "目标调、半音数与移调乐器声部",
     description: "按半音数、目标调或常见移调乐器创建新的乐谱修订，并在移调后检查音域。",
     modules: ["Score JSON 移调", "目标调模式", "移调乐器预设", "音域诊断"],
@@ -55,8 +55,8 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
   },
   "score-editor": {
     title: "在线乐谱编辑与校正",
-    eyebrow: "五线谱预览与结构化修改",
-    description: "通过属性面板修改音符、休止符、调号、拍号、歌词、和弦、力度、连线和小节线。",
+    eyebrow: "创建、导入并校正结构化乐谱",
+    description: "从 MusicXML、MIDI、简谱或识谱候选创建乐谱工程，再修改音符、拍号、歌词、和弦、力度、连线和小节。",
     modules: ["五线谱预览", "Score JSON 版本", "校正面板", "历史恢复"],
     workflow: [
       { title: "导入结构化乐谱", body: "从 MusicXML、MIDI、简谱、Score JSON 或已确认的识谱候选稿开始。" },
@@ -70,7 +70,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "编辑建立在 Score JSON 与 MusicXML 上，不会直接修改 PDF 文字或图片像素。",
   },
   "score-to-audio": {
-    title: "乐谱转音频与练习播放",
+    title: "练习播放模式",
     eyebrow: "播放、循环与音频导出",
     description: "把结构化乐谱变成浏览器播放及 MIDI、WAV 或 MP3 练习文件，并控制速度、循环、节拍器和声部。",
     modules: ["浏览器播放", "播放时间线", "MIDI 导出", "WAV／MP3 渲染"],
@@ -86,7 +86,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "该功能从结构化乐谱生成音频；音视频转谱属于另一项实验性导入能力。",
   },
   "audio-to-score": {
-    title: "音视频转五线谱",
+    title: "音频转五线谱与 MIDI",
     eyebrow: "音频到 MIDI 候选，再到可编辑乐谱",
     description: "上传有权使用的音频或视频，生成 MIDI 与五线谱候选稿，再人工检查并进入可编辑乐谱工程。",
     modules: ["音视频上传", "音频识别任务", "MIDI 候选稿", "乐谱校正"],
@@ -102,7 +102,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "只上传有权使用的音视频，并预留人工检查；网站不承诺商业录音可以自动得到完美乐谱。",
   },
   "musicxml-midi": {
-    title: "MusicXML 与 MIDI 乐谱工具",
+    title: "MusicXML 与 MIDI 转换",
     eyebrow: "导入、导出与工程备份",
     description: "使用 MusicXML 交换乐谱、Score JSON 保存编辑工程，并支持 MIDI 导入导出与可迁移备份。",
     modules: ["MusicXML 导入导出", "MIDI 导入导出", "Score JSON 快照", "五线谱预览"],
@@ -118,7 +118,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "从 MIDI 生成复杂排版仍需要人工检查和校正。",
   },
   "pdf-score-scanner": {
-    title: "PDF 与图片乐谱识别",
+    title: "在线乐谱扫描识别",
     eyebrow: "识谱导入与人工校正",
     description: "上传 PDF 或乐谱图片，生成 MusicXML 与 Score JSON 候选稿，并在编辑前检查诊断与识别结果。",
     modules: ["识谱上传", "Audiveris 任务", "MusicXML 输出", "诊断面板"],
@@ -129,9 +129,25 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     ],
     details: [
       { title: "候选稿而不是最终答案", body: "识别结果保留置信度和诊断信息，方便人工修正。" },
-      { title: "免费编辑一页", body: "免费账户可以识别并校对一页 PDF 或一张乐谱图片；再次识别、更多页面和完整导出需要相应权限。" },
+      { title: "一个完整免费项目", body: "免费账户可以识别一份完整多页 PDF 或一张乐谱图片，并在该项目内校正、播放、移调、转简谱、分享和导出。" },
     ],
     guardrail: "识谱是“导入加校正”的流程，不承诺所有 PDF 和照片都能自动得到完美结果。",
+  },
+  "pdf-to-musicxml": {
+    title: "PDF 转 MusicXML 在线转换器",
+    eyebrow: "从 PDF 或乐谱图片生成可编辑 MusicXML",
+    description: "上传 PDF 或乐谱图片，生成带诊断信息的 MusicXML 与 Score JSON 候选稿，校正识别错误后再导出确认版本。",
+    modules: ["PDF 与图片上传", "Audiveris 识谱", "MusicXML 候选稿", "乐谱校正"],
+    workflow: [
+      { title: "上传 PDF 或乐谱图片", body: "上传你有权处理的 PDF、PNG、JPG、WebP 或 TIFF 乐谱文件。" },
+      { title: "生成 MusicXML 候选", body: "识谱任务生成 MusicXML、诊断信息与 Score JSON 候选，而不是直接修改 PDF 图片。" },
+      { title: "校正并导出", body: "检查音符、节奏、调号、小节、歌词与符号，确认后再导出 MusicXML。" },
+    ],
+    details: [
+      { title: "转换结果可以人工校正", body: "来源文件、识别诊断与候选稿保存在同一个工程中，方便在导出前修正不确定位置。" },
+      { title: "图片转 MusicXML 使用同一流程", body: "清晰、平整且分辨率较高的图片通常需要更少校正，复杂排版仍应逐项核对。" },
+    ],
+    guardrail: "PDF 转 MusicXML 首先生成可编辑候选稿；复杂排版、低清扫描、手写谱与密集多声部仍需人工检查。",
   },
   teaching: {
     title: "音乐教师作业与反馈",
@@ -152,7 +168,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
   pricing: {
     title: "ScoreTransposer 价格与积分套餐",
     eyebrow: "识谱、转换与工程处理权限",
-    description: "先免费识别并编辑一页，再按积分套餐继续再次识谱、简谱转换、移调、播放和完整导出。",
+    description: "先免费创建一个完整乐谱项目并使用现有项目级能力；Starter 与 Converter Pro 提供更多乐谱和后台任务容量。",
     modules: ["在线付款", "激活码", "账户权限", "付费能力控制"],
     workflow: [
       { title: "选择积分套餐", body: "根据个人处理或批量工作选择月付或年付方案。" },
@@ -160,7 +176,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
       { title: "使用完整工作流", body: "创建工程、导入来源、校正、移调、播放，并导出确认后的版本。" },
     ],
     details: [
-      { title: "付费边界清晰", body: "更多识谱页面、批量任务、完整导出、高质量音频和长期历史记录需要相应权限。" },
+      { title: "容量边界清晰", body: "Free 限一个完整项目和每月 25 个后台任务；Starter 每月 50 个，Converter Pro 每月 200 个。" },
       { title: "付款问题可以追踪", body: "结账、激活、上传、任务与导出问题都进入统一支持流程。" },
     ],
     guardrail: "页面价格和可用支付渠道以当前生产环境展示为准。",

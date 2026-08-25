@@ -48,8 +48,33 @@ test("suggestions preserve the page intent and related workflow links", () => {
   const suggestions = buildSeoSuggestions(page, record);
 
   assert.match(suggestions.title, /Transpose Sheet Music/);
-  assert.match(suggestions.description, /Create new score revisions/);
+  assert.match(suggestions.description, /Transpose sheet music online/);
   assert.deepEqual(suggestions.internalLinks, record.relatedSlugs.map((slug) => `/${slug}`));
+});
+
+test("commercial keyword clusters have one intentional feature-page owner", () => {
+  const expectedKeywords: Record<string, string[]> = {
+    "score-editor": ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor"],
+    "pdf-score-scanner": ["sheet music scanner", "scan sheet music", "sheet music scanner online free"],
+    "pdf-to-musicxml": ["pdf to musicxml", "pdf to musicxml converter", "image to musicxml"],
+    "transpose-score": ["transpose sheet music", "transpose sheet music online", "change sheet music key"],
+    "musicxml-midi": ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music"],
+    "score-to-audio": ["sheet music player", "scan sheet music and play"],
+    "audio-to-score": ["audio to sheet music", "mp3 to midi", "audio to sheet music AI"],
+    "staff-to-jianpu": ["staff to jianpu"],
+    "jianpu-to-staff": ["jianpu to staff notation"],
+  };
+
+  for (const [slug, terms] of Object.entries(expectedKeywords)) {
+    const page = platformFeaturePages.find((item) => item.slug === slug);
+    assert.ok(page, `${slug} must have a public feature page`);
+    const pageKeywords = new Set(page.keywords.map((keyword) => keyword.toLocaleLowerCase()));
+    for (const term of terms) {
+      assert.equal(pageKeywords.has(term.toLocaleLowerCase()), true, `${slug} must own ${term}`);
+      const otherOwners = platformFeaturePages.filter((item) => item.slug !== slug && item.keywords.some((keyword) => keyword.toLocaleLowerCase() === term.toLocaleLowerCase()));
+      assert.deepEqual(otherOwners.map((item) => item.slug), [], `${term} must not be assigned to competing feature pages`);
+    }
+  }
 });
 
 test("content review manifest has deterministic unique hashes tied to reviewable content", () => {

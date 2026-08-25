@@ -53,7 +53,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
         </div>
         <div className={styles.promoPill}>
           <span>{isChinese ? "年付更省" : "Save with annual"}</span>
-          <strong>{isChinese ? "最高节省 ¥3,189" : "Save up to $449"}</strong>
+          <strong>{isChinese ? "节省约 45%～49%" : "Save about 45%–49%"}</strong>
         </div>
       </header>
 

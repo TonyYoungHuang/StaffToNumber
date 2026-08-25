@@ -150,8 +150,8 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
   }
 
   const copy = isChinese
-    ? { title: "乐谱实时协作", note: "共享排练备注", online: "在线状态（显示名未验证）", operations: "最近乐谱操作", conflicts: "并发冲突", noOperations: "等待第一条乐谱编辑操作。", revision: "修订", account: "账号身份", share: "链接身份", unverified: "未验证广播" }
-    : { title: "Live score collaboration", note: "Shared rehearsal note", online: "Online presence (display names unverified)", operations: "Recent score operations", conflicts: "Concurrent conflicts", noOperations: "Waiting for the first score edit operation.", revision: "Revision", account: "Account identity", share: "Link identity", unverified: "Unverified broadcast" };
+    ? { title: "多人实时协作 Beta", note: "共享排练备注", online: "在线状态（显示名未验证）", operations: "最近乐谱操作", conflicts: "并发冲突", noOperations: "等待第一条乐谱编辑操作。", revision: "修订", account: "账号身份", share: "链接身份", unverified: "未验证广播" }
+    : { title: "Real-time Collaboration Beta", note: "Shared rehearsal note", online: "Online presence (display names unverified)", operations: "Recent score operations", conflicts: "Concurrent conflicts", noOperations: "Waiting for the first score edit operation.", revision: "Revision", account: "Account identity", share: "Link identity", unverified: "Unverified broadcast" };
 
   return (
     <section className="surface-panel stack-lg">

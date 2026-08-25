@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import Fastify from "fastify";
 import { db, initDb } from "../db.js";
 import { PDFDocument } from "pdf-lib";
+import { createToken } from "./auth.js";
+import { parseJianpuToScoreJson } from "./jianpu-score-parser.js";
+import { authPlugin } from "../plugins/auth.js";
+import { scoreRoutes } from "../routes/scores.js";
+import { createSession } from "../repositories/auth-repository.js";
 import {
   assertFreeTrialOmrAvailable,
-  assertFreeTrialPdfPageLimit,
   FreeTrialLimitError,
-  FreeTrialPageLimitError,
   getFreeTrialAccess,
+  inspectFreeTrialPdf,
   isFreeTrialScoreDocumentForUser,
 } from "./free-trial.js";
 
@@ -30,14 +35,13 @@ test("a new account receives exactly one OMR preview before upgrade", () => {
   assert.equal(initial.omrJobsUsed, 0);
   assert.equal(initial.omrJobsRemaining, 1);
   assert.equal(initial.available, true);
-  assert.equal(initial.maxSourcePages, 1);
   assert.doesNotThrow(() => assertFreeTrialOmrAvailable(userId));
 
   const now = new Date().toISOString();
   db.prepare(`
-    INSERT INTO score_jobs (id, user_id, document_id, input_file_id, job_type, status, created_at, updated_at)
-    VALUES (?, ?, NULL, NULL, 'omr_import', 'completed', ?, ?)
-  `).run(`trial-job-${suffix}`, userId, now, now);
+    INSERT INTO score_jobs (id, user_id, document_id, input_file_id, job_type, status, params_json, created_at, updated_at)
+    VALUES (?, ?, NULL, NULL, 'omr_import', 'completed', ?, ?, ?)
+  `).run(`trial-job-${suffix}`, userId, JSON.stringify({ freeTrial: true }), now, now);
 
   const consumed = getFreeTrialAccess(userId);
   assert.equal(consumed.omrJobsUsed, 1);
@@ -51,21 +55,15 @@ test("a new account receives exactly one OMR preview before upgrade", () => {
   );
 });
 
-test("the free PDF preview accepts one page and rejects a multi-page source", async () => {
+test("the free score project accepts a complete multi-page PDF", async () => {
   const onePage = await PDFDocument.create();
   onePage.addPage();
-  assert.equal(await assertFreeTrialPdfPageLimit(await onePage.save(), 1), 1);
+  assert.deepEqual(await inspectFreeTrialPdf(await onePage.save()), { pageCount: 1 });
 
   const twoPages = await PDFDocument.create();
   twoPages.addPage();
   twoPages.addPage();
-  const twoPageSource = await twoPages.save();
-  await assert.rejects(
-    () => assertFreeTrialPdfPageLimit(twoPageSource, 1),
-    (error: unknown) => error instanceof FreeTrialPageLimitError
-      && error.code === "FREE_TRIAL_PAGE_LIMIT_EXCEEDED"
-      && error.actualPages === 2,
-  );
+  assert.deepEqual(await inspectFreeTrialPdf(await twoPages.save()), { pageCount: 2 });
 });
 
 test("free editing access is scoped to the marked OMR project and its owner", () => {
@@ -96,4 +94,49 @@ test("free editing access is scoped to the marked OMR project and its owner", ()
   assert.equal(isFreeTrialScoreDocumentForUser(documentId, userId), true);
   assert.equal(isFreeTrialScoreDocumentForUser(documentId, otherUserId), false);
   assert.equal(isFreeTrialScoreDocumentForUser(paidDocumentId, userId), false);
+});
+
+test("the lifetime free project can use an endpoint that was previously paid-only", async () => {
+  initDb();
+  const suffix = crypto.randomUUID();
+  const userId = `free-project-owner-${suffix}`;
+  const documentId = `free-project-document-${suffix}`;
+  const revisionId = `free-project-revision-${suffix}`;
+  const now = new Date().toISOString();
+  insertUser(userId, `${suffix}-project@trial.test`);
+  const token = createToken();
+  createSession(userId, token, 1);
+  const scoreJson = parseJianpuToScoreJson({
+    text: "1=C\n4/4\n| 1 2 3 4 |",
+    importedAt: now,
+    sourceOriginalName: "free-project.jianpu.txt",
+  });
+  db.prepare(`
+    INSERT INTO score_documents (id, user_id, title, current_revision_id, status, created_at, updated_at)
+    VALUES (?, ?, 'Free complete score', ?, 'ready', ?, ?)
+  `).run(documentId, userId, revisionId, now, now);
+  db.prepare(`
+    INSERT INTO score_revisions (id, document_id, revision_number, score_json, created_from, created_at)
+    VALUES (?, ?, 1, ?, 'omr_import', ?)
+  `).run(revisionId, documentId, JSON.stringify(scoreJson), now);
+  db.prepare(`
+    INSERT INTO score_jobs (id, user_id, document_id, job_type, status, params_json, created_at, updated_at)
+    VALUES (?, ?, ?, 'omr_import', 'completed', ?, ?, ?)
+  `).run(`free-project-job-${suffix}`, userId, documentId, JSON.stringify({ freeTrial: true }), now, now);
+
+  const app = Fastify({ logger: false });
+  await app.register(authPlugin);
+  await app.register(scoreRoutes, { prefix: "/api" });
+  await app.ready();
+  try {
+    const playback = await app.inject({
+      method: "GET",
+      url: `/api/scores/${documentId}/playback`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(playback.statusCode, 200, playback.body);
+    assert.ok(playback.json<{ playback: { events: unknown[] } }>().playback.events.length > 0);
+  } finally {
+    await app.close();
+  }
 });

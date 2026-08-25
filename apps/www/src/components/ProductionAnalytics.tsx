@@ -21,6 +21,9 @@ const seoLandingPaths = new Set([
   "/score-to-audio",
   "/musicxml-midi",
   "/pdf-score-scanner",
+  "/pdf-to-musicxml",
+  "/how-to-read-sheet-music",
+  "/numbered-notation-converter",
   "/pricing",
 ]);
 

@@ -7,7 +7,6 @@ export type FreeTrialAccess = {
   omrJobsLimit: number;
   omrJobsRemaining: number;
   available: boolean;
-  maxSourcePages: number;
 };
 
 export class FreeTrialLimitError extends Error {
@@ -16,33 +15,27 @@ export class FreeTrialLimitError extends Error {
   readonly trial: FreeTrialAccess;
 
   constructor(trial: FreeTrialAccess) {
-    super("The free editing scan has already been used. Upgrade to process another score.");
+    super("This account has already created its lifetime free score project. Upgrade to process another score.");
     this.name = "FreeTrialLimitError";
     this.trial = trial;
   }
 }
 
-export class FreeTrialPageLimitError extends Error {
-  readonly statusCode = 400;
-  readonly code = "FREE_TRIAL_PAGE_LIMIT_EXCEEDED";
-  readonly actualPages: number;
-  readonly maxSourcePages: number;
-
-  constructor(actualPages: number, maxSourcePages: number) {
-    super(`Free editing accepts up to ${maxSourcePages} PDF page. Upgrade to process multi-page scores.`);
-    this.name = "FreeTrialPageLimitError";
-    this.actualPages = actualPages;
-    this.maxSourcePages = maxSourcePages;
-  }
-}
-
 export function getFreeTrialAccess(userId: string): FreeTrialAccess {
-  const row = db.prepare(`
-    SELECT COUNT(*) AS count
+  const rows = db.prepare(`
+    SELECT params_json
     FROM score_jobs
     WHERE user_id = ? AND job_type = 'omr_import'
-  `).get(userId) as { count?: number } | undefined;
-  const used = Math.max(0, Number(row?.count ?? 0));
+  `).all(userId) as Array<{ params_json: string | null }>;
+  const used = rows.reduce((count, row) => {
+    if (!row.params_json) return count;
+    try {
+      const params = JSON.parse(row.params_json) as { freeTrial?: unknown };
+      return count + (params.freeTrial === true ? 1 : 0);
+    } catch {
+      return count;
+    }
+  }, 0);
   const limit = config.freeTrialOmrJobs;
   const remaining = Math.max(0, limit - used);
   return {
@@ -50,7 +43,6 @@ export function getFreeTrialAccess(userId: string): FreeTrialAccess {
     omrJobsLimit: limit,
     omrJobsRemaining: remaining,
     available: remaining > 0,
-    maxSourcePages: config.freeTrialMaxSourcePages,
   };
 }
 
@@ -79,9 +71,7 @@ export function isFreeTrialScoreDocumentForUser(documentId: string, userId: stri
   });
 }
 
-export async function assertFreeTrialPdfPageLimit(source: Uint8Array, maxSourcePages: number) {
+export async function inspectFreeTrialPdf(source: Uint8Array) {
   const pdf = await PDFDocument.load(source);
-  const actualPages = pdf.getPageCount();
-  if (actualPages > maxSourcePages) throw new FreeTrialPageLimitError(actualPages, maxSourcePages);
-  return actualPages;
+  return { pageCount: pdf.getPageCount() };
 }

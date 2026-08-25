@@ -7,6 +7,8 @@ const root = process.cwd();
 const generatedAt = new Date().toISOString();
 const required = process.env.MUSIC_ENGINE_QUALIFICATION_REQUIRED === "true";
 const timeoutMs = positiveInteger(process.env.MUSIC_ENGINE_QUALIFICATION_TIMEOUT_MS, 30_000);
+const optionalTimeoutMs = positiveInteger(process.env.MUSIC_ENGINE_OPTIONAL_TOOL_TIMEOUT_MS, 30_000);
+const optionalToolIds = new Set((process.env.MUSIC_ENGINE_OPTIONAL_TOOL_IDS || "").split(",").map((value) => value.trim()).filter(Boolean));
 const reportPath = path.resolve(root, process.env.MUSIC_ENGINE_QUALIFICATION_REPORT || "artifacts/music-engine-qualification.json");
 
 const tools = [
@@ -28,15 +30,18 @@ for (const definition of tools) {
 
 const soundFont = qualifySoundFont(process.env.SOUNDFONT_LICENSE_MANIFEST || "");
 const failures = [
-  ...toolResults.filter((result) => result.status !== "passed").map((result) => `${result.id}: ${result.reason}`),
+  ...toolResults.filter((result) => result.required && result.status !== "passed").map((result) => `${result.id}: ${result.reason}`),
   ...(soundFont.status === "passed" ? [] : [`soundfont: ${soundFont.reason}`]),
 ];
+const optionalWarnings = toolResults.filter((result) => !result.required && result.status !== "passed").map((result) => `${result.id}: ${result.reason}`);
 const report = {
   schemaVersion: 1,
   generatedAt,
   required,
   complete: failures.length === 0,
   timeoutMs,
+  optionalTimeoutMs,
+  optionalToolIds: [...optionalToolIds],
   platform: { platform: process.platform, arch: process.arch, node: process.version },
   tools: toolResults,
   soundFont,
@@ -47,6 +52,7 @@ fs.mkdirSync(path.dirname(reportPath), { recursive: true });
 fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 console.log(`Music engine qualification ${report.complete ? "passed" : "incomplete"}; report: ${reportPath}`);
 for (const failure of failures) console.log(`- ${failure}`);
+for (const warning of optionalWarnings) console.log(`- optional ${warning}`);
 
 if (required && !report.complete) process.exitCode = 1;
 
@@ -55,13 +61,14 @@ function tool(id, label, envName, args) {
 }
 
 async function qualifyTool(definition) {
+  definition.required = !optionalToolIds.has(definition.id);
   if (!definition.command) {
     return result(definition, "missing", `${definition.envName} is not configured.`);
   }
 
   const startedAt = Date.now();
   try {
-    const execution = await run(definition.command, definition.args, timeoutMs);
+    const execution = await run(definition.command, definition.args, definition.required ? timeoutMs : optionalTimeoutMs);
     const output = sanitizeOutput(`${execution.stdout}\n${execution.stderr}`);
     if (execution.timedOut) {
       return result(definition, "failed", `Timed out after ${timeoutMs} ms.`, Date.now() - startedAt, output);
@@ -81,6 +88,7 @@ function result(definition, status, reason, durationMs = 0, output = "") {
     label: definition.label,
     envName: definition.envName,
     command: path.basename(definition.command || ""),
+    required: definition.required !== false,
     status,
     reason,
     durationMs,

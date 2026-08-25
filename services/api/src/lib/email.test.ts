@@ -28,7 +28,7 @@ test("checkout intent email distinguishes purchase interest from a completed pay
     provider: "stripe",
     siteEnvironment: "production",
     providerEnabled: false,
-    planCode: "studio-monthly",
+    planCode: "converter-pro-monthly",
     orderId: "order-intent-123",
     userId: "user-123",
     customerEmail: "buyer@example.com",
@@ -42,7 +42,7 @@ test("checkout intent email distinguishes purchase interest from a completed pay
   assert.match(email.subject, /\[Checkout intent\]\[PRODUCTION SITE\]\[Stripe\]/u);
   assert.match(email.text, /purchase-intent evidence, not a confirmed payment/u);
   assert.match(email.text, /Provider status: not yet enabled/u);
-  assert.match(email.text, /Selected plan: studio-monthly/u);
+  assert.match(email.text, /Selected plan: converter-pro-monthly/u);
   assert.match(email.text, /Customer email: buyer@example\.com/u);
   assert.match(email.html, /construction notice/u);
   assert.doesNotMatch(email.text, /public_token|webhook secret|api key/iu);

@@ -22,6 +22,7 @@ import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
 import { ScoreOmrReviewPanel } from "./ScoreOmrReviewPanel";
+import { PracticeRecorder } from "./PracticeRecorder";
 import { DEFAULT_PLAYBACK_PRACTICE_SETTINGS, ScorePlaybackPanel } from "./ScorePlaybackPanel";
 import { ScoreVisualEditorPanel, type ScoreEditorCollaborationMutation } from "./ScoreVisualEditorPanel";
 import { ScoreCollaborationPanel } from "./ScoreCollaborationPanel";
@@ -540,6 +541,7 @@ export function ScoreDetailClient() {
   const [performanceCommentDrafts, setPerformanceCommentDrafts] = useState<Record<string, string>>({});
   const [postingPerformanceCommentId, setPostingPerformanceCommentId] = useState<string | null>(null);
   const [playbackPracticeSettings, setPlaybackPracticeSettings] = useState<PlaybackPracticeSettings>(DEFAULT_PLAYBACK_PRACTICE_SETTINGS);
+  const [practiceRecording, setPracticeRecording] = useState<File | null>(null);
   const [extractPartIds, setExtractPartIds] = useState<string[]>([]);
   const [extractTitle, setExtractTitle] = useState("");
   const [extractApplyClefs, setExtractApplyClefs] = useState(true);
@@ -896,8 +898,8 @@ export function ScoreDetailClient() {
         };
   const renderedExportOptionsCopy = locale === "zh-CN"
     ? {
-        eyebrow: "谱面渲染",
-        title: "PDF / SVG / PNG 设置",
+        eyebrow: "PDF、SVG、PNG 高质量导出",
+        title: "PDF、SVG、PNG 高质量导出设置",
         body: "设置页面尺寸、边距、PNG 分辨率以及 SVG/PNG 留白裁切。",
         dpi: "PNG 分辨率",
         trim: "裁切 SVG/PNG 留白",
@@ -913,8 +915,8 @@ export function ScoreDetailClient() {
         helper: "页面预设写入任务的 MusicXML 快照，再由 MuseScore 渲染；多页图片会作为多个任务产物保存。",
       }
     : {
-        eyebrow: "Rendered export",
-        title: "PDF / SVG / PNG settings",
+        eyebrow: "High-quality PDF, SVG & PNG Export",
+        title: "High-quality PDF, SVG & PNG Export Settings",
         body: "Set page size, margins, PNG resolution, and SVG/PNG whitespace trimming.",
         dpi: "PNG DPI",
         trim: "Trim SVG/PNG whitespace",
@@ -932,8 +934,8 @@ export function ScoreDetailClient() {
   const audioExportOptionsCopy =
     locale === "zh-CN"
       ? {
-          eyebrow: "高质量音频",
-          title: "SoundFont 离线渲染设置",
+          eyebrow: "WAV、MP3 音频导出",
+          title: "WAV、MP3 音频导出设置",
           body: "WAV 与 MP3 通过 MIDI、FluidSynth 和商业可用 SoundFont 离线生成，再由 ffmpeg 做响度与编码处理。",
           sampleRate: "采样率",
           channels: "声道",
@@ -947,8 +949,8 @@ export function ScoreDetailClient() {
           bitrate: "MP3 码率",
         }
       : {
-          eyebrow: "High-quality audio",
-          title: "SoundFont offline rendering",
+          eyebrow: "WAV & MP3 Audio Export",
+          title: "WAV & MP3 Audio Export Settings",
           body: "WAV and MP3 run through MIDI, FluidSynth, a licensed SoundFont, and ffmpeg loudness/encoding processing.",
           sampleRate: "Sample rate",
           channels: "Channels",
@@ -961,19 +963,33 @@ export function ScoreDetailClient() {
           loudness: "Target loudness (LUFS)",
           bitrate: "MP3 bitrate",
         };
-  const partExtractCopy = {
-    eyebrow: "Part extraction",
-    title: "Create a part practice score",
-    body: "Extract selected parts into a new Score JSON project for individual practice, teaching links, transposition, playback, and exports.",
-    titleLabel: "New project title",
-    parts: "Parts",
-    applyClefs: "Apply automatic clef cleanup",
-    submit: "Create extracted score",
-    working: "Creating score...",
-    success: "Extracted score project created.",
-    failed: "Could not create extracted score.",
-    open: "Open extracted score",
-  };
+  const partExtractCopy = locale === "zh-CN"
+    ? {
+        eyebrow: "声部分谱副本 Beta",
+        title: "生成独立声部练习副本",
+        body: "把所选声部提取为新的 Score JSON 工程，用于个人练习、教学链接、移调、播放和导出；副本暂不会自动跟随总谱后续修改。",
+        titleLabel: "新工程名称",
+        parts: "选择声部",
+        applyClefs: "自动优化谱号",
+        submit: "生成声部副本",
+        working: "正在生成...",
+        success: "声部副本工程已创建。",
+        failed: "无法创建声部副本。",
+        open: "打开声部副本",
+      }
+    : {
+        eyebrow: "Part Copy Generator Beta",
+        title: "Create an independent part practice copy",
+        body: "Extract selected parts into a new Score JSON project for practice, teaching links, transposition, playback, and export. Copies do not yet follow later full-score edits.",
+        titleLabel: "New project title",
+        parts: "Parts",
+        applyClefs: "Apply automatic clef cleanup",
+        submit: "Create part copy",
+        working: "Creating part copy...",
+        success: "Part copy project created.",
+        failed: "Could not create the part copy.",
+        open: "Open part copy",
+      };
   const assetCopy =
     locale === "zh-CN"
       ? {
@@ -4329,40 +4345,51 @@ export function ScoreDetailClient() {
       ) : null}
 
       {score.currentRevision ? (
-        <div id="playback-practice">
+        <div id="playback-practice" className="stack-lg">
           <ScorePlaybackPanel
-            key={score.currentRevisionId ?? score.id}
-            scoreId={score.id}
-            token={token}
-            revisionId={score.currentRevisionId}
-            practiceSettings={playbackPracticeSettings}
-            onPracticeSettingsChange={setPlaybackPracticeSettings}
-            selectedEventId={selectedScoreEventId}
-            onPlaybackEventChange={setSelectedScoreEventId}
-            exportActions={{
-            midi: {
-              label: exportCopy.midi,
-              loadingLabel: exportCopy.exporting,
-              loading: exportingMidi,
-              disabled: !currentScoreJson,
-              onClick: () => void handleExportMidi(),
-            },
-            wav: {
-              label: wavExportCopy.button,
-              loadingLabel: wavExportCopy.exporting,
-              loading: exportingWav,
-              disabled: !currentScoreJson,
-              onClick: () => void handleExportWav(),
-            },
-            mp3: {
-              label: mp3ExportCopy.button,
-              loadingLabel: mp3ExportCopy.exporting,
-              loading: exportingMp3,
-              disabled: !currentScoreJson,
-              onClick: () => void handleExportMp3(),
-            },
-            }}
-          />
+              key={score.currentRevisionId ?? score.id}
+              scoreId={score.id}
+              token={token}
+              revisionId={score.currentRevisionId}
+              practiceSettings={playbackPracticeSettings}
+              onPracticeSettingsChange={setPlaybackPracticeSettings}
+              selectedEventId={selectedScoreEventId}
+              onPlaybackEventChange={setSelectedScoreEventId}
+              exportActions={{
+                midi: {
+                  label: exportCopy.midi,
+                  loadingLabel: exportCopy.exporting,
+                  loading: exportingMidi,
+                  disabled: !currentScoreJson,
+                  onClick: () => void handleExportMidi(),
+                },
+                wav: {
+                  label: wavExportCopy.button,
+                  loadingLabel: wavExportCopy.exporting,
+                  loading: exportingWav,
+                  disabled: !currentScoreJson,
+                  onClick: () => void handleExportWav(),
+                },
+                mp3: {
+                  label: mp3ExportCopy.button,
+                  loadingLabel: mp3ExportCopy.exporting,
+                  loading: exportingMp3,
+                  disabled: !currentScoreJson,
+                  onClick: () => void handleExportMp3(),
+                },
+              }}
+            />
+          <section className="surface-panel stack-lg">
+            <PracticeRecorder
+              locale={locale}
+              value={practiceRecording}
+              playbackEndpoint={`/api/scores/${score.id}/playback`}
+              practiceSettings={playbackPracticeSettings}
+              selectedEventId={selectedScoreEventId}
+              onEventSelect={setSelectedScoreEventId}
+              onRecording={setPracticeRecording}
+            />
+          </section>
         </div>
       ) : (
         <section className="surface-panel stack-lg">

@@ -2,7 +2,7 @@ import { config } from "../config.js";
 import { db } from "../db.js";
 import { findActiveSubscriptionEntitlement } from "../repositories/billing-repository.js";
 
-export type PlanQuotaTier = "legacy" | "pro" | "education";
+export type PlanQuotaTier = "free" | "starter" | "converter-pro";
 
 export type PlanQuotaUsage = {
   tier: PlanQuotaTier;
@@ -35,27 +35,44 @@ function utcMonthBounds(now = new Date()) {
 
 function quotaTier(userId: string): PlanQuotaTier {
   const entitlement = findActiveSubscriptionEntitlement(db, userId);
-  if (!entitlement) return "legacy";
-  const educationPlanRefs = new Set([
-    config.stripeSchoolPriceId,
-    config.paddleSchoolPriceId,
+  if (!entitlement) {
+    const activationEntitlement = db.prepare(`
+      SELECT 1 AS active
+      FROM user_entitlements
+      WHERE user_id = ?
+        AND datetime(starts_at) <= datetime('now')
+        AND datetime(ends_at) > datetime('now')
+      LIMIT 1
+    `).get(userId) as { active: number } | undefined;
+    return activationEntitlement ? "starter" : "free";
+  }
+  const converterProPlanRefs = new Set([
+    config.stripeConverterProMonthlyPriceId,
+    config.stripeConverterProAnnualPriceId,
+    config.paddleConverterProMonthlyPriceId,
+    config.paddleConverterProAnnualPriceId,
   ].filter(Boolean));
-  if (
-    entitlement.organizationId
-    || entitlement.seatQuantity > 1
-    || (entitlement.planRef && educationPlanRefs.has(entitlement.planRef))
-  ) return "education";
-  return "pro";
+  const starterPlanRefs = new Set([
+    config.stripeStarterMonthlyPriceId,
+    config.stripeStarterAnnualPriceId,
+    config.paddleStarterMonthlyPriceId,
+    config.paddleStarterAnnualPriceId,
+  ].filter(Boolean));
+  if (entitlement.planRef && converterProPlanRefs.has(entitlement.planRef)) return "converter-pro";
+  if (entitlement.planRef && starterPlanRefs.has(entitlement.planRef)) return "starter";
+  // Preserve unrecognized legacy organization subscriptions without overriding a known Starter price.
+  if (entitlement.organizationId || entitlement.seatQuantity > 1) return "converter-pro";
+  return "starter";
 }
 
 function limitsForTier(tier: PlanQuotaTier) {
-  if (tier === "education") {
-    return { jobs: config.quotaEducationJobsPerMonth, storageBytes: config.quotaEducationStorageBytes };
+  if (tier === "converter-pro") {
+    return { jobs: config.quotaConverterProJobsPerMonth, storageBytes: config.quotaConverterProStorageBytes };
   }
-  if (tier === "pro") {
-    return { jobs: config.quotaProJobsPerMonth, storageBytes: config.quotaProStorageBytes };
+  if (tier === "starter") {
+    return { jobs: config.quotaStarterJobsPerMonth, storageBytes: config.quotaStarterStorageBytes };
   }
-  return { jobs: config.quotaLegacyJobsPerMonth, storageBytes: config.quotaLegacyStorageBytes };
+  return { jobs: config.quotaFreeJobsPerMonth, storageBytes: config.quotaFreeStorageBytes };
 }
 
 export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUsage {

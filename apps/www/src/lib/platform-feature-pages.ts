@@ -74,7 +74,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     updatedAt: "2026-08-10",
     primaryAction: "scores",
     canonical: "/jianpu-to-staff",
-    keywords: ["jianpu to staff", "numbered notation to staff", "简谱转五线谱"],
+    keywords: ["jianpu to staff", "jianpu to staff notation", "numbered notation to staff", "简谱转五线谱"],
     modules: ["Structured Jianpu parser", "Score JSON", "MusicXML exporter", "OSMD preview"],
     workflow: [
       {
@@ -104,16 +104,16 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "transpose-score",
-    title: "Transpose sheet music online",
+    title: "Smart Sheet Music Transposer",
     eyebrow: "Target key, semitones, and instrument parts",
     description:
-      "Create new score revisions by semitone count, target key, or common transposing-instrument profile, with optional range diagnostics after transposition.",
+      "Transpose sheet music online by semitones, target key, or instrument profile. Keep the original score, create a new revision, and review range and spelling.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-24",
     primaryAction: "scores",
     canonical: "/transpose-score",
-    keywords: ["transpose sheet music", "online score transposition", "乐谱移调"],
+    keywords: ["transpose sheet music", "transpose sheet music online", "change sheet music key", "online score transposition", "乐谱移调"],
     modules: ["Score JSON transposition", "Target-key mode", "Instrument profiles", "Range diagnostics"],
     workflow: [
       {
@@ -132,7 +132,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     details: [
       {
         title: "Revision-based workflow",
-        body: "Every transposition creates a new version instead of mutating the previous score, so teachers and arrangers can compare results.",
+        body: "Change the sheet music key without overwriting the source: every transposition creates a new version so teachers and arrangers can compare results.",
       },
       {
         title: "Exports regenerate from the model",
@@ -143,16 +143,16 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "score-editor",
-    title: "Online score editor and correction",
+    title: "Online Sheet Music Editor",
     eyebrow: "OSMD preview plus structured correction",
     description:
-      "Correct imported scores through property panels for notes, rests, key/time signatures, lyrics, chord symbols, dynamics, wedges, articulations, and barlines.",
+      "Create and correct sheet music in a browser-based music notation editor. Import MusicXML, MIDI, Jianpu, or scanned candidates, then save editable revisions.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-24",
     primaryAction: "scores",
     canonical: "/score-editor",
-    keywords: ["online score editor", "sheet music correction", "五线谱编辑"],
+    keywords: ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "online score editor", "五线谱编辑器"],
     modules: ["OSMD preview", "Score JSON revisions", "Correction panel", "Version restore"],
     workflow: [
       {
@@ -170,28 +170,28 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     ],
     details: [
       {
-        title: "Designed for OMR cleanup",
-        body: "Scanning is rarely perfect; this editor exists to repair recognition mistakes before playback, conversion, or export.",
+        title: "Sheet music editor for OMR cleanup",
+        body: "Scanning is rarely perfect; this online music notation editor repairs recognition mistakes before playback, conversion, or export.",
       },
       {
-        title: "Interactive correction, with deeper engraving still in progress",
-        body: "The app supports rendered-note selection, pitch and duration dragging, insertion, deletion, and structured property editing. Desktop-grade free-form engraving and full layout control remain in progress.",
+        title: "Structured music score maker",
+        body: "Create or correct notes with rendered-note selection, pitch and duration dragging, insertion, deletion, and property editing. Desktop-grade free-form engraving and full layout control remain in progress.",
       },
     ],
     guardrail: "Editing is built on Score JSON/MusicXML, not on PDF text or image pixels.",
   },
   {
     slug: "score-to-audio",
-    title: "Score to audio practice generator",
+    title: "Playback & Practice Mode",
     eyebrow: "Playback, loops, and studio-rendered exports",
     description:
-      "Turn structured score projects into browser playback and queued MIDI, WAV, or MP3 practice exports with tempo, loops, count-in, metronome, and per-part controls.",
+      "Open structured notation in an online sheet music player, control tempo, loops, metronome and parts, then export MIDI, WAV, or MP3 practice audio.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-24",
     primaryAction: "scores",
     canonical: "/score-to-audio",
-    keywords: ["score to audio", "sheet music playback", "乐谱生成音频"],
+    keywords: ["sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "乐谱播放器", "乐谱生成音频"],
     modules: ["Tone.js playback", "Playback timeline", "MIDI export", "WAV/MP3 renderer"],
     workflow: [
       {
@@ -209,8 +209,8 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     ],
     details: [
       {
-        title: "Useful for choir and ensemble rehearsal",
-        body: "Students can focus on one part, slow down difficult measures, and export a practice clip for review.",
+        title: "Scan sheet music and play it after review",
+        body: "After a scanned candidate is corrected, students can focus on one part, slow down difficult measures, and export a practice clip for review.",
       },
       {
         title: "High-quality audio when the renderer is configured",
@@ -221,16 +221,16 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "audio-to-score",
-    title: "Audio to score transcription",
+    title: "Audio to Sheet Music Converter",
     eyebrow: "MP3/WAV to MIDI candidate to editable score",
     description:
-      "Upload permitted MP3 or WAV audio, create a Basic Pitch MIDI candidate, then review and promote it into an editable Score JSON project.",
+      "Convert permitted MP3 or WAV audio to a MIDI and sheet music candidate with AI-assisted transcription, then review and correct the editable score online.",
     status: "Preview",
     releaseRequirement: "audio-transcription",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-24",
     primaryAction: "upload",
     canonical: "/audio-to-score",
-    keywords: ["audio to score", "mp3 to sheet music", "wav to midi", "Basic Pitch transcription"],
+    keywords: ["audio to sheet music", "audio to sheet music AI", "mp3 to midi", "mp3 to sheet music", "wav to midi", "audio to score"],
     modules: ["Audio upload", "Basic Pitch worker", "MIDI candidate", "Score JSON correction"],
     workflow: [
       {
@@ -248,8 +248,8 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     ],
     details: [
       {
-        title: "Candidate-first transcription",
-        body: "Audio transcription is treated as a draft import path, not a guaranteed final score. Polyphonic music, accompaniment, reverb, and noisy recordings usually need correction.",
+        title: "AI-assisted audio to sheet music",
+        body: "Audio transcription and MP3-to-MIDI output are treated as draft import paths, not guaranteed final scores. Polyphony, accompaniment, reverb, and noise usually require correction.",
       },
       {
         title: "Same project workflow after import",
@@ -260,16 +260,16 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "musicxml-midi",
-    title: "MusicXML converter and MIDI score tools",
+    title: "MusicXML & MIDI Converter",
     eyebrow: "Import, export, and project backups",
     description:
-      "Use MusicXML as the interchange format and Score JSON as the editable project model, with MIDI import/export and portable Score JSON snapshots.",
+      "Use an online MusicXML editor and converter to import MusicXML or MIDI, correct the structured score, convert MusicXML to MIDI, and export portable files.",
     status: "Available",
     releaseRequirement: "core",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-24",
     primaryAction: "scores",
     canonical: "/musicxml-midi",
-    keywords: ["MusicXML converter", "MIDI to sheet music", "score json"],
+    keywords: ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "MusicXML converter"],
     modules: ["MusicXML import/export", "MIDI import/export", "Score JSON snapshot", "OSMD preview"],
     workflow: [
       {
@@ -291,24 +291,24 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "Score JSON metadata records whether a project came from MusicXML, Jianpu, MIDI, or a snapshot import.",
       },
       {
-        title: "MIDI import is structural",
-        body: "The first MIDI importer extracts tracks, tempo, time signatures, program hints, chords, and cross-measure ties for correction.",
+        title: "MusicXML to MIDI and MIDI to sheet music",
+        body: "Convert MusicXML to MIDI for playback or import MIDI to sheet music as a structural draft. Tracks, tempo, time signatures, program hints, chords, and ties remain editable.",
       },
     ],
     guardrail: "Complex engraving from MIDI still needs human review and correction.",
   },
   {
     slug: "pdf-score-scanner",
-    title: "PDF score scanner and OMR",
+    title: "Sheet Music Scanner for PDF & Images",
     eyebrow: "OMR import with correction",
     description:
-      "Upload PDFs or score images as OMR sources, queue Audiveris recognition, convert MusicXML into Score JSON, and review diagnostics before correction.",
+      "Use this sheet music scanner to scan sheet music from PDF or image files, create an editable MusicXML candidate, review diagnostics, and correct OMR mistakes online.",
     status: "Beta",
     releaseRequirement: "omr",
-    updatedAt: "2026-08-10",
+    updatedAt: "2026-08-24",
     primaryAction: "upload",
     canonical: "/pdf-score-scanner",
-    keywords: ["pdf score scanner", "scan sheet music to MusicXML", "乐谱扫描识别"],
+    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "pdf score scanner", "scan sheet music to MusicXML", "乐谱扫描识别"],
     modules: ["OMR upload", "Audiveris worker", "MusicXML output", "Diagnostics panel"],
     workflow: [
       {
@@ -330,11 +330,50 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "OMR results are treated as editable candidates with confidence and diagnostics, not as guaranteed final scores.",
       },
       {
-        title: "One-page free editing with clear limits",
-        body: "A free account can recognize and correct one PDF page or score image. Additional scans, multi-page recognition, transformations, and full exports require paid access.",
+        title: "Create one complete score project for free",
+        body: "A free account can scan one complete multi-page PDF or score image and keep using current correction, playback, transposition, Jianpu, sharing, version, and export tools on that project.",
       },
     ],
     guardrail: "Scanning is import plus correction. The site should not promise perfect automatic recognition for all PDFs or photos.",
+  },
+  {
+    slug: "pdf-to-musicxml",
+    title: "PDF to MusicXML Converter Online",
+    eyebrow: "Editable MusicXML from PDF or score images",
+    description:
+      "Convert a PDF or sheet music image to an editable MusicXML candidate, review OMR diagnostics, correct recognition mistakes, and export the accepted score.",
+    status: "Beta",
+    releaseRequirement: "omr",
+    updatedAt: "2026-08-24",
+    primaryAction: "upload",
+    canonical: "/pdf-to-musicxml",
+    keywords: ["pdf to musicxml", "pdf to musicxml converter", "image to musicxml", "pdf to musicxml online", "scan sheet music to MusicXML"],
+    modules: ["PDF and image upload", "Audiveris OMR", "MusicXML candidate", "Score correction"],
+    workflow: [
+      {
+        title: "Upload a PDF or sheet music image",
+        body: "Start with a PDF, PNG, JPG, WebP, or TIFF score that you have permission to process.",
+      },
+      {
+        title: "Create a MusicXML candidate",
+        body: "The OMR worker recognizes notation, stores diagnostics, and creates a structured MusicXML and Score JSON candidate instead of editing PDF pixels.",
+      },
+      {
+        title: "Review, correct, and export",
+        body: "Check notes, rhythm, key, measures, lyrics, and symbols in the score editor before exporting the accepted MusicXML revision.",
+      },
+    ],
+    details: [
+      {
+        title: "PDF to MusicXML converter with correction",
+        body: "The converter keeps the source, recognition diagnostics, and editable candidate together so uncertain notation can be corrected before export.",
+      },
+      {
+        title: "Image to MusicXML uses the same workflow",
+        body: "Score images enter the same OMR pipeline and produce a reviewable candidate; clear, straight, high-resolution sources usually need fewer corrections.",
+      },
+    ],
+    guardrail: "PDF-to-MusicXML conversion produces an editable candidate. Complex engraving, weak scans, handwriting, and dense scores still require human review.",
   },
   {
     slug: "teaching",
@@ -380,7 +419,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     title: "Score transposer pricing",
     eyebrow: "Access for conversion and project workflows",
     description:
-      "Start with one free OMR preview, then use checkout or activation-code access for additional scans, correction, conversion, playback, and full export.",
+      "Start with one complete lifetime free score project, then choose Starter or Converter Pro when you need more projects and monthly server-job capacity.",
     status: "Available",
     releaseRequirement: "checkout",
     updatedAt: "2026-08-10",
@@ -404,17 +443,15 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     ],
     details: [
       {
-        title: "Clear paid boundaries",
-        body: "Additional scans, multi-page recognition, correction, full exports, high-quality audio, and saved history require paid access.",
+        title: "Clear capacity boundaries",
+        body: "Free includes one complete project and up to 25 server jobs monthly; Starter includes 50 and Converter Pro includes 200. Current project-level tools remain available on the free score.",
       },
       {
         title: "Operational support",
         body: "Checkout, activation, upload, job, and export issues route into the support workflow.",
       },
     ],
-    guardrail: `Current price and currency are configured by deployment; this site currently reads ${siteConfig.priceAmount || "the configured"} ${
-      siteConfig.priceCurrency
-    } amount when available.`,
+    guardrail: "The public catalog is the source of displayed prices. Checkout stays disabled until the selected provider has a matching Price ID for every paid plan.",
   },
 ];
 

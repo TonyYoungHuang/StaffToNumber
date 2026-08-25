@@ -26,9 +26,8 @@ import { config } from "../config.js";
 import { db } from "../db.js";
 import {
   assertFreeTrialOmrAvailable,
-  assertFreeTrialPdfPageLimit,
   FreeTrialLimitError,
-  FreeTrialPageLimitError,
+  inspectFreeTrialPdf,
   isFreeTrialScoreDocumentForUser,
 } from "../lib/free-trial.js";
 import { linkEducationInvitationsByEmail, listAccessibleClassroomIds, resolveClassroomAccess, resolveOrganizationRole } from "../lib/education-access.js";
@@ -1686,7 +1685,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/candidate/accept",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -1716,7 +1715,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/candidate/reject",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -1770,7 +1769,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.patch(
     "/scores/:id/settings",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -1868,7 +1867,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/revisions/:revisionId/restore",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string; revisionId: string };
@@ -1963,7 +1962,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/comments",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -1981,7 +1980,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
   app.patch(
     "/scores/:id/comments/:commentId",
-    { preHandler: app.requireActiveEntitlement },
+    { preHandler: app.requireScoreEditingAccess },
     async (request, reply) => {
       const params = request.params as { id: string; commentId: string };
       const body = request.body as { resolved?: unknown } | null;
@@ -2005,7 +2004,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/share-links",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -2024,7 +2023,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/share-links",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -2064,7 +2063,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.delete(
     "/scores/:id/share-links/:shareId",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string; shareId: string };
@@ -3043,7 +3042,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/comments",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3102,7 +3101,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/exports",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3164,7 +3163,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/jobs/:jobId/cancel",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string; jobId: string };
@@ -3183,7 +3182,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/jobs/:jobId/retry",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string; jobId: string };
@@ -3202,7 +3201,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/transpose/suggestions",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3263,7 +3262,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/transpose",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3475,7 +3474,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/clef-recommendations",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3499,7 +3498,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/clef-recommendations/apply",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4196,7 +4195,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/jianpu",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4226,7 +4225,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/playback",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4275,7 +4274,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/midi",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4348,7 +4347,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/audio/wav",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4424,7 +4423,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/audio/mp3",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4526,7 +4525,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/musicxml",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4601,7 +4600,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/score-json",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4663,7 +4662,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/jianpu",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4732,7 +4731,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/pdf",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4772,7 +4771,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/svg",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4812,7 +4811,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/png",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -5162,14 +5161,11 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       if (freeTrial && verified.detectedKind === "pdf") {
         try {
-          await assertFreeTrialPdfPageLimit(await fs.promises.readFile(targetPath), freeTrial.maxSourcePages);
+          await inspectFreeTrialPdf(await fs.promises.readFile(targetPath));
         } catch (error) {
           await fs.promises.rm(targetPath, { force: true });
-          if (error instanceof FreeTrialPageLimitError) {
-            return reply.code(error.statusCode).send({ error: error.message, code: error.code, freeTrial });
-          }
-          request.log.warn({ error }, "Free-trial PDF page validation failed.");
-          return reply.code(400).send({ error: "The PDF page count could not be verified for free editing." });
+          request.log.warn({ error }, "Free-plan PDF validation failed.");
+          return reply.code(400).send({ error: "The PDF document could not be verified for free editing." });
         }
       }
 
