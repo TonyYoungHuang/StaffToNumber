@@ -20,7 +20,7 @@ const geist = Geist({
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
-  const title = locale === "zh-CN" ? `在线五线谱编辑、识别、移调与导出 | ${siteConfig.siteName}` : siteConfig.title;
+  const title = locale === "zh-CN" ? `${siteConfig.siteName} | 五线谱识别、编辑、移调、播放与导出` : siteConfig.title;
   const description = locale === "zh-CN"
     ? "在线识别、校正、编辑、移调、播放并导出五线谱与简谱；以 MusicXML 和结构化乐谱工程连接 PDF、图片、MIDI 与音频工作流。"
     : siteConfig.description;

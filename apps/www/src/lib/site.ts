@@ -94,7 +94,7 @@ export const siteConfig = {
     postalCode: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_POSTAL_CODE, 40),
     sameAs: normalizeSameAs(process.env.NEXT_PUBLIC_OPERATOR_SAME_AS),
   },
-  title: "Sheet Music Converter, Editor & Transposer | ScoreTransposer",
+  title: "ScoreTransposer | Scan, Edit, Transpose & Export Sheet Music",
   description:
     "Convert, correct, transpose, play, and export staff notation and Jianpu in a MusicXML-first online sheet music workspace.",
   keywords: [

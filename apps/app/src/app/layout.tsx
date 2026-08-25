@@ -18,8 +18,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await readAppLocale();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.scoretransposer.com";
   const title = locale === "zh-CN"
-    ? "ScoreTransposer PDF 乐谱识别、简谱转换、在线编辑、移调与播放工作台"
-    : "ScoreTransposer – Scan, Edit and Transpose Sheet Music";
+    ? "ScoreTransposer | 五线谱识别、编辑、移调、播放与导出"
+    : "ScoreTransposer | Scan, Edit, Transpose & Export Sheet Music";
   const description = locale === "zh-CN"
     ? "上传五线谱 PDF 或图片，在线识别并校对音符，继续完成五线谱与简谱转换、移调、播放练习和常用格式导出。"
     : "Upload sheet-music PDFs or images, review recognized notes, convert staff and numbered notation, transpose, practice, and export common formats.";
