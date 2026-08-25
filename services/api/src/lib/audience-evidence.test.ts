@@ -62,7 +62,7 @@ test("audience evidence accepts aggregate bot, ASN, IP-count, and GA4 data witho
   assert.equal(normalizeAudienceEvidenceImport(withEmailInNotes), null, "direct identifiers hidden in free text must be rejected");
 
   const withQueryString = validImport();
-  withQueryString.cloudflare.rows[0].path = "/score-editor?visitor=opaque-id";
+  (withQueryString.cloudflare.rows[0] as Record<string, unknown>).path = "/score-editor?visitor=opaque-id";
   assert.equal(normalizeAudienceEvidenceImport(withQueryString), null, "evidence paths must not retain query-string identifiers");
 });
 
