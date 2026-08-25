@@ -161,7 +161,7 @@ export default async function HomePage() {
           ["Audio to score", "Create a notation candidate that still needs review.", "/audio-to-score"],
         ],
         trustKicker: "Trust boundaries",
-        trustTitle: "Automate reliable steps and keep human judgment explicit",
+        trustTitle: "Automate reliable steps\nand keep human judgment explicit",
         trust: [
           ["No perfect-recognition promise", "Weak scans, dense engraving, and polyphony commonly require correction."],
           ["Candidates stay correctable", "Notes, duration, key, lyrics, and measures enter structured revisions."],
@@ -207,7 +207,7 @@ export default async function HomePage() {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${isChinese ? "" : styles.pageEnglish}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
 
       <section className={`${styles.section} ${styles.hero}`} aria-labelledby="home-title">
@@ -287,8 +287,8 @@ export default async function HomePage() {
       </section>
 
       <section className={`${styles.section} ${styles.softSection}`} aria-labelledby="trust-title">
-        <div className={`${styles.container} ${styles.trustLayout}`}>
-          <div className={styles.trustHeading}><span><FileStackIcon width={26} height={26} /></span><p className={styles.kicker}>{copy.trustKicker}</p><h2 id="trust-title">{copy.trustTitle}</h2></div>
+        <div className={`${styles.container} ${styles.trustLayout} ${isChinese ? "" : styles.trustLayoutEnglish}`}>
+          <div className={`${styles.trustHeading} ${isChinese ? "" : styles.trustHeadingEnglish}`}><span><FileStackIcon width={26} height={26} /></span><p className={styles.kicker}>{copy.trustKicker}</p><h2 id="trust-title">{copy.trustTitle}</h2></div>
           <div className={styles.trustGrid}>{copy.trust.map(([title, body]) => <article key={title}><CheckSealIcon width={20} height={20} /><div><h3>{title}</h3><p>{body}</p></div></article>)}</div>
         </div>
       </section>

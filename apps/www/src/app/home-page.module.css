@@ -41,6 +41,10 @@
   margin-inline: auto;
 }
 
+.pageEnglish .container {
+  width: min(1480px, 100%);
+}
+
 .softSection {
   border-block: 1px solid #e7e9f1;
   background: #f7f8fc;
@@ -96,6 +100,11 @@
   text-align: center;
 }
 
+.pageEnglish .heroCopy {
+  width: min(1760px, calc(100vw - 40px));
+  justify-self: center;
+}
+
 .heroCopy h1 {
   margin: 0;
   color: transparent;
@@ -110,7 +119,7 @@
 }
 
 .heroTitleEnglish {
-  font-size: clamp(34px, 3.15vw, 44px) !important;
+  font-size: clamp(28px, 2.6vw, 44px) !important;
   letter-spacing: -0.042em !important;
 }
 
@@ -516,6 +525,16 @@
   -webkit-line-clamp: 2;
 }
 
+.pageEnglish .toolRail a {
+  min-height: 108px;
+}
+
+.pageEnglish .toolRail a small {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
 .toolRail a > svg {
   position: absolute;
   top: 8px;
@@ -791,6 +810,11 @@
   gap: 52px;
 }
 
+.trustLayoutEnglish {
+  grid-template-columns: minmax(650px, 1.08fr) minmax(0, 0.92fr);
+  gap: 44px;
+}
+
 .trustHeading > span {
   display: grid;
   width: 54px;
@@ -820,6 +844,12 @@
 
 .trustHeading .kicker { display: flex; }
 .trustHeading h2 { font-size: clamp(33px, 3.5vw, 52px); }
+
+.trustHeadingEnglish h2 {
+  font-size: clamp(36px, 3vw, 44px);
+  white-space: pre-line;
+  text-wrap: wrap;
+}
 
 .trustGrid {
   display: grid;
@@ -966,6 +996,7 @@
   .workbench { backdrop-filter: none; }
   .heroCopy h1 { font-size: clamp(34px, 8vw, 48px); }
   .heroTitleEnglish { font-size: clamp(30px, 5.4vw, 40px) !important; }
+  .pageEnglish .heroCopy { width: 100%; }
   .heroTitleLine { display: block; }
   .heroTitleLine + .heroTitleLine { margin-top: 5px; margin-left: 0; }
   .dropZone { min-height: 230px; }
@@ -998,6 +1029,7 @@
   .sectionHeading h2,
   .faqHeading h2,
   .trustHeading h2 { font-size: 31px; }
+  .trustHeadingEnglish h2 { font-size: 31px; white-space: normal; }
   .capabilityGrid { grid-template-columns: 1fr; }
   .demoGrid { grid-template-columns: 1fr; }
   .capabilityGrid a { min-height: 118px; }
