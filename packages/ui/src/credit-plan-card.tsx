@@ -83,7 +83,7 @@ export function CreditPlanCard({
         <span aria-hidden="true">⚡</span>
         <div>
           <strong>{plan.credits}</strong>
-          <small>{isChinese ? "创建成功的后台任务计费" : "Charged for successfully created server jobs"}</small>
+          <small>{isChinese ? "按实际使用积分计费" : "Credits are deducted only when used"}</small>
         </div>
       </div>
       <span className={`score-plan-card__action ${selected ? "score-plan-card__action--selected" : ""}`}>{label}<span aria-hidden="true">↗</span></span>

@@ -19,7 +19,7 @@ export class PlanQuotaExceededError extends Error {
 
   constructor(code: PlanQuotaExceededError["code"], quota: PlanQuotaUsage) {
     super(code === "PLAN_JOB_QUOTA_EXCEEDED"
-      ? "The monthly processing quota for this plan has been reached."
+      ? "The monthly credit balance for this plan has been used up."
       : "The storage quota for this plan has been reached.");
     this.name = "PlanQuotaExceededError";
     this.code = code;

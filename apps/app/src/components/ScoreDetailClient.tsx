@@ -1017,12 +1017,12 @@ export function ScoreDetailClient() {
   const omrCopy =
     locale === "zh-CN"
       ? {
-          eyebrow: "后台任务",
-          title: "识别、转谱与导出任务",
-          body: "这里统一显示 Audiveris 扫描、Basic Pitch 音频转谱和 MuseScore/FluidSynth 导出任务的进度、失败原因、重试与产物。",
-          loading: "正在加载任务...",
-          empty: "当前项目还没有后台任务。",
-          failed: "任务加载失败。",
+          eyebrow: "处理记录",
+          title: "识别、转谱与导出进度",
+          body: "这里统一显示 Audiveris 扫描、Basic Pitch 音频转谱和 MuseScore/FluidSynth 导出的进度、失败原因、重试与产物。",
+          loading: "正在加载处理记录...",
+          empty: "当前项目还没有处理记录。",
+          failed: "处理记录加载失败。",
           refresh: "刷新状态",
           diagnostics: "识别诊断",
           confidence: "置信度",
@@ -3810,7 +3810,7 @@ export function ScoreDetailClient() {
         </div>
         {hasActiveScoreJob ? (
           <p className="helper-copy">
-            {locale === "zh-CN" ? "后台任务正在运行，页面会自动刷新。" : "A score job is running; this page will refresh automatically."}
+            {locale === "zh-CN" ? "乐谱正在处理中，页面会自动刷新。" : "A score operation is running; this page will refresh automatically."}
           </p>
         ) : null}
         {jobsError ? <p className="form-status error">{jobsError}</p> : null}

@@ -47,8 +47,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
           <h1 id="checkout-plans-title" className={styles.pageTitle}>{isChinese ? "选择你的积分套餐" : "Choose your credit plan"}</h1>
           <p className={styles.heroCopy}>
             {isChinese
-              ? "每个创建成功的后台处理任务消耗 1 积分。先比较每项价格、能力与资源，再登录继续。"
-              : "Each successfully created server-side job uses one credit. Compare price, capabilities, and resources before signing in."}
+              ? "每次符合计费规则的成功操作消耗 1 积分。先比较每项价格、能力与资源，再登录继续。"
+              : "Each eligible successful operation uses one credit. Compare price, capabilities, and resources before signing in."}
           </p>
         </div>
         <div className={styles.promoPill}>

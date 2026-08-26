@@ -342,7 +342,7 @@ export function DashboardClient() {
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.route}</p>
           <p className="metric-value">{profile.entitlement.status === "active" ? copy.metrics.routeValue : (locale === "zh-CN" ? "一个完整免费项目" : "One complete free project")}</p>
-          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : (locale === "zh-CN" ? "免费项目开放现有项目级功能，每月最多 25 个后台任务；升级后可处理更多乐谱。" : "The free project includes current project-level tools and up to 25 server jobs monthly. Upgrade to process more scores.")}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : (locale === "zh-CN" ? "免费项目开放现有项目级功能，每月包含 25 积分；升级后可获得更多积分。" : "The free project includes current project-level tools and 25 credits monthly. Upgrade for more credits.")}</p>
         </div>
       </div>
 

@@ -3173,7 +3173,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const job = cancelScoreJob({ jobId: params.jobId, userId: request.authUserId!, documentId: document.id });
       if (!job) {
-        return reply.code(409).send({ error: "Only queued or processing jobs can be cancelled." });
+        return reply.code(409).send({ error: "Only queued or in-progress score operations can be cancelled." });
       }
       return reply.send({ job: mapScoreJobForApi(job) });
     },

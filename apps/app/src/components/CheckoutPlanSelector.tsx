@@ -119,8 +119,8 @@ export function CheckoutPlanSelector({
               </h2>
               <p className="body-copy large">
                 {isChinese
-                  ? "无需付款或信用卡。免费方案长期保留一个完整乐谱项目，并包含每月 25 个后台任务。"
-                  : "No payment or card is required. Free keeps one complete score project with 25 server jobs each month."}
+                  ? "无需付款或信用卡。免费方案长期保留一个完整乐谱项目，并包含每月 25 积分。"
+                  : "No payment or card is required. Free keeps one complete score project with 25 credits each month."}
               </p>
             </div>
             <div className="button-row">

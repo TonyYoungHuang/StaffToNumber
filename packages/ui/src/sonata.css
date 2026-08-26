@@ -2921,6 +2921,17 @@ textarea,
   background: #fff9ec;
 }
 
+.site-shell-button.credit {
+  color: #3f34bd;
+  border-color: rgba(91, 78, 232, 0.32);
+  background: linear-gradient(145deg, #f7f5ff, #eeebff);
+  box-shadow: 0 8px 22px rgb(91 78 232 / 12%);
+}
+
+.site-shell-button.credit svg {
+  color: #f2a93b;
+}
+
 .site-shell-menu-toggle {
   width: 40px;
   height: 40px;

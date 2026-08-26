@@ -172,7 +172,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
   pricing: {
     title: "ScoreTransposer 价格与积分套餐",
     eyebrow: "识谱、转换与工程处理权限",
-    description: "先免费创建一个完整乐谱项目并使用现有项目级能力；Starter 与 Converter Pro 提供更多乐谱和后台任务容量。",
+    description: "先免费创建一个完整乐谱项目并使用现有项目级能力；Starter 与 Converter Pro 提供更多乐谱容量和积分。",
     modules: ["在线付款", "激活码", "账户权限", "付费能力控制"],
     workflow: [
       { title: "选择积分套餐", body: "根据个人处理或批量工作选择月付或年付方案。" },
@@ -180,7 +180,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
       { title: "使用完整工作流", body: "创建工程、导入来源、校正、移调、播放，并导出确认后的版本。" },
     ],
     details: [
-      { title: "容量边界清晰", body: "Free 限一个完整项目和每月 25 个后台任务；Starter 每月 50 个，Converter Pro 每月 200 个。" },
+      { title: "积分边界清晰", body: "Free 每月 25 积分；Starter 每月 50 积分，Converter Pro 每月 200 积分。" },
       { title: "付款问题可以追踪", body: "结账、激活、上传、任务与导出问题都进入统一支持流程。" },
     ],
     guardrail: "页面价格和可用支付渠道以当前生产环境展示为准。",

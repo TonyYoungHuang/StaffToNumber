@@ -145,24 +145,31 @@ export function BillingManager() {
 
   return (
     <div className="page-stack">
-      {entitlementStatus === "active" ? <section className="surface-panel stack-lg">
+      {quota ? <section className="surface-panel credit-balance-panel stack-lg">
         <div className="stack-xs">
-          <p className="eyebrow">{isChinese ? "本月用量" : "Current usage"}</p>
-          <h2 className="card-title">{quota ? `${isChinese ? "当前套餐用量" : "Current plan usage"} · ${quotaTierLabel(quota.tier, locale)}` : isChinese ? "正在读取套餐用量" : "Loading plan usage"}</h2>
+          <p className="eyebrow">{isChinese ? "积分余额" : "Credit balance"}</p>
+          <h2 className="card-title">{`${quotaTierLabel(quota.tier, locale)} · ${isChinese ? "本月可用积分" : "Credits available this month"}`}</h2>
         </div>
-        {quota ? (
-          <div className="metric-grid">
-            <QuotaMeter label={isChinese ? "处理任务" : "Processing jobs"} used={quota.jobs.used} limit={quota.jobs.limit} value={`${quota.jobs.used} / ${quota.jobs.limit}`} />
-            <QuotaMeter label={isChinese ? "文件存储" : "File storage"} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBytes(quota.storage.usedBytes)} / ${formatBytes(quota.storage.limitBytes)}`} />
+        <div className="credit-balance-summary">
+          <div className="credit-balance-value">
+            <strong>{quota.jobs.remaining}</strong>
+            <span>{isChinese ? "积分" : "credits"}</span>
           </div>
-        ) : null}
-      </section> : entitlementStatus !== "checking" ? (
+          <p>{isChinese ? `本月共 ${quota.jobs.limit} 积分，已使用 ${quota.jobs.used} 积分。` : `${quota.jobs.limit} credits this month, ${quota.jobs.used} used.`}</p>
+        </div>
+        <div className="metric-grid">
+          <QuotaMeter label={isChinese ? "本月积分使用" : "Credits used this month"} used={quota.jobs.used} limit={quota.jobs.limit} value={`${quota.jobs.used} / ${quota.jobs.limit}`} />
+          <QuotaMeter label={isChinese ? "文件存储" : "File storage"} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBytes(quota.storage.usedBytes)} / ${formatBytes(quota.storage.limitBytes)}`} />
+        </div>
+        <p className="helper-copy">{isChinese ? "每次符合计费规则的成功操作消耗 1 积分；积分按月重置，未使用积分不滚存。" : "Each eligible successful operation uses one credit. Credits reset monthly and do not roll over."}</p>
+      </section> : null}
+
+      {entitlementStatus !== "active" && entitlementStatus !== "checking" ? (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
             <p className="eyebrow">{isChinese ? "免费使用状态" : "Free access status"}</p>
             <h2 className="card-title">{isChinese ? "当前没有生效中的付费套餐" : "No paid plan is active"}</h2>
-            <p className="body-copy">{isChinese ? "免费账户可用一份完整多页 PDF 或乐谱图片创建终身项目，并在该项目内校正、播放、移调、转简谱、分享和导出；每月最多 25 个后台任务。" : "Free accounts can create one lifetime project from a complete multi-page PDF or score image and keep using its correction, playback, transposition, Jianpu, sharing, and export tools, with up to 25 server jobs monthly."}</p>
-            {quota ? <QuotaMeter label={isChinese ? "本月后台任务" : "Server jobs this month"} used={quota.jobs.used} limit={quota.jobs.limit} value={`${quota.jobs.used} / ${quota.jobs.limit}`} /> : null}
+            <p className="body-copy">{isChinese ? "免费账户可用一份完整多页 PDF 或乐谱图片创建终身项目，并在该项目内校正、播放、移调、转简谱、分享和导出；每月包含 25 积分。" : "Free accounts can create one lifetime project from a complete multi-page PDF or score image and keep using its correction, playback, transposition, Jianpu, sharing, and export tools, with 25 credits each month."}</p>
           </div>
           <div className="button-row">
             <Link href={accountActivationRoute} className="button button-primary">{isChinese ? "兑换激活码" : "Unlock full access"}</Link>

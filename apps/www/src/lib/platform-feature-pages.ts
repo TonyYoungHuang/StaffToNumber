@@ -460,7 +460,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     details: [
       {
         title: "Clear capacity boundaries",
-        body: "Free includes one complete project and up to 25 server jobs monthly; Starter includes 50 and Converter Pro includes 200. Current project-level tools remain available on the free score.",
+        body: "Free includes one complete project and 25 credits monthly; Starter includes 50 credits and Converter Pro includes 200. Current project-level tools remain available on the free score.",
       },
       {
         title: "Operational support",

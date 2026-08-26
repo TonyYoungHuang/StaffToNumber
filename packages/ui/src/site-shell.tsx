@@ -18,7 +18,7 @@ export type SiteShellNavItem = {
 export type SiteShellAction = {
   href: string;
   label: string;
-  tone?: "primary" | "secondary" | "tertiary";
+  tone?: "primary" | "secondary" | "tertiary" | "credit";
   external?: boolean;
   icon?: React.ReactNode;
   desktopOnly?: boolean;

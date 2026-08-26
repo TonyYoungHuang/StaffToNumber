@@ -2,15 +2,18 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { APP_ROUTES } from "@score/shared";
 import {
   ArrowNorthEastIcon,
   SiteShellFooter,
   SiteShellHeader,
+  SparkIcon,
   type SiteShellAction,
   type SiteShellNavItem,
 } from "@score/ui";
+import { apiRequest } from "../lib/api";
+import { getStoredToken } from "../lib/auth-storage";
 import { PUBLIC_SITE_URL } from "../lib/support";
 import { AppLocaleSwitcher } from "./AppLocaleSwitcher";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -18,6 +21,7 @@ import { useAppLocale } from "./AppLocaleProvider";
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { locale } = useAppLocale();
+  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const primaryHref = `${APP_ROUTES.scores}#free-scan`;
   const publicSiteUrl = PUBLIC_SITE_URL.replace(/\/$/u, "");
   const publicHref = (path: string) => {
@@ -30,10 +34,36 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const teachingAvailable = process.env.NEXT_PUBLIC_TEACHING_AVAILABLE === "true";
   const isScoresActive = pathname === APP_ROUTES.scores || pathname.startsWith(`${APP_ROUTES.scores}/`);
 
+  useEffect(() => {
+    let active = true;
+
+    async function refreshCredits() {
+      const token = getStoredToken();
+      if (!token) {
+        if (active) setRemainingCredits(null);
+        return;
+      }
+      const result = await apiRequest<{ usage: { jobs: { remaining: number } } }>("/api/payments/billing/usage", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (active) setRemainingCredits(result.ok ? result.data.usage.jobs.remaining : null);
+    }
+
+    const handleFocus = () => { void refreshCredits(); };
+    const refreshTimer = window.setInterval(() => { void refreshCredits(); }, 30_000);
+    void refreshCredits();
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [pathname]);
+
   const copy = locale === "zh-CN"
     ? {
         scores: "我的乐谱", scanner: "扫描识谱", editor: "在线编辑", transpose: "移调", library: "曲库", pricing: "价格",
-        classes: "课堂", help: "帮助", guide: "使用指南", contact: "联系我们", billing: "账单", upgrade: "升级",
+        classes: "课堂", help: "帮助", guide: "使用指南", contact: "联系我们", billing: "账单", credits: "积分", upgrade: "升级",
         primaryLabel: "免费编辑", menu: "打开导航菜单", closeMenu: "关闭导航菜单",
         caption: "PDF / 图片五线谱识别工作台", footerTitle: "ScoreTransposer",
         footerCopy: "免费从一份完整多页 PDF 或图片创建一个终身乐谱项目，并继续校正、转简谱、移调、播放、分享与导出。",
@@ -41,7 +71,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       }
     : {
         scores: "My scores", scanner: "Scanner", editor: "Editor", transpose: "Transpose", library: "Score library", pricing: "Pricing",
-        classes: "Classes", help: "Help", guide: "Guide", contact: "Contact us", billing: "Billing", upgrade: "Upgrade",
+        classes: "Classes", help: "Help", guide: "Guide", contact: "Contact us", billing: "Billing", credits: "credits", upgrade: "Upgrade",
         primaryLabel: "Edit for free", menu: "Open navigation menu", closeMenu: "Close navigation menu",
         caption: "PDF and image score scanner", footerTitle: "ScoreTransposer",
         footerCopy: "Create one lifetime free score project from a complete PDF or image, then correct, convert, transpose, play, share, and export it.",
@@ -59,7 +89,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
     ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: copy.classes, active: pathname.startsWith(APP_ROUTES.classrooms) }] : []),
   ];
   const actions: SiteShellAction[] = [
-    { href: APP_ROUTES.billing, label: copy.billing, tone: "secondary", desktopOnly: true },
+    remainingCredits === null
+      ? { href: APP_ROUTES.billing, label: copy.billing, tone: "secondary", desktopOnly: true }
+      : { href: APP_ROUTES.billing, label: `${remainingCredits} ${copy.credits}`, tone: "credit", icon: <SparkIcon width={16} height={16} /> },
     ...(checkoutAvailable ? [{ href: APP_ROUTES.checkout, label: copy.upgrade, tone: "tertiary" as const }] : []),
     { href: primaryHref, label: copy.primaryLabel, tone: "primary", icon: <ArrowNorthEastIcon width={16} height={16} /> },
   ];

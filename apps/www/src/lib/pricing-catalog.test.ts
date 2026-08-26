@@ -32,4 +32,6 @@ test("Chinese and English checkout surfaces share one complete four-plan catalog
   assert.equal(getPricingPlanCatalog("zh-CN")[0]?.price, "$0");
   assert.ok(getPricingPlanCatalog("en")[0]?.resources.includes("1 GB file storage"));
   assert.equal(getPricingPlanCatalog("en")[0]?.code, "free");
+  assert.ok(chinese.every((plan) => !JSON.stringify(plan).includes("后台任务")));
+  assert.ok(english.every((plan) => !/server jobs?/iu.test(JSON.stringify(plan))));
 });

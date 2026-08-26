@@ -32,6 +32,11 @@ const ERROR_COPY: Array<{ pattern: RegExp; zh: string; en: string }> = [
     en: "This feature requires active access.",
   },
   {
+    pattern: /monthly (?:credit balance|processing quota).+(?:used up|reached)/iu,
+    zh: "本月积分已用完，请等待下月重置或升级积分套餐。",
+    en: "You have used all credits for this month. Wait for the monthly reset or upgrade your credit plan.",
+  },
+  {
     pattern: /request failed|network request failed|failed to fetch/iu,
     zh: "请求未完成，请检查网络后重试。",
     en: "The request did not finish. Check your connection and try again.",

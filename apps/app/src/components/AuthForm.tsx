@@ -83,7 +83,7 @@ export function AuthForm({
           switch: mode === "register" ? "已有账户" : "还没有账户",
           footnote:
             mode === "register"
-              ? "免费方案只限一个完整乐谱项目；该项目可使用现有校正、播放、移调、简谱、版本、分享和导出能力，每月最多 25 个后台任务。"
+              ? "免费方案只限一个完整乐谱项目；该项目可使用现有校正、播放、移调、简谱、版本、分享和导出能力，每月包含 25 积分。"
               : "如你通过电商渠道购买了激活码，可在登录后继续兑换。",
           redeem: "兑换激活码（中国大陆）",
           forgot: "忘记密码",
@@ -108,7 +108,7 @@ export function AuthForm({
           switch: mode === "register" ? "Already have an account" : "Need an account",
           footnote:
             mode === "register"
-              ? "Free includes one complete lifetime score project with current correction, playback, transposition, Jianpu, version, sharing, and export tools, plus up to 25 server jobs monthly."
+              ? "Free includes one complete lifetime score project with current correction, playback, transposition, Jianpu, version, sharing, and export tools, plus 25 credits monthly."
               : "If you bought an activation code through a mainland-China sales channel, redeem it after signing in.",
           redeem: "Redeem activation code (Mainland China)",
           forgot: "Forgot password",
