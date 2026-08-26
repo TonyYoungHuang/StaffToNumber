@@ -15,10 +15,10 @@ const caseImages = [
 ] as const;
 
 const featureDemos = [
-  { slug: "score-editor", video: "/product/demo-score-editor.mp4", poster: "/product/demo-score-editor-poster.jpg", altZh: "在线编辑五线谱功能短片", altEn: "Online score editing product demo" },
-  { slug: "transpose-score", video: "/product/demo-transpose-score.mp4", poster: "/product/demo-transpose-score-poster.jpg", altZh: "五线谱移调功能短片", altEn: "Score transposition product demo" },
-  { slug: "staff-to-jianpu", video: "/product/demo-staff-to-jianpu.mp4", poster: "/product/demo-staff-to-jianpu-poster.jpg", altZh: "五线谱转简谱功能短片", altEn: "Staff notation to Jianpu product demo" },
-  { slug: "score-to-audio", video: "/product/demo-score-to-audio.mp4", poster: "/product/demo-score-to-audio-poster.jpg", altZh: "五线谱生成练习音频功能短片", altEn: "Score-to-audio product demo" },
+  { slug: "score-editor", videoZh: "/product/demo-score-editor.mp4", posterZh: "/product/demo-score-editor-poster.jpg", videoEn: "/product/demo-score-editor-en.mp4", posterEn: "/product/demo-score-editor-en-poster.jpg", altZh: "在线编辑五线谱功能短片", altEn: "English online score editing product demo" },
+  { slug: "transpose-score", videoZh: "/product/demo-transpose-score.mp4", posterZh: "/product/demo-transpose-score-poster.jpg", videoEn: "/product/demo-transpose-score-en.mp4", posterEn: "/product/demo-transpose-score-en-poster.jpg", altZh: "五线谱移调功能短片", altEn: "English score transposition product demo" },
+  { slug: "staff-to-jianpu", videoZh: "/product/demo-staff-to-jianpu.mp4", posterZh: "/product/demo-staff-to-jianpu-poster.jpg", videoEn: "/product/demo-staff-to-jianpu-en.mp4", posterEn: "/product/demo-staff-to-jianpu-en-poster.jpg", altZh: "五线谱转简谱功能短片", altEn: "English staff notation to Jianpu product demo" },
+  { slug: "score-to-audio", videoZh: "/product/demo-score-to-audio.mp4", posterZh: "/product/demo-score-to-audio-poster.jpg", videoEn: "/product/demo-score-to-audio-en.mp4", posterEn: "/product/demo-score-to-audio-en-poster.jpg", altZh: "五线谱生成练习音频功能短片", altEn: "English score-to-audio product demo" },
 ] as const;
 
 const capabilityScoreSamples = [
@@ -51,11 +51,11 @@ const capabilityScoreSamples = [
     altEn: "Real Bach Prelude BWV 846 score excerpt shown with playback and audio features",
   },
   {
-    image: "/product/score-samples/hanon-exercise.webp",
-    titleZh: "哈农钢琴练指法",
-    titleEn: "Hanon piano exercise",
-    altZh: "哈农钢琴练指法真实五线谱局部，用于复杂谱面识别功能展示",
-    altEn: "Real Hanon piano exercise excerpt shown with score recognition features",
+    image: "/product/score-samples/beethoven-appassionata.webp",
+    titleZh: "贝多芬《热情奏鸣曲》Op.57",
+    titleEn: "Beethoven Appassionata Op. 57",
+    altZh: "贝多芬《热情奏鸣曲》Op.57 纯西文五线谱局部，用于复杂谱面识别功能展示",
+    altEn: "Real Beethoven Appassionata Op. 57 score excerpt shown with score recognition features",
   },
 ] as const;
 
@@ -277,8 +277,8 @@ export default async function HomePage() {
                 <article key={title} className={styles.demoCard}>
                   <div className={styles.demoMedia}>
                     <video
-                      src={demo.video}
-                      poster={demo.poster}
+                      src={isChinese ? demo.videoZh : demo.videoEn}
+                      poster={isChinese ? demo.posterZh : demo.posterEn}
                       controls
                       muted
                       playsInline

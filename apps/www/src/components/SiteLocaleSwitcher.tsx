@@ -26,7 +26,7 @@ export function SiteLocaleSwitcher() {
             className={`locale-switcher-button${isActive ? " is-active" : ""}`}
             aria-current={isActive ? "page" : undefined}
           >
-            {item === "zh-CN" ? "简体中文" : "EN"}
+            {item === "zh-CN" ? (locale === "en" ? "ZH" : "简体中文") : "EN"}
           </a>
         );
       })}

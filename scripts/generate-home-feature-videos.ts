@@ -7,7 +7,9 @@ import { createOmrCandidateFixture } from "../tests/e2e/omr-candidate-fixture";
 const root = process.cwd();
 const apiUrl = "http://127.0.0.1:43102";
 const appUrl = "http://127.0.0.1:43101";
-const productionApiOrigin = "https://api.scoretransposer.com";
+const isEnglish = process.argv.includes("--locale=en");
+const scoreLocale = isEnglish ? "en" : "zh-CN";
+const assetSuffix = isEnglish ? "-en" : "";
 const runId = new Date().toISOString().replace(/[:.]/gu, "-");
 const outputDir = path.join(root, ".tmp", "home-feature-video-raw", runId);
 const children: ChildProcess[] = [];
@@ -40,13 +42,23 @@ async function waitForUrl(url: string, timeoutMs = 60_000) {
 }
 
 async function preparePage(context: BrowserContext, token: string) {
-  await context.addCookies([{ name: "score_locale", value: "zh-CN", domain: "127.0.0.1", path: "/" }]);
+  await context.addCookies([{ name: "score_locale", value: scoreLocale, url: appUrl }]);
   const page = await context.newPage();
   page.setDefaultTimeout(25_000);
-  await page.route(`${productionApiOrigin}/**`, async (route) => {
+  await page.route("**/api/**", async (route) => {
     const sourceUrl = new URL(route.request().url());
+    if (sourceUrl.origin === appUrl) {
+      await route.continue();
+      return;
+    }
     const localUrl = `${apiUrl}${sourceUrl.pathname}${sourceUrl.search}`;
-    const response = await route.fetch({ url: localUrl });
+    const response = await route.fetch({
+      url: localUrl,
+      headers: {
+        ...route.request().headers(),
+        authorization: `Bearer ${token}`,
+      },
+    });
     await route.fulfill({ response });
   });
   await page.addInitScript((authToken) => window.localStorage.setItem("score-auth-token", authToken), token);
@@ -88,7 +100,14 @@ async function addRecorderLabel(page: Page, title: string, steps: string) {
 
 async function focusSection(page: Page, heading: string) {
   const section = page.getByRole("heading", { name: heading, exact: true }).locator("xpath=ancestor::section[1]");
-  await section.waitFor({ state: "visible" });
+  try {
+    await section.waitFor({ state: "visible" });
+  } catch (error) {
+    const headings = await page.locator("h1, h2, h3").allTextContents();
+    process.stderr.write(`Could not find \"${heading}\". Rendered headings: ${JSON.stringify(headings)}\n`);
+    await page.screenshot({ path: path.join(outputDir, "recording-error.png"), fullPage: true });
+    throw error;
+  }
   await section.evaluate((element) => element.scrollIntoView({ block: "start", behavior: "instant" }));
   await page.evaluate(() => window.scrollBy(0, -72));
   await page.waitForTimeout(800);
@@ -126,7 +145,9 @@ async function recordFeature(
   const page = await preparePage(context, fixture.token);
   const video = page.video();
   await page.goto(`${appUrl}/scores/${fixture.documentId}`, { waitUntil: "domcontentloaded" });
-  const consent = page.getByRole("button", { name: "同意", exact: true });
+  const renderedLocale = await page.locator("html").getAttribute("lang");
+  if (renderedLocale !== scoreLocale) throw new Error(`Expected ${scoreLocale} recording UI, received ${renderedLocale ?? "no locale"}.`);
+  const consent = page.getByRole("button", { name: isEnglish ? "Accept" : "同意", exact: true });
   if (await consent.isVisible().catch(() => false)) await consent.click();
   const section = await focusSection(page, input.heading);
   await addRecorderLabel(page, input.labelTitle, input.labelSteps);
@@ -142,6 +163,7 @@ async function recordFeature(
 }
 
 async function main() {
+  process.stdout.write(`Recording ${scoreLocale} feature videos.\n`);
   const commonEnv = {
     ...process.env,
     NODE_ENV: "test",
@@ -166,67 +188,67 @@ async function main() {
   const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--no-proxy-server"] });
   try {
     await recordFeature(browser, apiRequest, {
-      fileName: "demo-score-editor",
-      fixtureLabel: "home-editor-video",
-      heading: "小节级图形编辑器",
-      labelTitle: "在线编辑",
-      labelSteps: "选择音符 → 升高音高 → 保存为新版本",
+      fileName: `demo-score-editor${assetSuffix}`,
+      fixtureLabel: `home-editor-video${assetSuffix}`,
+      heading: isEnglish ? "Measure-level graphical editor" : "小节级图形编辑器",
+      labelTitle: isEnglish ? "Edit online" : "在线编辑",
+      labelSteps: isEnglish ? "Select a note → raise pitch → save a new revision" : "选择音符 → 升高音高 → 保存为新版本",
       run: async (_page, section, firstEventId) => {
         const note = section.locator(`[data-vexflow-event-id="${firstEventId}"]`);
         await note.click();
         await new Promise((resolve) => setTimeout(resolve, 700));
-        await section.getByRole("button", { name: "升高半音" }).click();
+        await section.getByRole("button", { name: isEnglish ? "Raise semitone" : "升高半音" }).click();
         await new Promise((resolve) => setTimeout(resolve, 700));
-        await section.getByRole("button", { name: "保存音高/时值" }).click();
-        await section.getByText("已保存为新的修谱版本。", { exact: true }).waitFor();
+        await section.getByRole("button", { name: isEnglish ? "Save pitch/duration" : "保存音高/时值" }).click();
+        await section.getByText(isEnglish ? "Saved a new corrected revision." : "已保存为新的修谱版本。", { exact: true }).waitFor();
       },
     });
 
     await recordFeature(browser, apiRequest, {
-      fileName: "demo-transpose-score",
-      fixtureLabel: "home-transpose-video",
-      heading: "创建移调版本",
-      labelTitle: "整谱移调",
-      labelSteps: "设置 +2 半音 → 创建可追踪的新版本",
+      fileName: `demo-transpose-score${assetSuffix}`,
+      fixtureLabel: `home-transpose-video${assetSuffix}`,
+      heading: isEnglish ? "Create transposed revision" : "创建移调版本",
+      labelTitle: isEnglish ? "Transpose a score" : "整谱移调",
+      labelSteps: isEnglish ? "Set +2 semitones → create a traceable revision" : "设置 +2 半音 → 创建可追踪的新版本",
       run: async (_page, section) => {
         const semitoneInput = section.locator('input[type="number"]').first();
         await semitoneInput.fill("2");
         await new Promise((resolve) => setTimeout(resolve, 850));
         const transposed = _page.waitForResponse((response) => response.url().includes("/transpose") && response.request().method() === "POST" && response.status() === 201);
-        await section.getByRole("button", { name: "创建移调版本", exact: true }).click();
+        await section.getByRole("button", { name: isEnglish ? "Create transposed revision" : "创建移调版本", exact: true }).click();
         await transposed;
         await new Promise((resolve) => setTimeout(resolve, 900));
       },
     });
 
     await recordFeature(browser, apiRequest, {
-      fileName: "demo-staff-to-jianpu",
-      fixtureLabel: "home-jianpu-video",
-      heading: "简谱预览",
-      labelTitle: "五线谱转简谱",
-      labelSteps: "切换唱名法 → 重新生成同一乐谱的简谱",
+      fileName: `demo-staff-to-jianpu${assetSuffix}`,
+      fixtureLabel: `home-jianpu-video${assetSuffix}`,
+      heading: isEnglish ? "Jianpu preview" : "简谱预览",
+      labelTitle: isEnglish ? "Staff to Jianpu" : "五线谱转简谱",
+      labelSteps: isEnglish ? "Switch solfège → regenerate Jianpu from the same score" : "切换唱名法 → 重新生成同一乐谱的简谱",
       run: async (_page, section) => {
         await section.locator("select").first().selectOption("fixed-do");
         await new Promise((resolve) => setTimeout(resolve, 850));
-        await section.getByRole("button", { name: "重新生成", exact: true }).click();
-        await section.getByText("正在生成简谱...", { exact: true }).waitFor({ state: "hidden" });
+        await section.getByRole("button", { name: isEnglish ? "Regenerate" : "重新生成", exact: true }).click();
+        await section.getByText(isEnglish ? "Generating Jianpu..." : "正在生成简谱...", { exact: true }).waitFor({ state: "hidden" });
       },
     });
 
     await recordFeature(browser, apiRequest, {
-      fileName: "demo-score-to-audio",
-      fixtureLabel: "home-audio-video",
-      heading: "Tone.js 分声部练习播放器",
-      labelTitle: "五线谱生成音频",
-      labelSteps: "生成播放事件 → 调整速度 → 播放并移动播放位置",
+      fileName: `demo-score-to-audio${assetSuffix}`,
+      fixtureLabel: `home-audio-video${assetSuffix}`,
+      heading: isEnglish ? "Tone.js part practice player" : "Tone.js 分声部练习播放器",
+      labelTitle: isEnglish ? "Score to audio" : "五线谱生成音频",
+      labelSteps: isEnglish ? "Generate events → adjust tempo → play the score" : "生成播放事件 → 调整速度 → 播放并移动播放位置",
       run: async (_page, section) => {
         const playbackLoaded = _page.waitForResponse((response) => response.url().includes("/playback") && response.request().method() === "GET" && response.status() === 200);
-        await section.getByRole("button", { name: "生成播放事件", exact: true }).click();
+        await section.getByRole("button", { name: isEnglish ? "Generate playback events" : "生成播放事件", exact: true }).click();
         await playbackLoaded;
         const tempo = section.locator('input[type="number"]').first();
         await tempo.fill("88");
         await new Promise((resolve) => setTimeout(resolve, 700));
-        await section.getByRole("button", { name: "播放", exact: true }).click();
+        await section.getByRole("button", { name: isEnglish ? "Play" : "播放", exact: true }).click();
         await new Promise((resolve) => setTimeout(resolve, 2_400));
       },
     });

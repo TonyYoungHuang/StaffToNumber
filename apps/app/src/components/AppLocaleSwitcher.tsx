@@ -46,7 +46,7 @@ export function AppLocaleSwitcher() {
             }}
             aria-pressed={isActive}
           >
-            {item === "zh-CN" ? "简体中文" : "EN"}
+            {item === "zh-CN" ? (locale === "en" ? "ZH" : "简体中文") : "EN"}
           </button>
         );
       })}
