@@ -1,6 +1,7 @@
 import { serialize } from "node:v8";
 import { parentPort, workerData } from "node:worker_threads";
 import { Client, types } from "pg";
+import { createSchemaScopedPostgresExecutor } from "./postgres-session.js";
 
 types.setTypeParser(20, (value) => Number(value));
 types.setTypeParser(1700, (value) => Number(value));
@@ -15,12 +16,11 @@ type WorkerRequest = {
 
 const configuration = workerData as { url: string; schema: string; statementTimeoutMs: number };
 const client = new Client({ connectionString: configuration.url, statement_timeout: configuration.statementTimeoutMs });
-const connected = connectAndConfigure();
-
-async function connectAndConfigure() {
-  await client.connect();
-  await client.query("SELECT set_config('search_path', $1, false)", [`\"${configuration.schema}\", public`]);
-}
+const connected = client.connect();
+const executor = createSchemaScopedPostgresExecutor(
+  configuration.schema,
+  (sql, params) => client.query(sql, normalizeParameters(params ?? [])),
+);
 
 if (!parentPort) throw new Error("PostgreSQL runtime worker requires a parent port.");
 
@@ -29,11 +29,12 @@ parentPort.on("message", async (request: WorkerRequest) => {
   try {
     await connected;
     if (request.operation === "close") {
+      await executor.rollbackOpenTransaction();
       await client.end();
       writeResponse(request.response, signal, { ok: true, rows: [], rowCount: 0 });
       return;
     }
-    const result = await client.query(request.sql ?? "SELECT 1", normalizeParameters(request.params ?? []));
+    const result = await executor.query(request.sql ?? "SELECT 1", request.params ?? []);
     const lastResult = Array.isArray(result) ? result.at(-1) : result;
     writeResponse(request.response, signal, {
       ok: true,
