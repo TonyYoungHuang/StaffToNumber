@@ -21,6 +21,44 @@ const featureDemos = [
   { slug: "score-to-audio", video: "/product/demo-score-to-audio.mp4", poster: "/product/demo-score-to-audio-poster.jpg", altZh: "五线谱生成练习音频功能短片", altEn: "Score-to-audio product demo" },
 ] as const;
 
+const capabilityScoreSamples = [
+  {
+    image: "/product/score-samples/mozart-k265.webp",
+    titleZh: "莫扎特 K.265 变奏曲",
+    titleEn: "Mozart K. 265 variations",
+    altZh: "莫扎特 K.265 变奏曲真实五线谱局部，用于在线编辑功能展示",
+    altEn: "Real Mozart K. 265 score excerpt shown with the online editing feature",
+  },
+  {
+    image: "/product/score-samples/pachelbel-canon.webp",
+    titleZh: "帕赫贝尔 D 大调卡农",
+    titleEn: "Pachelbel Canon in D",
+    altZh: "帕赫贝尔 D 大调卡农真实五线谱局部，用于五线谱转简谱功能展示",
+    altEn: "Real Pachelbel Canon in D score excerpt shown with the staff-to-Jianpu feature",
+  },
+  {
+    image: "/product/score-samples/chopin-op9-2.webp",
+    titleZh: "肖邦夜曲 Op.9 No.2",
+    titleEn: "Chopin Nocturne Op. 9 No. 2",
+    altZh: "肖邦夜曲 Op.9 No.2 真实五线谱局部，用于整谱移调功能展示",
+    altEn: "Real Chopin Nocturne Op. 9 No. 2 score excerpt shown with the transposition feature",
+  },
+  {
+    image: "/product/score-samples/bach-bwv846.webp",
+    titleZh: "巴赫平均律 BWV 846",
+    titleEn: "Bach Prelude BWV 846",
+    altZh: "巴赫平均律 BWV 846 真实五线谱局部，用于乐谱播放与音频功能展示",
+    altEn: "Real Bach Prelude BWV 846 score excerpt shown with playback and audio features",
+  },
+  {
+    image: "/product/score-samples/hanon-exercise.webp",
+    titleZh: "哈农钢琴练指法",
+    titleEn: "Hanon piano exercise",
+    altZh: "哈农钢琴练指法真实五线谱局部，用于复杂谱面识别功能展示",
+    altEn: "Real Hanon piano exercise excerpt shown with score recognition features",
+  },
+] as const;
+
 export default async function HomePage() {
   const locale = await readSiteLocale();
   const isChinese = locale === "zh-CN";
@@ -68,7 +106,8 @@ export default async function HomePage() {
         caseAction: "查看完整功能",
         engineKicker: "工作原理与核心能力",
         engineTitle: "一份结构化乐谱，连接所有后续动作",
-        engineBody: "输入文件先成为可核对的候选，确认后进入同一个 Score JSON 乐谱工程。",
+        engineBody: "每项能力都配有真实谱面片段；输入文件先成为可核对的候选，确认后进入同一个 Score JSON 乐谱工程。",
+        capabilityProof: "真实谱面",
         pipeline: [["输入来源", "PDF／图片／音视频"], ["识别与校正", "MusicXML 候选"], ["项目真源", "Score JSON"]],
         capabilities: [
           ["在线编辑", "修正音高、时值、调号与小节。", "/score-editor"],
@@ -151,7 +190,8 @@ export default async function HomePage() {
         caseAction: "Explore the feature",
         engineKicker: "How it works and what it does",
         engineTitle: "One structured score connects every next action",
-        engineBody: "A source becomes a reviewable candidate, then moves into one Score JSON project after confirmation.",
+        engineBody: "Every capability is paired with a real score excerpt. A source becomes a reviewable candidate, then moves into one Score JSON project after confirmation.",
+        capabilityProof: "Real score",
         pipeline: [["Source", "PDF / image / audio"], ["Recognition and review", "MusicXML candidate"], ["Project truth", "Score JSON"]],
         capabilities: [
           ["Edit online", "Correct pitch, duration, key, and measures.", "/score-editor"],
@@ -282,7 +322,27 @@ export default async function HomePage() {
         <div className={styles.container}>
           <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.engineKicker}</p><h2 id="engine-title">{copy.engineTitle}</h2><p>{copy.engineBody}</p></header>
           <div className={styles.pipeline}>{copy.pipeline.map(([label, value], index) => <div key={label} className={index === copy.pipeline.length - 1 ? styles.pipelineCore : undefined}><small>{label}</small><strong>{value}</strong>{index < copy.pipeline.length - 1 ? <i aria-hidden="true">→</i> : null}</div>)}</div>
-          <div className={styles.capabilityGrid}>{copy.capabilities.map(([title, body, href]) => <Link href={localizePublicHref(href, locale)} key={title}><strong>{title}</strong><span>{body}</span><ArrowNorthEastIcon width={15} height={15} /></Link>)}</div>
+          <div className={styles.capabilityGrid}>
+            {copy.capabilities.map(([title, body, href], index) => {
+              const sample = capabilityScoreSamples[index];
+              return (
+                <Link href={localizePublicHref(href, locale)} key={title}>
+                  <div className={styles.capabilitySample}>
+                    <Image
+                      src={sample.image}
+                      alt={isChinese ? sample.altZh : sample.altEn}
+                      width={1200}
+                      height={720}
+                      sizes="(max-width: 560px) 92vw, (max-width: 820px) 46vw, (max-width: 1100px) 31vw, 19vw"
+                    />
+                    <span>{copy.capabilityProof} · {isChinese ? sample.titleZh : sample.titleEn}</span>
+                  </div>
+                  <div className={styles.capabilityCopy}><strong>{title}</strong><span>{body}</span></div>
+                  <ArrowNorthEastIcon width={15} height={15} />
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </section>
 

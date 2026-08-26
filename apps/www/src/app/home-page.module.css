@@ -780,15 +780,15 @@
 
 .capabilityGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 
 .capabilityGrid a {
   position: relative;
   display: grid;
-  min-height: 138px;
-  padding: 19px;
+  min-height: 292px;
+  overflow: hidden;
   align-content: start;
   border: 1px solid var(--home-line);
   border-radius: 16px;
@@ -796,11 +796,58 @@
   color: var(--home-ink);
   text-decoration: none;
   transition: border-color 170ms ease, transform 170ms ease, box-shadow 170ms ease;
+  grid-column: span 2;
 }
 
+.capabilityGrid a:nth-last-child(-n + 2) { grid-column: span 3; }
+
 .capabilityGrid a:hover { transform: translateY(-2px); border-color: #b9b1f4; box-shadow: 0 13px 28px rgba(64, 53, 148, 0.08); }
-.capabilityGrid strong { font-size: 16px; }
-.capabilityGrid span { margin-top: 9px; color: var(--home-copy); font-size: 12px; line-height: 1.55; }
+.capabilityGrid a:hover .capabilitySample img { transform: scale(1.035); }
+
+.capabilitySample {
+  position: relative;
+  aspect-ratio: 5 / 3;
+  overflow: hidden;
+  border-bottom: 1px solid var(--home-line);
+  background: #f3f4f8;
+}
+
+.capabilitySample::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(14, 18, 36, 0.02) 48%, rgba(14, 18, 36, 0.32));
+  content: "";
+  pointer-events: none;
+}
+
+.capabilitySample img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 220ms ease;
+}
+
+.capabilitySample span {
+  position: absolute;
+  right: 9px;
+  bottom: 9px;
+  left: 9px;
+  z-index: 1;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 820;
+  line-height: 1.3;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.46);
+}
+
+.capabilityCopy {
+  display: grid;
+  padding: 16px 17px 43px;
+}
+
+.capabilityCopy strong { font-size: 16px; }
+.capabilityCopy > span { margin-top: 9px; color: var(--home-copy); font-size: 12px; line-height: 1.55; }
 .capabilityGrid svg { position: absolute; right: 15px; bottom: 15px; color: var(--home-brand); }
 
 .trustLayout {
@@ -981,7 +1028,9 @@
   .heroGrid { gap: 24px; }
   .heroIntro span { white-space: normal; }
   .toolRail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .capabilityGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .capabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .capabilityGrid a,
+  .capabilityGrid a:nth-last-child(-n + 2) { grid-column: auto; }
   .demoGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .trustLayout,
   .faqLayout { grid-template-columns: 1fr; gap: 32px; }
@@ -1032,7 +1081,7 @@
   .trustHeadingEnglish h2 { font-size: 31px; white-space: normal; }
   .capabilityGrid { grid-template-columns: 1fr; }
   .demoGrid { grid-template-columns: 1fr; }
-  .capabilityGrid a { min-height: 118px; }
+  .capabilityGrid a { min-height: 0; }
   .creditRules > div:last-child { grid-template-columns: 1fr; }
   .finalSection { padding-inline: 14px; }
   .finalCard { padding: 27px; }
