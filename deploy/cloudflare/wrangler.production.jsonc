@@ -27,7 +27,7 @@
     "S3_KEY_PREFIX": "production",
     "EMAIL_DELIVERY_ENABLED": "true",
     "FREE_TRIAL_OMR_JOBS": "1",
-    "PAYMENT_PROVIDERS": "",
+    "PAYMENT_PROVIDERS": "paddle",
     "STRIPE_MANAGED_PAYMENTS_ENABLED": "false",
     "PADDLE_ENVIRONMENT": "production",
     "PADDLE_DEFAULT_PAYMENT_LINK": "https://scoretransposer.com/checkout/paddle"
