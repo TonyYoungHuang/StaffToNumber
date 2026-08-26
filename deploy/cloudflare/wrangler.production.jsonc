@@ -12,7 +12,7 @@
   ],
   "vars": {
     "DEPLOYMENT_ENV": "production",
-    "API_CONTAINER_NAME": "api-primary",
+    "API_CONTAINER_NAME": "api-primary-paddle-live-v2",
     "COLLABORATION_CONTAINER_NAME": "collaboration-primary",
     "MUSIC_WORKER_CONTAINER_NAME": "music-worker-primary",
     "RUNTIME_DATABASE_PRIMARY": "postgres",
@@ -27,7 +27,7 @@
     "S3_KEY_PREFIX": "production",
     "EMAIL_DELIVERY_ENABLED": "true",
     "FREE_TRIAL_OMR_JOBS": "1",
-    "PAYMENT_PROVIDERS": "",
+    "PAYMENT_PROVIDERS": "paddle",
     "STRIPE_MANAGED_PAYMENTS_ENABLED": "false",
     "PADDLE_ENVIRONMENT": "production",
     "PADDLE_DEFAULT_PAYMENT_LINK": "https://scoretransposer.com/checkout/paddle"
