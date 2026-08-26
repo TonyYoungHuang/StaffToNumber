@@ -40,6 +40,8 @@ const environmentConfig = environment === "production"
       analyticsEnabled: "false",
       ga4MeasurementId: "G-CERGG48WWE",
       googleClientId: "197772512602-qu2uh3poji5itp19ajaiu6birililo5o.apps.googleusercontent.com",
+      paddleClientToken: "live_9e452b01070e52a381369d686d0",
+      livePaymentProviders: "paddle",
     }
   : {
       siteUrl: "https://staging.scoretransposer.com",
@@ -55,6 +57,8 @@ const environmentConfig = environment === "production"
       analyticsEnabled: "false",
       ga4MeasurementId: "",
       googleClientId: "197772512602-qu2uh3poji5itp19ajaiu6birililo5o.apps.googleusercontent.com",
+      paddleClientToken: "",
+      livePaymentProviders: "",
     };
 const buildEnvironment = {
   ...process.env,
@@ -73,7 +77,7 @@ const buildEnvironment = {
   NEXT_PUBLIC_PAYMENT_PROVIDERS:
     process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS?.trim() || "paddle,stripe",
   NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS:
-    process.env.NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS?.trim() || "",
+    process.env.NEXT_PUBLIC_LIVE_PAYMENT_PROVIDERS?.trim() || environmentConfig.livePaymentProviders,
   NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE: "false",
   NEXT_PUBLIC_OMR_AVAILABLE: environmentConfig.omrAvailable,
   NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE: environmentConfig.audioTranscriptionAvailable,
@@ -87,7 +91,8 @@ const buildEnvironment = {
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || environmentConfig.googleClientId,
   NEXT_PUBLIC_CLARITY_PROJECT_ID: process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() || "",
   NEXT_PUBLIC_DEMO_ACTIVATION_CODE: "",
-  NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() || "",
+  NEXT_PUBLIC_PADDLE_CLIENT_TOKEN:
+    process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() || environmentConfig.paddleClientToken,
   NEXT_PUBLIC_PADDLE_ENVIRONMENT:
     process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT?.trim() || (environment === "production" ? "production" : "sandbox"),
   NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN: ".scoretransposer.com",
