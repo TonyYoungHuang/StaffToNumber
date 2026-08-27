@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { db } from "../db.js";
-import { PDFDocument } from "pdf-lib";
+import { inspectPdfRasterSafety } from "./upload-security.js";
 
 export type FreeTrialAccess = {
   omrJobsUsed: number;
@@ -72,6 +72,6 @@ export function isFreeTrialScoreDocumentForUser(documentId: string, userId: stri
 }
 
 export async function inspectFreeTrialPdf(source: Uint8Array) {
-  const pdf = await PDFDocument.load(source);
-  return { pageCount: pdf.getPageCount() };
+  const inspection = await inspectPdfRasterSafety(source);
+  return { pageCount: inspection.pageCount };
 }

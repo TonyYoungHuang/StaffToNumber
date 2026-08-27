@@ -7,6 +7,11 @@ function storageEncryption(value: string | undefined): "AES256" | "aws:kms" | un
   return value === "AES256" || value === "aws:kms" ? value : undefined;
 }
 
+function positiveInteger(value: string | undefined, fallback: number) {
+  const parsed = Number(value ?? fallback);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export const workerConfig = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   dbFile: process.env.DB_FILE ?? path.join(cwd, "..", "api", "data", "app.sqlite"),
@@ -36,8 +41,12 @@ export const workerConfig = {
   jobBrokerPrefix: (process.env.JOB_BROKER_PREFIX ?? "score-jobs").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "score-jobs",
   jobBrokerConcurrency: Math.max(1, Math.min(32, Number(process.env.JOB_BROKER_CONCURRENCY ?? 1))),
   audiverisCommand: process.env.AUDIVERIS_COMMAND ?? "",
-  audiverisTimeoutMs: Number(process.env.AUDIVERIS_TIMEOUT_MS ?? 180000),
+  audiverisTimeoutMs: positiveInteger(process.env.AUDIVERIS_TIMEOUT_MS, 180000),
+  audiverisMaxHeapMb: Math.max(256, Math.min(32_768, positiveInteger(process.env.AUDIVERIS_MAX_HEAP_MB, 4096))),
   audiverisImageMagickCommand: process.env.AUDIVERIS_IMAGE_MAGICK_COMMAND ?? "convert",
+  omrPdfRasterDpi: positiveInteger(process.env.OMR_PDF_RASTER_DPI, 300),
+  omrPdfMaxPagePixels: positiveInteger(process.env.OMR_PDF_MAX_PAGE_PIXELS, 12_000_000),
+  omrPdfMaxTotalPixels: positiveInteger(process.env.OMR_PDF_MAX_TOTAL_PIXELS, 120_000_000),
   basicPitchCommand: process.env.BASIC_PITCH_COMMAND ?? "",
   basicPitchTimeoutMs: Number(process.env.BASIC_PITCH_TIMEOUT_MS ?? 300000),
   ytDlpCommand: process.env.YT_DLP_COMMAND ?? "",

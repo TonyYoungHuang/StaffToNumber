@@ -5,9 +5,11 @@ import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
+import { PDFDocument } from "pdf-lib";
 import {
   buildSafeMediaTranscodeArgs,
   detectUploadKind,
+  inspectPdfRasterSafety,
   parseMediaProbe,
   scanUploadWithClamd,
   storeVerifiedUpload,
@@ -235,6 +237,61 @@ test("storeVerifiedUpload does not promote a file rejected by the scanner", asyn
         quarantineDir: path.join(root, ".quarantine"),
       }),
       (error: unknown) => error instanceof UploadSecurityError && error.code === "MALWARE_DETECTED",
+    );
+    assert.equal(fs.existsSync(targetPath), false);
+  } finally {
+    await fs.promises.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("PDF raster safety rejects oversized pages and aggregate pixel overages", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-pdf-budget-"));
+  const oversizedPath = path.join(root, "oversized.pdf");
+  const multiPagePath = path.join(root, "multi-page.pdf");
+  const policy = { dpi: 300, maxPagePixels: 12_000_000, maxTotalPixels: 120_000_000 };
+  try {
+    const oversized = await PDFDocument.create();
+    oversized.addPage([17 * 72, 24 * 72]);
+    await fs.promises.writeFile(oversizedPath, await oversized.save());
+    await assert.rejects(
+      inspectPdfRasterSafety(await fs.promises.readFile(oversizedPath), policy),
+      (error: unknown) => error instanceof UploadSecurityError
+        && error.code === "PDF_PAGE_PIXEL_LIMIT"
+        && error.statusCode === 413,
+    );
+
+    const multiPage = await PDFDocument.create();
+    multiPage.addPage([612, 792]);
+    multiPage.addPage([612, 792]);
+    await fs.promises.writeFile(multiPagePath, await multiPage.save());
+    await assert.rejects(
+      inspectPdfRasterSafety(await fs.promises.readFile(multiPagePath), { ...policy, maxTotalPixels: 10_000_000 }),
+      (error: unknown) => error instanceof UploadSecurityError
+        && error.code === "PDF_TOTAL_PIXEL_LIMIT"
+        && error.statusCode === 413,
+    );
+  } finally {
+    await fs.promises.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("storeVerifiedUpload keeps an over-budget PDF in quarantine", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-pdf-upload-"));
+  const targetPath = path.join(root, "stored", "oversized.pdf");
+  try {
+    const oversized = await PDFDocument.create();
+    oversized.addPage([17 * 72, 24 * 72]);
+    const bytes = await oversized.save();
+    await assert.rejects(
+      storeVerifiedUpload({
+        stream: Readable.from(Buffer.from(bytes)),
+        targetPath,
+        allowedKinds: uploadKinds.pdf,
+        scan: async () => "clean",
+        quarantineDir: path.join(root, ".quarantine"),
+        pdfRasterSafety: { dpi: 300, maxPagePixels: 12_000_000, maxTotalPixels: 120_000_000 },
+      }),
+      (error: unknown) => error instanceof UploadSecurityError && error.code === "PDF_PAGE_PIXEL_LIMIT",
     );
     assert.equal(fs.existsSync(targetPath), false);
   } finally {

@@ -57,6 +57,10 @@ type Bindings = {
   SOUNDFONT_OBJECT_KEY?: string;
   SOUNDFONT_LICENSE_OBJECT_KEY?: string;
   OBJECT_STORAGE_GATEWAY_TOKEN?: string;
+  AUDIVERIS_MAX_HEAP_MB?: string;
+  OMR_PDF_RASTER_DPI?: string;
+  OMR_PDF_MAX_PAGE_PIXELS?: string;
+  OMR_PDF_MAX_TOTAL_PIXELS?: string;
 };
 
 function baseContainerEnvironment(env: Bindings) {
@@ -127,6 +131,9 @@ function baseContainerEnvironment(env: Bindings) {
     API_REPLICA_COUNT: "1",
     LIFECYCLE_CLEANUP_ENABLED: "true",
     MEDIA_SAFETY_REQUIRED: "true",
+    OMR_PDF_RASTER_DPI: env.OMR_PDF_RASTER_DPI ?? "300",
+    OMR_PDF_MAX_PAGE_PIXELS: env.OMR_PDF_MAX_PAGE_PIXELS ?? "12000000",
+    OMR_PDF_MAX_TOTAL_PIXELS: env.OMR_PDF_MAX_TOTAL_PIXELS ?? "120000000",
   };
 }
 
@@ -219,6 +226,7 @@ export class MusicWorkerContainer extends ObservableContainer {
     WORKER_RUNTIME_READY_FILE: "/tmp/scoretransposer/runtime/worker-ready.json",
     JOB_BROKER_CONCURRENCY: "1",
     AUDIVERIS_COMMAND: "/opt/audiveris/bin/Audiveris",
+    AUDIVERIS_MAX_HEAP_MB: configuredEnvironment.AUDIVERIS_MAX_HEAP_MB ?? "4096",
     BASIC_PITCH_COMMAND: "/opt/score-python/bin/basic-pitch",
     MUSIC21_COMMAND: "/opt/score-python/bin/python",
     YT_DLP_COMMAND: "/opt/score-python/bin/yt-dlp",
@@ -239,6 +247,7 @@ function musicWorkerEnvironment(env: Bindings) {
     WORKER_RUNTIME_READY_FILE: "/tmp/scoretransposer/runtime/worker-ready.json",
     JOB_BROKER_CONCURRENCY: "1",
     AUDIVERIS_COMMAND: "/opt/audiveris/bin/Audiveris",
+    AUDIVERIS_MAX_HEAP_MB: env.AUDIVERIS_MAX_HEAP_MB ?? "4096",
     BASIC_PITCH_COMMAND: "/opt/score-python/bin/basic-pitch",
     MUSIC21_COMMAND: "/opt/score-python/bin/python",
     YT_DLP_COMMAND: "/opt/score-python/bin/yt-dlp",

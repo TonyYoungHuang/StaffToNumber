@@ -17,6 +17,10 @@ RUN curl -fsSL -o /tmp/audiveris.deb \
     dpkg --unpack /tmp/audiveris.deb && \
     sed -i '/^xdg-desktop-menu /d; /^xdg-mime /d' /var/lib/dpkg/info/audiveris.postinst && \
     dpkg --configure audiveris && \
+    test -f /opt/audiveris/lib/app/Audiveris.cfg && \
+    grep -Eiq '^java-options=-Xmx[0-9]+[gmk]$' /opt/audiveris/lib/app/Audiveris.cfg && \
+    sed -Ei '/^java-options=-Xmx[0-9]+[gmk]$/Id' /opt/audiveris/lib/app/Audiveris.cfg && \
+    ! grep -Eiq '^java-options=-Xmx' /opt/audiveris/lib/app/Audiveris.cfg && \
     rm -f /tmp/audiveris.deb
 
 RUN python3 -m venv /opt/score-python && \
@@ -49,6 +53,10 @@ ENV NODE_ENV=production \
     STORAGE_DIR=/data/storage \
     AUDIVERIS_COMMAND=/opt/audiveris/bin/Audiveris \
     AUDIVERIS_IMAGE_MAGICK_COMMAND=/usr/bin/convert \
+    AUDIVERIS_MAX_HEAP_MB=4096 \
+    OMR_PDF_RASTER_DPI=300 \
+    OMR_PDF_MAX_PAGE_PIXELS=12000000 \
+    OMR_PDF_MAX_TOTAL_PIXELS=120000000 \
     BASIC_PITCH_COMMAND=/opt/score-python/bin/basic-pitch \
     MUSIC21_COMMAND=/opt/score-python/bin/python \
     YT_DLP_COMMAND=/opt/score-python/bin/yt-dlp \

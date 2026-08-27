@@ -1246,3 +1246,117 @@ function clampAudioCleanupInteger(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.round(value)));
 }
+
+export type PdfRasterBudgetPolicy = {
+  dpi: number;
+  maxPagePixels: number;
+  maxTotalPixels: number;
+};
+
+export type PdfPagePointSize = {
+  widthPoints: number;
+  heightPoints: number;
+};
+
+export type PdfRasterPageEstimate = PdfPagePointSize & {
+  pageNumber: number;
+  widthPixels: number;
+  heightPixels: number;
+  pixelCount: number;
+};
+
+export type PdfRasterBudgetResult =
+  | {
+      ok: true;
+      dpi: number;
+      pageCount: number;
+      totalPixels: number;
+      pages: PdfRasterPageEstimate[];
+    }
+  | {
+      ok: false;
+      reason: "invalid_page_size" | "page_pixel_limit" | "total_pixel_limit";
+      dpi: number;
+      pageCount: number;
+      totalPixels: number;
+      page?: PdfRasterPageEstimate;
+      pages: PdfRasterPageEstimate[];
+    };
+
+/** Estimate the raster workload before an untrusted PDF reaches an OMR engine. */
+export function evaluatePdfRasterBudget(
+  pageSizes: readonly PdfPagePointSize[],
+  policy: PdfRasterBudgetPolicy,
+): PdfRasterBudgetResult {
+  for (const [name, value] of Object.entries(policy)) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new RangeError(`PDF raster budget ${name} must be a positive safe integer.`);
+    }
+  }
+
+  const pages: PdfRasterPageEstimate[] = [];
+  let totalPixels = 0;
+  for (let index = 0; index < pageSizes.length; index += 1) {
+    const { widthPoints, heightPoints } = pageSizes[index];
+    if (!Number.isFinite(widthPoints) || widthPoints <= 0 || !Number.isFinite(heightPoints) || heightPoints <= 0) {
+      return {
+        ok: false,
+        reason: "invalid_page_size",
+        dpi: policy.dpi,
+        pageCount: pageSizes.length,
+        totalPixels,
+        pages,
+      };
+    }
+
+    const widthPixels = Math.ceil((widthPoints / 72) * policy.dpi);
+    const heightPixels = Math.ceil((heightPoints / 72) * policy.dpi);
+    const pixelCount = widthPixels * heightPixels;
+    const page: PdfRasterPageEstimate = {
+      pageNumber: index + 1,
+      widthPoints,
+      heightPoints,
+      widthPixels,
+      heightPixels,
+      pixelCount,
+    };
+    if (!Number.isSafeInteger(pixelCount) || pixelCount <= 0) {
+      return {
+        ok: false,
+        reason: "invalid_page_size",
+        dpi: policy.dpi,
+        pageCount: pageSizes.length,
+        totalPixels,
+        page,
+        pages,
+      };
+    }
+
+    pages.push(page);
+    totalPixels += pixelCount;
+    if (pixelCount > policy.maxPagePixels) {
+      return {
+        ok: false,
+        reason: "page_pixel_limit",
+        dpi: policy.dpi,
+        pageCount: pageSizes.length,
+        totalPixels,
+        page,
+        pages,
+      };
+    }
+    if (!Number.isSafeInteger(totalPixels) || totalPixels > policy.maxTotalPixels) {
+      return {
+        ok: false,
+        reason: "total_pixel_limit",
+        dpi: policy.dpi,
+        pageCount: pageSizes.length,
+        totalPixels,
+        page,
+        pages,
+      };
+    }
+  }
+
+  return { ok: true, dpi: policy.dpi, pageCount: pageSizes.length, totalPixels, pages };
+}

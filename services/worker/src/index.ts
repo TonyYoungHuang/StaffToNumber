@@ -7,7 +7,7 @@ import AdmZip from "adm-zip";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { PDFParse } from "pdf-parse";
 import { PNG } from "pngjs";
-import { Worker as BullWorker } from "bullmq";
+import { Queue as BullQueue, Worker as BullWorker } from "bullmq";
 import {
   PRODUCT_NAME,
   SCORE_PROCESSING_QUEUE,
@@ -35,6 +35,12 @@ import { claimNextLegacyJob, type ClaimedLegacyJob } from "./legacy-job-claim.js
 import { consumeBrokerJob } from "./job-broker-consumer.js";
 import { bullMqStartupRetryDelayMs, createBullMqWorkerRedisOptions } from "./job-broker-connection.js";
 import { commitOmrCandidate } from "./omr-candidate-commit.js";
+import { inspectOmrPdfFileIfPresent } from "./omr-pdf-safety.js";
+import {
+  markInterruptedBrokerJobFailed,
+  recoverTerminalBrokerJobs,
+  type RecoveredBrokerJob,
+} from "./broker-job-recovery.js";
 import {
   claimNextNotificationDelivery,
   markNotificationDeliveryFailed,
@@ -3018,6 +3024,12 @@ async function processScoreOmrJob(job: ScoreJobRow) {
   const outputDir = path.join(jobDir, "audiveris-output");
   fs.mkdirSync(outputDir, { recursive: true });
 
+  await inspectOmrPdfFileIfPresent(inputFile.storage_path, {
+    dpi: workerConfig.omrPdfRasterDpi,
+    maxPagePixels: workerConfig.omrPdfMaxPagePixels,
+    maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
+  });
+
   if (!workerConfig.audiverisCommand) {
     const message = "AUDIVERIS_COMMAND is not configured. Install Audiveris and set AUDIVERIS_COMMAND so omr_import jobs can produce MusicXML.";
     insertOmrDiagnostic({
@@ -3054,6 +3066,7 @@ async function processScoreOmrJob(job: ScoreJobRow) {
       inputPath: inputFile.storage_path,
       outputDir,
       timeoutMs: workerConfig.audiverisTimeoutMs,
+      maxHeapMb: workerConfig.audiverisMaxHeapMb,
       isCancelled: () => isScoreJobCancelled(job.id),
     });
     insertOmrDiagnostic({
@@ -3764,6 +3777,52 @@ async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
 
 let pollingTimer: NodeJS.Timeout | null = null;
 let brokerWorker: BullWorker<JobBrokerPayload> | null = null;
+let brokerInspectionQueue: BullQueue<JobBrokerPayload> | null = null;
+let brokerRecoveryTimer: NodeJS.Timeout | null = null;
+let brokerRecoveryBusy = false;
+const BROKER_INTERRUPTED_MESSAGE = "The worker was interrupted before this job completed. Retry the operation; the original upload is still available.";
+
+function recordBrokerRecovery(recovered: RecoveredBrokerJob, brokerState: string | null) {
+  console.warn(`[worker] recovered interrupted ${recovered.family} job ${recovered.jobId} from broker state ${brokerState ?? "missing"}`);
+  if (recovered.family === "score" && recovered.jobType === "omr_import" && recovered.documentId) {
+    insertOmrDiagnostic({
+      jobId: recovered.jobId,
+      documentId: recovered.documentId,
+      diagnostics: {
+        status: "failed",
+        engine: "audiveris",
+        message: BROKER_INTERRUPTED_MESSAGE,
+        recovery: "broker_terminal_state",
+        brokerState: brokerState ?? "missing",
+      },
+    });
+  }
+}
+
+async function reconcileTerminalBrokerState() {
+  if (!brokerInspectionQueue || brokerRecoveryBusy) return;
+  brokerRecoveryBusy = true;
+  try {
+    const states = new Map<string, string | null>();
+    const recovered = await recoverTerminalBrokerJobs({
+      db,
+      timestamp: nowIso(),
+      message: BROKER_INTERRUPTED_MESSAGE,
+      getBrokerState: async (brokerJobId) => {
+        const brokerJob = await brokerInspectionQueue!.getJob(brokerJobId);
+        const state = brokerJob ? await brokerJob.getState() : null;
+        states.set(brokerJobId, state);
+        return state;
+      },
+    });
+    for (const job of recovered) recordBrokerRecovery(job, states.get(job.brokerJobId) ?? null);
+  } catch (error) {
+    console.error("[worker] broker terminal-state reconciliation failed", error);
+  } finally {
+    brokerRecoveryBusy = false;
+  }
+}
+
 if (workerConfig.jobBrokerBackend === "bullmq") {
   if (!workerConfig.jobBrokerRedisUrl) throw new Error("JOB_BROKER_REDIS_URL or REDIS_URL is required for BullMQ.");
   let startupAttempt = 0;
@@ -3781,6 +3840,10 @@ if (workerConfig.jobBrokerBackend === "bullmq") {
       concurrency: workerConfig.jobBrokerConcurrency,
       autorun: false,
     });
+    const inspectionCandidate = new BullQueue<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, {
+      connection: createBullMqWorkerRedisOptions(workerConfig.jobBrokerRedisUrl),
+      prefix: workerConfig.jobBrokerPrefix,
+    });
     candidate.on("error", (error) => {
       console.error("[worker] BullMQ worker error", error);
       try {
@@ -3789,23 +3852,41 @@ if (workerConfig.jobBrokerBackend === "bullmq") {
         console.error("[worker] could not record BullMQ error heartbeat", heartbeatError);
       }
     });
+    candidate.on("failed", (brokerJob, error) => {
+      const brokerJobId = brokerJob?.id === undefined ? "" : String(brokerJob.id);
+      if (!brokerJob || !brokerJobId || brokerJob.data.dispatchId !== brokerJobId) return;
+      const recovered = markInterruptedBrokerJobFailed({
+        db,
+        payload: brokerJob.data,
+        brokerJobId,
+        timestamp: nowIso(),
+        message: BROKER_INTERRUPTED_MESSAGE,
+      });
+      if (recovered) recordBrokerRecovery(recovered, "failed");
+      console.error(`[worker] BullMQ job ${brokerJobId} failed: ${error.message}`);
+    });
     try {
-      await candidate.waitUntilReady();
+      await Promise.all([candidate.waitUntilReady(), inspectionCandidate.waitUntilReady()]);
       brokerWorker = candidate;
+      brokerInspectionQueue = inspectionCandidate;
     } catch (error) {
       const message = error instanceof Error ? error.message : "BullMQ connection failed.";
       const delayMs = bullMqStartupRetryDelayMs(startupAttempt);
       console.warn(`[worker] BullMQ startup attempt ${startupAttempt} failed; retrying in ${delayMs}ms: ${message}`);
       await candidate.close(true).catch(() => undefined);
+      await inspectionCandidate.close().catch(() => undefined);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
+  await reconcileTerminalBrokerState();
   void brokerWorker.run().catch((error) => {
     console.error("[worker] BullMQ processing loop stopped", error);
     if (workerConfig.runtimeReadyFile) fs.rmSync(workerConfig.runtimeReadyFile, { force: true });
     process.exitCode = 1;
     setTimeout(() => process.exit(1), 100).unref();
   });
+  brokerRecoveryTimer = setInterval(() => void reconcileTerminalBrokerState(), Math.max(30_000, workerConfig.pollIntervalMs * 10));
+  brokerRecoveryTimer.unref();
   console.log(`[worker] BullMQ consumer ready (${SCORE_PROCESSING_QUEUE}, concurrency ${workerConfig.jobBrokerConcurrency})`);
 } else {
   const safeTick = async () => {
@@ -3845,9 +3926,11 @@ async function shutdown(signal: string) {
   shuttingDown = true;
   console.log(`[worker] shutting down after ${signal}`);
   if (pollingTimer) clearInterval(pollingTimer);
+  if (brokerRecoveryTimer) clearInterval(brokerRecoveryTimer);
   clearInterval(notificationTimer);
   if (workerConfig.runtimeReadyFile) fs.rmSync(workerConfig.runtimeReadyFile, { force: true });
   if (brokerWorker) await brokerWorker.close();
+  if (brokerInspectionQueue) await brokerInspectionQueue.close();
   db.close();
 }
 

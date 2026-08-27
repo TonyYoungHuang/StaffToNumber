@@ -21,6 +21,7 @@ export type RunAudiverisInput = {
   inputPath: string;
   outputDir: string;
   timeoutMs: number;
+  maxHeapMb?: number;
   isCancelled?: () => boolean;
   cancellationPollMs?: number;
 };
@@ -37,6 +38,18 @@ export type AudiverisRunResult = {
 };
 
 const MAX_CAPTURED_OUTPUT = 4 * 1024 * 1024;
+
+export function buildAudiverisEnvironment(maxHeapMb: number | undefined, base = process.env): NodeJS.ProcessEnv {
+  const env = { ...base };
+  if (!Number.isSafeInteger(maxHeapMb) || (maxHeapMb ?? 0) <= 0) return env;
+  const existing = (env.JAVA_TOOL_OPTIONS ?? "")
+    .replace(/(^|\s)-Xmx\S+/gu, " ")
+    .replace(/(^|\s)-XX:[+-]ExitOnOutOfMemoryError(?:\s|$)/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  env.JAVA_TOOL_OPTIONS = [existing, "-XX:+ExitOnOutOfMemoryError", `-Xmx${maxHeapMb}m`].filter(Boolean).join(" ");
+  return env;
+}
 
 function appendOutput(current: string, chunk: unknown) {
   const combined = current + String(chunk);
@@ -56,6 +69,7 @@ export function runAudiverisCommand(input: RunAudiverisInput) {
 
     const args = [...(input.commandArgsPrefix ?? []), "-batch", "-export", "-output", input.outputDir, input.inputPath];
     const child = spawn(input.command, args, {
+      env: buildAudiverisEnvironment(input.maxHeapMb),
       shell: false,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],

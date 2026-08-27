@@ -5,6 +5,8 @@ import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import net from "node:net";
 import { pipeline } from "node:stream/promises";
+import { evaluatePdfRasterBudget, type PdfRasterBudgetPolicy } from "@score/shared";
+import { PDFDocument } from "pdf-lib";
 import { config } from "../config.js";
 import { ObjectStorageUnavailableError } from "./object-storage.js";
 
@@ -83,6 +85,9 @@ export class UploadSecurityError extends Error {
       | "MEDIA_STREAM_INVALID"
       | "MEDIA_TOO_LONG"
       | "MEDIA_TRANSCODE_FAILED"
+      | "PDF_INVALID"
+      | "PDF_PAGE_PIXEL_LIMIT"
+      | "PDF_TOTAL_PIXEL_LIMIT"
       | "UNSAFE_STORAGE_PATH",
     public readonly statusCode: 400 | 413 | 422 | 503 = 400,
   ) {
@@ -108,6 +113,48 @@ export type MediaSafetyPolicy = {
   maxVideoWidth?: number;
   maxVideoHeight?: number;
 };
+
+export function omrPdfRasterSafetyPolicy(): PdfRasterBudgetPolicy {
+  return {
+    dpi: config.omrPdfRasterDpi,
+    maxPagePixels: config.omrPdfMaxPagePixels,
+    maxTotalPixels: config.omrPdfMaxTotalPixels,
+  };
+}
+
+export async function inspectPdfRasterSafety(source: Uint8Array, policy = omrPdfRasterSafetyPolicy()) {
+  let pdf: PDFDocument;
+  try {
+    pdf = await PDFDocument.load(source);
+  } catch {
+    throw new UploadSecurityError("The PDF document could not be parsed safely.", "PDF_INVALID", 422);
+  }
+
+  const pages = pdf.getPages();
+  if (pages.length === 0) {
+    throw new UploadSecurityError("The PDF document does not contain any pages.", "PDF_INVALID", 422);
+  }
+  const inspection = evaluatePdfRasterBudget(
+    pages.map((page) => ({ widthPoints: page.getWidth(), heightPoints: page.getHeight() })),
+    policy,
+  );
+  if (inspection.ok) return inspection;
+  if (inspection.reason === "page_pixel_limit") {
+    throw new UploadSecurityError(
+      `PDF page ${inspection.page?.pageNumber ?? "unknown"} would rasterize to ${inspection.page?.pixelCount ?? "too many"} pixels at ${policy.dpi} DPI; the per-page limit is ${policy.maxPagePixels}. Resize or crop the page and try again.`,
+      "PDF_PAGE_PIXEL_LIMIT",
+      413,
+    );
+  }
+  if (inspection.reason === "total_pixel_limit") {
+    throw new UploadSecurityError(
+      `The PDF would rasterize to more than ${policy.maxTotalPixels} pixels at ${policy.dpi} DPI across all pages. Split the score into smaller files and try again.`,
+      "PDF_TOTAL_PIXEL_LIMIT",
+      413,
+    );
+  }
+  throw new UploadSecurityError("The PDF contains an invalid page size.", "PDF_INVALID", 422);
+}
 
 type MediaProbePayload = {
   format?: { duration?: string | number; format_name?: string };
@@ -436,6 +483,7 @@ export async function storeVerifiedUpload(input: {
   scan?: (filePath: string) => Promise<UploadScanResult>;
   quarantineDir?: string;
   mediaSafety?: MediaSafetyPolicy;
+  pdfRasterSafety?: PdfRasterBudgetPolicy;
   processMedia?: typeof sanitizeMediaUpload;
 }) {
   const storageRoot = path.resolve(input.quarantineDir ? path.dirname(input.quarantineDir) : config.storageDir);
@@ -459,6 +507,9 @@ export async function storeVerifiedUpload(input: {
 
     const scan = input.scan ?? scanUploadWithClamAv;
     const scanStatus = await scan(quarantinePath);
+    const pdfRasterInspection = input.pdfRasterSafety && detectedKind === "pdf"
+      ? await inspectPdfRasterSafety(await fs.promises.readFile(quarantinePath), input.pdfRasterSafety)
+      : null;
     const mediaResult = input.mediaSafety && mediaUploadKinds.has(detectedKind)
       ? await (input.processMedia ?? sanitizeMediaUpload)({
           sourcePath: quarantinePath,
@@ -481,6 +532,7 @@ export async function storeVerifiedUpload(input: {
       scanStatus,
       mediaStatus: mediaResult?.status ?? "not_applicable",
       mediaInspection: mediaResult?.inspection ?? null,
+      pdfRasterInspection,
     };
   } catch (error) {
     await fs.promises.rm(quarantinePath, { force: true }).catch(() => undefined);

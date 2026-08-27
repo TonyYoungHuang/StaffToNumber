@@ -27,13 +27,12 @@ import { db } from "../db.js";
 import {
   assertFreeTrialOmrAvailable,
   FreeTrialLimitError,
-  inspectFreeTrialPdf,
   isFreeTrialScoreDocumentForUser,
 } from "../lib/free-trial.js";
 import { linkEducationInvitationsByEmail, listAccessibleClassroomIds, resolveClassroomAccess, resolveOrganizationRole } from "../lib/education-access.js";
 import { createId } from "../lib/auth.js";
 import { openStoredFile, storedFileExists } from "../lib/object-storage.js";
-import { storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
+import { omrPdfRasterSafetyPolicy, storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
 import { scoreJsonToJianpu } from "../lib/jianpu-converter.js";
 import { storeJianpuSourceText } from "../lib/jianpu-source-storage.js";
 import { applyScoreClefRecommendations, recommendScoreClefs } from "../lib/score-clef-recommendation.js";
@@ -5151,23 +5150,18 @@ export async function scoreRoutes(app: FastifyInstance) {
       const targetPath = path.join(userDir, storedName);
       let verified;
       try {
-        verified = await storeVerifiedUpload({ stream: file.file, targetPath, allowedKinds: uploadKinds.omr });
+        verified = await storeVerifiedUpload({
+          stream: file.file,
+          targetPath,
+          allowedKinds: uploadKinds.omr,
+          pdfRasterSafety: omrPdfRasterSafetyPolicy(),
+        });
       } catch (error) {
         const response = uploadErrorResponse(error);
         request.log.warn({ error, uploadCode: response.body.code }, "OMR source upload rejected.");
         return reply.code(response.statusCode).send(response.body);
       }
       const fileKind = verified.detectedKind === "pdf" ? "source_pdf" : "source_image";
-
-      if (freeTrial && verified.detectedKind === "pdf") {
-        try {
-          await inspectFreeTrialPdf(await fs.promises.readFile(targetPath));
-        } catch (error) {
-          await fs.promises.rm(targetPath, { force: true });
-          request.log.warn({ error }, "Free-plan PDF validation failed.");
-          return reply.code(400).send({ error: "The PDF document could not be verified for free editing." });
-        }
-      }
 
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
       try {

@@ -3,13 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test, { after } from "node:test";
-import { AudiverisProcessError, runAudiverisCommand, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
+import { AudiverisProcessError, buildAudiverisEnvironment, runAudiverisCommand, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "audiveris-runner-"));
 const mockScript = path.join(tempDir, "mock-audiveris.cjs");
 fs.writeFileSync(mockScript, `
 const mode = process.argv[2];
 if (mode === "success") { process.stdout.write("exported"); process.exit(0); }
+if (mode === "heap") { process.stdout.write(process.env.JAVA_TOOL_OPTIONS || ""); process.exit(0); }
 if (mode === "failure") { process.stderr.write("invalid score image"); process.exit(7); }
 if (mode === "rotation-fallback") {
   const inputPath = process.argv.at(-1);
@@ -42,6 +43,16 @@ test("captures a successful Audiveris command", async () => {
   const result = await run("success");
   assert.equal(result.stdout, "exported");
   assert.equal(result.stderr, "");
+});
+
+test("sets a bounded Audiveris heap without discarding other JVM options", async () => {
+  assert.equal(
+    buildAudiverisEnvironment(4096, { JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -XX:-ExitOnOutOfMemoryError -Xmx512m" }).JAVA_TOOL_OPTIONS,
+    "-Dfile.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Xmx4096m",
+  );
+  const result = await run("heap", { maxHeapMb: 2048 });
+  assert.match(result.stdout, /(?:^|\s)-XX:\+ExitOnOutOfMemoryError(?:\s|$)/u);
+  assert.match(result.stdout, /(?:^|\s)-Xmx2048m(?:\s|$)/u);
 });
 
 test("classifies a non-zero Audiveris exit", async () => {
