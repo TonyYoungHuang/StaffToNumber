@@ -8,7 +8,7 @@ import { getFeaturePageUi, localizeFeaturePage } from "./feature-page-localizati
 import { auditFeatureSeo, buildFeatureSeoManifest, buildSeoSuggestions, featureSeoRecords } from "./feature-seo.js";
 import { platformFeaturePages } from "./platform-feature-pages.js";
 
-test("current feature inventory has unique routes and no blocking SEO errors", () => {
+test("current feature inventory is product-owner approved and has no blocking SEO errors", () => {
   const report = auditFeatureSeo(platformFeaturePages, featureSeoRecords, "2026-07-15T00:00:00.000Z");
 
   assert.equal(report.metrics.pages, platformFeaturePages.length);
@@ -16,10 +16,15 @@ test("current feature inventory has unique routes and no blocking SEO errors", (
   assert.equal(report.metrics.uniqueDescriptions, platformFeaturePages.length);
   assert.equal(report.metrics.uniqueCanonicals, platformFeaturePages.length);
   assert.deepEqual(report.issues.filter((issue) => issue.severity === "error"), []);
-  assert.equal(report.metrics.approved, 0);
-  assert.equal(report.publishReady, false, "AI evidence prechecks must not replace explicit product-owner approval");
-  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.status === "in_review"));
-  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.approvalBasis?.includes("AI evidence precheck completed")));
+  assert.equal(report.metrics.approved, platformFeaturePages.length);
+  assert.equal(report.publishReady, true);
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.status === "approved"));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.factsReviewedAt === "2026-08-28"));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.approvedBy === "ScoreTransposer product owner"));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.reviewerRole === "product_owner"));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.approvalBasis?.includes("2026-08-25 AI evidence precheck")));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.approvalBasis?.includes("2026-08-28")));
+  assert.ok(Object.values(featureSeoRecords).every((record) => record.review.generatedWithAi));
 });
 
 test("audit detects duplicate metadata, broken internal links, and missing schema", () => {
@@ -42,6 +47,23 @@ test("audit detects duplicate metadata, broken internal links, and missing schem
   assert.ok(report.issues.some((issue) => issue.field === "canonical" && issue.severity === "error"));
   assert.ok(report.issues.some((issue) => issue.field === "structuredData" && issue.severity === "error"));
   assert.ok(report.issues.some((issue) => issue.field === "internalLinks" && issue.severity === "error"));
+});
+
+test("audit does not count an approved label without complete human sign-off metadata", () => {
+  const slug = platformFeaturePages[0].slug;
+  const records = {
+    ...featureSeoRecords,
+    [slug]: {
+      ...featureSeoRecords[slug],
+      review: { ...featureSeoRecords[slug].review, approvedBy: null },
+    },
+  };
+
+  const report = auditFeatureSeo(platformFeaturePages, records, "2026-08-28T00:00:00.000Z");
+
+  assert.equal(report.metrics.approved, platformFeaturePages.length - 1);
+  assert.equal(report.publishReady, false);
+  assert.ok(report.issues.some((issue) => issue.slug === slug && issue.field === "review" && issue.severity === "warning"));
 });
 
 test("suggestions preserve the page intent and related workflow links", () => {
@@ -88,6 +110,31 @@ test("content review manifest has deterministic unique hashes tied to reviewable
   assert.equal(first.pages.length, platformFeaturePages.length);
   assert.equal(new Set(first.pages.map((page) => page.contentHash)).size, first.pages.length);
   assert.ok(first.pages.every((page) => /^[a-f0-9]{64}$/.test(page.contentHash)));
+});
+
+test("content review manifest hashes do not change when only approval metadata changes", () => {
+  const slug = platformFeaturePages[0].slug;
+  const recordsWithDifferentReview = {
+    ...featureSeoRecords,
+    [slug]: {
+      ...featureSeoRecords[slug],
+      review: {
+        ...featureSeoRecords[slug].review,
+        status: "in_review" as const,
+        factsReviewedAt: null,
+        approvedBy: null,
+        reviewerRole: null,
+        approvalBasis: "Review metadata changed without changing the reviewable page content.",
+      },
+    },
+  };
+  const approved = buildFeatureSeoManifest(platformFeaturePages, featureSeoRecords, "2026-07-15T00:00:00.000Z");
+  const pending = buildFeatureSeoManifest(platformFeaturePages, recordsWithDifferentReview, "2026-07-15T00:00:00.000Z");
+
+  assert.deepEqual(
+    pending.pages.map((page) => ({ slug: page.slug, contentHash: page.contentHash })),
+    approved.pages.map((page) => ({ slug: page.slug, contentHash: page.contentHash })),
+  );
 });
 
 test("each feature owns a real, non-empty, binary-unique product screenshot", () => {
