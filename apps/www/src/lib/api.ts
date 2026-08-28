@@ -6,12 +6,16 @@ export type ApiResult<T> =
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   try {
+    const headers = new Headers(options.headers);
+    const hasBody = options.body !== undefined && options.body !== null;
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+    if (hasBody && !isFormData && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers ?? {}),
-      },
+      headers,
       cache: "no-store",
       credentials: "include",
     });

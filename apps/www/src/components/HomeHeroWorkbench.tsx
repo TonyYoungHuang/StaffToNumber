@@ -9,7 +9,7 @@ import { HomeCandidatePreview } from "./HomeCandidatePreview";
 
 type WorkbenchMode = "recognize" | "process" | "transcribe";
 type AuthMode = "login" | "register";
-type SessionState = "checking" | "anonymous" | "authenticated";
+type SessionState = "unchecked" | "checking" | "anonymous" | "authenticated";
 type JobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 type AuthPayload = { user: { id: string; email: string } };
@@ -57,8 +57,10 @@ function localizedApiError(error: string | undefined, isChinese: boolean, fallba
 export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable }: HomeHeroWorkbenchProps) {
   const locale = isChinese ? "zh-CN" : "en";
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionCheckRef = useRef<Promise<Exclude<SessionState, "unchecked" | "checking">> | null>(null);
+  const handledHashRef = useRef(false);
   const [mode, setMode] = useState<WorkbenchMode>("recognize");
-  const [session, setSession] = useState<SessionState>("checking");
+  const [session, setSession] = useState<SessionState>("unchecked");
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -99,24 +101,34 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
 
   const activeMode = copy.modes.find((item) => item.id === mode) ?? copy.modes[0];
 
-  const beginFileSelection = useCallback(() => {
+  const resolveSession = useCallback(async () => {
+    if (session === "authenticated" || session === "anonymous") return session;
+    if (!sessionCheckRef.current) {
+      setSession("checking");
+      sessionCheckRef.current = apiRequest<AuthPayload>("/api/auth/me")
+        .then((result) => result.ok ? "authenticated" as const : "anonymous" as const)
+        .finally(() => { sessionCheckRef.current = null; });
+    }
+    const resolvedSession = await sessionCheckRef.current;
+    setSession(resolvedSession);
+    return resolvedSession;
+  }, [session]);
+
+  const beginFileSelection = useCallback(async () => {
     setMode("recognize");
     document.getElementById("home-workbench")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    if (session !== "authenticated") {
+    const resolvedSession = await resolveSession();
+    if (resolvedSession !== "authenticated") {
       setAuthError(null);
       setAuthOpen(true);
       return;
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
     fileInputRef.current?.click();
-  }, [session]);
+  }, [resolveSession]);
 
   useEffect(() => {
-    void apiRequest<AuthPayload>("/api/auth/me").then((result) => setSession(result.ok ? "authenticated" : "anonymous"));
-  }, []);
-
-  useEffect(() => {
-    const listener = () => beginFileSelection();
+    const listener = () => void beginFileSelection();
     window.addEventListener(HOME_SCAN_EVENT, listener);
     return () => window.removeEventListener(HOME_SCAN_EVENT, listener);
   }, [beginFileSelection]);
@@ -134,12 +146,18 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
 
   useEffect(() => {
     const handleHashStart = () => {
-      if (session !== "checking" && window.location.hash === "#home-workbench") beginFileSelection();
+      if (window.location.hash !== "#home-workbench") {
+        handledHashRef.current = false;
+        return;
+      }
+      if (handledHashRef.current) return;
+      handledHashRef.current = true;
+      void beginFileSelection();
     };
     handleHashStart();
     window.addEventListener("hashchange", handleHashStart);
     return () => window.removeEventListener("hashchange", handleHashStart);
-  }, [beginFileSelection, session]);
+  }, [beginFileSelection]);
 
   useEffect(() => {
     if (!authOpen) return;
@@ -238,9 +256,10 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
     else if (window.location.hash !== "#home-workbench") window.setTimeout(() => fileInputRef.current?.click(), 0);
   }
 
-  function acceptFile(file: File | undefined) {
+  async function acceptFile(file: File | undefined) {
     if (!file) return;
-    if (session !== "authenticated") { setPendingFile(file); setAuthOpen(true); return; }
+    const resolvedSession = await resolveSession();
+    if (resolvedSession !== "authenticated") { setPendingFile(file); setAuthOpen(true); return; }
     startUpload(file);
   }
 
@@ -249,7 +268,7 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
 
   return (
     <div id="home-workbench" className={styles.workbench} aria-label={isChinese ? "AI 乐谱操作台" : "AI score workbench"}>
-      <input ref={fileInputRef} className={styles.visuallyHidden} type="file" accept={acceptedScoreFiles} tabIndex={-1} aria-hidden="true" onChange={(event) => acceptFile(event.target.files?.[0])} />
+      <input ref={fileInputRef} className={styles.visuallyHidden} type="file" accept={acceptedScoreFiles} tabIndex={-1} aria-hidden="true" onChange={(event) => void acceptFile(event.target.files?.[0])} />
       <div className={styles.workbenchHeading}><span><SparkIcon width={16} height={16} />{isChinese ? "AI 乐谱操作台" : "AI score workbench"}</span><em>{isChinese ? "首页即工作台" : "Homepage workspace"}</em></div>
 
       <div className={styles.modeTabs} role="tablist" aria-label={isChinese ? "乐谱任务类型" : "Score task type"}>
@@ -258,7 +277,7 @@ export function HomeHeroWorkbench({ isChinese, appUrl, startUrl, audioAvailable 
 
       <div id="home-workbench-panel" className={styles.workbenchPanel} role="tabpanel" aria-labelledby={`home-workbench-tab-${mode}`}>
         {mode === "recognize" ? (
-          <button type="button" className={styles.dropZone} disabled={busy} onClick={beginFileSelection} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); acceptFile(event.dataTransfer.files?.[0]); }}>
+          <button type="button" className={styles.dropZone} disabled={busy} onClick={beginFileSelection} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void acceptFile(event.dataTransfer.files?.[0]); }}>
             <span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList} aria-label={isChinese ? "支持格式" : "Supported formats"}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span>
           </button>
         ) : (

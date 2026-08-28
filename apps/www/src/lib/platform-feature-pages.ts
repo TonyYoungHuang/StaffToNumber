@@ -104,16 +104,16 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "transpose-score",
-    title: "Smart Sheet Music Transposer",
+    title: "Transpose Sheet Music Online",
     eyebrow: "Target key, semitones, and instrument parts",
     description:
       "Transpose sheet music online by semitones, target key, or instrument profile. Keep the original score, create a new revision, and review range and spelling.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-25",
+    updatedAt: "2026-08-28",
     primaryAction: "scores",
     canonical: "/transpose-score",
-    keywords: ["transpose sheet music", "transpose sheet music online", "change sheet music key", "online score transposition", "乐谱移调"],
+    keywords: ["transpose sheet music", "transpose sheet music online", "sheet music transposer", "change sheet music key", "online score transposition", "乐谱移调"],
     modules: ["Score JSON transposition", "Target-key mode", "Instrument profiles", "Range diagnostics"],
     workflow: [
       {
@@ -138,6 +138,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         title: "Exports regenerate from the model",
         body: "Jianpu, MusicXML, MIDI, rendered PDF/images, and practice audio can be generated again from the transposed revision.",
       },
+      {
+        title: "Transpose for singers and instruments",
+        body: "Change the sheet music key for a vocal range, or create written parts for common transposing instruments while preserving the source revision.",
+      },
     ],
     guardrail: "Transposition uses music21 when configured and keeps a deterministic TypeScript fallback; complex enharmonic spelling and clef comfort still require review.",
   },
@@ -149,10 +153,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       "Create, correct, co-edit, and extract parts from sheet music in an online notation editor. Import MusicXML, MIDI, Jianpu, or scans as editable revisions.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-24",
+    updatedAt: "2026-08-28",
     primaryAction: "scores",
     canonical: "/score-editor",
-    keywords: ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation", "五线谱编辑器"],
+    keywords: ["sheet music maker", "sheet music editor", "edit sheet music online", "online sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation", "五线谱编辑器"],
     modules: ["OSMD preview", "Score JSON revisions", "Correction panel", "Part Copy Generator Beta", "Version restore", "Real-time collaboration Beta"],
     workflow: [
       {
@@ -184,6 +188,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       {
         title: "Extract parts from a score Beta",
         body: "Select one or more parts and split the full score into an independent practice project. Part copies preserve their source reference but do not yet follow later edits to the full score.",
+      },
+      {
+        title: "Edit MusicXML and scanned sheet music online",
+        body: "Import MusicXML directly or promote a reviewed scan into an editable revision, then correct notes, rhythm, key signatures, lyrics, and score markings in one browser workflow.",
       },
     ],
     guardrail: "Editing is built on Score JSON/MusicXML, not on PDF text or image pixels.",
@@ -321,10 +329,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       "Use this sheet music scanner to scan sheet music from PDF or image files, create an editable MusicXML candidate, review diagnostics, and correct OMR mistakes online.",
     status: "Beta",
     releaseRequirement: "omr",
-    updatedAt: "2026-08-24",
+    updatedAt: "2026-08-28",
     primaryAction: "upload",
     canonical: "/pdf-score-scanner",
-    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "pdf score scanner", "scan sheet music to MusicXML", "乐谱扫描识别"],
+    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "online sheet music scanner", "pdf score scanner", "sheet music OCR", "OMR software", "scan sheet music to MusicXML", "乐谱扫描识别"],
     modules: ["OMR upload", "Audiveris worker", "MusicXML output", "Diagnostics panel"],
     workflow: [
       {
@@ -348,6 +356,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       {
         title: "Create one complete score project for free",
         body: "A free account can scan one complete multi-page PDF or score image and keep using current correction, playback, transposition, Jianpu, sharing, version, and export tools on that project.",
+      },
+      {
+        title: "From PDF scan to editable notation",
+        body: "Keep the source PDF, OMR diagnostics, MusicXML candidate, and accepted Score JSON revision together so recognition errors can be corrected before export or playback.",
       },
     ],
     guardrail: "Scanning is import plus correction. The site should not promise perfect automatic recognition for all PDFs or photos.",

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PlatformFeaturePage } from "./platform-feature-pages";
 
-export const requiredFeatureSchemas = ["BreadcrumbList", "HowTo", "FAQPage", "SoftwareApplication"] as const;
+export const requiredFeatureSchemas = ["WebPage", "BreadcrumbList", "HowTo", "FAQPage", "SoftwareApplication"] as const;
 
 export type FeatureSchemaType = (typeof requiredFeatureSchemas)[number];
 export type FeatureSeoReviewStatus = "draft" | "in_review" | "approved";

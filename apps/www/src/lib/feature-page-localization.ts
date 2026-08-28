@@ -38,7 +38,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     guardrail: "简谱转五线谱当前使用结构化文本输入，并非任意扫描简谱图片识别。",
   },
   "transpose-score": {
-    title: "智能乐谱移调",
+    title: "在线乐谱移调",
     eyebrow: "目标调、半音数与移调乐器声部",
     description: "按半音数、目标调或常见移调乐器创建新的乐谱修订，并在移调后检查音域。",
     modules: ["Score JSON 移调", "目标调模式", "移调乐器预设", "音域诊断"],
@@ -50,6 +50,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     details: [
       { title: "保留版本历史", body: "每次移调都创建新版本，不会覆盖原谱，方便教师和编曲者比较。" },
       { title: "所有输出重新生成", body: "简谱、MusicXML、MIDI、PDF、图片和练习音频都从移调后的结构重新生成。" },
+      { title: "适配歌手与移调乐器", body: "根据演唱音域调整乐谱调性，或为常见移调乐器生成记谱声部，同时保留原始版本。" },
     ],
     guardrail: "复杂的等音拼写、谱号舒适度与演奏音域仍需人工检查。",
   },
@@ -68,6 +69,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
       { title: "支持交互式校正", body: "可选择音符、拖动音高与时值、插入、删除并修改结构化属性；完整桌面排版能力仍在持续建设。" },
       { title: "多人协作乐谱编辑器 Beta", body: "通过在线状态、冲突处理、离线变更队列与角色权限共同编辑乐谱；大型合奏排练前应先进行小范围测试。" },
       { title: "从总谱提取声部 Beta", body: "选择一个或多个声部，把总谱拆分成独立练习工程；分谱副本保留来源关系，但暂不会跟随总谱后续修改。" },
+      { title: "在线编辑 MusicXML 与扫描乐谱", body: "直接导入 MusicXML，或把已检查的扫描候选稿转成可编辑版本，在同一浏览器流程中校正音符、节奏、调号、歌词和乐谱标记。" },
     ],
     guardrail: "编辑建立在 Score JSON 与 MusicXML 上，不会直接修改 PDF 文字或图片像素。",
   },
@@ -134,6 +136,7 @@ const zhFeatureTranslations: Record<string, FeatureTranslation> = {
     details: [
       { title: "候选稿而不是最终答案", body: "识别结果保留置信度和诊断信息，方便人工修正。" },
       { title: "一个完整免费项目", body: "免费账户可以识别一份完整多页 PDF 或一张乐谱图片，并在该项目内校正、播放、移调、转简谱、分享和导出。" },
+      { title: "从 PDF 扫描到可编辑乐谱", body: "在同一个工程中保留来源 PDF、识谱诊断、MusicXML 候选稿和已确认的 Score JSON 版本，先修正识别错误，再导出或播放。" },
     ],
     guardrail: "识谱是“导入加校正”的流程，不承诺所有 PDF 和照片都能自动得到完美结果。",
   },

@@ -133,6 +133,9 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   }
   const seo = localizeFeatureEvidence(sourceSeo, locale);
   const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
+  const webPageId = `${canonicalUrl}#webpage`;
+  const breadcrumbId = `${canonicalUrl}#breadcrumb`;
+  const softwareId = `${canonicalUrl}#software`;
   const relatedPages = sourceSeo.relatedSlugs
     .map((slug) => findPlatformFeaturePage(slug))
     .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)))
@@ -154,7 +157,21 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   const structuredData = [
     {
       "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": webPageId,
+      url: canonicalUrl,
+      name: page.title,
+      description: page.description,
+      inLanguage: locale,
+      dateModified: page.updatedAt,
+      breadcrumb: { "@id": breadcrumbId },
+      mainEntity: { "@id": softwareId },
+      keywords: page.keywords.join(", "),
+    },
+    {
+      "@context": "https://schema.org",
       "@type": "BreadcrumbList",
+      "@id": breadcrumbId,
       itemListElement: [
         { "@type": "ListItem", position: 1, name: ui.home, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
         { "@type": "ListItem", position: 2, name: page.title, item: canonicalUrl },
@@ -163,15 +180,20 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
     {
       "@context": "https://schema.org",
       "@type": "HowTo",
+      "@id": `${canonicalUrl}#howto`,
       name: page.title,
       description: page.description,
       inLanguage: locale,
+      dateModified: page.updatedAt,
+      mainEntityOfPage: { "@id": webPageId },
       keywords: page.keywords.join(", "),
       step: page.workflow.map((item, index) => ({ "@type": "HowToStep", position: index + 1, name: item.title, text: item.body })),
     },
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
+      "@id": `${canonicalUrl}#faq`,
+      mainEntityOfPage: { "@id": webPageId },
       mainEntity: faqItems.map((item) => ({
         "@type": "Question",
         name: item.question,
@@ -181,12 +203,14 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
+      "@id": softwareId,
       name: siteConfig.siteName,
       applicationCategory: "MultimediaApplication",
       applicationSubCategory: "Music notation software",
       operatingSystem: "Web browser",
       url: canonicalUrl,
       description: page.description,
+      mainEntityOfPage: { "@id": webPageId },
       inLanguage: locale,
       keywords: page.keywords.join(", "),
       featureList: page.modules,

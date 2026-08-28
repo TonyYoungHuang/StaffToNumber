@@ -74,6 +74,7 @@ const privacySections = [
     title: "Cookies and analytics",
     points: [
       "A functional locale cookie remembers the selected interface language.",
+      "Cloudflare Web Analytics Real User Measurement (RUM) is enabled globally to measure page views, loading performance, browser and network characteristics. It is cookieless, does not read browser storage, and discards visitor IP addresses at Cloudflare's edge.",
       "GA4 or Microsoft Clarity loads only after explicit consent and only when production analytics is enabled.",
       "Visitors can decline analytics without losing access to public content or product workflows.",
     ],
@@ -131,6 +132,7 @@ export default async function PrivacyPage() {
           title: "Cookie 与访问分析",
           points: [
             "功能性语言 Cookie 用于记住用户选择的界面语言。",
+            "Cloudflare Web Analytics 的真实用户监测（RUM）已全局启用，用于统计页面访问、加载性能、浏览器与网络特征；该服务不使用 Cookie、不读取浏览器存储，并会在 Cloudflare 边缘节点丢弃访客 IP 地址。",
             "只有在用户明确同意且生产分析配置已启用时，才会加载 GA4 或 Microsoft Clarity。",
             "拒绝访问分析不会影响公开内容或产品功能的使用。",
           ],
