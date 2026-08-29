@@ -16,10 +16,24 @@ test("public evidence assets reach the Worker before static delivery so canonica
   for (const environment of ["staging", "production"]) {
     const configPath = path.join(process.cwd(), `wrangler.${environment}.jsonc`);
     const config = JSON.parse(fs.readFileSync(configPath, "utf8")) as {
+      main?: string;
       assets?: { binding?: string; run_worker_first?: string[] };
     };
 
+    assert.equal(config.main, ".open-next/worker.js");
     assert.equal(config.assets?.binding, "ASSETS");
     assert.deepEqual(config.assets?.run_worker_first, expectedPublicAssetRoutes);
   }
+});
+
+test("the frontend deployment build reads its environment-specific Wrangler asset routing", () => {
+  const deployScript = fs.readFileSync(
+    path.join(process.cwd(), "..", "..", "scripts", "cloudflare-deploy-frontends.mjs"),
+    "utf8",
+  );
+
+  assert.match(
+    deployScript,
+    /openNext,\s*"build",\s*"--config",\s*`wrangler\.\$\{environment\}\.jsonc`/u,
+  );
 });

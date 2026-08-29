@@ -116,7 +116,13 @@ function run(command, arguments_, options) {
 
 for (const application of applications) {
   console.log(`\nBuilding ${application.name} for Cloudflare ${environment}...`);
-  run(process.execPath, [openNext, "build", "--skipWranglerConfigCheck"], {
+  run(process.execPath, [
+    openNext,
+    "build",
+    "--config",
+    `wrangler.${environment}.jsonc`,
+    "--skipWranglerConfigCheck",
+  ], {
     cwd: application.directory,
     env: buildEnvironment,
   });
