@@ -34,6 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const formalFeatures = [
+  { id: "pdf-musicxml", en: "PDF to MusicXML Converter", zh: "PDF 转 MusicXML", href: "/pdf-to-musicxml", bodyEn: "Upload a permitted PDF or score image, review the OMR candidate and diagnostics, correct the structure, and export MusicXML.", bodyZh: "上传有权处理的 PDF 或乐谱图片，检查 OMR 候选稿与诊断，校正结构后导出 MusicXML。" },
   { id: "online-editor", en: "Online Sheet Music Editor", zh: "在线乐谱编辑与校正", href: "/score-editor", bodyEn: "Edit notes, rhythm, lyrics, harmony, dynamics, score structure, and correction candidates.", bodyZh: "编辑音符、节奏、歌词、和弦、力度、乐谱结构和识谱候选稿。" },
   { id: "playback-practice", en: "Playback & Practice Mode", zh: "练习播放模式", href: "/score-to-audio", bodyEn: "Change tempo, loop measures, use a metronome and count-in, and solo or mute parts.", bodyZh: "调节速度、循环小节、使用节拍器与预备拍，并独奏或静音声部。" },
   { id: "smart-transposer", en: "Smart Sheet Music Transposer", zh: "智能乐谱移调", href: "/transpose-score", bodyEn: "Transpose by semitone, interval, target key, or transposing-instrument profile with range review.", bodyZh: "按半音、音程、目标调或移调乐器配置移调，并检查音域。" },

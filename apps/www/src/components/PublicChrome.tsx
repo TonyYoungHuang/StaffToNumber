@@ -39,7 +39,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   const copy = locale === "zh-CN"
     ? {
         scanner: "扫描识谱", features: "功能", library: "曲库", education: "教学", pricing: "价格",
-        help: "帮助", guide: "五线谱入门", numberedNotation: "五线谱与简谱转换", contact: "联系我们", discord: "Discord 社群", login: "登录",
+        help: "帮助", guide: "五线谱入门", pdfGuides: "PDF 与 MusicXML 指南", numberedNotation: "五线谱与简谱转换", contact: "联系我们", discord: "Discord 社群", login: "登录",
         faq: "问答", about: "关于 / 支持", support: "支持", terms: "条款", privacy: "隐私", copyright: "版权投诉",
         menu: "打开导航菜单", closeMenu: "关闭导航菜单",
         app: siteConfig.release.productAppAvailable ? "免费编辑" : "上线状态", buy: "升级套餐",
@@ -49,7 +49,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
       }
     : {
         scanner: "Sheet music scanner", features: "Features", library: "Score library", education: "Education", pricing: "Pricing",
-        help: "Help", guide: "How to read sheet music", numberedNotation: "Numbered notation converter", contact: "Contact us", discord: "Discord", login: "Sign in",
+        help: "Help", guide: "How to read sheet music", pdfGuides: "PDF & MusicXML guides", numberedNotation: "Numbered notation converter", contact: "Contact us", discord: "Discord", login: "Sign in",
         faq: "FAQ", about: "About", support: "Support", terms: "Terms", privacy: "Privacy", copyright: "Copyright",
         menu: "Open navigation menu", closeMenu: "Close navigation menu",
         app: siteConfig.release.productAppAvailable ? "Edit for free" : "Launch status", buy: "Upgrade",
@@ -102,7 +102,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     { href: localizePublicHref("/features", locale), label: copy.features },
     { href: localizePublicHref("/library", locale), label: copy.library },
     { href: homeSections.pricing, label: copy.pricing },
-    { label: copy.help, children: [{ href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide }, { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation }, { href: localizePublicHref("/support", locale), label: copy.contact }] },
+    { label: copy.help, children: [{ href: localizePublicHref("/guides", locale), label: copy.pdfGuides }, { href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide }, { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation }, { href: localizePublicHref("/support", locale), label: copy.contact }] },
     ...(siteConfig.release.teachingAvailable ? [{ href: localizePublicHref("/teaching", locale), label: copy.education }] : []),
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true }] : []),
     { href: loginUrl, label: copy.login },
@@ -127,6 +127,8 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     { href: homeSections.useCases, label: locale === "zh-CN" ? "使用场景" : "Use cases" },
     { href: homeSections.pricing, label: copy.pricing },
     { href: localizePublicHref("/features", locale), label: copy.features },
+    { href: localizePublicHref("/pdf-to-musicxml", locale), label: locale === "zh-CN" ? "PDF 转 MusicXML" : "PDF to MusicXML" },
+    { href: localizePublicHref("/guides", locale), label: copy.pdfGuides },
     { href: localizePublicHref("/library", locale), label: copy.library },
     { href: localizePublicHref("/faq", locale), label: copy.faq },
     { href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide },

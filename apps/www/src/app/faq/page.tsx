@@ -275,7 +275,9 @@ export default async function FaqPage() {
             <MetricCard label={isChinese ? "继续处理" : "Continue"} value={isChinese ? "编辑与移调" : "Edit & transpose"} body={isChinese ? "确认结果后继续修改、播放和导出。" : "Correct, play, transpose, and export the accepted score."} />
           </div>
           <div className="button-row">
+            <Link href={localizePublicHref("/pdf-to-musicxml", locale)} className="public-button primary">{isChinese ? "PDF 转 MusicXML" : "Convert PDF to MusicXML"}</Link>
             <Link href={localizePublicHref("/pdf-score-scanner", locale)} className="public-button secondary">{isChinese ? "查看扫描识谱" : "Open sheet music scanner"}</Link>
+            <Link href={localizePublicHref("/guides", locale)} className="public-button tertiary">{isChinese ? "查看 PDF 与 MusicXML 指南" : "Read PDF & MusicXML guides"}</Link>
             <Link href={localizePublicHref("/numbered-notation-converter", locale)} className="public-button tertiary">{isChinese ? "查看简谱转换" : "Open numbered notation converter"}</Link>
           </div>
         </Panel>

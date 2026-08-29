@@ -134,7 +134,7 @@ export const siteConfig = {
   },
 } as const;
 
-export const publicContentLastUpdated = "2026-08-25";
+export const publicContentLastUpdated = "2026-08-29";
 export const legalLastUpdated = "2026-08-28";
 
 export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode) {

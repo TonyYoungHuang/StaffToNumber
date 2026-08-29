@@ -47,8 +47,8 @@ export type FeatureAnswerContent = {
 const englishContent: Record<PriorityAnswerPageSlug, FeatureAnswerContent> = {
   "pdf-to-musicxml": {
     promise: "Upload a score PDF, inspect the recognition evidence, correct the candidate, and export a reusable MusicXML file from one project.",
-    before: "A self-authored one-page staff PDF with four quarter notes and clear staff lines.",
-    after: "An editable MusicXML candidate containing the recognized measure, key, meter, clef, pitches, and durations.",
+    before: "A self-authored, deterministic one-page reference PDF with four quarter notes and clear staff lines.",
+    after: "A separate deterministic MusicXML reference containing the same four notes, meter, clef, pitches, and durations. It demonstrates the downloadable format, not measured Audiveris accuracy.",
     checkpoints: ["Measure count and barlines", "Key, meter, clef, and accidentals", "Voice assignment, rhythm, ties, lyrics, and repeats"],
     commonErrors: [
       { title: "The scan is skewed or soft", symptom: "Staff lines merge, noteheads disappear, or symbols land on the wrong staff.", fix: "Use a flat 300 dpi scan when possible; crop borders, rotate the page, and avoid shadows before uploading." },
@@ -144,8 +144,8 @@ const englishContent: Record<PriorityAnswerPageSlug, FeatureAnswerContent> = {
 const chineseContent: Record<PriorityAnswerPageSlug, FeatureAnswerContent> = {
   "pdf-to-musicxml": {
     promise: "上传乐谱 PDF，查看识别证据，校正候选稿，再从同一个工程导出可复用的 MusicXML。",
-    before: "一页自制测试 PDF，包含清晰五线谱与四个四分音符。",
-    after: "可编辑的 MusicXML 候选稿，包含小节、调号、拍号、谱号、音高和时值。",
+    before: "一页自制的确定性参考 PDF，包含清晰五线谱与四个四分音符。",
+    after: "另一份包含相同四个音符、拍号、谱号、音高与时值的确定性 MusicXML 参考文件。它用于证明下载格式，不代表 Audiveris 识别准确率。",
     checkpoints: ["小节数量与小节线", "调号、拍号、谱号和临时记号", "声部、节奏、连音、歌词与反复"],
     commonErrors: [
       { title: "扫描歪斜或模糊", symptom: "五线粘连、符头丢失，或符号落到错误的谱表。", fix: "尽量使用平整的 300 dpi 扫描；上传前裁边、旋转并去除阴影。" },

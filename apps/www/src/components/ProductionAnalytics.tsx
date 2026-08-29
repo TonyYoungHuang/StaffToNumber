@@ -12,7 +12,7 @@ import {
   writeAnalyticsConsent,
 } from "../lib/analytics";
 import { useSiteLocale } from "./SiteLocaleProvider";
-import { localizePublicHref } from "../lib/locale-routing";
+import { localizePublicHref, stripPublicLocalePrefix } from "../lib/locale-routing";
 
 const seoLandingPaths = new Set([
   "/staff-to-jianpu",
@@ -33,6 +33,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
 
   useEffect(() => {
     const sendPageEvents = () => {
+      const publicPath = stripPublicLocalePrefix(pathname);
       trackFunnelEvent("page_view", {
         page_location: window.location.href,
         page_path: pathname,
@@ -40,7 +41,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
         page_hostname: window.location.hostname,
         site_area: "public_site",
       });
-      if (seoLandingPaths.has(pathname)) {
+      if (seoLandingPaths.has(publicPath) || publicPath === "/guides" || publicPath.startsWith("/guides/")) {
         trackFunnelEvent("seo_landing_view", {
           landing_path: pathname,
           page_location: window.location.href,

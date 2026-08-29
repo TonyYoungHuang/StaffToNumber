@@ -3,6 +3,7 @@ import { isFeatureIndexable, platformFeaturePages } from "../lib/platform-featur
 import { localizePublicPath } from "../lib/locale-routing";
 import { publicContentLastUpdated, siteConfig } from "../lib/site";
 import { publicScoreLibrary } from "../lib/public-score-library";
+import { pdfMusicXmlGuideSlugs } from "../lib/pdf-musicxml-guides";
 
 function addLocalizedEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
   return entries.flatMap((entry) => {
@@ -67,6 +68,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${siteConfig.siteUrl}/guides`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.85,
+    },
+    {
       url: `${siteConfig.siteUrl}/library`,
       lastModified,
       changeFrequency: "weekly",
@@ -105,6 +112,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(`${page.updatedAt}T00:00:00.000Z`),
       changeFrequency: "weekly" as const,
       priority: page.slug === "pricing" ? 0.8 : 0.75,
+    })),
+    ...pdfMusicXmlGuideSlugs.map((slug) => ({
+      url: `${siteConfig.siteUrl}/guides/${slug}`,
+      lastModified: new Date("2026-08-29T00:00:00.000Z"),
+      changeFrequency: "monthly" as const,
+      priority: slug === "convert-pdf-sheet-music-to-musicxml" || slug === "pdf-to-musicxml-recognition-benchmark" ? 0.8 : 0.72,
     })),
     ...publicScoreLibrary.map((score) => ({
       url: `${siteConfig.siteUrl}/library/${score.slug}`,

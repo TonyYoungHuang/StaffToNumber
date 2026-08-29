@@ -332,7 +332,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     updatedAt: "2026-08-29",
     primaryAction: "upload",
     canonical: "/pdf-score-scanner",
-    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "online sheet music scanner", "pdf score scanner", "sheet music OCR", "OMR software", "scan sheet music to MusicXML", "乐谱扫描识别"],
+    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "online sheet music scanner", "pdf score scanner", "sheet music OCR", "OMR software", "scan sheet music to editable notation", "乐谱扫描识别"],
     modules: ["OMR upload", "Audiveris worker", "MusicXML output", "Diagnostics panel"],
     workflow: [
       {

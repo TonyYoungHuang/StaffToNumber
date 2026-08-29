@@ -10,6 +10,7 @@ import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 import { getFeatureAnswerContent, getFeatureAnswerUi } from "../../lib/feature-answer-content";
+import { listPdfMusicXmlGuides } from "../../lib/pdf-musicxml-guides";
 
 type FeatureRouteParams = {
   featureSlug: string;
@@ -136,6 +137,9 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   }
   const seo = localizeFeatureEvidence(sourceSeo, locale);
   const displayedScreenshot = answer?.screenshot ?? seo.screenshot;
+  const pdfGuideCards = ["pdf-to-musicxml", "pdf-score-scanner"].includes(page.slug)
+    ? listPdfMusicXmlGuides(locale)
+    : [];
   const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
   const webPageId = `${canonicalUrl}#webpage`;
   const breadcrumbId = `${canonicalUrl}#breadcrumb`;
@@ -249,6 +253,11 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
             <a href={ctaUrl} className="public-button primary">
               {actionLabel(sourcePage, locale)}
             </a>
+            {pdfGuideCards.length ? (
+              <a href={localizePublicHref("/#home-workbench", locale)} className="public-button secondary">
+                {locale === "zh-CN" ? "查看真实上传工作台" : "See the working uploader"}
+              </a>
+            ) : null}
             {siteConfig.release.checkoutAvailable ? <a href={localizePublicHref("/pricing", locale)} className="public-button tertiary">{ui.pricing}</a> : null}
           </div>
         </Panel>
@@ -289,6 +298,28 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
                 </a>
               ))}
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {pdfGuideCards.length ? (
+        <section className="surface-panel stack-lg">
+          <SectionIntro
+            eyebrow={locale === "zh-CN" ? "PDF 与 MusicXML 专题" : "PDF and MusicXML topic hub"}
+            title={locale === "zh-CN" ? "从转换到校正，再到可复核测试" : "From conversion and correction to reproducible evidence"}
+            body={locale === "zh-CN"
+              ? "六份独立指南覆盖转换流程、格式选择、扫描设置、OMR 校正、MuseScore 导入和透明基准；每一页回答不同问题，避免关键词互相争夺。"
+              : "Six distinct guides cover conversion, format choice, scan preparation, OMR correction, MuseScore import, and a transparent benchmark without making the pages compete for one query."}
+          />
+          <div className="metric-grid">
+            {pdfGuideCards.map((guide) => (
+              <a key={guide.slug} href={localizePublicHref(`/guides/${guide.slug}`, locale)} className="list-item">
+                <div className="list-item-content">
+                  <h3 className="item-title">{guide.title}</h3>
+                  <p className="item-meta">{guide.description}</p>
+                </div>
+              </a>
+            ))}
           </div>
         </section>
       ) : null}

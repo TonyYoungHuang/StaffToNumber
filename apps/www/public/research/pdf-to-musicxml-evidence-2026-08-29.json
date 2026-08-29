@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "reportId": "scoretransposer-pdf-to-musicxml-evidence-2026-08-29",
+  "publishedAt": "2026-08-29",
+  "product": "ScoreTransposer",
+  "scope": "Public evidence ledger for PDF and image score recognition. This file distinguishes workflow and runtime evidence from musical accuracy metrics.",
+  "evidence": {
+    "candidateRoutingRegression": {
+      "source": "samples/reports/latest.json",
+      "generatedAt": "2026-06-30T12:53:36.181Z",
+      "total": 20,
+      "matchedExpectedOutcome": 20,
+      "cleanFinal": 11,
+      "difficultDraft": 6,
+      "unusableNonFinal": 3,
+      "meaning": "Every repository-controlled sample followed its expected final, draft, or non-final workflow lane.",
+      "doesNotMean": "This is not note, duration, key-signature, lyric, or complete MusicXML accuracy."
+    },
+    "runtimeQualification": {
+      "source": "docs/audits/evidence/music-engine-qualification-2026-08-17.json",
+      "generatedAt": "2026-08-17T06:53:28.001Z",
+      "audiveris": {
+        "version": "5.10.2",
+        "commit": "1b7cf44088c68f4168801822a613751d1bb1b584",
+        "status": "passed"
+      },
+      "meaning": "The recorded deployment-like environment could execute the named Audiveris runtime.",
+      "doesNotMean": "Runtime availability alone does not establish recognition correctness."
+    },
+    "realEngineFixtureManifest": {
+      "source": "services/worker/src/audiveris-real-fixtures/manifest.json",
+      "fixtureCount": 9,
+      "rights": "repository-authored",
+      "scenarios": [
+        "multipage",
+        "rotation-90",
+        "rotation-180",
+        "rotation-270",
+        "crop",
+        "low-confidence",
+        "corrupted-input",
+        "timeout",
+        "cancellation"
+      ],
+      "meaning": "Checksum-pinned fixtures and threshold gates exist for real-engine qualification.",
+      "doesNotMean": "This public ledger does not claim a current zero-skip run or aggregate musical accuracy for those fixtures."
+    }
+  },
+  "musicalAccuracy": {
+    "notePitchPrecisionRecall": {
+      "status": "not-published",
+      "reason": "No sufficiently licensed, versioned, measure-and-voice-aligned gold set is currently published."
+    },
+    "rhythmErrorRate": {
+      "status": "not-published",
+      "reason": "Duration and voice alignment against a human-reviewed reference has not yet produced an auditable public report."
+    },
+    "keyAndTimeSignatureRetention": {
+      "status": "not-published",
+      "reason": "The current regression suite does not score key and time signatures as aligned gold-set fields."
+    },
+    "lyricRetention": {
+      "status": "not-published",
+      "reason": "The current public sample set is not a licensed, multilingual lyric-alignment benchmark."
+    }
+  },
+  "requiredGoldSetProtocol": [
+    "Publish immutable source PDFs or images and human-reviewed MusicXML references with rights statements and checksums.",
+    "Record the exact product and Audiveris versions, runtime configuration, input resolution, page count, and processing time.",
+    "Run separate clean, low-resolution, rotated, cropped, shadowed, lyric, piano, dense-polyphony, and unsupported-handwriting cohorts.",
+    "Align parts, measures, voices, and events before scoring note pitch or duration.",
+    "Report pitch precision and recall, duration edit rate, measure structure, key and time signatures, lyrics, unsupported symbols, and human correction counts separately.",
+    "Publish failures and reviewer disagreement rather than collapsing every cohort into one promotional percentage."
+  ],
+  "publicReferenceAssets": {
+    "pdf": "https://scoretransposer.com/examples/scoretransposer-reference-score.pdf",
+    "musicxml": "https://scoretransposer.com/examples/pdf-to-musicxml/output",
+    "productPage": "https://scoretransposer.com/pdf-to-musicxml",
+    "methodologyPage": "https://scoretransposer.com/guides/pdf-to-musicxml-recognition-benchmark",
+    "assetBoundary": "The PDF and MusicXML downloads are deterministic reference assets. They are not represented as output from a measured Audiveris run."
+  },
+  "nonClaims": [
+    "No universal recognition percentage is claimed.",
+    "A completed job is not treated as proof of musical correctness.",
+    "The 20-of-20 regression outcome is not presented as note accuracy.",
+    "Upstream documentation links do not imply endorsement."
+  ]
+}
