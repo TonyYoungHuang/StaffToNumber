@@ -9,6 +9,7 @@ import { getAppScoreProjectsUrl, getAppStartConversionUrl, getCheckoutUrl, getSu
 import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
+import { getFeatureAnswerContent, getFeatureAnswerUi } from "../../lib/feature-answer-content";
 
 type FeatureRouteParams = {
   featureSlug: string;
@@ -125,6 +126,8 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   const locale = await readSiteLocale();
   const page = localizeFeaturePage(sourcePage, locale);
   const ui = getFeaturePageUi(locale);
+  const answer = getFeatureAnswerContent(page.slug, locale);
+  const answerUi = getFeatureAnswerUi(locale);
   const available = isFeatureAvailable(sourcePage);
   const ctaUrl = actionUrl(sourcePage, locale);
   const sourceSeo = getFeatureSeoRecord(page.slug);
@@ -132,6 +135,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
     notFound();
   }
   const seo = localizeFeatureEvidence(sourceSeo, locale);
+  const displayedScreenshot = answer?.screenshot ?? seo.screenshot;
   const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
   const webPageId = `${canonicalUrl}#webpage`;
   const breadcrumbId = `${canonicalUrl}#breadcrumb`;
@@ -164,6 +168,8 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       description: page.description,
       inLanguage: locale,
       dateModified: page.updatedAt,
+      author: { "@type": "Organization", name: "ScoreTransposer product team", url: siteConfig.siteUrl },
+      reviewedBy: { "@type": "Organization", name: "ScoreTransposer product owner" },
       breadcrumb: { "@id": breadcrumbId },
       mainEntity: { "@id": softwareId },
       keywords: page.keywords.join(", "),
@@ -214,18 +220,30 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       inLanguage: locale,
       keywords: page.keywords.join(", "),
       featureList: page.modules,
-      screenshot: `${siteConfig.siteUrl}${seo.screenshot.src}`,
+      screenshot: `${siteConfig.siteUrl}${displayedScreenshot.src}`,
     },
   ];
 
   return (
-    <div className={`public-container page-stack${page.slug === "teaching" ? " feature-teaching-page" : ""}`}>
+    <div className={`public-container page-stack${page.slug === "teaching" ? " feature-teaching-page" : ""}${answer ? " feature-answer-page" : ""}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className="page-banner split">
         <SectionIntro eyebrow={page.eyebrow} title={page.title} body={page.description} titleAs="h1" largeBody />
-        <Panel variant="glass" className="stack-md">
+        <Panel variant="glass" className={`stack-md${answer ? " feature-hero-product-panel" : ""}`}>
           <StatusPill tone={available ? statusTone(page.status) : "amber"}>{available ? ui.statuses[page.status] : ui.unavailable}</StatusPill>
-          <PreviewStaffGraphic />
+          {answer ? (
+            <figure className="feature-hero-product">
+              <Image
+                src={displayedScreenshot.src}
+                width={displayedScreenshot.width}
+                height={displayedScreenshot.height}
+                alt={displayedScreenshot.alt}
+                sizes="(max-width: 760px) calc(100vw - 40px), 520px"
+                priority
+              />
+              <figcaption>{answer.promise}</figcaption>
+            </figure>
+          ) : <PreviewStaffGraphic />}
           <p className="body-copy">{page.guardrail}</p>
           <div className="button-row">
             <a href={ctaUrl} className="public-button primary">
@@ -235,6 +253,45 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
           </div>
         </Panel>
       </section>
+
+      {answer ? (
+        <section className="surface-panel stack-lg">
+          <SectionIntro eyebrow={answerUi.proofEyebrow} title={answerUi.proofTitle} body={answer.promise} />
+          <div className="feature-proof-grid">
+            <Panel className="stack-sm">
+              <p className="eyebrow">{answerUi.before}</p>
+              <p className="body-copy">{answer.before}</p>
+              <a className="public-button tertiary" href={`/examples/${page.slug}/input`} download>{ui.downloadInput}</a>
+            </Panel>
+            <Panel className="stack-sm">
+              <p className="eyebrow">{answerUi.after}</p>
+              <p className="body-copy">{answer.after}</p>
+              <a className="public-button tertiary" href={`/examples/${page.slug}/output`} download>{ui.downloadOutput}</a>
+            </Panel>
+            <Panel variant="glass" className="stack-sm">
+              <p className="eyebrow">{answerUi.check}</p>
+              <ul className="feature-check-list">
+                {answer.checkpoints.map((checkpoint) => <li key={checkpoint}>{checkpoint}</li>)}
+              </ul>
+            </Panel>
+          </div>
+          <div className="feature-sample-heading">
+            <div>
+              <p className="eyebrow">{answerUi.sampleEyebrow}</p>
+              <h3>{answerUi.sampleTitle}</h3>
+              <p className="body-copy">{answerUi.sampleBody}</p>
+            </div>
+            <div className="feature-sample-downloads">
+              {answerUi.samples.map((sample) => (
+                <a key={sample.href} href={sample.href} download className="feature-sample-link">
+                  <strong>{sample.label}</strong>
+                  <span>{sample.detail}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="surface-panel stack-lg">
         <SectionIntro eyebrow={ui.moduleEyebrow} title={ui.moduleTitle} body={ui.moduleBody} />
@@ -249,10 +306,10 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         <SectionIntro eyebrow={ui.exampleEyebrow} title={ui.exampleTitle} body={`${seo.screenshot.evidence} ${ui.captured} ${seo.screenshot.capturedAt}${locale === "zh-CN" ? "。" : "."}`} />
         <Image
           className="feature-product-screenshot"
-          src={seo.screenshot.src}
-          width={seo.screenshot.width}
-          height={seo.screenshot.height}
-          alt={seo.screenshot.alt}
+          src={displayedScreenshot.src}
+          width={displayedScreenshot.width}
+          height={displayedScreenshot.height}
+          alt={displayedScreenshot.alt}
           sizes="(max-width: 760px) calc(100vw - 40px), 1100px"
         />
         <div className="split-layout">
@@ -272,6 +329,14 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
           </Panel>
         </div>
         <p className="body-copy">{seo.example.notes}</p>
+        {answer?.video ? (
+          <div className="stack-md">
+            <SectionIntro eyebrow={answerUi.videoEyebrow} title={answerUi.videoTitle} body={answer.video.title} />
+            <video className="feature-demo-video" controls preload="metadata" playsInline poster={answer.video.poster} aria-label={answer.video.title}>
+              <source src={answer.video.src} type="video/mp4" />
+            </video>
+          </div>
+        ) : null}
       </section>
 
       {page.slug === "score-to-audio" ? (
@@ -307,6 +372,49 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         </Panel>
       </section>
 
+      {answer ? (
+        <>
+          <section className="surface-panel stack-lg">
+            <SectionIntro eyebrow={answerUi.errorsEyebrow} title={answerUi.errorsTitle} />
+            <div className="feature-error-grid">
+              {answer.commonErrors.map((error) => (
+                <article key={error.title} className="feature-error-card">
+                  <h3>{error.title}</h3>
+                  <p><strong>{answerUi.symptom}: </strong>{error.symptom}</p>
+                  <p><strong>{answerUi.fix}: </strong>{error.fix}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="feature-accuracy-panel stack-lg">
+            <SectionIntro eyebrow={answerUi.accuracyEyebrow} title={answerUi.accuracyTitle} body={answer.accuracySummary} />
+            <div>
+              <h3>{answerUi.accuracyCheck}</h3>
+              <ol className="feature-check-list numbered">
+                {answer.accuracyChecks.map((item) => <li key={item}>{item}</li>)}
+              </ol>
+            </div>
+          </section>
+
+          <section className="surface-panel stack-lg">
+            <SectionIntro eyebrow={answerUi.comparisonEyebrow} title={answerUi.comparisonTitle} body={answerUi.comparisonBody} />
+            <div className="feature-comparison-wrap">
+              <table className="feature-comparison">
+                <thead>
+                  <tr><th scope="col">{answerUi.workflow}</th><th scope="col">{answerUi.bestFor}</th><th scope="col">{answerUi.tradeoff}</th></tr>
+                </thead>
+                <tbody>
+                  {answer.comparisonRows.map((row) => (
+                    <tr key={row.workflow}><th scope="row">{row.workflow}</th><td>{row.bestFor}</td><td>{row.tradeoff}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : null}
+
       <section className="surface-panel stack-lg">
         <SectionIntro eyebrow="FAQ" title={ui.faqTitle(page.title)} body={ui.faqBody} />
         <div className="list-grid">
@@ -332,6 +440,18 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
           ))}
         </div>
       </section>
+
+      {answer ? (
+        <section className="feature-evidence-meta">
+          <p className="eyebrow">{answerUi.evidenceEyebrow}</p>
+          <dl>
+            <div><dt>{answerUi.author}</dt><dd>{answerUi.authorValue}</dd></div>
+            <div><dt>{answerUi.updated}</dt><dd><time dateTime={page.updatedAt}>{page.updatedAt}</time></dd></div>
+            <div><dt>{answerUi.factReview}</dt><dd><time dateTime={seo.review.factsReviewedAt ?? undefined}>{seo.review.factsReviewedAt ?? page.updatedAt}</time></dd></div>
+            <div className="wide"><dt>{answerUi.basis}</dt><dd>{answerUi.basisValue}</dd></div>
+          </dl>
+        </section>
+      ) : null}
     </div>
   );
 }
