@@ -153,10 +153,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       "Create, correct, co-edit, and extract parts from sheet music in an online notation editor. Import MusicXML, MIDI, Jianpu, or scans as editable revisions.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-29",
+    updatedAt: "2026-08-30",
     primaryAction: "scores",
     canonical: "/score-editor",
-    keywords: ["sheet music maker", "sheet music editor", "edit sheet music online", "online sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation", "五线谱编辑器"],
+    keywords: ["sheet music maker", "sheet music editor", "create sheet music online", "edit sheet music online", "online sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation", "五线谱编辑器"],
     modules: ["OSMD preview", "Score JSON revisions", "Correction panel", "Part Copy Generator Beta", "Version restore", "Real-time collaboration Beta"],
     workflow: [
       {
@@ -204,10 +204,10 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       "Convert sheet music to MP3 or WAV in an online score player. Control tempo, loops, metronome and parts, then export reusable practice audio.",
     status: "Beta",
     releaseRequirement: "core",
-    updatedAt: "2026-08-29",
+    updatedAt: "2026-08-30",
     primaryAction: "scores",
     canonical: "/score-to-audio",
-    keywords: ["sheet music to mp3", "sheet music to mp3 converter", "sheet music to mp3 online", "musicxml to mp3", "musicxml to mp3 converter", "musicxml to wav", "sheet music to audio", "sheet music to audio converter", "convert sheet music to mp3", "sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "music practice recording app", "sheet music practice app", "practice sheet music online", "乐谱播放器", "乐谱生成音频"],
+    keywords: ["sheet music to mp3", "sheet music to mp3 converter", "sheet music to mp3 online", "pdf sheet music to mp3", "convert pdf sheet music to mp3", "play pdf sheet music", "pdf sheet music player", "musicxml to mp3", "musicxml to mp3 converter", "musicxml to wav", "sheet music to audio", "sheet music to audio converter", "convert sheet music to mp3", "sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "music practice recording app", "sheet music practice app", "practice sheet music online", "乐谱播放器", "乐谱生成音频"],
     modules: ["Tone.js playback", "Playback timeline", "Browser recording Beta", "Practice feedback Beta", "MIDI export", "WAV/MP3 renderer"],
     workflow: [
       {

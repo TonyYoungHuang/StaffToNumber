@@ -19,6 +19,7 @@ import { getHomepageDemoProductMedia } from "../../lib/product-media";
 import type { FeatureProductMediaSlug, HomepageDemoMediaSlug } from "../../lib/product-media";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 import { getFeatureAnswerContent, getFeatureAnswerUi } from "../../lib/feature-answer-content";
+import { getFeatureSearchIntentContent } from "../../lib/feature-search-intent-content";
 import { listPdfMusicXmlGuides } from "../../lib/pdf-musicxml-guides";
 
 type FeatureRouteParams = {
@@ -142,6 +143,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   const practiceCopy = getFeaturePracticeCopy(locale);
   const answer = getFeatureAnswerContent(page.slug, locale);
   const answerUi = getFeatureAnswerUi(locale);
+  const searchIntent = getFeatureSearchIntentContent(page.slug, locale);
   const available = isFeatureAvailable(sourcePage);
   const ctaUrl = actionUrl(sourcePage, locale);
   const sourceSeo = getFeatureSeoRecord(page.slug);
@@ -183,6 +185,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       question: ui.faqCheck,
       answer: page.guardrail,
     },
+    ...(searchIntent ? [searchIntent.faq] : []),
   ];
   const structuredData = [
     {
@@ -417,6 +420,12 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
           workspaceHref={ctaUrl}
           workspaceAvailable={available}
         />
+      ) : null}
+
+      {searchIntent ? (
+        <section className="surface-panel stack-lg">
+          <SectionIntro eyebrow={searchIntent.eyebrow} title={searchIntent.title} body={searchIntent.body} />
+        </section>
       ) : null}
 
       <section className="split-layout">

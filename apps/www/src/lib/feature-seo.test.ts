@@ -17,6 +17,7 @@ import {
 } from "./feature-page-localization.js";
 import { BETA_FEATURE_IDS, FEATURE_TRANSLATION_SLUGS, FORMAL_FEATURE_IDS } from "./feature-localization/types.js";
 import { localizePublicHref } from "./locale-routing.js";
+import { getFeatureSearchIntentContent } from "./feature-search-intent-content.js";
 import { getFeatureProductMedia, type FeatureProductMediaSlug } from "./product-media/index.js";
 import { auditFeatureSeo, buildFeatureSeoManifest, buildSeoSuggestions, featureSeoRecords } from "./feature-seo.js";
 import { platformFeaturePages } from "./platform-feature-pages.js";
@@ -92,12 +93,12 @@ test("suggestions preserve the page intent and related workflow links", () => {
 
 test("commercial keyword clusters have one intentional feature-page owner", () => {
   const expectedKeywords: Record<string, string[]> = {
-    "score-editor": ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "extract parts from score", "split score into parts", "collaborative sheet music editor", "collaborative music notation software"],
+    "score-editor": ["sheet music maker", "sheet music editor", "create sheet music online", "music score maker", "online music notation editor", "extract parts from score", "split score into parts", "collaborative sheet music editor", "collaborative music notation software"],
     "pdf-score-scanner": ["sheet music scanner", "scan sheet music", "sheet music scanner online free"],
     "pdf-to-musicxml": ["pdf to musicxml", "pdf to musicxml converter", "image to musicxml"],
     "transpose-score": ["transpose sheet music", "transpose sheet music online", "change sheet music key"],
     "musicxml-midi": ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "musicxml to pdf", "export sheet music to pdf", "sheet music svg", "sheet music png"],
-    "score-to-audio": ["sheet music to mp3", "sheet music to mp3 converter", "musicxml to mp3", "sheet music to audio converter", "sheet music player", "scan sheet music and play", "music practice recording app"],
+    "score-to-audio": ["sheet music to mp3", "sheet music to mp3 converter", "pdf sheet music to mp3", "play pdf sheet music", "musicxml to mp3", "sheet music to audio converter", "sheet music player", "scan sheet music and play", "music practice recording app"],
     "audio-to-score": ["audio to sheet music", "mp3 to midi", "audio to sheet music AI"],
     "staff-to-jianpu": ["staff to jianpu"],
     "jianpu-to-staff": ["jianpu to staff notation"],
@@ -123,6 +124,80 @@ test("content review manifest has deterministic unique hashes tied to reviewable
   assert.equal(first.pages.length, platformFeaturePages.length);
   assert.equal(new Set(first.pages.map((page) => page.contentHash)).size, first.pages.length);
   assert.ok(first.pages.every((page) => /^[a-f0-9]{64}$/.test(page.contentHash)));
+});
+
+test("localized search-intent sections cover PDF score playback and score creation honestly", () => {
+  const audioTerms = {
+    en: "PDF sheet music",
+    "zh-CN": "PDF 五线谱",
+    "zh-TW": "PDF 樂譜",
+    ja: "PDF楽譜",
+    ko: "PDF 악보",
+    fr: "partition PDF",
+    es: "partitura PDF",
+    de: "PDF-Noten",
+    ru: "ноты из PDF",
+  } as const;
+  const editorTerms = {
+    en: "sheet music maker",
+    "zh-CN": "制谱",
+    "zh-TW": "製譜",
+    ja: "楽譜作成ソフト",
+    ko: "악보 제작 프로그램",
+    fr: "créer une partition en ligne",
+    es: "Crear partituras online",
+    de: "Notensatzprogramm",
+    ru: "Создать ноты онлайн",
+  } as const;
+
+  for (const locale of SUPPORTED_LOCALES) {
+    const audio = getFeatureSearchIntentContent("score-to-audio", locale);
+    const editor = getFeatureSearchIntentContent("score-editor", locale);
+    assert.ok(audio, `${locale} needs score-to-audio search-intent content`);
+    assert.ok(editor, `${locale} needs score-editor search-intent content`);
+    assert.match(`${audio.title} ${audio.body} ${audio.faq.question}`, new RegExp(audioTerms[locale], "iu"));
+    assert.match(audio.body, /OMR/u);
+    assert.match(audio.body, /MusicXML/u);
+    assert.match(audio.body, /Score JSON/u);
+    assert.match(`${audio.body} ${audio.faq.answer}`, /MIDI/u);
+    assert.match(`${audio.body} ${audio.faq.answer}`, /WAV/u);
+    assert.match(`${audio.body} ${audio.faq.answer}`, /MP3/u);
+    assert.match(`${editor.title} ${editor.body}`, new RegExp(editorTerms[locale], "iu"));
+    assert.equal(getFeatureSearchIntentContent("transpose-score", locale), null);
+  }
+});
+
+test("multilingual keyword-map product titles stay aligned with rendered source titles", () => {
+  const csvPath = path.resolve(process.cwd(), "..", "..", "docs", "seo", "multilingual-keyword-map.csv");
+  const lines = fs.readFileSync(csvPath, "utf8").trim().split(/\r?\n/u);
+  const parseCsvLine = (line: string) => line
+    .slice(1, -1)
+    .split("\",\"")
+    .map((value) => value.replaceAll("\"\"", "\""));
+  const headers = parseCsvLine(lines.shift() ?? "");
+  const rows = lines.map((line) => {
+    const values = parseCsvLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+  });
+  const rowIds = rows.map((row) => row.row_id);
+  assert.equal(rows.length, 74);
+  assert.equal(new Set(rowIds).size, rowIds.length);
+
+  const productRows = rows.filter((row) => row.page_type === "product");
+  for (const row of productRows) {
+    const locale = SUPPORTED_LOCALES.find((candidate) => candidate === row.locale);
+    assert.ok(locale, `${row.row_id} must use a supported locale`);
+    const page = platformFeaturePages.find((candidate) => candidate.canonical === row.route);
+    assert.ok(page, `${row.row_id} must map to a feature page`);
+    const localized = localizeFeaturePage(page, locale);
+    assert.equal(row.title_target, `${localized.title} | ScoreTransposer`, `${row.row_id} title target`);
+    assert.equal(row.h1_target, localized.title, `${row.row_id} H1 target`);
+  }
+
+  const audioRows = rows.filter((row) => row.route === "/score-to-audio");
+  assert.deepEqual(audioRows.map((row) => row.locale).sort(), [...SUPPORTED_LOCALES].sort());
+  assert.ok(audioRows.every((row) => row.research_status === "seed"));
+  assert.ok(audioRows.every((row) => !row.search_volume && !row.keyword_difficulty && !row.cpc));
 });
 
 test("content review manifest hashes do not change when only approval metadata changes", () => {
@@ -201,7 +276,8 @@ test("priority answer pages publish complete evidence, limits, comparisons, and 
   for (const slug of priorityAnswerPageSlugs) {
     const page = platformFeaturePages.find((item) => item.slug === slug);
     assert.ok(page, `${slug} must remain a public feature page`);
-    assert.equal(page.updatedAt, "2026-08-29");
+    const expectedUpdatedAt = ["score-editor", "score-to-audio"].includes(slug) ? "2026-08-30" : "2026-08-29";
+    assert.equal(page.updatedAt, expectedUpdatedAt);
 
     for (const locale of ["en", "zh-CN"] as const) {
       const content = getFeatureAnswerContent(slug, locale);

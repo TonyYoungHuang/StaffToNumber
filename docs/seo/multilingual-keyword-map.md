@@ -10,15 +10,16 @@ The durable product promise stays MusicXML-first: PDF, images, scans, and audio 
 
 ## Current CSV scope
 
-`multilingual-keyword-map.csv` currently contains 65 mapping rows:
+`multilingual-keyword-map.csv` currently contains 74 mapping rows:
 
 - Five P0 product pages across all nine supported locales: 45 rows.
+- The P1 `/score-to-audio` product page across all nine supported locales: 9 rows.
 - The generic and two directional Jianpu pages for `zh-CN` and `zh-TW`: 6 rows.
 - The guide hub and six completed PDF/MusicXML guides for `en` and `zh-CN`: 14 rows.
 
 The nine locales are `en`, `zh-CN`, `zh-TW`, `ja`, `ko`, `fr`, `es`, `de`, and `ru`.
 
-The deployed sitemap has 33 localized base routes per locale. The remaining hub, supporting product, public-library, trust, and legal routes should be added in later map revisions after the P0 cluster has a measured GSC baseline. The unreleased `/audio-to-score` page must remain outside the indexed map until its product release gate is enabled.
+The deployed sitemap has 33 localized base routes per locale. Except for the now-mapped `/score-to-audio` route, the remaining hub, supporting product, public-library, trust, and legal routes should be added in later map revisions after the P0 cluster has a measured GSC baseline. The unreleased `/audio-to-score` page must remain outside the indexed map until its product release gate is enabled.
 
 The restored guide cluster currently has complete main content only in English and Simplified Chinese. Do not generate indexable French, Spanish, German, Japanese, Korean, Russian, or Traditional Chinese guide URLs from English fallback content. Add those rows only after the complete title, introduction, sections, examples, FAQ, calls to action, and structured data are localized and reviewed.
 
@@ -47,6 +48,14 @@ One CSV row represents one locale, route, and primary intent. Multi-value fields
 | `research_source` / `last_researched` | Provenance and date for the current mapping. |
 
 Google does not use a keywords meta tag for ranking. The map is an editorial and measurement artifact; use it to improve the title, H1, opening answer, evidence, FAQ, examples, alt text, internal anchors, and structured data actually visible on the page.
+
+## Title and H1 production baseline
+
+On 2026-08-30, every product row was synchronized with the source-configured localized feature title: `title_target` is the rendered title plus `| ScoreTransposer`, and `h1_target` is the rendered H1. This keeps the map from claiming copy that is not actually deployed and preserves the short one-line visible titles selected for the priority locales.
+
+The primary keyword does not need to be forced verbatim into both fields. When a natural or shorter title is preferable, the exact query family must appear in the localized opening copy, a dedicated H2, FAQ, internal anchor, or other visible answer content. `/score-editor` and `/score-to-audio` use this policy for localized creation and PDF-score playback phrases.
+
+Future title experiments must update the source and this map together in the same change. Record GSC evidence before replacing a stable title, and do not treat an aspirational CSV value as proof that copy is live.
 
 ## Page ownership
 
@@ -84,6 +93,24 @@ These are seeds, not volume-validated final keywords.
 | `es` | convertir partitura PDF a MusicXML | escáner de partituras | editor de partituras online | transponer una partitura online | editor MusicXML online |
 | `de` | PDF-Noten in MusicXML umwandeln | Notenscanner | Online-Noteneditor | Noten online transponieren | MusicXML-Editor online |
 | `ru` | конвертер PDF нот в MusicXML | сканер нот | нотный редактор онлайн | транспонировать ноты онлайн | редактор MusicXML онлайн |
+
+## Score-to-audio language matrix
+
+`/score-to-audio` owns playback and MP3/WAV output from a structured score. PDF-qualified phrases are supporting long tails only when the visible copy explains the real workflow: PDF or image OMR candidate, human review and correction, accepted MusicXML/Score JSON revision, then playback or MP3/WAV export.
+
+The unqualified `PDF to MP3` family is excluded because it commonly means document narration or text-to-speech. Audio-to-score and MP3-to-score queries are also excluded because they describe the separate, unreleased `/audio-to-score` import path.
+
+| Locale | Primary keyword | Music-qualified PDF supporting intent | Explicitly excluded intent |
+| --- | --- | --- | --- |
+| `en` | sheet music to mp3 | pdf sheet music to mp3; play pdf sheet music; scan sheet music and play | audio/mp3 to sheet music; generic pdf to mp3 or PDF text-to-speech |
+| `zh-CN` | 乐谱转 MP3 | PDF 五线谱转音频；PDF 乐谱自动播放；扫描乐谱并播放 | 音频/MP3 转乐谱；普通 PDF 转 MP3、PDF 转语音或 PDF 朗读 |
+| `zh-TW` | 樂譜轉 MP3 | PDF 五線譜轉音訊；PDF 樂譜播放；掃描樂譜並播放 | 音訊/MP3 轉樂譜；一般 PDF 轉 MP3、PDF 轉語音或 PDF 朗讀 |
+| `ja` | 楽譜をMP3に変換 | PDF楽譜を再生；楽譜を読み取って再生；楽譜 音源化 | 音声/MP3から楽譜；一般的なPDFのMP3変換またはPDF読み上げ |
+| `ko` | 악보 MP3 변환 | PDF 악보 재생；악보 스캔 재생；악보를 음원으로 변환 | 오디오/MP3를 악보로 변환；일반 PDF MP3 변환 또는 PDF 음성 변환 |
+| `fr` | convertir une partition en MP3 | écouter une partition PDF; convertir une partition PDF en audio; lecture audio de partition | audio/MP3 en partition; PDF générique en MP3 ou lecture vocale PDF |
+| `es` | convertir partitura a MP3 | escuchar o reproducir una partitura PDF; convertir partitura PDF a audio | audio/MP3 a partitura; PDF genérico a MP3 o lector de PDF en voz alta |
+| `de` | Noten in MP3 umwandeln | PDF-Noten abspielen; Notenblatt online abspielen; Noten anhören | Audio/MP3 in Noten umwandeln; allgemeines PDF in MP3 oder PDF vorlesen |
+| `ru` | конвертировать ноты в MP3 | прослушать ноты из PDF; воспроизвести партитуру из PDF; озвучить ноты | аудио/MP3 в ноты; обычный PDF в MP3, озвучить PDF или чтение PDF вслух |
 
 For Simplified and Traditional Chinese, Jianpu gets an additional P0 cluster:
 
@@ -149,6 +176,8 @@ The product page should answer transactional questions briefly and lead to conve
 10. Internal anchor text should reinforce the owner: guides link to the product with the transactional phrase; product pages link to guides with the informational phrase.
 11. Do not repeat the exact same title and H1 template across competing pages. Each page must state its distinct job in the opening answer.
 12. OMR copy must not promise universal or perfect recognition. Use candidate, diagnostics, correction, and source-verification language.
+13. `/score-to-audio` may answer music-qualified PDF playback and MP3 long tails only by describing the complete OMR, review, correction, structured-score, and export workflow. It must not imply direct manipulation of PDF pixels or guaranteed one-click recognition.
+14. Generic PDF narration/TTS queries and audio/MP3-to-score transcription queries are excluded from `/score-to-audio`; the latter remain owned by the unreleased `/audio-to-score` route.
 
 ## Research workflow
 
