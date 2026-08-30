@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { LOCALE_ROUTE_PREFIXES, SUPPORTED_LOCALES } from "@score/i18n";
+import { getFeatureAnswerContent, getFeatureAnswerUi, priorityAnswerPageSlugs } from "./feature-answer-content.js";
 import { buildFeatureExampleFile } from "./feature-example-files.js";
 import {
   FEATURE_OPEN_GRAPH_LOCALES,
@@ -189,6 +190,56 @@ test("each feature publishes parseable native-format input and output examples",
   assert.equal(sourceWav.bytes.length, 102_444, "the four-note WAV should remain a 3.2-second deterministic sample");
   assert.equal(shiftedWav.bytes.length, sourceWav.bytes.length);
   assert.notDeepEqual(sourceWav.bytes, shiftedWav.bytes, "transposed audio must not reuse the source waveform");
+
+  const midi = buildFeatureExampleFile("musicxml-midi", "output");
+  assert.ok(midi);
+  const noteOnEvents = [...midi.bytes].reduce((count, byte, index, bytes) => count + (byte === 0x90 && (bytes[index + 2] ?? 0) > 0 ? 1 : 0), 0);
+  assert.equal(noteOnEvents, 4, "the MIDI reference must contain the same C-D-E-G four-note phrase as the MusicXML source");
+});
+
+test("priority answer pages publish complete evidence, limits, comparisons, and native sample files", () => {
+  for (const slug of priorityAnswerPageSlugs) {
+    const page = platformFeaturePages.find((item) => item.slug === slug);
+    assert.ok(page, `${slug} must remain a public feature page`);
+    assert.equal(page.updatedAt, "2026-08-29");
+
+    for (const locale of ["en", "zh-CN"] as const) {
+      const content = getFeatureAnswerContent(slug, locale);
+      assert.ok(content, `${slug} needs ${locale} answer content`);
+      const conciseContentMinimum = locale === "zh-CN" ? 18 : 25;
+      assert.ok(content.promise.length > (locale === "zh-CN" ? 30 : 40));
+      assert.ok(content.before.length > conciseContentMinimum);
+      assert.ok(content.after.length > conciseContentMinimum);
+      assert.ok(content.checkpoints.length >= 3);
+      assert.ok(content.commonErrors.length >= 3);
+      const errorDetailMinimum = locale === "zh-CN" ? 14 : 20;
+      assert.ok(content.commonErrors.every((error) => error.title && error.symptom.length > errorDetailMinimum && error.fix.length > errorDetailMinimum));
+      assert.ok(content.accuracySummary.length > (locale === "zh-CN" ? 55 : 120));
+      assert.ok(content.accuracyChecks.length >= 3);
+      assert.ok(content.comparisonRows.length >= 3);
+      const comparisonDetailMinimum = locale === "zh-CN" ? 9 : 20;
+      assert.ok(content.comparisonRows.every((row) => row.workflow && row.bestFor.length > comparisonDetailMinimum && row.tradeoff.length > comparisonDetailMinimum));
+      if (content.video) {
+        for (const asset of [content.video.src, content.video.poster]) {
+          assert.ok(fs.existsSync(path.join(process.cwd(), "public", asset.replace(/^\//, ""))), `${slug} media ${asset} must exist`);
+        }
+      }
+      if (content.screenshot) {
+        assert.ok(fs.existsSync(path.join(process.cwd(), "public", content.screenshot.src.replace(/^\//, ""))), `${slug} screenshot override must exist`);
+        assert.ok(content.screenshot.width > 1000 && content.screenshot.height > 600);
+      }
+    }
+  }
+
+  const sampleUi = getFeatureAnswerUi("en");
+  assert.equal(sampleUi.samples.length, 3);
+  const pdf = fs.readFileSync(path.join(process.cwd(), "public", "examples", "scoretransposer-reference-score.pdf"));
+  assert.equal(pdf.subarray(0, 5).toString("ascii"), "%PDF-");
+  assert.deepEqual(sampleUi.samples.map((sample) => sample.href), [
+    "/examples/score-editor/input",
+    "/examples/scoretransposer-reference-score.pdf",
+    "/examples/musicxml-midi/output",
+  ]);
 });
 
 test("feature-page catalogs cover the exact approved inventory in every translated locale", () => {

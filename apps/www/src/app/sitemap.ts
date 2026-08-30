@@ -4,21 +4,27 @@ import { isFeatureIndexable, platformFeaturePages } from "../lib/platform-featur
 import { getLocalizedAbsoluteUrl } from "../lib/locale-routing";
 import { publicContentLastUpdated, siteConfig } from "../lib/site";
 import { publicScoreLibrary } from "../lib/public-score-library";
+import { PDF_MUSICXML_GUIDE_LOCALES, pdfMusicXmlGuideSlugs } from "../lib/pdf-musicxml-guides";
 
-function addLocalizedEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
+function addLocalizedEntries(
+  entries: MetadataRoute.Sitemap,
+  locales: readonly SupportedLocale[] = SUPPORTED_LOCALES,
+): MetadataRoute.Sitemap {
   return entries.flatMap((entry) => {
     const pathname = new URL(entry.url).pathname;
     const localizedUrls = Object.fromEntries(
-      SUPPORTED_LOCALES.map((locale) => [locale, getLocalizedAbsoluteUrl(siteConfig.siteUrl, pathname, locale)]),
-    ) as Record<SupportedLocale, string>;
+      locales.map((locale) => [locale, getLocalizedAbsoluteUrl(siteConfig.siteUrl, pathname, locale)]),
+    ) as Partial<Record<SupportedLocale, string>>;
+    const defaultUrl = localizedUrls[DEFAULT_LOCALE];
+    if (!defaultUrl) throw new Error("Localized sitemap entries must include the default locale.");
     const alternates = {
       languages: {
         ...localizedUrls,
-        "x-default": localizedUrls[DEFAULT_LOCALE],
+        "x-default": defaultUrl,
       },
     };
 
-    return SUPPORTED_LOCALES.map((locale) => ({ ...entry, url: localizedUrls[locale], alternates }));
+    return locales.map((locale) => ({ ...entry, url: localizedUrls[locale]!, alternates }));
   });
 }
 
@@ -96,7 +102,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  return addLocalizedEntries([
+  const standardEntries = addLocalizedEntries([
     ...staticPages,
     ...platformFeaturePages.filter(isFeatureIndexable).map((page) => ({
       url: `${siteConfig.siteUrl}${page.canonical}`,
@@ -111,4 +117,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: score.featured ? 0.75 : 0.65,
     })),
   ]);
+
+  const guideEntries = addLocalizedEntries([
+    {
+      url: `${siteConfig.siteUrl}/guides`,
+      lastModified,
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    },
+    ...pdfMusicXmlGuideSlugs.map((slug) => ({
+      url: `${siteConfig.siteUrl}/guides/${slug}`,
+      lastModified: new Date("2026-08-29T00:00:00.000Z"),
+      changeFrequency: "monthly" as const,
+      priority: slug === "convert-pdf-sheet-music-to-musicxml" || slug === "pdf-to-musicxml-recognition-benchmark" ? 0.8 : 0.72,
+    })),
+  ], PDF_MUSICXML_GUIDE_LOCALES);
+
+  return [...standardEntries, ...guideEntries];
 }

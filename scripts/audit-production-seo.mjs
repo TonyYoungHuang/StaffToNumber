@@ -38,8 +38,23 @@ const socialMetadataPaths = new Set([
   "/terms",
   "/copyright-complaint",
 ]);
+const localeConfigs = [
+  { code: "en", htmlLang: "en", prefix: "" },
+  { code: "zh-CN", htmlLang: "zh-CN", prefix: "/zh-cn" },
+  { code: "zh-TW", htmlLang: "zh-TW", prefix: "/zh-tw" },
+  { code: "ja", htmlLang: "ja", prefix: "/ja" },
+  { code: "ko", htmlLang: "ko", prefix: "/ko" },
+  { code: "fr", htmlLang: "fr", prefix: "/fr" },
+  { code: "es", htmlLang: "es", prefix: "/es" },
+  { code: "de", htmlLang: "de", prefix: "/de" },
+  { code: "ru", htmlLang: "ru", prefix: "/ru" },
+];
+const defaultLocaleConfig = localeConfigs[0];
+const prefixedLocaleConfigs = localeConfigs.filter((locale) => locale.prefix).sort((left, right) => right.prefix.length - left.prefix.length);
+const guideLocaleCodes = new Set(["en", "zh-CN"]);
 const issues = [];
 const pages = [];
+const nextStaticAssets = new Set();
 
 function issue(severity, scope, message) {
   issues.push({ severity, scope, message });
@@ -68,6 +83,72 @@ function comparableUrl(value, pageUrl) {
   if (!absolute) return null;
   const parsed = new URL(absolute);
   return parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : parsed.toString();
+}
+
+function normalizePathname(pathname) {
+  const withLeadingSlash = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  if (withLeadingSlash === "/") return "/";
+  return withLeadingSlash.replace(/\/+$/u, "");
+}
+
+function getRouteInfo(pathname) {
+  const normalizedPathname = normalizePathname(pathname);
+  for (const locale of prefixedLocaleConfigs) {
+    if (normalizedPathname === locale.prefix || normalizedPathname.startsWith(`${locale.prefix}/`)) {
+      const stripped = normalizedPathname.slice(locale.prefix.length);
+      return { locale, basePath: stripped || "/" };
+    }
+  }
+  return { locale: defaultLocaleConfig, basePath: normalizedPathname };
+}
+
+function localizePathname(basePath, locale) {
+  const normalizedBasePath = normalizePathname(basePath);
+  if (!locale.prefix) return normalizedBasePath;
+  return normalizedBasePath === "/" ? locale.prefix : `${locale.prefix}${normalizedBasePath}`;
+}
+
+function isGuidePath(basePath) {
+  return basePath === "/guides" || basePath.startsWith("/guides/");
+}
+
+function getExpectedLocaleConfigs(basePath) {
+  return isGuidePath(basePath)
+    ? localeConfigs.filter((locale) => guideLocaleCodes.has(locale.code))
+    : localeConfigs;
+}
+
+function getExpectedLanguageAlternates(pathname, origin) {
+  const route = getRouteInfo(pathname);
+  const expectedLocales = getExpectedLocaleConfigs(route.basePath);
+  const expected = Object.fromEntries(
+    expectedLocales.map((locale) => [locale.code, comparableUrl(localizePathname(route.basePath, locale), origin)]),
+  );
+  expected["x-default"] = expected.en;
+  return { route, expected, expectedLocales };
+}
+
+function validateLanguageAlternates({ pathname, origin, actual, scope, source }) {
+  const { route, expected, expectedLocales } = getExpectedLanguageAlternates(pathname, origin);
+  const allowedLocaleCodes = new Set(expectedLocales.map((locale) => locale.code));
+  if (!allowedLocaleCodes.has(route.locale.code)) {
+    issue("error", scope, `${source} publishes ${route.locale.code} for ${route.basePath}, but guide pages are limited to en and zh-CN until their main content is translated.`);
+  }
+
+  for (const [language, expectedHref] of Object.entries(expected)) {
+    const actualHref = comparableUrl(actual[language] || "", origin);
+    if (actualHref !== expectedHref) {
+      issue("error", scope, `${source} hreflang ${language} points to ${actualHref || "nothing"}; expected ${expectedHref}.`);
+    }
+  }
+
+  for (const language of Object.keys(actual)) {
+    if (!(language in expected)) {
+      issue("error", scope, `${source} publishes unexpected hreflang ${language} for ${route.basePath}.`);
+    }
+  }
+
+  return route;
 }
 
 async function inspectPage(url, sitemapEntry = null) {
@@ -101,6 +182,18 @@ async function inspectPage(url, sitemapEntry = null) {
     width: $(node).attr("width") || "",
     height: $(node).attr("height") || "",
   }));
+  const staticAssets = $("script[src], link[href]").toArray().map((node) => {
+    const value = $(node).attr("src") || $(node).attr("href") || "";
+    return absoluteUrl(value, response.url);
+  }).filter((value) => {
+    if (!value) return false;
+    try {
+      return new URL(value).pathname.startsWith("/_next/static/");
+    } catch {
+      return false;
+    }
+  });
+  for (const staticAsset of staticAssets) nextStaticAssets.add(staticAsset);
   const links = $("a[href]").toArray().map((node) => absoluteUrl($(node).attr("href") || "", response.url)).filter(Boolean);
   const schemaTypes = [];
   $('script[type="application/ld+json"]').each((_, node) => {
@@ -117,9 +210,9 @@ async function inspectPage(url, sitemapEntry = null) {
   const twitterImage = absoluteUrl($('meta[name="twitter:image"]').attr("content") || "", response.url);
   const twitterCard = ($('meta[name="twitter:card"]').attr("content") || "").trim();
   const hasGoogleSiteVerification = Boolean($('meta[name="google-site-verification"]').attr("content")?.trim());
-  const chineseDocument = documentLanguage.toLowerCase() === "zh-cn";
-  const titleLengthRange = chineseDocument ? { minimum: 10, maximum: 45 } : { minimum: 25, maximum: 65 };
-  const descriptionLengthRange = chineseDocument ? { minimum: 30, maximum: 90 } : { minimum: 100, maximum: 170 };
+  const compactScriptDocument = /^(?:zh-(?:cn|tw)|ja|ko)$/iu.test(documentLanguage);
+  const titleLengthRange = compactScriptDocument ? { minimum: 10, maximum: 45 } : { minimum: 25, maximum: 65 };
+  const descriptionLengthRange = compactScriptDocument ? { minimum: 30, maximum: 90 } : { minimum: 100, maximum: 170 };
 
   if (response.status !== 200) issue("error", scope, `Expected HTTP 200, received ${response.status}.`);
   if (!title) issue("error", scope, "Missing document title.");
@@ -129,20 +222,10 @@ async function inspectPage(url, sitemapEntry = null) {
   if (!canonical) issue("error", scope, "Missing or invalid canonical URL.");
   else if (new URL(canonical).pathname !== new URL(response.url).pathname) issue("error", scope, `Canonical points to ${canonical}.`);
   if (sitemapEntry && indexable) {
-    const isChinesePath = scope === "/zh-cn" || scope.startsWith("/zh-cn/");
-    const englishPath = isChinesePath ? scope.slice("/zh-cn".length) || "/" : scope;
-    const chinesePath = englishPath === "/" ? "/zh-cn" : `/zh-cn${englishPath}`;
     const pageOrigin = canonical ? new URL(canonical).origin : new URL(response.url).origin;
-    const expectedAlternates = {
-      en: comparableUrl(englishPath, pageOrigin),
-      "zh-CN": comparableUrl(chinesePath, pageOrigin),
-      "x-default": comparableUrl(englishPath, pageOrigin),
-    };
-    const expectedLanguage = isChinesePath ? "zh-CN" : "en";
-    if (documentLanguage !== expectedLanguage) issue("error", scope, `Expected html lang=${expectedLanguage}, received ${documentLanguage || "none"}.`);
-    for (const [language, expectedHref] of Object.entries(expectedAlternates)) {
-      const actualHref = comparableUrl(languageAlternates[language] || "", response.url);
-      if (actualHref !== expectedHref) issue("error", scope, `hreflang ${language} points to ${actualHref || "nothing"}; expected ${expectedHref}.`);
+    const route = validateLanguageAlternates({ pathname: scope, origin: pageOrigin, actual: languageAlternates, scope, source: "HTML" });
+    if (documentLanguage !== route.locale.htmlLang) {
+      issue("error", scope, `Expected html lang=${route.locale.htmlLang}, received ${documentLanguage || "none"}.`);
     }
   }
   if (h1Count !== 1) issue("error", scope, `Expected exactly one H1, found ${h1Count}.`);
@@ -153,7 +236,7 @@ async function inspectPage(url, sitemapEntry = null) {
   }
   if (indexable && !ogImage) issue("error", scope, "Indexable page is missing an Open Graph image.");
   if (indexable && !twitterImage) issue("warning", scope, "Indexable page is missing a Twitter image.");
-  const socialBasePath = scope.startsWith("/zh-cn/") ? scope.slice("/zh-cn".length) : scope;
+  const socialBasePath = getRouteInfo(scope).basePath;
   if (socialMetadataPaths.has(socialBasePath)) {
     if (comparableUrl(ogUrl || "", response.url) !== comparableUrl(canonical || "", response.url)) {
       issue("error", scope, `Open Graph URL ${ogUrl || "is missing"}; expected the page canonical ${canonical || "URL"}.`);
@@ -169,7 +252,7 @@ async function inspectPage(url, sitemapEntry = null) {
     else if (lastModified.valueOf() > Date.now() + 86400000) issue("error", scope, "Sitemap lastmod is in the future.");
   }
 
-  const result = { url, finalUrl: response.url, status: response.status, title, description, canonical, documentLanguage, languageAlternates, robots, indexable, hasGoogleSiteVerification, h1Count, h2Count, images, links, schemaTypes, ogImage, ogUrl, twitterImage, twitterCard };
+  const result = { url, finalUrl: response.url, status: response.status, title, description, canonical, documentLanguage, languageAlternates, robots, indexable, hasGoogleSiteVerification, h1Count, h2Count, images, staticAssets, links, schemaTypes, ogImage, ogUrl, twitterImage, twitterCard };
   pages.push(result);
   return result;
 }
@@ -187,6 +270,27 @@ async function inspectAsset(url, scope, label) {
     if (label.includes("image") && !contentType.startsWith("image/")) issue("error", scope, `${label} is not an image: ${contentType || "unknown type"}.`);
   } catch (error) {
     issue("error", scope, `${label} request failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function inspectImmutableStaticAsset(url) {
+  const sourceUrl = new URL(url);
+  const targetUrl = args["map-sitemap-to-base"]
+    ? new URL(`${sourceUrl.pathname}${sourceUrl.search}`, baseUrl).toString()
+    : sourceUrl.toString();
+  try {
+    const response = await request(targetUrl, { method: "HEAD" });
+    if (!response.ok) {
+      issue("error", sourceUrl.pathname, `Next static asset returned HTTP ${response.status}: ${url}.`);
+      return;
+    }
+    const cacheControl = (response.headers.get("cache-control") || "").toLowerCase();
+    const maxAge = Number(cacheControl.match(/(?:^|,)\s*max-age=(\d+)/u)?.[1] || 0);
+    if (!cacheControl.split(",").map((directive) => directive.trim()).includes("public") || !cacheControl.includes("immutable") || maxAge < 31_536_000) {
+      issue("error", sourceUrl.pathname, `Next static asset must use Cache-Control: public, max-age=31536000, immutable; received ${cacheControl || "no Cache-Control header"}.`);
+    }
+  } catch (error) {
+    issue("error", sourceUrl.pathname, `Next static asset request failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -208,10 +312,41 @@ try {
   else {
     const xml = await sitemapResponse.text();
     const $xml = cheerio.load(xml, { xmlMode: true });
-    sitemapEntries = $xml("url").toArray().map((node) => ({ loc: $xml(node).find("loc").text().trim(), lastmod: $xml(node).find("lastmod").text().trim() }));
+    sitemapEntries = $xml("url").toArray().map((node) => ({
+      loc: $xml(node).find("loc").text().trim(),
+      lastmod: $xml(node).find("lastmod").text().trim(),
+      languageAlternates: Object.fromEntries(
+        $xml(node).find('[rel="alternate"][hreflang]').toArray().map((alternateNode) => [
+          ($xml(alternateNode).attr("hreflang") || "").trim(),
+          absoluteUrl($xml(alternateNode).attr("href") || "", baseUrl),
+        ]).filter(([language, href]) => Boolean(language && href)),
+      ),
+    }));
     if (sitemapEntries.length === 0) issue("error", "sitemap", "sitemap.xml contains no URLs.");
     if (Number.isInteger(expectedSitemapCount) && sitemapEntries.length !== expectedSitemapCount) {
       issue("error", "sitemap", `Expected ${expectedSitemapCount} URLs, received ${sitemapEntries.length}.`);
+    }
+    const sitemapLocations = new Set(sitemapEntries.map((entry) => comparableUrl(entry.loc, baseUrl)).filter(Boolean));
+    for (const entry of sitemapEntries) {
+      try {
+        const entryUrl = new URL(entry.loc);
+        const scope = entryUrl.pathname || "/";
+        const { expected } = getExpectedLanguageAlternates(scope, entryUrl.origin);
+        validateLanguageAlternates({
+          pathname: scope,
+          origin: entryUrl.origin,
+          actual: entry.languageAlternates,
+          scope,
+          source: "Sitemap",
+        });
+        for (const [language, expectedHref] of Object.entries(expected)) {
+          if (language !== "x-default" && !sitemapLocations.has(expectedHref)) {
+            issue("error", scope, `Sitemap hreflang ${language} target is not present as a sitemap URL: ${expectedHref}.`);
+          }
+        }
+      } catch (error) {
+        issue("error", "sitemap", `Invalid sitemap URL ${entry.loc || "(empty)"}: ${error instanceof Error ? error.message : String(error)}.`);
+      }
     }
   }
 } catch (error) {
@@ -294,6 +429,11 @@ for (const page of pages) {
   await inspectAsset(page.ogImage, new URL(page.url).pathname, "Open Graph image");
   for (const image of page.images) await inspectAsset(image.src, new URL(page.url).pathname, "content image");
 }
+if (nextStaticAssets.size === 0) {
+  issue("error", "static-assets", "No /_next/static/ asset was discovered, so immutable browser caching could not be verified.");
+} else {
+  for (const staticAsset of nextStaticAssets) await inspectImmutableStaticAsset(staticAsset);
+}
 
 await inspectEndpoint("app", args["app-url"] || process.env.SEO_AUDIT_APP_URL);
 await inspectEndpoint("api", args["api-url"] || process.env.SEO_AUDIT_API_URL, String(args["api-health-path"] || "/health"));
@@ -324,7 +464,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   baseUrl: baseUrl.toString(),
   publishReady: errors === 0,
-  metrics: { pages: pages.length, sitemapUrls: sitemapEntries.length, internalLinks: internalLinks.size, errors, warnings },
+  metrics: { pages: pages.length, sitemapUrls: sitemapEntries.length, internalLinks: internalLinks.size, staticAssets: nextStaticAssets.size, errors, warnings },
   issues,
   pages,
 };

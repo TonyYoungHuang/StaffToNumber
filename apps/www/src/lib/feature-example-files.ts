@@ -46,10 +46,16 @@ function midiFile(): FeatureExampleFile {
   return {
     bytes: Uint8Array.from([
       0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0, 0x60,
-      0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 0x13,
+      0x4d, 0x54, 0x72, 0x6b, 0, 0, 0, 0x2b,
       0, 0xff, 0x51, 3, 7, 0xa1, 0x20,
       0, 0x90, 0x3c, 0x64,
       0x60, 0x80, 0x3c, 0x40,
+      0, 0x90, 0x3e, 0x64,
+      0x60, 0x80, 0x3e, 0x40,
+      0, 0x90, 0x40, 0x64,
+      0x60, 0x80, 0x40, 0x40,
+      0, 0x90, 0x43, 0x64,
+      0x60, 0x80, 0x43, 0x40,
       0, 0xff, 0x2f, 0,
     ]),
     contentType: "audio/midi",
@@ -125,12 +131,13 @@ function scorePngFile(): FeatureExampleFile {
   const plot = (x: number, y: number, value = 0) => {
     if (x >= 0 && x < width && y >= 0 && y < height) pixels[y * (width + 1) + x + 1] = value;
   };
-  for (const staffTop of [70, 185]) {
+  for (const staffTop of [110]) {
     for (let line = 0; line < 5; line += 1) for (let x = 35; x < 765; x += 1) plot(x, staffTop + line * 12, 20);
     for (const [noteX, noteY] of [[150, staffTop + 42], [280, staffTop + 30], [410, staffTop + 24], [560, staffTop + 12]]) {
       for (let y = -6; y <= 6; y += 1) for (let x = -10; x <= 10; x += 1) if ((x * x) / 100 + (y * y) / 36 <= 1) plot(noteX + x, noteY + y);
       for (let y = noteY - 48; y <= noteY; y += 1) plot(noteX + 10, y);
     }
+    for (let y = staffTop; y <= staffTop + 48; y += 1) plot(720, y, 20);
   }
   const ihdr = new Uint8Array(13);
   const header = new DataView(ihdr.buffer);

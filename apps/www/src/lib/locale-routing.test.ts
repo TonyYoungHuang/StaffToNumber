@@ -19,6 +19,7 @@ import {
   stripPublicLocalePrefix,
 } from "./locale-routing.js";
 import { getSiteLocaleCatalog } from "./site-shell-localization.js";
+import { PDF_MUSICXML_GUIDE_LOCALES } from "./pdf-musicxml-guides.js";
 
 const expectedPrefixes = {
   en: "",
@@ -208,17 +209,29 @@ test("every locale has complete localized root metadata and shell copy", () => {
   assert.equal(titles.size, SUPPORTED_LOCALES.length);
 });
 
-test("sitemap publishes every indexable route in nine linked locale entries", () => {
+test("sitemap publishes standard routes in nine locales and guides only in their translated locales", () => {
   const entries = sitemap();
   assert.ok(entries.length > 0);
-  assert.equal(entries.length % SUPPORTED_LOCALES.length, 0);
 
   const urls = new Set(entries.map((entry) => entry.url));
   assert.equal(urls.size, entries.length);
-  for (const entry of entries) {
+  const guideEntries = entries.filter((entry) => stripPublicLocalePrefix(new URL(entry.url).pathname).startsWith("/guides"));
+  const standardEntries = entries.filter((entry) => !guideEntries.includes(entry));
+  assert.equal(standardEntries.length % SUPPORTED_LOCALES.length, 0);
+
+  for (const entry of standardEntries) {
     const languages = entry.alternates?.languages;
     assert.ok(languages);
     for (const locale of SUPPORTED_LOCALES) assert.ok(urls.has(String(languages[locale])));
+    assert.equal(languages["x-default"], languages.en);
+  }
+
+  assert.equal(guideEntries.length, 14);
+  for (const entry of guideEntries) {
+    const languages = entry.alternates?.languages;
+    assert.ok(languages);
+    assert.deepEqual(Object.keys(languages).sort(), [...PDF_MUSICXML_GUIDE_LOCALES, "x-default"].sort());
+    for (const locale of PDF_MUSICXML_GUIDE_LOCALES) assert.ok(urls.has(String(languages[locale])));
     assert.equal(languages["x-default"], languages.en);
   }
 });

@@ -56,7 +56,7 @@ test("support and legal catalogs are key-complete and nonempty for all nine loca
     assert.equal(catalog.support.boundary.metrics.length, 3, locale);
     assert.equal(catalog.copyright.faqs.length, 3, locale);
     assert.equal(catalog.privacy.sections.length, 6, locale);
-    assert.deepEqual(catalog.privacy.sections.map((section) => section.points.length), [3, 3, 4, 3, 3, 3], locale);
+    assert.deepEqual(catalog.privacy.sections.map((section) => section.points.length), [3, 3, 4, 3, 4, 3], locale);
     assert.equal(catalog.terms.sections.length, 5, locale);
     assert.deepEqual(catalog.terms.sections.map((section) => section.points.length), [3, 4, 3, 4, 3], locale);
     assert.deepEqual(Object.keys(catalog.support.form.categories), ["payment", "activation", "job", "privacy", "general"], locale);

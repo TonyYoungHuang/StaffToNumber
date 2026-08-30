@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PlatformFeaturePage } from "./platform-feature-pages";
 
-export const requiredFeatureSchemas = ["BreadcrumbList", "HowTo", "FAQPage", "SoftwareApplication"] as const;
+export const requiredFeatureSchemas = ["WebPage", "BreadcrumbList", "HowTo", "FAQPage", "SoftwareApplication"] as const;
 
 export type FeatureSchemaType = (typeof requiredFeatureSchemas)[number];
 export type FeatureSeoReviewStatus = "draft" | "in_review" | "approved";
@@ -138,9 +138,9 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       capturedAt: "2026-08-19",
     },
     example: {
-      input: "Selected event: E4 quarter note in measure 2",
-      output: "Corrected event: F-sharp4 eighth note in a new revision",
-      notes: "Selection, insertion, deletion, drag editing and structured properties operate on Score JSON.",
+      input: "Selected event: E4 quarter note in the single reference measure",
+      output: "Corrected event: F-sharp4 quarter note with an accent in a separate revision",
+      notes: "This deterministic download demonstrates one structured edit; selection, insertion, deletion, drag editing and properties operate on Score JSON.",
     },
     review: featureProductOwnerApproval("Checked the existing measure editor capture and structured edit tests; approval is limited to correction, event editing, revisions, and collaboration rather than a MuseScore-scale engraving promise."),
   },
@@ -159,9 +159,9 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       capturedAt: "2026-08-29",
     },
     example: {
-      input: "Piano Score JSON at 96 BPM with a four-measure loop",
-      output: "Browser practice playback plus reproducible MIDI, WAV or MP3 export",
-      notes: "High-quality server audio requires FluidSynth, a SoundFont and ffmpeg.",
+      input: "One-measure MusicXML reference containing four quarter notes",
+      output: "Browser practice playback plus a deterministic 3.2-second WAV reference; a separate MIDI reference is also available",
+      notes: "The public WAV is a synthetic format reference. Production WAV or MP3 quality depends on FluidSynth, a SoundFont and ffmpeg.",
     },
     review: featureProductOwnerApproval("Checked the existing playback and export controls plus deterministic audio examples; server WAV or MP3 quality remains bounded by FluidSynth, SoundFont, and ffmpeg availability."),
   },
@@ -218,13 +218,13 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       width: 1425,
       height: 891,
       alt: "Sheet music scanner workspace comparing a PDF or image with recognized notation",
-      evidence: "Captured from the product workspace that hosts OMR candidates and correction.",
+      evidence: "Captured from the product workspace that hosts OMR candidates and correction. The captured candidate is a deterministic fixture, so the image proves the review surface rather than aggregate Audiveris accuracy.",
       capturedAt: "2026-08-19",
     },
     example: {
       input: "Scanned score PDF, PNG, JPEG, WebP or TIFF",
       output: "Audiveris MusicXML candidate with diagnostics, confidence and editable Score JSON",
-      notes: "Recognition is an import-and-correct workflow; it is not advertised as universally perfect.",
+      notes: "Those are production capabilities. The public input and output downloads are deterministic format references, not a claimed input-output recognition benchmark.",
     },
     review: featureProductOwnerApproval("Checked the existing source-versus-candidate OMR capture, diagnostics, accepted input types, and the explicit import-plus-correction boundary."),
   },
@@ -239,13 +239,13 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       width: 1440,
       height: 900,
       alt: "Structured score workspace showing a rendered MusicXML revision and practice controls",
-      evidence: "Captured from an existing product score workspace. PDF recognition quality is evidenced by the separate OMR comparison capture and remains subject to correction.",
+      evidence: "Captured from an existing product score workspace. The separate OMR capture uses a deterministic fixture and demonstrates the correction workflow, not a recognition-accuracy percentage.",
       capturedAt: "2026-08-29",
     },
     example: {
       input: "Sheet music PDF, PNG, JPEG, WebP or TIFF",
       output: "Reviewable MusicXML candidate and editable Score JSON revision",
-      notes: "The source and OMR diagnostics remain attached so recognition mistakes can be corrected before MusicXML export.",
+      notes: "The public downloads are deterministic format references. In production, the source and OMR diagnostics remain attached so each real candidate can be corrected before export.",
     },
     review: featureProductOwnerApproval("Checked the existing structured workspace capture, MusicXML example, OMR diagnostics workflow, and the boundary that conversion yields a candidate rather than guaranteed publication-ready notation."),
   },

@@ -11,6 +11,9 @@ import {
   resolveFaqGroups,
 } from "../../lib/static-marketing-localization";
 import { getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
+import { localizeFeaturePage } from "../../lib/feature-page-localization";
+import { getPdfMusicXmlGuideHubAction } from "../../lib/pdf-musicxml-guides";
+import { findPlatformFeaturePage } from "../../lib/platform-feature-pages";
 
 const canonicalPath = "/faq";
 
@@ -53,6 +56,9 @@ export default async function FaqPage() {
   const pageUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale);
   const topSupportUrl = localizePublicHref(getSupportUrl("general", "faq-top"), locale);
   const bottomSupportUrl = localizePublicHref(getSupportUrl("general", "faq-bottom"), locale);
+  const pdfToMusicXmlSource = findPlatformFeaturePage("pdf-to-musicxml");
+  const pdfToMusicXml = pdfToMusicXmlSource ? localizeFeaturePage(pdfToMusicXmlSource, locale) : null;
+  const pdfMusicXmlGuideAction = getPdfMusicXmlGuideHubAction(locale);
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -115,12 +121,22 @@ export default async function FaqPage() {
             ))}
           </div>
           <div className="button-row">
+            {pdfToMusicXml ? (
+              <Link href={localizePublicHref(pdfToMusicXml.canonical, locale)} className="public-button primary">
+                {pdfToMusicXml.title}
+              </Link>
+            ) : null}
             <Link href={localizePublicHref("/pdf-score-scanner", locale)} className="public-button secondary">
               {copy.workflow.scannerAction}
             </Link>
             <Link href={localizePublicHref("/numbered-notation-converter", locale)} className="public-button tertiary">
               {copy.workflow.converterAction}
             </Link>
+            {pdfMusicXmlGuideAction ? (
+              <Link href={localizePublicHref("/guides", locale)} className="public-button tertiary">
+                {pdfMusicXmlGuideAction}
+              </Link>
+            ) : null}
           </div>
         </Panel>
 

@@ -47,6 +47,8 @@ export function PublicChrome({
     pricing: localizePublicHref("/#pricing", locale),
   } as const;
   const primaryActionLabel = siteConfig.release.productAppAvailable ? copy.editForFree : copy.launchStatus;
+  const hasLocalizedPdfGuides = locale === "en" || locale === "zh-CN";
+  const pdfGuidesLabel = locale === "zh-CN" ? "PDF 转 MusicXML 教程" : "PDF to MusicXML guides";
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -92,7 +94,7 @@ export function PublicChrome({
     { href: localizePublicHref("/features", locale), label: copy.features },
     { href: localizePublicHref("/library", locale), label: copy.library },
     { href: homeSections.pricing, label: copy.pricing },
-    { label: copy.help, children: [{ href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide }, { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation }, { href: localizePublicHref("/support", locale), label: copy.contact }] },
+    { label: copy.help, children: [...(hasLocalizedPdfGuides ? [{ href: localizePublicHref("/guides", locale), label: pdfGuidesLabel }] : []), { href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide }, { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation }, { href: localizePublicHref("/support", locale), label: copy.contact }] },
     ...(siteConfig.release.teachingAvailable ? [{ href: localizePublicHref("/teaching", locale), label: copy.education }] : []),
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true }] : []),
     { href: loginUrl, label: copy.login },
@@ -117,6 +119,8 @@ export function PublicChrome({
     { href: homeSections.useCases, label: copy.useCases },
     { href: homeSections.pricing, label: copy.pricing },
     { href: localizePublicHref("/features", locale), label: copy.features },
+    { href: localizePublicHref("/pdf-to-musicxml", locale), label: locale === "zh-CN" ? "PDF 转 MusicXML" : "PDF to MusicXML" },
+    ...(hasLocalizedPdfGuides ? [{ href: localizePublicHref("/guides", locale), label: pdfGuidesLabel }] : []),
     { href: localizePublicHref("/library", locale), label: copy.library },
     { href: localizePublicHref("/faq", locale), label: copy.faq },
     { href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide },

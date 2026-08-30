@@ -30,7 +30,7 @@ node scripts/audit-production-seo.mjs `
   --base-url https://scoretransposer.com `
   --require-canonical-host `
   --require-ai-crawlers `
-  --expected-sitemap-count 66
+  --expected-sitemap-count 80
 ```
 
 ## Cloudflare 控制台必须同步的设置

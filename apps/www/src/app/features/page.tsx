@@ -3,8 +3,9 @@ import { SUPPORTED_LOCALES, getLocaleConfig } from "@score/i18n";
 import { Panel, SectionIntro, StatusPill } from "@score/ui";
 import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
-import { FEATURE_OPEN_GRAPH_LOCALES, getFeatureIndexCatalog } from "../../lib/feature-page-localization";
+import { FEATURE_OPEN_GRAPH_LOCALES, getFeatureIndexCatalog, localizeFeaturePage } from "../../lib/feature-page-localization";
 import type { BetaFeatureId, FormalFeatureId } from "../../lib/feature-localization/types";
+import { findPlatformFeaturePage } from "../../lib/platform-feature-pages";
 import { getFeatureProductMedia, getProductMediaPresentation } from "../../lib/product-media";
 import { getAppScoreProjectsUrl, siteConfig } from "../../lib/site";
 
@@ -64,7 +65,10 @@ export default async function FeaturesPage() {
   const catalog = getFeatureIndexCatalog(locale);
   const copy = catalog.page;
   const workspace = getAppScoreProjectsUrl(locale);
+  const pdfToMusicXmlSource = findPlatformFeaturePage("pdf-to-musicxml");
+  const pdfToMusicXml = pdfToMusicXmlSource ? localizeFeaturePage(pdfToMusicXmlSource, locale) : null;
   const allFeatures = [
+    ...(pdfToMusicXml ? [{ id: "pdf-musicxml", href: pdfToMusicXml.canonical, title: pdfToMusicXml.title, body: pdfToMusicXml.description }] : []),
     ...formalFeatureLinks.map((feature) => ({ ...feature, ...catalog.formal[feature.id] })),
     ...betaFeatureLinks.map((feature) => ({ ...feature, ...catalog.betaFeatures[feature.id] })),
   ];
@@ -96,6 +100,23 @@ export default async function FeaturesPage() {
         </Panel>
       </section>
       <section className="list-grid">
+        {pdfToMusicXml ? (
+          <article className="list-item" id="pdf-musicxml">
+            <div className="list-item-content stack-sm">
+              <StatusPill tone="green">{copy.available}</StatusPill>
+              <h2 className="item-title">{pdfToMusicXml.title}</h2>
+              <p className="body-copy">{pdfToMusicXml.description}</p>
+              <div className="button-row">
+                <a className="public-button secondary" href={localizePublicHref(pdfToMusicXml.canonical, locale)}>{copy.open}</a>
+                {locale === "en" || locale === "zh-CN" ? (
+                  <a className="public-button tertiary" href={localizePublicHref("/guides", locale)}>
+                    {locale === "zh-CN" ? "PDF 与 MusicXML 指南" : "PDF & MusicXML guides"}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </article>
+        ) : null}
         {formalFeatureLinks.map((feature) => {
           const content = catalog.formal[feature.id];
           return (

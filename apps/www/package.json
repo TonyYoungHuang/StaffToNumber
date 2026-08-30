@@ -8,7 +8,7 @@
     "build:cloudflare": "opennextjs-cloudflare build --skipWranglerConfigCheck",
     "deploy:cloudflare:staging": "wrangler deploy --config wrangler.staging.jsonc",
     "start": "next start -p 3000",
-    "test": "node --import tsx --test src/lib/canonical-host.test.ts src/lib/checkout-localization.test.ts src/lib/feature-seo.test.ts src/lib/homepage-localization.test.ts src/lib/homepage-media.test.ts src/lib/locale-routing.test.ts src/lib/organization-schema.test.ts src/lib/paddle-checkout.test.ts src/lib/practice-demo-state.test.ts src/lib/pricing-catalog.test.ts src/lib/product-media/product-media.test.ts src/lib/public-content.test.ts src/lib/public-score-library.test.ts src/lib/static-marketing-localization.test.ts src/lib/support-legal-localization.test.ts",
+    "test": "node --import tsx --test src/lib/api.test.ts src/lib/canonical-host.test.ts src/lib/checkout-localization.test.ts src/lib/cloudflare-static-headers.test.ts src/lib/feature-seo.test.ts src/lib/homepage-localization.test.ts src/lib/homepage-media.test.ts src/lib/locale-routing.test.ts src/lib/organization-schema.test.ts src/lib/paddle-checkout.test.ts src/lib/pdf-musicxml-guides.test.ts src/lib/practice-demo-state.test.ts src/lib/pricing-catalog.test.ts src/lib/product-media/product-media.test.ts src/lib/public-content.test.ts src/lib/public-score-library.test.ts src/lib/static-marketing-localization.test.ts src/lib/support-legal-localization.test.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "budget:homepage": "node scripts/check-homepage-budget.mjs"
   },
