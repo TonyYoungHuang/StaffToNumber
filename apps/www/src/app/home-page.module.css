@@ -126,6 +126,22 @@
   letter-spacing: -0.042em !important;
 }
 
+@media (min-width: 1280px) {
+  .pageWideHero .heroCopy {
+    width: min(1760px, calc(100vw - 40px));
+    justify-self: center;
+  }
+
+  .heroTitleWide {
+    font-size: clamp(28px, 2.25vw, 36px) !important;
+    letter-spacing: -0.045em !important;
+    hyphens: none;
+    overflow-wrap: normal;
+    text-wrap: nowrap;
+    white-space: nowrap;
+  }
+}
+
 .heroTitleLine {
   display: inline;
 }
