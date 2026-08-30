@@ -32,6 +32,7 @@ WORKDIR /srv/scoretransposer
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/app/package.json apps/app/package.json
 COPY apps/www/package.json apps/www/package.json
+COPY packages/i18n/package.json packages/i18n/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/storage/package.json packages/storage/package.json
 COPY packages/runtime-database/package.json packages/runtime-database/package.json
@@ -46,7 +47,7 @@ COPY packages ./packages
 COPY services ./services
 COPY deploy/backend/soundfont-license-manifest.json deploy/backend/soundfont-license-manifest.json
 COPY deploy/backend/licenses deploy/backend/licenses
-RUN npm run build -w @score/shared && npm run build -w @score/storage && npm run build -w @score/runtime-database && npm run build -w @score/api && npm run build -w @score/worker && npm run build -w @score/collaboration
+RUN npm run build -w @score/i18n && npm run build -w @score/shared && npm run build -w @score/storage && npm run build -w @score/runtime-database && npm run build -w @score/api && npm run build -w @score/worker && npm run build -w @score/collaboration
 
 ENV NODE_ENV=production \
     RUNTIME_DATABASE_PRIMARY=postgres \

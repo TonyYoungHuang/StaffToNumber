@@ -41,6 +41,7 @@ RUN python3 -m venv /opt/score-python && \
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/app/package.json apps/app/package.json
 COPY apps/www/package.json apps/www/package.json
+COPY packages/i18n/package.json packages/i18n/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/storage/package.json packages/storage/package.json
 COPY packages/runtime-database/package.json packages/runtime-database/package.json
@@ -53,7 +54,7 @@ RUN npm ci --ignore-scripts
 
 COPY packages ./packages
 COPY services/api ./services/api
-RUN npm run build -w @score/shared && npm run build -w @score/storage && npm run build -w @score/runtime-database && npm run build -w @score/api
+RUN npm run build -w @score/i18n && npm run build -w @score/shared && npm run build -w @score/storage && npm run build -w @score/runtime-database && npm run build -w @score/api
 
 ENV NODE_ENV=staging \
     HOST=0.0.0.0 \
