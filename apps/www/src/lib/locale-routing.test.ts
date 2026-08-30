@@ -11,6 +11,7 @@ import sitemap from "../app/sitemap.js";
 import { middleware } from "../middleware.js";
 import { publicLocalePrefixes, publicLocaleRewrites } from "../../next.config.js";
 import {
+  getPublicLocaleSwitchHref,
   getLocalizedAlternates,
   localeFromPublicPath,
   localizePublicHref,
@@ -51,6 +52,17 @@ test("localized hrefs preserve query strings and fragments without rewriting ass
     assert.equal(localizePublicHref("/product/score.png", locale), "/product/score.png");
     assert.equal(localizePublicHref("https://app.scoretransposer.com/login", locale), "https://app.scoretransposer.com/login");
   }
+});
+
+test("the browser locale switch preserves the semantic route, query string and fragment", () => {
+  assert.equal(
+    getPublicLocaleSwitchHref({
+      pathname: "/fr/about",
+      search: "?utm_test=i18n",
+      hash: "#vision",
+    }, "de"),
+    "/de/about?utm_test=i18n#vision",
+  );
 });
 
 test("metadata alternates are self-canonical, complete and bidirectional", () => {

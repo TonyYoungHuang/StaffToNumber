@@ -2,21 +2,30 @@
 
 import { useId, type ChangeEvent } from "react";
 import { LOCALE_CONFIGS, type SupportedLocale } from "@score/i18n";
+import { getPublicLocaleSwitchHref } from "../lib/locale-routing";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 export function SiteLocaleSwitcher({ label }: { label: string }) {
   const selectId = useId();
   const { locale, setLocale } = useSiteLocale();
 
-  function switchLocale(event: ChangeEvent<HTMLSelectElement>) {
+  async function switchLocale(event: ChangeEvent<HTMLSelectElement>) {
     const nextLocale = event.currentTarget.value as SupportedLocale;
     if (nextLocale === locale) return;
 
+    const nextHref = getPublicLocaleSwitchHref(window.location, nextLocale);
     setLocale(nextLocale);
-    const handoffUrl = new URL("/api/locale", window.location.origin);
-    handoffUrl.searchParams.set("locale", nextLocale);
-    handoffUrl.searchParams.set("next", `${window.location.pathname}${window.location.search}${window.location.hash}`);
-    window.location.assign(`${handoffUrl.pathname}${handoffUrl.search}`);
+    try {
+      await fetch("/api/locale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: nextLocale }),
+      });
+    } finally {
+      // Cloudflare strips URL fragments from HTTP redirect Location headers, so
+      // navigate directly after the cookie handoff to preserve in-page state.
+      window.location.assign(nextHref);
+    }
   }
 
   return (

@@ -45,6 +45,13 @@ export function localizePublicHref(href: string, locale: SupportedLocale) {
   return `${localizePublicPath(pathname, locale)}${suffix}`;
 }
 
+export function getPublicLocaleSwitchHref(
+  location: { pathname: string; search: string; hash: string },
+  locale: SupportedLocale,
+) {
+  return localizePublicHref(`${location.pathname}${location.search}${location.hash}`, locale);
+}
+
 export function getLocalizedAbsoluteUrl(siteUrl: string, pathname: string, locale: SupportedLocale) {
   return new URL(localizePublicPath(pathname, locale), `${siteUrl.replace(/\/+$/u, "")}/`).toString();
 }
