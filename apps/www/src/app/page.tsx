@@ -1,239 +1,53 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getLocaleConfig } from "@score/i18n";
 import { getPricingPlanCatalog } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanCard, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
+import {
+  getHomepageLocalization,
+  localizeHomepagePlans,
+} from "../lib/homepage-localization/index";
 import { readSiteLocale } from "../lib/locale";
 import { getLocalizedAbsoluteUrl, localizePublicHref } from "../lib/locale-routing";
+import {
+  getHomepageCaseProductMedia,
+  getHomepageDemoProductMedia,
+  getPendingProductMediaPresentation,
+  getProductMediaPresentation,
+} from "../lib/product-media";
 import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import styles from "./home-page.module.css";
 
 const caseImages = [
-  { slug: "pdf-score-scanner", image: "/product/feature-pdf-score-scanner-real.png", altZh: "PDF 与图片乐谱识别候选对照界面", altEn: "PDF and image recognition candidate review interface" },
-  { slug: "transpose-score", image: "/product/feature-transpose-score-real.png", altZh: "结构化乐谱移调工作区", altEn: "Structured score transposition workspace" },
-  { slug: "score-to-audio", image: "/product/feature-score-to-audio-real.png", altZh: "乐谱播放与练习音频工作区", altEn: "Score playback and practice-audio workspace" },
+  { slug: "pdf-score-scanner" },
+  { slug: "transpose-score" },
+  { slug: "score-to-audio" },
 ] as const;
 
 const featureDemos = [
-  { slug: "score-editor", videoZh: "/product/demo-score-editor.mp4", posterZh: "/product/demo-score-editor-poster.jpg", videoEn: "/product/demo-score-editor-en.mp4", posterEn: "/product/demo-score-editor-en-poster.jpg", altZh: "在线编辑五线谱功能短片", altEn: "English online score editing product demo" },
-  { slug: "transpose-score", videoZh: "/product/demo-transpose-score.mp4", posterZh: "/product/demo-transpose-score-poster.jpg", videoEn: "/product/demo-transpose-score-en.mp4", posterEn: "/product/demo-transpose-score-en-poster.jpg", altZh: "五线谱移调功能短片", altEn: "English score transposition product demo" },
-  { slug: "staff-to-jianpu", videoZh: "/product/demo-staff-to-jianpu.mp4", posterZh: "/product/demo-staff-to-jianpu-poster.jpg", videoEn: "/product/demo-staff-to-jianpu-en.mp4", posterEn: "/product/demo-staff-to-jianpu-en-poster.jpg", altZh: "五线谱转简谱功能短片", altEn: "English staff notation to Jianpu product demo" },
-  { slug: "score-to-audio", videoZh: "/product/demo-score-to-audio.mp4", posterZh: "/product/demo-score-to-audio-poster.jpg", videoEn: "/product/demo-score-to-audio-en.mp4", posterEn: "/product/demo-score-to-audio-en-poster.jpg", altZh: "五线谱生成练习音频功能短片", altEn: "English score-to-audio product demo" },
+  { slug: "score-editor" },
+  { slug: "transpose-score" },
+  { slug: "staff-to-jianpu" },
+  { slug: "score-to-audio" },
 ] as const;
 
 const capabilityScoreSamples = [
-  {
-    image: "/product/score-samples/mozart-k265.webp",
-    titleZh: "莫扎特 K.265 变奏曲",
-    titleEn: "Mozart K. 265 variations",
-    altZh: "莫扎特 K.265 变奏曲真实五线谱局部，用于在线编辑功能展示",
-    altEn: "Real Mozart K. 265 score excerpt shown with the online editing feature",
-  },
-  {
-    image: "/product/score-samples/pachelbel-canon.webp",
-    titleZh: "帕赫贝尔 D 大调卡农",
-    titleEn: "Pachelbel Canon in D",
-    altZh: "帕赫贝尔 D 大调卡农真实五线谱局部，用于五线谱转简谱功能展示",
-    altEn: "Real Pachelbel Canon in D score excerpt shown with the staff-to-Jianpu feature",
-  },
-  {
-    image: "/product/score-samples/chopin-op9-2.webp",
-    titleZh: "肖邦夜曲 Op.9 No.2",
-    titleEn: "Chopin Nocturne Op. 9 No. 2",
-    altZh: "肖邦夜曲 Op.9 No.2 真实五线谱局部，用于整谱移调功能展示",
-    altEn: "Real Chopin Nocturne Op. 9 No. 2 score excerpt shown with the transposition feature",
-  },
-  {
-    image: "/product/score-samples/bach-bwv846.webp",
-    titleZh: "巴赫平均律 BWV 846",
-    titleEn: "Bach Prelude BWV 846",
-    altZh: "巴赫平均律 BWV 846 真实五线谱局部，用于乐谱播放与音频功能展示",
-    altEn: "Real Bach Prelude BWV 846 score excerpt shown with playback and audio features",
-  },
-  {
-    image: "/product/score-samples/beethoven-appassionata.webp",
-    titleZh: "贝多芬《热情奏鸣曲》Op.57",
-    titleEn: "Beethoven Appassionata Op. 57",
-    altZh: "贝多芬《热情奏鸣曲》Op.57 纯西文五线谱局部，用于复杂谱面识别功能展示",
-    altEn: "Real Beethoven Appassionata Op. 57 score excerpt shown with score recognition features",
-  },
+  { image: "/product/score-samples/mozart-k265.webp" },
+  { image: "/product/score-samples/pachelbel-canon.webp" },
+  { image: "/product/score-samples/chopin-op9-2.webp" },
+  { image: "/product/score-samples/bach-bwv846.webp" },
+  { image: "/product/score-samples/beethoven-appassionata.webp" },
 ] as const;
 
 export default async function HomePage() {
   const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
+  const localization = getHomepageLocalization(locale);
+  const copy = localization.page;
+  const mediaCopy = localization.media;
   const startUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
-  const plans = getPricingPlanCatalog(locale);
-
-  const copy = isChinese
-    ? {
-        heroKicker: "AI 识谱与结构化处理工作台",
-        heroTitle: ["让 AI 读懂你的乐谱，", "继续编辑、转换与播放"],
-        heroIntro: ["上传 PDF、乐谱图片、MusicXML 或音视频文件。", "先生成可人工校正的五线谱。", "再继续完成简谱、移调、播放与导出。"],
-        heroPoints: [
-          ["结果可以核对", "保留来源、诊断与需要人工判断的位置。"],
-          ["一份乐谱持续使用", "编辑、简谱、移调与播放回到同一个工程。"],
-          ["开放格式可以带走", "以 MusicXML 交换，并支持 MIDI 与项目快照。"],
-        ],
-        heroCases: "先看真实案例",
-        facts: [["永久免费", "一个完整乐谱项目"], ["输入", "完整 PDF／图片／MusicXML"], ["继续处理", "编辑／简谱／移调／播放"]],
-        stepsKicker: "三步使用",
-        stepsTitle: "从原始文件到可以继续使用，只需三步",
-        steps: [
-          ["上传来源", "从 PDF、乐谱图片、MusicXML 或允许使用的音视频文件开始。"],
-          ["生成并核对候选", "检查音高、时值、调号与小节，不把候选稿当成最终答案。"],
-          ["继续编辑和输出", "转简谱、创建移调版本、播放练习，或导出开放格式。"],
-        ],
-        casesKicker: "真实工作流案例",
-        casesTitle: "先看真实结果，再决定如何处理你的乐谱",
-        casesBody: "案例使用当前产品工作区截图和自制测试谱例，不用抽象功能图代替结果。",
-        demosKicker: "功能短片",
-        demosTitle: "用十几秒看清每个核心功能",
-        demosBody: "短片直接录制当前产品工作区与真实操作过程。点击视频就地播放，不会跳离首页。",
-        demosProof: "真实界面录制",
-        demosAction: "进入完整功能",
-        demos: [
-          ["在线编辑", "修改音高、时值与小节内容。"],
-          ["整谱移调", "保留原调并创建目标调版本。"],
-          ["五线谱转简谱", "从同一份结构化乐谱生成简谱。"],
-          ["五线谱生成音频", "控制速度、循环并生成练习素材。"],
-        ],
-        cases: [
-          ["教师备课", "扫描纸质谱，核对后生成简谱", "保留原谱、识别诊断和候选版本，修正可疑位置后再用于教学。"],
-          ["编曲与排练", "导入 MusicXML，创建移调版本", "在同一个乐谱工程中保留原调，并创建可追踪的新修订。"],
-          ["自主练习", "边看、边听、边循环困难小节", "通过速度、循环和声部控制辅助练习，并生成 MIDI 或练习音频。"],
-        ],
-        caseAction: "查看完整功能",
-        engineKicker: "工作原理与核心能力",
-        engineTitle: "一份结构化乐谱，连接所有后续动作",
-        engineBody: "每项能力都配有真实谱面片段；输入文件先成为可核对的候选，确认后进入同一个 Score JSON 乐谱工程。",
-        capabilityProof: "真实谱面",
-        pipeline: [["输入来源", "PDF／图片／音视频"], ["识别与校正", "MusicXML 候选"], ["项目真源", "Score JSON"]],
-        capabilities: [
-          ["在线编辑", "修正音高、时值、调号与小节。", "/score-editor"],
-          ["生成简谱", "由同一份结构化音符生成简谱。", "/staff-to-jianpu"],
-          ["整谱移调", "按目标调创建可回溯的新版本。", "/transpose-score"],
-          ["播放与音频", "控制速度、循环并生成练习素材。", "/score-to-audio"],
-          ["音视频转谱", "生成需要人工校正的候选五线谱。", "/audio-to-score"],
-        ],
-        trustKicker: "可信边界",
-        trustTitle: "自动化可靠步骤，明确保留人工判断",
-        trust: [
-          ["不承诺完美识别", "低清扫描、复杂排版和多声部内容通常需要人工校正。"],
-          ["候选结果可以修正", "音符、时值、调号、歌词和小节都进入结构化修订。"],
-          ["私人文件不会公开", "项目文件与公共案例分开，公开证据需要单独审核。"],
-          ["格式和项目可以带走", "MusicXML、MIDI、简谱文本和 Score JSON 降低工具锁定。"],
-        ],
-        pricingKicker: "积分付费方案",
-        pricingTitle: "选择你的积分套餐",
-        pricingBody: "每次符合计费规则的成功操作消耗 1 积分。比较价格、能力与资源后，登录继续付款。",
-        pricingPromoLabel: "年付更省",
-        pricingPromoValue: "年付节省约 45%～49%",
-        creditRulesTitle: "当前积分如何计算",
-        creditRulesBody: "积分会在符合计费规则的操作成功创建时扣除，每次扣除 1 积分。",
-        creditRules: [
-          ["$0", "一个完整免费项目", "一份完整多页 PDF 或乐谱图片可终身使用现有项目级功能，每月包含 25 积分。"],
-          ["1 积分／次", "积分消耗操作", "PDF／图片识谱、异步渲染及持久化导出等成功创建的操作会消耗积分；同步移调或简谱预览不固定扣分。"],
-          ["每月重置", "套餐额度", "Starter 每月 50 积分；Converter Pro 每月 200 积分，未使用额度不滚存。"],
-        ],
-        priceNote: "Free、Starter 与 Converter Pro 使用相同的现有项目级能力，主要区别是可创建和处理的乐谱容量。登录后可选择已完成配置的 Stripe 或 Paddle；缺少对应套餐 Price ID 时不会进入支付。",
-        faqKicker: "FAQ",
-        faqTitle: "开始前常见问题",
-        faqs: [
-          ["识别结果会百分之百准确吗？", "不会。PDF、图片和音视频首先生成候选谱，复杂内容需要人工核对。"],
-          ["识别以后可以继续移调或转简谱吗？", "可以。接受候选版本后，编辑、简谱、移调、播放和导出都读取同一个乐谱工程。"],
-          ["支持哪些导出格式？", "主要交换格式为 MusicXML，并支持 MIDI、Score JSON、简谱文本和当前部署已验证的导出格式。"],
-          ["音视频转谱现在可用吗？", "该能力按实验功能开放，并会明确支持格式、配额与人工校正边界。"],
-          ["上传文件会被公开吗？", "不会。私人项目不会自动进入公共案例。"],
-        ],
-        finalKicker: "从一份完整乐谱开始",
-        finalTitle: "免费创建一个完整项目，再决定是否处理更多乐谱。",
-        finalAction: "免费编辑",
-      }
-    : {
-        heroKicker: "AI recognition and structured score workspace",
-        heroTitle: ["Online sheet music converter and editor.", "Scan, transpose, play, and export."],
-        heroIntro: ["Upload a PDF, score image, MusicXML file, or audio/video source.", "Create a reviewable structured score.", "Then edit, transpose, convert, play, and export it."],
-        heroPoints: [
-          ["Reviewable results", "Keep source evidence, diagnostics, and uncertain positions together."],
-          ["One score keeps working", "Editing, Jianpu, transposition, and playback return to one project."],
-          ["Portable open formats", "Exchange with MusicXML and keep MIDI and project snapshots."],
-        ],
-        heroCases: "See real examples",
-        facts: [["Free forever", "One complete score project"], ["Inputs", "Complete PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
-        stepsKicker: "Three-step workflow",
-        stepsTitle: "Go from a source file to a usable score in three steps",
-        steps: [
-          ["Upload a source", "Start with PDF, score image, MusicXML, or permitted audio and video."],
-          ["Create and review", "Check pitch, duration, key, and measures instead of treating a candidate as final."],
-          ["Edit and export", "Create Jianpu, transpose, practice with playback, or export an open format."],
-        ],
-        casesKicker: "Real workflow examples",
-        casesTitle: "See the result before deciding how to process your score",
-        casesBody: "These examples use current product captures and self-authored test scores rather than abstract feature art.",
-        demosKicker: "Product demos",
-        demosTitle: "See each core tool in a few seconds",
-        demosBody: "Each clip records the current product workspace and a real operation. Play it in place without leaving the homepage.",
-        demosProof: "Recorded in product",
-        demosAction: "Open the full tool",
-        demos: [
-          ["Edit online", "Change pitch, duration, and measure content."],
-          ["Transpose a score", "Keep the source key and create a target-key revision."],
-          ["Staff to Jianpu", "Generate Jianpu from the same structured score."],
-          ["Score to audio", "Control tempo and loops, then create practice media."],
-        ],
-        cases: [
-          ["Lesson preparation", "Scan a paper score, review it, then create Jianpu", "Keep the source, diagnostics, and candidate together, then correct uncertain positions."],
-          ["Arrangement and rehearsal", "Import MusicXML and create a transposed revision", "Preserve the original key and create a traceable revision inside one score project."],
-          ["Independent practice", "See, hear, and loop difficult measures", "Control tempo, loops, and parts, then create MIDI or practice audio."],
-        ],
-        caseAction: "Explore the feature",
-        engineKicker: "How it works and what it does",
-        engineTitle: "One structured score connects every next action",
-        engineBody: "Every capability is paired with a real score excerpt. A source becomes a reviewable candidate, then moves into one Score JSON project after confirmation.",
-        capabilityProof: "Real score",
-        pipeline: [["Source", "PDF / image / audio"], ["Recognition and review", "MusicXML candidate"], ["Project truth", "Score JSON"]],
-        capabilities: [
-          ["Edit online", "Correct pitch, duration, key, and measures.", "/score-editor"],
-          ["Create Jianpu", "Generate Jianpu from the same structured notes.", "/staff-to-jianpu"],
-          ["Transpose", "Create a traceable target-key revision.", "/transpose-score"],
-          ["Playback and audio", "Control tempo and loops, then create practice media.", "/score-to-audio"],
-          ["Audio to score", "Create a notation candidate that still needs review.", "/audio-to-score"],
-        ],
-        trustKicker: "Trust boundaries",
-        trustTitle: "Automate reliable steps\nand keep human judgment explicit",
-        trust: [
-          ["No perfect-recognition promise", "Weak scans, dense engraving, and polyphony commonly require correction."],
-          ["Candidates stay correctable", "Notes, duration, key, lyrics, and measures enter structured revisions."],
-          ["Private files stay private", "Projects remain separate from public examples and evidence."],
-          ["Formats and projects are portable", "MusicXML, MIDI, Jianpu text, and Score JSON reduce lock-in."],
-        ],
-        pricingKicker: "Credit pricing",
-        pricingTitle: "Choose your credit plan",
-        pricingBody: "Each eligible successful operation uses one credit. Compare price, capabilities, and resources before signing in.",
-        pricingPromoLabel: "Save with annual",
-        pricingPromoValue: "Save about 45%–49% annually",
-        creditRulesTitle: "How credits are counted today",
-        creditRulesBody: "Credits are deducted when an eligible operation is successfully created, at one credit per operation.",
-        creditRules: [
-          ["$0", "One complete free project", "Use one complete multi-page PDF or score image with all current project-level tools for life, with 25 credits monthly."],
-          ["1 credit / operation", "Credit-using operations", "OMR, asynchronous rendering, and persisted exports use credits when successfully created. Synchronous transposition or Jianpu preview does not automatically spend a credit."],
-          ["Monthly reset", "Plan allowance", "Starter includes 50 credits per month; Converter Pro includes 200. Unused allowance does not roll over."],
-        ],
-        priceNote: "Free, Starter, and Converter Pro use the same current project-level tools; the main difference is score-processing capacity. Checkout proceeds only when the selected Stripe or Paddle plan has its own configured Price ID.",
-        faqKicker: "FAQ",
-        faqTitle: "Questions before you start",
-        faqs: [
-          ["Is recognition 100% accurate?", "No. PDF, image, audio, and video sources produce candidates; difficult material requires human review."],
-          ["Can I transpose or create Jianpu afterward?", "Yes. Editing, Jianpu, transposition, playback, and export read the same accepted score project."],
-          ["Which export formats are supported?", "MusicXML is the primary interchange format, with MIDI, Score JSON, Jianpu text, and verified deployment exports."],
-          ["Is audio-to-score available now?", "It opens as an experimental capability with explicit format, quota, and correction boundaries."],
-          ["Will my uploads become public?", "No. Private projects do not automatically become public examples."],
-        ],
-        finalKicker: "Start with one complete score",
-        finalTitle: "Create one complete project for free, then decide whether to process more scores.",
-        finalAction: "Edit for free",
-      };
+  const plans = localizeHomepagePlans(locale, getPricingPlanCatalog("en"));
+  const usesCjkLayout = locale === "zh-CN" || locale === "zh-TW" || locale === "ja" || locale === "ko";
 
   const softwareSchema = {
     "@context": "https://schema.org",
@@ -242,24 +56,33 @@ export default async function HomePage() {
     applicationCategory: "MultimediaApplication",
     operatingSystem: "Web",
     url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale),
-    description: siteConfig.description,
+    inLanguage: getLocaleConfig(locale).htmlLang,
+    description: copy.schemaDescription,
     featureList: copy.capabilities.map(([title]) => title),
   };
 
   return (
-    <div className={`${styles.page} ${isChinese ? "" : styles.pageEnglish}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
+    <div className={`${styles.page} ${usesCjkLayout ? "" : styles.pageEnglish}`}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema).replaceAll("<", "\\u003c") }}
+      />
 
       <section className={`${styles.section} ${styles.hero}`} aria-labelledby="home-title">
         <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
         <div className={`${styles.container} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
             <p className={styles.kicker}><SparkIcon width={16} height={16} />{copy.heroKicker}</p>
-            <h1 id="home-title" className={isChinese ? undefined : styles.heroTitleEnglish}>
+            <h1 id="home-title" className={usesCjkLayout ? undefined : styles.heroTitleEnglish}>
               {copy.heroTitle.map((line) => <span className={styles.heroTitleLine} key={line}>{line}</span>)}
             </h1>
           </div>
-          <HomeHeroWorkbench isChinese={isChinese} appUrl={siteConfig.appUrl} startUrl={startUrl} audioAvailable={siteConfig.release.audioTranscriptionAvailable} />
+          <HomeHeroWorkbench
+            locale={locale}
+            copy={localization.workbench}
+            startUrl={startUrl}
+            audioAvailable={siteConfig.release.audioTranscriptionAvailable}
+          />
         </div>
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
       </section>
@@ -273,23 +96,34 @@ export default async function HomePage() {
           <div className={styles.demoGrid}>
             {copy.demos.map(([title, body], index) => {
               const demo = featureDemos[index];
+              const media = getHomepageDemoProductMedia(demo.slug, locale);
+              const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, title) : null;
+              const pendingPresentation = media ? null : getPendingProductMediaPresentation(locale, title);
               return (
                 <article key={title} className={styles.demoCard}>
                   <div className={styles.demoMedia}>
-                    <video
-                      src={isChinese ? demo.videoZh : demo.videoEn}
-                      poster={isChinese ? demo.posterZh : demo.posterEn}
-                      controls
-                      muted
-                      playsInline
-                      preload="none"
-                      aria-label={isChinese ? demo.altZh : demo.altEn}
-                    />
-                    <span className={styles.demoProof}>{copy.demosProof}</span>
+                    {media ? (
+                      <>
+                        <video
+                          src={media.video.src}
+                          poster={media.poster.src}
+                          controls
+                          muted
+                          playsInline
+                          preload="none"
+                          aria-label={mediaPresentation?.alt}
+                        />
+                        <span className={styles.demoProof}>{copy.demosProof}</span>
+                      </>
+                    ) : (
+                      <div className={styles.mediaPlaceholder} role="img" aria-label={pendingPresentation?.ariaLabel}>
+                        <strong>{pendingPresentation?.title}</strong>
+                        <span>{pendingPresentation?.body}</span>
+                      </div>
+                    )}
                   </div>
                   <div className={styles.demoCopy}>
-                    <strong>{title}</strong>
-                    <small>{body}</small>
+                    <strong>{title}</strong><small>{body}</small>
                     <Link href={localizePublicHref(`/${demo.slug}`, locale)}>{copy.demosAction}<ArrowNorthEastIcon width={14} height={14} /></Link>
                   </div>
                 </article>
@@ -311,8 +145,25 @@ export default async function HomePage() {
           <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.casesKicker}</p><h2 id="cases-title">{copy.casesTitle}</h2><p>{copy.casesBody}</p></header>
           <div className={styles.caseGrid}>
             {copy.cases.map(([eyebrow, title, body], index) => {
-              const image = caseImages[index];
-              return <article key={eyebrow} className={styles.caseCard}><Link href={localizePublicHref(`/${image.slug}`, locale)} className={styles.caseMedia}><Image src={image.image} alt={isChinese ? image.altZh : image.altEn} width={1425} height={891} sizes="(max-width: 820px) 92vw, 31vw" /></Link><div className={styles.caseBody}><span>{eyebrow}</span><h3>{title}</h3><p>{body}</p><Link href={localizePublicHref(`/${image.slug}`, locale)}>{copy.caseAction} →</Link></div></article>;
+              const item = caseImages[index];
+              const media = getHomepageCaseProductMedia(item.slug, locale);
+              const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, title) : null;
+              const pendingPresentation = media ? null : getPendingProductMediaPresentation(locale, title);
+              return (
+                <article key={eyebrow} className={styles.caseCard}>
+                  <Link href={localizePublicHref(`/${item.slug}`, locale)} className={styles.caseMedia}>
+                    {media ? (
+                      <Image src={media.src} alt={mediaPresentation?.alt ?? title} width={media.width} height={media.height} sizes="(max-width: 820px) 92vw, 31vw" />
+                    ) : (
+                      <div className={styles.mediaPlaceholder} role="img" aria-label={pendingPresentation?.ariaLabel}>
+                        <strong>{pendingPresentation?.title}</strong>
+                        <span>{pendingPresentation?.body}</span>
+                      </div>
+                    )}
+                  </Link>
+                  <div className={styles.caseBody}><span>{eyebrow}</span><h3>{title}</h3><p>{body}</p><Link href={localizePublicHref(`/${item.slug}`, locale)}>{copy.caseAction} →</Link></div>
+                </article>
+              );
             })}
           </div>
         </div>
@@ -325,17 +176,12 @@ export default async function HomePage() {
           <div className={styles.capabilityGrid}>
             {copy.capabilities.map(([title, body, href], index) => {
               const sample = capabilityScoreSamples[index];
+              const [sampleTitle, sampleAlt] = mediaCopy.scoreSamples[index];
               return (
                 <Link href={localizePublicHref(href, locale)} key={title}>
                   <div className={styles.capabilitySample}>
-                    <Image
-                      src={sample.image}
-                      alt={isChinese ? sample.altZh : sample.altEn}
-                      width={1200}
-                      height={720}
-                      sizes="(max-width: 560px) 92vw, (max-width: 820px) 46vw, (max-width: 1100px) 31vw, 19vw"
-                    />
-                    <span>{copy.capabilityProof} · {isChinese ? sample.titleZh : sample.titleEn}</span>
+                    <Image src={sample.image} alt={sampleAlt} width={1200} height={720} sizes="(max-width: 560px) 92vw, (max-width: 820px) 46vw, (max-width: 1100px) 31vw, 19vw" />
+                    <span>{copy.capabilityProof} · {sampleTitle}</span>
                   </div>
                   <div className={styles.capabilityCopy}><strong>{title}</strong><span>{body}</span></div>
                   <ArrowNorthEastIcon width={15} height={15} />
@@ -347,8 +193,8 @@ export default async function HomePage() {
       </section>
 
       <section className={`${styles.section} ${styles.softSection}`} aria-labelledby="trust-title">
-        <div className={`${styles.container} ${styles.trustLayout} ${isChinese ? "" : styles.trustLayoutEnglish}`}>
-          <div className={`${styles.trustHeading} ${isChinese ? "" : styles.trustHeadingEnglish}`}><span><FileStackIcon width={26} height={26} /></span><p className={styles.kicker}>{copy.trustKicker}</p><h2 id="trust-title">{copy.trustTitle}</h2></div>
+        <div className={`${styles.container} ${styles.trustLayout} ${usesCjkLayout ? "" : styles.trustLayoutEnglish}`}>
+          <div className={`${styles.trustHeading} ${usesCjkLayout ? "" : styles.trustHeadingEnglish}`}><span><FileStackIcon width={26} height={26} /></span><p className={styles.kicker}>{copy.trustKicker}</p><h2 id="trust-title">{copy.trustTitle}</h2></div>
           <div className={styles.trustGrid}>{copy.trust.map(([title, body]) => <article key={title}><CheckSealIcon width={20} height={20} /><div><h3>{title}</h3><p>{body}</p></div></article>)}</div>
         </div>
       </section>
@@ -359,20 +205,13 @@ export default async function HomePage() {
             <div><p className={styles.kicker}>{copy.pricingKicker}</p><h2 id="pricing-title">{copy.pricingTitle}</h2><p>{copy.pricingBody}</p></div>
             <div className={styles.pricingSavings}><span>{copy.pricingPromoLabel}</span><strong>{copy.pricingPromoValue}</strong></div>
           </header>
-          <CreditPlanGrid label={isChinese ? "积分套餐" : "Credit plans"}>
+          <CreditPlanGrid label={copy.creditPlanGridLabel}>
             {plans.map((plan) => (
-              <CreditPlanCard
-                key={plan.code}
-                plan={plan}
-                isChinese={isChinese}
-                selected={plan.featured}
-                actionHref={plan.code === "free" ? startUrl : getCheckoutUrl(locale, plan.code)}
-                headingLevel={3}
-              />
+              <CreditPlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} selected={plan.featured} actionHref={plan.code === "free" ? startUrl : getCheckoutUrl(locale, plan.code)} headingLevel={3} />
             ))}
           </CreditPlanGrid>
           <div className={styles.creditRules}>
-            <div><p className={styles.kicker}>{isChinese ? "积分口径" : "Credit rules"}</p><h3>{copy.creditRulesTitle}</h3><p>{copy.creditRulesBody}</p></div>
+            <div><p className={styles.kicker}>{copy.creditRulesKicker}</p><h3>{copy.creditRulesTitle}</h3><p>{copy.creditRulesBody}</p></div>
             <div>{copy.creditRules.map(([amount, title, body]) => <article key={title}><strong>{amount}</strong><span>{title}</span><p>{body}</p></article>)}</div>
           </div>
           <p className={styles.priceNote}>{copy.priceNote}</p>

@@ -1,0 +1,42 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const deScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "Editor für Notenkorrekturen", status: "Korrekturstatus" },
+  intro: { eyebrow: "Korrektur", title: "Noteneigenschaften", body: "Beginnen Sie mit den häufigsten OMR-Fehlern: Wählen Sie Note oder Pause, korrigieren Sie Tonhöhe, Vorzeichen, Oktave und Dauer und speichern Sie eine neue manuell bearbeitete Revision." },
+  status: { saving: "Wird gespeichert…", success: "Eine neue korrigierte Revision wurde erstellt.", failed: "Die Korrektur konnte nicht gespeichert werden." },
+  empty: { events: "Diese Revision enthält keine bearbeitbaren Noten oder Pausen.", parts: "Diese Revision enthält keine bearbeitbaren Stimmen.", measures: "Diese Revision enthält keine bearbeitbaren Takte." },
+  actions: { remove: "Entfernen", addOrnament: "Verzierung hinzufügen", addBeam: "Balken hinzufügen", addTuplet: "N-tole hinzufügen", addLyric: "Textzeile hinzufügen", addFingering: "Fingersatz hinzufügen" },
+  note: {
+    choose: "Note oder Pause wählen", eventType: "Ereignistyp", dots: "Punkte", voice: "Stimme", staff: "Notensystem", chordTone: "Akkordton", graceNote: "Vorschlagnote",
+    slashedGrace: "Durchgestrichene Vorschlagnote", stealPrevious: "Von vorheriger Note nehmen (%)", stealFollowing: "Von folgender Note nehmen (%)", ornaments: "Verzierungen",
+    type: "Typ", placement: "Position", value: "Wert", step: "Notenname", alter: "Alteration", octave: "Oktave", duration: "Interne Dauer",
+    durationType: "Notenwert", fermata: "Fermate", fermataType: "Ausrichtung der Fermate", fermataShape: "Form der Fermate", timeModification: "N-tolen-Verhältnis",
+    actualNotes: "Tatsächliche Noten", normalNotes: "Normale Noten", beams: "Balken", level: "Ebene", tupletMarkers: "N-tolen-Markierungen", boundary: "Anfang/Ende",
+    number: "Nummer", bracket: "Klammer", showNumber: "Zahl anzeigen", measureRest: "Ganztaktpause", tieStart: "Haltebogen beginnt", tieStop: "Haltebogen endet",
+    slurStart: "Bindebogen beginnt", slurStop: "Bindebogen endet", slurNumber: "Bindebogennummer", articulations: "Artikulationen", lyrics: "Liedtext",
+    verse: "Strophe", syllabic: "Silbenposition", text: "Text", fingerings: "Fingersätze", fingering: "Fingersatz {number}", save: "Korrigierte Revision speichern",
+  },
+  part: { choose: "Stimme wählen", name: "Stimmenname", abbreviation: "Abkürzung", instrumentPreset: "Instrumentenvorgabe", noPreset: "Keine Vorgabe", suggestInstrument: "Aus Namen vorschlagen", midiProgram: "MIDI-Programm", midiHelp: "Wert von 1 bis 128 eingeben. Leer lassen, um das Programm nicht zu überschreiben.", save: "Revision der Stimmeneinstellungen speichern" },
+  measure: { choose: "Takt wählen", divisions: "Unterteilungen", keyFifths: "Quintenzahl der Tonart", keyMode: "Tongeschlecht", timeBeats: "Schläge pro Takt", timeBeatType: "Schlagnenner", clefSign: "Schlüssel", clefLine: "Schlüssellinie", clefOctaveChange: "Schlüsseloktave", newSystem: "Neues System beginnen", newPage: "Neue Seite beginnen", measureWidth: "Taktbreite (tenths)", staffDistance: "Systemabstand (tenths)", automatic: "Automatisch", save: "Revision der Taktattribute speichern" },
+  harmony: { root: "Grundton", alter: "Alteration", kind: "Typ", text: "Anzeigetext", save: "Akkordsymbol speichern", clear: "Akkord löschen" },
+  tempo: { event: "Tempoereignis", newEvent: "Neues Tempoereignis", bpm: "Tempo (BPM)", beatUnit: "Schlageinheit", offset: "Versatz im Takt (divisions)", placement: "Position", save: "Tempo speichern", clear: "Takttempi löschen" },
+  wedge: { type: "Dynamikgabel", placement: "Position", number: "Nummer", save: "Dynamikgabel speichern", clear: "Dynamikgabel löschen" },
+  dynamics: { value: "Dynamik", placement: "Position", save: "Dynamik speichern", clear: "Dynamik löschen" },
+  barline: { location: "Position", style: "Taktstrichart", repeat: "Wiederholung", repeatTimes: "Wiederholungszahl", save: "Taktstrich speichern", clear: "Taktstrich löschen" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "Note", rest: "Pause" }, durationType: { whole: "Ganze", half: "Halbe", quarter: "Viertel", eighth: "Achtel", "16th": "Sechzehntel", "32nd": "Zweiunddreißigstel", "64th": "Vierundsechzigstel" },
+    syllabic: { single: "Einzeln", begin: "Anfang", middle: "Mitte", end: "Ende" }, articulation: { accent: "Akzent", staccato: "Staccato", tenuto: "Tenuto", "breath-mark": "Atemzeichen", caesura: "Zäsur" },
+    beamType: { begin: "Anfang", continue: "Fortsetzen", end: "Ende", "forward-hook": "Vorwärtshaken", "backward-hook": "Rückwärtshaken" }, ornamentType: { "trill-mark": "Triller", turn: "Doppelschlag", "delayed-turn": "Verzögerter Doppelschlag", "inverted-turn": "Umgekehrter Doppelschlag", mordent: "Mordent", "inverted-mordent": "Umgekehrter Mordent", tremolo: "Tremolo" },
+    placement: { above: "Oberhalb", below: "Unterhalb" }, fermataType: { upright: "Aufrecht", inverted: "Umgekehrt" }, tupletBoundary: { start: "Anfang", stop: "Ende" }, tupletShowNumber: { actual: "Tatsächlich", both: "Beide", none: "Keine" },
+    keyMode: { major: "Dur", minor: "Moll" }, clef: { G: "G / Violinschlüssel", F: "F / Bassschlüssel", C: "C / Alt-Tenorschlüssel", percussion: "Schlagzeug", TAB: "Tabulatur" },
+    harmonyKind: { major: "Dur", minor: "Moll", dominant: "Dominante", "major-seventh": "Große Septime", "minor-seventh": "Kleine Septime", diminished: "Vermindert", augmented: "Übermäßig", "suspended-fourth": "Quartvorhalt", "suspended-second": "Sekundvorhalt", none: "Keine" },
+    tempoBeatUnit: { whole: "Ganze", half: "Halbe", quarter: "Viertel", eighth: "Achtel", "16th": "Sechzehntel", "32nd": "Zweiunddreißigstel" }, wedgeType: { crescendo: "Crescendo", diminuendo: "Diminuendo", stop: "Ende" },
+    barlineLocation: { left: "Links", right: "Rechts", middle: "Mitte" }, barlineStyle: { regular: "Normal", dotted: "Gepunktet", dashed: "Gestrichelt", heavy: "Dick", "light-light": "Dünn–dünn", "light-heavy": "Dünn–dick", "heavy-light": "Dick–dünn", "heavy-heavy": "Dick–dick", tick: "Markierung", short: "Kurz", none: "Keine" },
+    repeatDirection: { none: "Keine", forward: "Vorwärts", backward: "Rückwärts" }, endingType: { start: "Anfang", stop: "Ende", discontinue: "Unterbrechen" },
+  },
+  previews: { entity: "{part} · Takt {measure} · {preview}", measureRest: "Ganztaktpause", rest: "Pause", tie: "Haltebogen", fermata: "Fermate", slur: "Bindebogen", key: "Tonart", time: "Taktart", clef: "Schlüssel", line: "Linie", octave: "Oktave", program: "{name} {number}", noProgram: "Kein MIDI-Programm", ending: "Volte" },
+  midiPresets: { 1: "Akustischer Konzertflügel", 7: "Cembalo", 20: "Kirchenorgel", 25: "Nylongitarre", 33: "Akustikbass", 41: "Violine", 42: "Viola", 43: "Violoncello", 44: "Kontrabass", 49: "Streicherensemble", 53: "Chor Ah", 54: "Stimme Uh", 57: "Trompete", 58: "Posaune", 61: "Waldhorn", 66: "Altsaxofon", 69: "Oboe", 70: "Englischhorn", 71: "Fagott", 72: "Klarinette", 74: "Flöte", 75: "Blockflöte", 79: "Pfeifen", 80: "Okarina" },
+};

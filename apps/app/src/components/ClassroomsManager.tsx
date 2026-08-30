@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { formatDateTime, formatNumber } from "@score/i18n";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
-import { useAppLocale } from "./AppLocaleProvider";
+import { useEducationMessages } from "../lib/education-messages/client";
+import { resolveEducationLabel } from "../lib/education-messages/format";
 
 type ClassroomStudent = {
   id: string;
@@ -57,7 +59,8 @@ type StudentsPayload = {
 type GuardiansPayload = { guardian?: ClassroomGuardian; guardians: ClassroomGuardian[] };
 
 export function ClassroomsManager() {
-  const { locale } = useAppLocale();
+  const { locale, messages } = useEducationMessages();
+  const copy = messages.classrooms;
   const token = getStoredToken();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,79 +73,6 @@ export function ClassroomsManager() {
   const [bulkRosterDrafts, setBulkRosterDrafts] = useState<Record<string, string>>({});
   const [guardianDrafts, setGuardianDrafts] = useState<Record<string, { displayName: string; email: string; relationship: string }>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
-
-  const copy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "教学协作",
-          title: "课堂管理",
-          body: "为老师、合唱团和培训机构管理班级与学生花名册。作业可以绑定课堂，后续提交和批改会逐步按学生归档。",
-          createTitle: "新建课堂",
-          name: "课堂名称",
-          description: "说明",
-          create: "创建课堂",
-          creating: "正在创建...",
-          empty: "还没有课堂。",
-          students: "学生",
-          addStudent: "添加学生",
-          displayName: "学生姓名",
-          contactEmail: "联系邮箱",
-          externalRef: "学号/备注",
-          archiveStudent: "移出",
-          archiveClassroom: "归档课堂",
-          loading: "正在加载课堂...",
-          created: "课堂已创建。",
-          studentAdded: "学生已添加。",
-          studentInvited: "待认领",
-          studentActive: "已激活",
-          bulkRoster: "批量花名册",
-          bulkHint: "从表格粘贴，每行依次为：姓名、邮箱、学号/备注（使用制表符分列）。",
-          importRoster: "导入花名册",
-          rosterImported: "花名册已导入。",
-          guardian: "监护人",
-          guardianName: "监护人姓名",
-          guardianEmail: "监护人登录邮箱",
-          relationship: "关系，例如：母亲",
-          inviteGuardian: "邀请监护人",
-          guardianInvited: "监护人已邀请。",
-          archived: "已归档。",
-          failed: "操作失败。",
-        }
-      : {
-          eyebrow: "Teaching",
-          title: "Classroom management",
-          body: "Manage class rosters for teachers, choirs, and studios. Assignments can attach to classrooms, with student-level submission history ready for the next workflow layer.",
-          createTitle: "Create classroom",
-          name: "Classroom name",
-          description: "Description",
-          create: "Create classroom",
-          creating: "Creating...",
-          empty: "No classrooms yet.",
-          students: "Students",
-          addStudent: "Add student",
-          displayName: "Student name",
-          contactEmail: "Contact email",
-          externalRef: "Student ID / note",
-          archiveStudent: "Remove",
-          archiveClassroom: "Archive class",
-          loading: "Loading classrooms...",
-          created: "Classroom created.",
-          studentAdded: "Student added.",
-          studentInvited: "Pending claim",
-          studentActive: "Active",
-          bulkRoster: "Bulk roster",
-          bulkHint: "Paste rows from a spreadsheet: name, email, and student ID/note in tab-separated columns.",
-          importRoster: "Import roster",
-          rosterImported: "Roster imported.",
-          guardian: "Guardian",
-          guardianName: "Guardian name",
-          guardianEmail: "Guardian sign-in email",
-          relationship: "Relationship, e.g. parent",
-          inviteGuardian: "Invite guardian",
-          guardianInvited: "Guardian invited.",
-          archived: "Archived.",
-          failed: "Action failed.",
-        };
 
   useEffect(() => {
     void refreshClassrooms();
@@ -163,7 +93,7 @@ export function ClassroomsManager() {
     setLoading(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -192,7 +122,7 @@ export function ClassroomsManager() {
     setCreatingClassroom(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -227,7 +157,7 @@ export function ClassroomsManager() {
     setBusyId(null);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -253,7 +183,7 @@ export function ClassroomsManager() {
     setBusyId(null);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -279,7 +209,7 @@ export function ClassroomsManager() {
     setBusyId(null);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -305,7 +235,7 @@ export function ClassroomsManager() {
     });
     setBusyId(null);
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -327,7 +257,7 @@ export function ClassroomsManager() {
     });
     setBusyId(null);
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -346,7 +276,7 @@ export function ClassroomsManager() {
     });
     setBusyId(null);
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -386,7 +316,7 @@ export function ClassroomsManager() {
         </div>
       </section>
 
-      {status && statusKind ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+      {status && statusKind ? <p className={`form-status ${statusKind}`} role="status" aria-label={copy.statusAria}>{status}</p> : null}
 
       <section className="surface-panel stack-lg">
         <div className="stack-sm">
@@ -415,9 +345,9 @@ export function ClassroomsManager() {
           <p className="eyebrow">{copy.students}</p>
           <h2 className="card-title">{copy.title}</h2>
         </div>
-        {loading ? <div className="empty-state">{copy.loading}</div> : null}
+        {loading ? <div className="empty-state" role="status" aria-label={copy.loadingAria}>{copy.loading}</div> : null}
         {!loading && classrooms.length === 0 ? <div className="empty-state">{copy.empty}</div> : null}
-        <div className="list-grid">
+        <div className="list-grid" aria-label={copy.rosterAria}>
           {classrooms.map((classroom) => {
             const draft = studentDrafts[classroom.id] ?? { displayName: "", contactEmail: "", externalRef: "" };
             return (
@@ -426,7 +356,7 @@ export function ClassroomsManager() {
                   <p className="item-title">{classroom.name}</p>
                   {classroom.description ? <p className="body-copy">{classroom.description}</p> : null}
                   <p className="item-meta">
-                    {classroom.students.length} {copy.students} | {classroom.access?.role ?? "owner"} | {formatLocal(classroom.updatedAt, locale)}
+                    {formatNumber(classroom.students.length, locale)} {copy.students} | {resolveEducationLabel(messages.shared.roles, classroom.access?.role ?? "owner")} | {formatDateTime(classroom.updatedAt, locale)}
                   </p>
                 </div>
 
@@ -470,11 +400,11 @@ export function ClassroomsManager() {
                       return (
                       <div key={student.id} className="list-item stack-sm">
                         <div className="list-item-content">
-                          <p className="item-title">{student.displayName} <span className="status-chip tone-cyan">{student.status === "invited" ? copy.studentInvited : copy.studentActive}</span></p>
+                          <p className="item-title">{student.displayName} <span className="status-chip tone-cyan">{resolveEducationLabel(messages.shared.statuses, student.status)}</span></p>
                           <p className="item-meta">{[student.contactEmail, student.externalRef].filter(Boolean).join(" | ") || "-"}</p>
                         </div>
                         <button type="button" className="button button-secondary button-ghost" disabled={classroom.access?.canOperate === false || busyId === student.id} onClick={() => void archiveStudent(classroom.id, student.id)}>
-                          {copy.archiveStudent}
+                          {copy.removeStudent}
                         </button>
                         <div className="correction-panel wide">
                           <label className="field-group"><span>{copy.guardianName}</span><input className="field-control" disabled={classroom.access?.canOperate === false} value={guardianDraft.displayName} onChange={(event) => setGuardianDrafts((current) => ({ ...current, [student.id]: { ...guardianDraft, displayName: event.target.value } }))} /></label>
@@ -482,7 +412,7 @@ export function ClassroomsManager() {
                           <label className="field-group"><span>{copy.relationship}</span><input className="field-control" disabled={classroom.access?.canOperate === false} value={guardianDraft.relationship} onChange={(event) => setGuardianDrafts((current) => ({ ...current, [student.id]: { ...guardianDraft, relationship: event.target.value } }))} /></label>
                           <div className="button-row"><button type="button" className="button button-secondary button-ghost" disabled={classroom.access?.canOperate === false || busyId === `guardian-${student.id}` || !guardianDraft.displayName.trim() || !guardianDraft.email.trim()} onClick={() => void inviteGuardian(classroom.id, student.id)}>{copy.inviteGuardian}</button></div>
                         </div>
-                        {student.guardians.length ? <div className="list-grid wide">{student.guardians.map((guardian) => <div className="list-item" key={guardian.id}><div><p className="item-title">{guardian.displayName}</p><p className="item-meta">{copy.guardian}{guardian.relationship ? ` · ${guardian.relationship}` : ""} · {guardian.invitedEmail} · {guardian.status}</p></div><button type="button" className="button button-secondary button-ghost" disabled={classroom.access?.canOperate === false || busyId === guardian.id} onClick={() => void removeGuardian(classroom.id, student.id, guardian.id)}>{copy.archiveStudent}</button></div>)}</div> : null}
+                        {student.guardians.length ? <div className="list-grid wide">{student.guardians.map((guardian) => <div className="list-item" key={guardian.id}><div><p className="item-title">{guardian.displayName}</p><p className="item-meta">{copy.guardian}{guardian.relationship ? ` · ${guardian.relationship}` : ""} · {guardian.invitedEmail} · {resolveEducationLabel(messages.shared.statuses, guardian.status)}</p></div><button type="button" className="button button-secondary button-ghost" disabled={classroom.access?.canOperate === false || busyId === guardian.id} onClick={() => void removeGuardian(classroom.id, student.id, guardian.id)}>{copy.removeStudent}</button></div>)}</div> : null}
                       </div>
                     );})}
                   </div>
@@ -494,8 +424,4 @@ export function ClassroomsManager() {
       </section>
     </div>
   );
-}
-
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
 }

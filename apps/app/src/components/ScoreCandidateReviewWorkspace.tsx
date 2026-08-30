@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
 import type { ScoreJson } from "@score/shared";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
@@ -10,6 +11,7 @@ import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
 import { ScoreVisualEditorPanel } from "./ScoreVisualEditorPanel";
 import { projectSynchronizedScroll } from "../lib/score-review-viewport";
 import { accountActivationRoute } from "../lib/release";
+import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 
 type CandidateRevision = {
   id: string;
@@ -56,7 +58,7 @@ export function ScoreCandidateReviewWorkspace({
   sourceFile: SourceFile | null;
   pageFiles: SourceFile[];
   token: string | null;
-  locale: string;
+  locale: SupportedLocale;
   generatedMusicXml: string | null;
   selectedEventId: string | null;
   onEventSelect: (eventId: string) => void;
@@ -74,7 +76,7 @@ export function ScoreCandidateReviewWorkspace({
   revisionStatusKind: "success" | "error" | null;
   freeEditing?: boolean;
 }) {
-  const isChinese = locale === "zh-CN";
+  const copy = useScoreReviewMessages().candidate;
   const comparisonRef = useRef<HTMLDivElement | null>(null);
   const syncingScrollRef = useRef(false);
   const releaseSyncFrameRef = useRef<number | null>(null);
@@ -117,76 +119,66 @@ export function ScoreCandidateReviewWorkspace({
       <div className="page-banner split">
         <div className="stack-md">
           <p className="eyebrow">
-            {freeEditing ? (isChinese ? "免费编辑" : "Free editing") : (isChinese ? "候选乐谱待审核" : "Candidate score review")}
+            {freeEditing ? copy.freeEyebrow : copy.reviewEyebrow}
           </p>
           <h1 className="page-title">{title}</h1>
           <p className="body-copy large">
-            {freeEditing
-              ? isChinese
-                ? `已进入永久免费乐谱工程。识别结果 v${revision.revisionNumber} 可直接校对，修改会自动保存为候选版本。`
-                : `You are in the lifetime free score project. Recognition result v${revision.revisionNumber} can be corrected now, and changes are saved as candidate revisions.`
-              : isChinese
-                ? `识别结果 v${revision.revisionNumber} 尚未成为正式版本。请核对原件和诊断后再接受。`
-                : `Recognition result v${revision.revisionNumber} is not an official revision yet. Compare it with the source before accepting.`}
+            {formatMessage(freeEditing ? copy.freeDescription : copy.reviewDescription, {
+              revision: formatNumber(revision.revisionNumber, locale),
+            })}
           </p>
         </div>
         <div className="page-banner-actions">
           <Link href={APP_ROUTES.scores} className="button button-secondary">
-            {isChinese ? "返回乐谱库" : "Back to scores"}
+            {copy.back}
           </Link>
           {freeEditing ? (
             <Link href={accountActivationRoute} className="button button-primary">
-              {isChinese ? "处理更多乐谱" : "Process more scores"}
+              {copy.processMore}
             </Link>
           ) : (
             <>
               <button type="button" className="button button-secondary" onClick={onReject} disabled={submittingAction !== null}>
-                {submittingAction === "reject" ? (isChinese ? "正在拒绝..." : "Rejecting...") : isChinese ? "拒绝候选" : "Reject candidate"}
+                {submittingAction === "reject" ? copy.rejecting : copy.reject}
               </button>
               <button type="button" className="button button-primary" onClick={onAccept} disabled={submittingAction !== null}>
-                {submittingAction === "accept" ? (isChinese ? "正在接受..." : "Accepting...") : isChinese ? "接受为正式版本" : "Accept as official revision"}
+                {submittingAction === "accept" ? copy.accepting : copy.accept}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {actionError ? <p className="form-status error">{actionError}</p> : null}
-      {revisionStatus && revisionStatusKind ? <p className={`form-status ${revisionStatusKind}`}>{revisionStatus}</p> : null}
+      {actionError ? <p className="form-status error" role="alert">{actionError}</p> : null}
+      {revisionStatus && revisionStatusKind ? <p className={`form-status ${revisionStatusKind}`} role={revisionStatusKind === "error" ? "alert" : "status"}>{revisionStatus}</p> : null}
 
       <section className="surface-panel stack-md">
-        <p className="eyebrow">{isChinese ? "安全状态" : "Safety state"}</p>
-        <h2 className="card-title">{isChinese ? "候选版本不会覆盖已有正式版本" : "The candidate cannot overwrite an existing official revision"}</h2>
+        <p className="eyebrow">{copy.safetyEyebrow}</p>
+        <h2 className="card-title">{copy.safetyTitle}</h2>
         <p className="body-copy">
-          {freeEditing
-            ? isChinese
-              ? "免费账户可校对整份乐谱的音符、节奏、小节属性和标记，并继续使用播放、移调、简谱、版本、分享和已开放导出；升级用于创建更多乐谱。"
-              : "A free account can correct the complete score and continue with playback, transposition, Jianpu, versions, sharing, and available exports. Upgrade to create more score projects."
-            : isChinese
-              ? "修谱操作会继续生成候选修订，不会修改正式版本。接受操作会复制最新候选并创建正式修订；移调、播放和导出将在接受后开放。"
-              : "Corrections create new candidate revisions without changing the official score. Accepting copies the latest candidate into an official revision; transposition, playback, and export unlock afterward."}
+          {freeEditing ? copy.freeSafetyBody : copy.reviewSafetyBody}
         </p>
-        {!freeEditing ? <div className="button-row" role="group" aria-label={isChinese ? "候选修谱撤销与重做" : "Candidate correction undo and redo"}>
+        {!freeEditing ? <div className="button-row" role="group" aria-label={copy.historyGroupLabel}>
           <button type="button" className="button button-secondary button-ghost" onClick={onUndo} disabled={!canUndo || restoring}>
-            {isChinese ? "撤销修正" : "Undo correction"}
+            {copy.undo}
           </button>
           <button type="button" className="button button-secondary button-ghost" onClick={onRedo} disabled={!canRedo || restoring}>
-            {isChinese ? "重做修正" : "Redo correction"}
+            {copy.redo}
           </button>
         </div> : null}
       </section>
 
-      <div className="score-review-view-controls" role="group" aria-label={isChinese ? "校对视图" : "Review viewport"}>
+      <div className="score-review-view-controls" role="group" aria-label={copy.viewportLabel}>
         <label className="check-row">
           <input type="checkbox" checked={syncScroll} onChange={(event) => setSyncScroll(event.target.checked)} />
-          <span>{isChinese ? "同步滚动" : "Sync scrolling"}</span>
+          <span>{copy.syncScroll}</span>
         </label>
-        <div className="score-review-zoom-controls" role="group" aria-label={isChinese ? "校对缩放" : "Review zoom"}>
-          <button type="button" aria-label={isChinese ? "缩小" : "Zoom out"} onClick={() => setReviewZoom((value) => Math.max(0.5, value - 0.25))} disabled={reviewZoom <= 0.5}>-</button>
-          <output aria-live="polite">{Math.round(reviewZoom * 100)}%</output>
-          <button type="button" aria-label={isChinese ? "放大" : "Zoom in"} onClick={() => setReviewZoom((value) => Math.min(2, value + 0.25))} disabled={reviewZoom >= 2}>+</button>
+        <div className="score-review-zoom-controls" role="group" aria-label={copy.zoomGroupLabel}>
+          <button type="button" aria-label={copy.zoomOut} onClick={() => setReviewZoom((value) => Math.max(0.5, value - 0.25))} disabled={reviewZoom <= 0.5}>-</button>
+          <output aria-live="polite">{formatNumber(reviewZoom, locale, { style: "percent", maximumFractionDigits: 0 })}</output>
+          <button type="button" aria-label={copy.zoomIn} onClick={() => setReviewZoom((value) => Math.min(2, value + 0.25))} disabled={reviewZoom >= 2}>+</button>
           <button type="button" className="score-review-reset-zoom" onClick={() => setReviewZoom(1)} disabled={reviewZoom === 1}>
-            {isChinese ? "适合宽度" : "Fit width"}
+            {copy.fitWidth}
           </button>
         </div>
       </div>
@@ -205,11 +197,9 @@ export function ScoreCandidateReviewWorkspace({
         />
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">{isChinese ? "候选谱面" : "Candidate notation"}</p>
-            <h2 className="card-title">{isChinese ? "MusicXML 五线谱预览" : "MusicXML staff preview"}</h2>
-            <p className="body-copy">
-              {isChinese ? "点击谱面音符或左侧诊断，可在候选事件之间同步选择。" : "Select notes in the score or diagnostics to inspect candidate events."}
-            </p>
+            <p className="eyebrow">{copy.notationEyebrow}</p>
+            <h2 className="card-title">{copy.notationTitle}</h2>
+            <p className="body-copy">{copy.notationBody}</p>
           </div>
           <ScoreMusicXmlPreview
             fileId={revision.musicxmlFileId}
@@ -218,11 +208,16 @@ export function ScoreCandidateReviewWorkspace({
             scoreJson={revision.scoreJson}
             selectedEventId={selectedEventId}
             onEventSelect={onEventSelect}
-            emptyLabel={isChinese ? "暂无可渲染的候选 MusicXML。" : "No renderable candidate MusicXML yet."}
-            loadingLabel={isChinese ? "正在渲染候选五线谱..." : "Rendering candidate notation..."}
-            errorLabel={isChinese ? "候选 MusicXML 渲染失败。" : "Candidate MusicXML could not be rendered."}
-            deferredLabel={isChinese ? "这是一份大型乐谱。需要逐页核对时再加载完整 OSMD 预览，图形编辑器可直接使用。" : "This is a large score. Load the complete OSMD preview when you need the comparison view; the graphical editor remains available."}
-            renderLabel={isChinese ? "加载完整 OSMD 预览" : "Load complete OSMD preview"}
+            emptyLabel={copy.notationEmpty}
+            loadingLabel={copy.notationLoading}
+            errorLabel={copy.notationError}
+            retryLabel={copy.notationRetry}
+            technicalDetailsLabel={copy.notationTechnicalDetails}
+            deferredLabel={copy.notationDeferred}
+            renderLabel={copy.notationRender}
+            eventLabelTemplate={copy.notationEventLabel}
+            noteLabel={copy.notationNote}
+            restLabel={copy.notationRest}
             zoom={reviewZoom}
           />
         </section>

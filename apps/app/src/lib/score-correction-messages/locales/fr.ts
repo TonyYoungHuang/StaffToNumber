@@ -1,0 +1,43 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const frScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "Éditeur de correction de partition", status: "État de la correction" },
+  intro: { eyebrow: "Correction", title: "Propriétés de la note", body: "Commencez par les erreurs OMR les plus fréquentes : choisissez une note ou un silence, corrigez la hauteur, l’altération, l’octave et la durée, puis enregistrez une nouvelle révision manuelle." },
+  status: { saving: "Enregistrement…", success: "Une nouvelle révision corrigée a été créée.", failed: "Impossible d’enregistrer la correction." },
+  empty: { events: "Cette révision ne contient aucune note ni aucun silence modifiable.", parts: "Cette révision ne contient aucune partie modifiable.", measures: "Cette révision ne contient aucune mesure modifiable." },
+  actions: { remove: "Retirer", addOrnament: "Ajouter un ornement", addBeam: "Ajouter une barre", addTuplet: "Ajouter un n-olet", addLyric: "Ajouter une ligne de paroles", addFingering: "Ajouter un doigté" },
+  note: {
+    choose: "Choisir une note ou un silence", eventType: "Type d’événement", dots: "Points", voice: "Voix", staff: "Portée", chordTone: "Note d’accord",
+    graceNote: "Appoggiature", slashedGrace: "Appoggiature barrée", stealPrevious: "Prendre sur la note précédente (%)", stealFollowing: "Prendre sur la note suivante (%)",
+    ornaments: "Ornements", type: "Type", placement: "Placement", value: "Valeur", step: "Nom de note", alter: "Altération", octave: "Octave",
+    duration: "Durée interne", durationType: "Type de durée", fermata: "Point d’orgue", fermataType: "Orientation du point d’orgue",
+    fermataShape: "Forme du point d’orgue", timeModification: "Rapport du n-olet", actualNotes: "Nombre réel de notes", normalNotes: "Nombre normal de notes",
+    beams: "Barres", level: "Niveau", tupletMarkers: "Marques de n-olet", boundary: "Début/fin", number: "Numéro", bracket: "Crochet",
+    showNumber: "Affichage du nombre", measureRest: "Pause de mesure", tieStart: "Début de liaison de tenue", tieStop: "Fin de liaison de tenue",
+    slurStart: "Début de liaison", slurStop: "Fin de liaison", slurNumber: "Numéro de liaison", articulations: "Articulations", lyrics: "Paroles",
+    verse: "Couplet", syllabic: "Position syllabique", text: "Texte", fingerings: "Doigtés", fingering: "Doigté {number}", save: "Enregistrer la révision corrigée",
+  },
+  part: { choose: "Choisir une partie", name: "Nom de la partie", abbreviation: "Abréviation", instrumentPreset: "Préréglage d’instrument", noPreset: "Aucun préréglage", suggestInstrument: "Suggérer d’après le nom", midiProgram: "Programme MIDI", midiHelp: "Saisissez une valeur de 1 à 128. Laissez vide pour ne pas remplacer le programme.", save: "Enregistrer la révision des parties" },
+  measure: { choose: "Choisir une mesure", divisions: "Divisions", keyFifths: "Quintes de l’armure", keyMode: "Mode", timeBeats: "Temps par mesure", timeBeatType: "Unité de temps", clefSign: "Clé", clefLine: "Ligne de clé", clefOctaveChange: "Octave de la clé", newSystem: "Commencer un nouveau système", newPage: "Commencer une nouvelle page", measureWidth: "Largeur de mesure (tenths)", staffDistance: "Distance entre portées (tenths)", automatic: "Auto", save: "Enregistrer la révision des attributs" },
+  harmony: { root: "Fondamentale", alter: "Altération", kind: "Type", text: "Texte affiché", save: "Enregistrer l’accord", clear: "Effacer l’accord" },
+  tempo: { event: "Événement de tempo", newEvent: "Nouvel événement de tempo", bpm: "Tempo (BPM)", beatUnit: "Unité de pulsation", offset: "Décalage dans la mesure (divisions)", placement: "Placement", save: "Enregistrer le tempo", clear: "Effacer les tempos de la mesure" },
+  wedge: { type: "Soufflet", placement: "Placement", number: "Numéro", save: "Enregistrer le soufflet", clear: "Effacer le soufflet" },
+  dynamics: { value: "Nuance", placement: "Placement", save: "Enregistrer les nuances", clear: "Effacer les nuances" },
+  barline: { location: "Emplacement", style: "Style de barre", repeat: "Reprise", repeatTimes: "Nombre de reprises", save: "Enregistrer la barre", clear: "Effacer la barre" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "Note", rest: "Silence" }, durationType: { whole: "Ronde", half: "Blanche", quarter: "Noire", eighth: "Croche", "16th": "Double croche", "32nd": "Triple croche", "64th": "Quadruple croche" },
+    syllabic: { single: "Unique", begin: "Début", middle: "Milieu", end: "Fin" }, articulation: { accent: "Accent", staccato: "Staccato", tenuto: "Tenuto", "breath-mark": "Respiration", caesura: "Césure" },
+    beamType: { begin: "Début", continue: "Continuer", end: "Fin", "forward-hook": "Crochet avant", "backward-hook": "Crochet arrière" }, ornamentType: { "trill-mark": "Trille", turn: "Gruppetto", "delayed-turn": "Gruppetto retardé", "inverted-turn": "Gruppetto renversé", mordent: "Mordant", "inverted-mordent": "Mordant renversé", tremolo: "Trémolo" },
+    placement: { above: "Au-dessus", below: "Au-dessous" }, fermataType: { upright: "Droit", inverted: "Renversé" }, tupletBoundary: { start: "Début", stop: "Fin" }, tupletShowNumber: { actual: "Réel", both: "Les deux", none: "Aucun" },
+    keyMode: { major: "Majeur", minor: "Mineur" }, clef: { G: "Sol / clé de sol", F: "Fa / clé de fa", C: "Ut / alto-ténor", percussion: "Percussion", TAB: "Tablature" },
+    harmonyKind: { major: "Majeur", minor: "Mineur", dominant: "Dominante", "major-seventh": "Septième majeure", "minor-seventh": "Septième mineure", diminished: "Diminué", augmented: "Augmenté", "suspended-fourth": "Quarte suspendue", "suspended-second": "Seconde suspendue", none: "Aucun" },
+    tempoBeatUnit: { whole: "Ronde", half: "Blanche", quarter: "Noire", eighth: "Croche", "16th": "Double croche", "32nd": "Triple croche" }, wedgeType: { crescendo: "Crescendo", diminuendo: "Diminuendo", stop: "Fin" },
+    barlineLocation: { left: "Gauche", right: "Droite", middle: "Milieu" }, barlineStyle: { regular: "Normale", dotted: "Pointillée", dashed: "Tirets", heavy: "Épaisse", "light-light": "Fine–fine", "light-heavy": "Fine–épaisse", "heavy-light": "Épaisse–fine", "heavy-heavy": "Épaisse–épaisse", tick: "Repère", short: "Courte", none: "Aucune" },
+    repeatDirection: { none: "Aucune", forward: "Vers l’avant", backward: "Vers l’arrière" }, endingType: { start: "Début", stop: "Fin", discontinue: "Interrompre" },
+  },
+  previews: { entity: "{part} · mesure {measure} · {preview}", measureRest: "pause de mesure", rest: "silence", tie: "liaison de tenue", fermata: "point d’orgue", slur: "liaison", key: "armure", time: "mesure", clef: "clé", line: "ligne", octave: "octave", program: "{name} {number}", noProgram: "Aucun programme MIDI", ending: "volte" },
+  midiPresets: { 1: "Piano à queue acoustique", 7: "Clavecin", 20: "Orgue d’église", 25: "Guitare nylon", 33: "Basse acoustique", 41: "Violon", 42: "Alto", 43: "Violoncelle", 44: "Contrebasse", 49: "Ensemble de cordes", 53: "Chœur ah", 54: "Voix ouh", 57: "Trompette", 58: "Trombone", 61: "Cor", 66: "Saxophone alto", 69: "Hautbois", 70: "Cor anglais", 71: "Basson", 72: "Clarinette", 74: "Flûte", 75: "Flûte à bec", 79: "Sifflet", 80: "Ocarina" },
+};

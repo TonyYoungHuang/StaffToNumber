@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { formatDateTime, formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
 import type { AssignmentPracticeSettings, JianpuDocument, ScoreJson } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
-import { useAppLocale } from "./AppLocaleProvider";
+import { useScoreSharingMessages } from "../lib/score-sharing-messages/client";
+import type { ScoreSharingMessages } from "../lib/score-sharing-messages/types";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
 import { DEFAULT_PLAYBACK_PRACTICE_SETTINGS, ScorePlaybackPanel } from "./ScorePlaybackPanel";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
@@ -129,7 +131,11 @@ export function SharedScoreViewer() {
   const token = typeof params.token === "string" ? params.token : "";
   const reviewPreviewUrlRef = useRef<Record<string, string>>({});
   const reviewMediaRef = useRef<Record<string, HTMLAudioElement | HTMLVideoElement | null>>({});
-  const { locale } = useAppLocale();
+  const { locale, messages } = useScoreSharingMessages();
+  const copy = messages.viewer;
+  const assignmentCopy = messages.assignments;
+  const practiceCopy = messages.practice;
+  const reviewCopy = messages.reviews;
   const [payload, setPayload] = useState<SharedScorePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,134 +159,13 @@ export function SharedScoreViewer() {
   async function refreshSharedScore() {
     const result = await apiRequest<SharedScorePayload>(`/api/scores/shared/${token}`);
     if (!result.ok) {
-      setError(result.error || copy.missing);
+      setError(result.error);
       return;
     }
     setAssignmentScore(null);
     setPlaybackAssignmentId(null);
     setPayload(result.data);
   }
-
-  const copy =
-    locale === "zh-CN"
-      ? {
-          loading: "正在加载分享乐谱...",
-          missing: "分享链接不可用或已撤销。",
-          back: "打开工作台",
-          shared: "分享乐谱",
-          revision: "当前版本",
-          preview: "五线谱预览",
-          previewEmpty: "当前分享还没有可渲染的 MusicXML。",
-          previewLoading: "正在渲染五线谱...",
-          previewError: "五线谱预览渲染失败。",
-          jianpu: "简谱预览",
-          summary: "结构化摘要",
-          parts: "声部",
-          measures: "小节",
-          notes: "音符",
-          rests: "休止符",
-        }
-      : {
-          loading: "Loading shared score...",
-          missing: "This share link is unavailable or has been revoked.",
-          back: "Open studio",
-          shared: "Shared score",
-          revision: "Current revision",
-          preview: "Staff preview",
-          previewEmpty: "This share does not have renderable MusicXML yet.",
-          previewLoading: "Rendering staff notation...",
-          previewError: "Staff preview could not be rendered.",
-          jianpu: "Jianpu preview",
-          summary: "Structured summary",
-          parts: "Parts",
-          measures: "Measures",
-          notes: "Notes",
-          rests: "Rests",
-        };
-
-  const assignmentCopy =
-    locale === "zh-CN"
-      ? {
-          assignments: "练习作业",
-          assignmentOpen: "进行中",
-          assignmentArchived: "已归档",
-          dueAt: "截止时间",
-          noDue: "无截止时间",
-          submitterName: "姓名",
-          submitterContact: "联系方式",
-          practiceMinutes: "练习分钟",
-          recordingUrl: "录音/视频链接",
-          performanceFile: "上传演奏文件",
-          performanceFileHint: "支持音频或常见视频文件，最大 100MB",
-          note: "练习反馈",
-          namePlaceholder: "填写你的姓名",
-          contactPlaceholder: "邮箱、微信或老师要求的联系方式",
-          recordingPlaceholder: "https://...",
-          rubric: "评分细则",
-          rubricEmpty: "未设置评分细则。",
-          notePlaceholder: "写下练习速度、难点、已完成范围或给老师的问题...",
-          submit: "提交作业",
-          submitting: "正在提交...",
-          submitSuccess: "作业已提交，老师可以在工程页查看。",
-          submitFailed: "作业提交失败。",
-        }
-      : {
-          assignments: "Practice assignments",
-          assignmentOpen: "Open",
-          assignmentArchived: "Archived",
-          dueAt: "Due",
-          noDue: "No due date",
-          submitterName: "Name",
-          submitterContact: "Contact",
-          practiceMinutes: "Practice minutes",
-          recordingUrl: "Recording/video link",
-          performanceFile: "Upload performance file",
-          performanceFileHint: "Audio or common video files, up to 100MB",
-          note: "Practice note",
-          namePlaceholder: "Enter your name",
-          contactPlaceholder: "Email, phone, or teacher-requested contact",
-          recordingPlaceholder: "https://...",
-          rubric: "Rubric",
-          rubricEmpty: "No rubric criteria set.",
-          notePlaceholder: "Share tempo, hard spots, completed range, or a question for your teacher...",
-          submit: "Submit assignment",
-          submitting: "Submitting...",
-          submitSuccess: "Assignment submitted. Your teacher can review it in the score project.",
-          submitFailed: "Assignment submission failed.",
-        };
-
-  const reviewCopy =
-    locale === "zh-CN"
-      ? {
-          title: "我的提交反馈",
-          submitted: "已提交",
-          reviewed: "已批阅",
-          feedback: "老师反馈",
-          timedFeedback: "演奏时间点反馈",
-          performanceFile: "我的演奏文件",
-          loadPerformancePreview: "加载演奏回放",
-          loadingPerformancePreview: "正在加载回放...",
-          performancePreviewFailed: "演奏文件回放加载失败。",
-          seekTimedFeedback: "跳到此处",
-          grade: "评分",
-          waiting: "等待老师批阅。",
-          empty: "提交作业后，这里会显示老师反馈。",
-        }
-      : {
-          title: "My submission feedback",
-          submitted: "Submitted",
-          reviewed: "Reviewed",
-          feedback: "Teacher feedback",
-          timedFeedback: "Timed performance feedback",
-          performanceFile: "My performance file",
-          loadPerformancePreview: "Load performance playback",
-          loadingPerformancePreview: "Loading playback...",
-          performancePreviewFailed: "Could not load performance playback.",
-          seekTimedFeedback: "Jump to this time",
-          grade: "Grade",
-          waiting: "Waiting for teacher review.",
-          empty: "After you submit an assignment, teacher feedback will appear here.",
-        };
 
   useEffect(() => {
     let active = true;
@@ -294,7 +179,7 @@ export function SharedScoreViewer() {
 
       setLoading(false);
       if (!result.ok) {
-        setError(result.error || copy.missing);
+        setError(result.error);
         return;
       }
 
@@ -367,13 +252,13 @@ export function SharedScoreViewer() {
   }, []);
 
   if (loading) {
-    return <div className="empty-state">{copy.loading}</div>;
+    return <div className="empty-state" role="status" aria-label={copy.loadingAria}>{copy.loading}</div>;
   }
 
   if (error || !payload) {
     return (
       <div className="surface-panel stack-lg">
-        <p className="form-status error">{error ?? copy.missing}</p>
+        <p className="form-status error" role="alert">{error ?? copy.missing}</p>
         <Link href={APP_ROUTES.dashboard} className="button button-secondary">
           {copy.back}
         </Link>
@@ -419,7 +304,7 @@ export function SharedScoreViewer() {
     setAssignmentScoreLoadingId(null);
 
     if (!result.ok) {
-      setAssignmentScoreError(result.error || "Could not load the assignment score version.");
+      setAssignmentScoreError(result.error);
       return;
     }
 
@@ -449,7 +334,12 @@ export function SharedScoreViewer() {
       });
 
       if (!response.ok) {
-        throw new Error(reviewCopy.performancePreviewFailed);
+        const failure = await response.json().catch(() => null) as { error?: string } | null;
+        setReviewPreviewErrors((current) => ({
+          ...current,
+          [reviewToken]: failure?.error ?? reviewCopy.performancePreviewFailed,
+        }));
+        return null;
       }
 
       const blob = await response.blob();
@@ -465,10 +355,10 @@ export function SharedScoreViewer() {
         [reviewToken]: previewUrl,
       }));
       return previewUrl;
-    } catch (error) {
+    } catch {
       setReviewPreviewErrors((current) => ({
         ...current,
-        [reviewToken]: error instanceof Error ? error.message : reviewCopy.performancePreviewFailed,
+        [reviewToken]: reviewCopy.performancePreviewFailed,
       }));
       return null;
     } finally {
@@ -503,7 +393,7 @@ export function SharedScoreViewer() {
     if (!form.submitterName.trim()) {
       setSubmissionStatus((current) => ({
         ...current,
-        [assignment.id]: { kind: "error", message: assignmentCopy.submitFailed },
+        [assignment.id]: { kind: "error", message: assignmentCopy.nameRequired },
       }));
       return;
     }
@@ -539,8 +429,8 @@ export function SharedScoreViewer() {
         result = response.ok
           ? ({ ok: true, data: payload as SharedAssignmentSubmissionPayload } as const)
           : ({ ok: false, error: payload?.error ?? assignmentCopy.submitFailed } as const);
-      } catch (error) {
-        result = { ok: false, error: error instanceof Error ? error.message : assignmentCopy.submitFailed } as const;
+      } catch {
+        result = { ok: false, error: assignmentCopy.submitFailed } as const;
       }
     } else {
       result = await apiRequest<SharedAssignmentSubmissionPayload>(`/api/scores/shared/${token}/assignments/${assignment.id}/submissions`, {
@@ -561,7 +451,7 @@ export function SharedScoreViewer() {
     if (!result.ok) {
       setSubmissionStatus((current) => ({
         ...current,
-        [assignment.id]: { kind: "error", message: result.error || assignmentCopy.submitFailed },
+        [assignment.id]: { kind: "error", message: result.error },
       }));
       return;
     }
@@ -602,7 +492,7 @@ export function SharedScoreViewer() {
           <p className="eyebrow">{copy.shared}</p>
           <h1 className="page-title">{payload.score.title}</h1>
           <p className="body-copy large">
-            {copy.revision}: {payload.score.currentRevision?.revisionNumber ?? 0} | {formatLocal(payload.score.updatedAt, locale)}
+            {copy.revision}: {formatNumber(payload.score.currentRevision?.revisionNumber ?? 0, locale)} | {formatDateTime(payload.score.updatedAt, locale)}
           </p>
         </div>
         <div className="page-banner-actions">
@@ -615,8 +505,8 @@ export function SharedScoreViewer() {
       {payload.assignments.length > 0 ? (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">{assignmentCopy.assignments}</p>
-            <h2 className="card-title">{assignmentCopy.assignments}</h2>
+            <p className="eyebrow">{assignmentCopy.title}</p>
+            <h2 className="card-title">{assignmentCopy.title}</h2>
           </div>
           <div className="list-grid">
             {payload.assignments.map((assignment) => {
@@ -631,20 +521,20 @@ export function SharedScoreViewer() {
                     <p className="item-title">
                       {assignment.title}{" "}
                       <span className={`status-chip ${isOpen ? "tone-cyan" : "tone-amber"}`}>
-                        {isOpen ? assignmentCopy.assignmentOpen : assignmentCopy.assignmentArchived}
+                        {assignmentCopy.statuses[assignment.status]}
                       </span>
                     </p>
                     <p className="item-meta">
-                      {assignmentCopy.dueAt}: {assignment.dueAt ? formatLocal(assignment.dueAt, locale) : assignmentCopy.noDue}
+                      {assignmentCopy.dueAt}: {assignment.dueAt ? formatDateTime(assignment.dueAt, locale) : assignmentCopy.noDue}
                     </p>
                     {assignment.instructions ? <p className="body-copy">{assignment.instructions}</p> : null}
                     {assignment.rubric.length > 0 ? (
                       <p className="item-meta">
-                        {assignmentCopy.rubric}: {assignment.rubric.map((criterion) => `${criterion.label} / ${criterion.maxScore}`).join(" | ")}
+                        {assignmentCopy.rubric}: {assignment.rubric.map((criterion) => `${criterion.label} / ${formatNumber(criterion.maxScore, locale)}`).join(" | ")}
                       </p>
                     ) : null}
                     {assignment.practiceSettings ? (
-                      <p className="item-meta">Practice preset: {formatAssignmentPracticeSettings(assignment.practiceSettings, scoreJson)}</p>
+                      <p className="item-meta">{assignmentCopy.practicePreset}: {formatAssignmentPracticeSettings(assignment.practiceSettings, scoreJson, practiceCopy, locale)}</p>
                     ) : null}
                   </div>
                   {assignment.practiceSettings ? (
@@ -655,7 +545,7 @@ export function SharedScoreViewer() {
                         onClick={() => void applyAssignmentPracticePreset(assignment)}
                         disabled={assignmentScoreLoadingId === assignment.id}
                       >
-                        {assignmentScoreLoadingId === assignment.id ? "Loading score version..." : "Apply practice preset"}
+                        {assignmentScoreLoadingId === assignment.id ? assignmentCopy.loadingScore : assignmentCopy.loadScore}
                       </button>
                     </div>
                   ) : null}
@@ -723,11 +613,12 @@ export function SharedScoreViewer() {
                           className="field-control"
                           type="file"
                           accept="audio/*,video/mp4,video/quicktime,video/webm"
+                          aria-label={assignmentCopy.performanceFileAria}
                           onChange={(event) => updateSubmissionFile(assignment.id, event.target.files?.[0] ?? null)}
                         />
                         <span className="helper-copy">
                           {selectedPerformanceFile
-                            ? `${selectedPerformanceFile.name} | ${formatSize(selectedPerformanceFile.size)}`
+                            ? `${selectedPerformanceFile.name} | ${formatSize(selectedPerformanceFile.size, locale)}`
                             : assignmentCopy.performanceFileHint}
                         </span>
                       </label>
@@ -742,7 +633,7 @@ export function SharedScoreViewer() {
                           onChange={(event) => updateSubmissionForm(assignment.id, "note", event.target.value)}
                         />
                       </label>
-                      {status ? <p className={`form-status ${status.kind}`}>{status.message}</p> : null}
+                      {status ? <p className={`form-status ${status.kind}`} role="status" aria-label={assignmentCopy.statusAria}>{status.message}</p> : null}
                       <div className="button-row">
                         <button type="submit" className="button button-primary" disabled={submittingAssignmentId === assignment.id}>
                           {submittingAssignmentId === assignment.id ? assignmentCopy.submitting : assignmentCopy.submit}
@@ -767,17 +658,17 @@ export function SharedScoreViewer() {
                         <p className="item-title">
                           {submission?.assignmentTitle ?? reviewCopy.title}{" "}
                           <span className={`status-chip ${submission?.status === "reviewed" ? "tone-cyan" : "tone-amber"}`}>
-                            {submission?.status === "reviewed" ? reviewCopy.reviewed : reviewCopy.submitted}
+                            {reviewCopy.statuses[submission?.status ?? "submitted"]}
                           </span>
                         </p>
-                        <p className="item-meta">{submission ? formatLocal(submission.submittedAt, locale) : reviewCopy.waiting}</p>
+                        <p className="item-meta">{submission ? formatDateTime(submission.submittedAt, locale) : reviewCopy.waiting}</p>
                         {submission?.gradeScore !== null || submission?.gradeMax !== null ? (
                           <p className="item-meta">
-                            {reviewCopy.grade}: {submission?.gradeScore ?? "-"} / {submission?.gradeMax ?? "-"}
+                            {reviewCopy.grade}: {formatOptionalNumber(submission?.gradeScore, locale)} / {formatOptionalNumber(submission?.gradeMax, locale)}
                           </p>
                         ) : null}
                         {submission?.practiceSettings ? (
-                          <p className="item-meta">Submitted practice: {formatAssignmentPracticeSettings(submission.practiceSettings, scoreJson)}</p>
+                          <p className="item-meta">{assignmentCopy.submittedPractice}: {formatAssignmentPracticeSettings(submission.practiceSettings, scoreJson, practiceCopy, locale)}</p>
                         ) : null}
                         {submission?.teacherFeedback ? (
                           <p className="body-copy">
@@ -790,7 +681,7 @@ export function SharedScoreViewer() {
                           <div className="stack-sm">
                             <div className="button-row">
                               <span className="item-meta">
-                                {reviewCopy.performanceFile}: {submission.performanceFile.originalName} | {formatSize(submission.performanceFile.sizeBytes)}
+                                {reviewCopy.performanceFile}: {submission.performanceFile.originalName} | {formatSize(submission.performanceFile.sizeBytes, locale)}
                               </span>
                               <button
                                 type="button"
@@ -807,6 +698,7 @@ export function SharedScoreViewer() {
                                 <video
                                   className="field-control"
                                   controls
+                                  aria-label={reviewCopy.playbackAria}
                                   src={reviewPreviewUrls[reviewToken]}
                                   ref={(element) => {
                                     reviewMediaRef.current[submission.id] = element;
@@ -834,7 +726,7 @@ export function SharedScoreViewer() {
                               .map((comment) => (
                                 <div className="button-row" key={comment.id}>
                                   <span className="body-copy">
-                                    {formatDuration(performanceCommentTime(comment))}: {comment.body}
+                                    {formatDuration(performanceCommentTime(comment), locale)}: {comment.body}
                                   </span>
                                   {submission.performanceFile ? (
                                     <button
@@ -882,7 +774,6 @@ export function SharedScoreViewer() {
           selectedEventId={selectedPracticeEventId}
           onSelectedEventChange={setSelectedPracticeEventId}
           onAnnotationsChange={(comments) => setPayload((current) => current ? { ...current, comments } : current)}
-          locale={locale}
         />
       ) : null}
 
@@ -903,13 +794,15 @@ export function SharedScoreViewer() {
       {assignmentScoreError ? <p className="form-status error">{assignmentScoreError}</p> : null}
       {assignmentScore ? (
         <p className="form-status success">
-          Showing assignment score version {assignmentScore.revisionNumber ?? assignmentScore.revisionId ?? assignmentScore.assignmentId}.
+          {formatMessage(copy.assignmentScoreShown, {
+            version: formatAssignmentVersion(assignmentScore, locale),
+          })}
         </p>
       ) : null}
 
       <section className="surface-panel stack-lg">
         <div className="stack-sm">
-          <p className="eyebrow">MusicXML</p>
+          <p className="eyebrow">{copy.musicXmlEyebrow}</p>
           <h2 className="card-title">{copy.preview}</h2>
         </div>
         <ScoreMusicXmlPreview
@@ -922,19 +815,26 @@ export function SharedScoreViewer() {
           emptyLabel={copy.previewEmpty}
           loadingLabel={copy.previewLoading}
           errorLabel={copy.previewError}
+          retryLabel={copy.previewRetry}
+          technicalDetailsLabel={copy.previewTechnicalDetails}
+          deferredLabel={copy.previewDeferred}
+          renderLabel={copy.previewRender}
+          eventLabelTemplate={copy.previewEventLabel}
+          noteLabel={copy.previewNote}
+          restLabel={copy.previewRest}
         />
       </section>
 
       {jianpu ? (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">Jianpu</p>
+            <p className="eyebrow">{copy.jianpuEyebrow}</p>
             <h2 className="card-title">{copy.jianpu}</h2>
           </div>
           <div className="jianpu-preview">
             <div className="jianpu-meta">
               <span>
-                1={jianpu.key.tonic} ({jianpu.key.mode})
+                1={jianpu.key.tonic} ({formatJianpuMode(jianpu.key.mode, messages.modes)})
               </span>
               <span>{jianpu.metadata.sourceRevisionParser}</span>
             </div>
@@ -946,25 +846,25 @@ export function SharedScoreViewer() {
       {scoreJson ? (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">Score JSON</p>
+            <p className="eyebrow">{copy.scoreJsonEyebrow}</p>
             <h2 className="card-title">{copy.summary}</h2>
           </div>
           <div className="score-summary-grid">
             <div className="mini-card stack-xs">
               <p className="metric-label">{copy.parts}</p>
-              <p className="metric-value compact">{scoreJson.parts.length}</p>
+              <p className="metric-value compact">{formatNumber(scoreJson.parts.length, locale)}</p>
             </div>
             <div className="mini-card stack-xs">
               <p className="metric-label">{copy.measures}</p>
-              <p className="metric-value compact">{scoreJson.metadata.measureCount}</p>
+              <p className="metric-value compact">{formatNumber(scoreJson.metadata.measureCount, locale)}</p>
             </div>
             <div className="mini-card stack-xs">
               <p className="metric-label">{copy.notes}</p>
-              <p className="metric-value compact">{scoreJson.metadata.noteCount}</p>
+              <p className="metric-value compact">{formatNumber(scoreJson.metadata.noteCount, locale)}</p>
             </div>
             <div className="mini-card stack-xs">
               <p className="metric-label">{copy.rests}</p>
-              <p className="metric-value compact">{scoreJson.metadata.restCount}</p>
+              <p className="metric-value compact">{formatNumber(scoreJson.metadata.restCount, locale)}</p>
             </div>
           </div>
         </section>
@@ -973,20 +873,16 @@ export function SharedScoreViewer() {
   );
 }
 
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
-}
-
-function formatSize(sizeBytes: number) {
+function formatSize(sizeBytes: number, locale: SupportedLocale) {
   if (sizeBytes < 1024) {
-    return `${sizeBytes} B`;
+    return `${formatNumber(sizeBytes, locale)} B`;
   }
 
   if (sizeBytes < 1024 * 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+    return `${formatNumber(sizeBytes / 1024, locale, { maximumFractionDigits: 1 })} KB`;
   }
 
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${formatNumber(sizeBytes / (1024 * 1024), locale, { maximumFractionDigits: 1 })} MB`;
 }
 
 function performanceCommentTime(comment: SharedPerformanceComment) {
@@ -994,28 +890,56 @@ function performanceCommentTime(comment: SharedPerformanceComment) {
   return typeof timeSeconds === "number" && Number.isFinite(timeSeconds) ? timeSeconds : 0;
 }
 
-function formatDuration(timeSeconds: number) {
+function formatDuration(timeSeconds: number, locale: SupportedLocale) {
   const safeSeconds = Math.max(0, Math.floor(Number.isFinite(timeSeconds) ? timeSeconds : 0));
   const minutes = Math.floor(safeSeconds / 60);
   const seconds = safeSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return `${formatNumber(minutes, locale)}:${formatNumber(seconds, locale, { minimumIntegerDigits: 2, useGrouping: false })}`;
 }
 
-function formatAssignmentPracticeSettings(settings: AssignmentPracticeSettings, scoreJson: ScoreJson | undefined) {
+function formatAssignmentPracticeSettings(
+  settings: AssignmentPracticeSettings,
+  scoreJson: ScoreJson | undefined,
+  copy: ScoreSharingMessages["practice"],
+  locale: SupportedLocale,
+) {
+  const partList = formatScorePartIds(settings.soloPartIds.length > 0 ? settings.soloPartIds : settings.mutedPartIds, scoreJson);
   const parts =
     settings.soloPartIds.length > 0
-      ? `solo ${formatScorePartIds(settings.soloPartIds, scoreJson)}`
+      ? formatMessage(copy.solo, { parts: partList })
       : settings.mutedPartIds.length > 0
-        ? `mute ${formatScorePartIds(settings.mutedPartIds, scoreJson)}`
-        : "all parts";
-  const loop = settings.loopEnabled ? `loop ${settings.loopStartBeat}-${settings.loopEndBeat}` : "full score";
-  const helpers = [settings.metronomeEnabled ? "metronome" : null, settings.countInEnabled ? "count-in" : null].filter(Boolean).join(", ");
-  return `${settings.tempoBpm} BPM, ${loop}, ${parts}${helpers ? `, ${helpers}` : ""}`;
+        ? formatMessage(copy.mute, { parts: partList })
+        : copy.allParts;
+  const loop = settings.loopEnabled
+    ? formatMessage(copy.loop, {
+        start: formatNumber(settings.loopStartBeat, locale),
+        end: formatNumber(settings.loopEndBeat, locale),
+      })
+    : copy.fullScore;
+  const helpers = [settings.metronomeEnabled ? copy.metronome : null, settings.countInEnabled ? copy.countIn : null].filter(Boolean).join(", ");
+  const tempo = formatMessage(copy.tempo, { tempo: formatNumber(settings.tempoBpm, locale) });
+  return `${tempo}, ${loop}, ${parts}${helpers ? `, ${helpers}` : ""}`;
 }
 
 function formatScorePartIds(partIds: string[], scoreJson: ScoreJson | undefined) {
   const partNames = new Map(scoreJson?.parts.map((part) => [part.id, part.name]) ?? []);
   return partIds.map((partId) => partNames.get(partId) ?? partId).join(", ");
+}
+
+function formatOptionalNumber(value: number | null | undefined, locale: SupportedLocale) {
+  return typeof value === "number" ? formatNumber(value, locale) : "-";
+}
+
+function formatAssignmentVersion(payload: SharedAssignmentScorePayload, locale: SupportedLocale) {
+  return typeof payload.revisionNumber === "number"
+    ? formatNumber(payload.revisionNumber, locale)
+    : (payload.revisionId ?? payload.assignmentId);
+}
+
+function formatJianpuMode(mode: string, modes: ScoreSharingMessages["modes"]) {
+  return Object.prototype.hasOwnProperty.call(modes, mode)
+    ? modes[mode as keyof typeof modes]
+    : mode;
 }
 
 function reviewStorageKey(token: string) {

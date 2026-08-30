@@ -6,7 +6,7 @@ import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { accountActivationRoute, checkoutAvailable } from "../lib/release";
-import { useAppLocale } from "./AppLocaleProvider";
+import type { WorkspaceMessages } from "../lib/workspace-messages/types";
 
 type MePayload = {
   user: {
@@ -16,8 +16,7 @@ type MePayload = {
   };
 };
 
-export function DashboardBannerActions() {
-  const { locale } = useAppLocale();
+export function DashboardBannerActions({ copy, setupHref }: { copy: WorkspaceMessages["banner"]; setupHref: string }) {
   const [status, setStatus] = useState<"loading" | "inactive" | "active">("loading");
 
   useEffect(() => {
@@ -45,12 +44,10 @@ export function DashboardBannerActions() {
     return (
       <div className="page-banner-actions">
         <Link href={accountActivationRoute} className="button button-primary">
-          {checkoutAvailable
-            ? locale === "zh-CN" ? "立即开通" : "Pay now"
-            : locale === "zh-CN" ? "兑换激活码" : "View activation options"}
+          {checkoutAvailable ? copy.payNow : copy.activationOptions}
         </Link>
-        <Link href={locale === "zh-CN" ? APP_ROUTES.activate : APP_ROUTES.register} className="button button-secondary">
-          {locale === "zh-CN" ? "兑换激活码" : "View account setup"}
+        <Link href={setupHref} className="button button-secondary">
+          {copy.accountSetup}
         </Link>
       </div>
     );
@@ -59,10 +56,10 @@ export function DashboardBannerActions() {
   return (
     <div className="page-banner-actions">
       <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-primary">
-        {locale === "zh-CN" ? "导入 PDF 或图片" : "Import PDF or image"}
+        {copy.importScore}
       </Link>
       <Link href={APP_ROUTES.jobs} className="button button-secondary">
-        {locale === "zh-CN" ? "打开任务页" : "Open jobs"}
+        {copy.openJobs}
       </Link>
     </div>
   );

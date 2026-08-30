@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { formatMessage, formatNumber } from "@score/i18n";
 import type { ScoreJson, ScoreNoteEvent, ScorePitchStep } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { parseScoreEditorClipboard, scoreEditorClipboardKey, serializeScoreEditorClipboard, type ScoreEditorClipboard } from "../lib/score-editor-clipboard";
@@ -13,7 +14,8 @@ import {
   scoreCollaborationQueueScope,
   type OfflineScoreCollaborationCommand,
 } from "../lib/score-collaboration-queue";
-import { useAppLocale } from "./AppLocaleProvider";
+import { useScoreEditorMessages } from "../lib/score-editor-messages/client";
+import type { ScoreEditorMessages } from "../lib/score-editor-messages/types";
 import { VexFlowNotationSurface, type VexFlowEventDrag } from "./VexFlowNotationSurface";
 
 type ScoreRevision = {
@@ -149,7 +151,8 @@ export function ScoreVisualEditorPanel({
   onReload?: (payload: ScorePayload) => void | Promise<void>;
   allowCookieAuth?: boolean;
 }) {
-  const { locale } = useAppLocale();
+  const { locale, messages } = useScoreEditorMessages();
+  const copy = messages.editor;
   const notes = useMemo(() => collectVisualNotes(scoreJson), [scoreJson]);
   const [selectedNoteId, setSelectedNoteId] = useState(notes[0]?.id ?? "");
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>(notes[0]?.id ? [notes[0].id] : []);
@@ -194,131 +197,6 @@ export function ScoreVisualEditorPanel({
     if (next.eventIds.length === 0) window.localStorage.removeItem(key);
     else window.localStorage.setItem(key, serializeScoreEditorClipboard(scoreId, next));
   }
-
-  const copy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "图形修谱",
-          title: "小节级图形编辑器",
-          body: "点选音符后可改音高和时值；上下拖动改音高，左右拖动可在小节内调整时值位置。所有操作都会写回 Score JSON 并生成新版本。",
-          empty: "当前版本没有可编辑的音符。",
-          selected: "当前音符",
-          pitch: "音高",
-          alter: "升降",
-          octave: "八度",
-          duration: "时值",
-          rawDuration: "内部时长",
-          save: "保存音高/时值",
-          saving: "正在保存...",
-          success: "已保存为新的修谱版本。",
-          failed: "图形编辑保存失败。",
-          insert: "插入音符",
-          inserting: "插入中...",
-          delete: "删除音符",
-          deleting: "删除中...",
-          moveLeft: "左移",
-          moveRight: "右移",
-          moving: "移动中...",
-          inserted: "已插入新音符。",
-          deleted: "已删除音符。",
-          reordered: "已调整小节内位置。",
-          up: "升高半音",
-          down: "降低半音",
-          previous: "上一个",
-          next: "下一个",
-          unsaved: "有未保存更改",
-          clean: "已同步",
-           dragHint: "上下拖动改音高，左右拖动调整小节内位置",
-          copied: "已复制所选音符，可粘贴到当前音符之后。",
-          cut: "已剪切所选音符，选择目标位置后粘贴。",
-          pasted: "已粘贴所选音符。",
-          batchDeleted: "已删除所选音符。",
-          conflictTitle: "检测到并发编辑冲突",
-          conflictBody: "这处内容在你开始编辑后已被其他协作者修改。你可以载入最新版本，或明确把当前修改重新应用到最新版本。",
-          conflictReason: "冲突原因",
-          conflictOperations: "相关操作",
-          loadLatest: "载入最新版本",
-          reapplyLatest: "重新应用我的修改",
-          resolving: "正在解决冲突...",
-          latestLoaded: "已载入服务器最新版本。",
-          conflictResolved: "已基于最新版本重新应用修改。",
-          queuedOffline: (count: number) => `网络不可用，已安全保存 ${count} 条待同步编辑。`,
-          offlineTitle: "离线编辑队列",
-          offlineBody: "这些编辑只保存在当前浏览器，不包含登录令牌；恢复连接后会按顺序同步。",
-          syncNow: "立即同步",
-          syncingQueue: "正在同步...",
-          queueSynced: "离线编辑已同步到服务器。",
-          queueFailed: "离线编辑队列不可用，当前修改未保存。",
-          historyTitle: "共享撤销与重做",
-          undo: "撤销我的操作",
-          redo: "重做我的操作",
-          undoing: "正在撤销...",
-          redoing: "正在重做...",
-          undoSuccess: "已撤销最近的共享编辑。",
-          redoSuccess: "已重做最近的共享编辑。",
-          historyFailed: "共享撤销或重做失败。",
-        }
-      : {
-          eyebrow: "Visual editor",
-          title: "Measure-level graphical editor",
-          body: "Select a note to edit pitch and duration. Drag vertically to change pitch, or drag horizontally to reorder the note inside its measure. Every operation writes back to Score JSON as a new revision.",
-          empty: "This revision has no editable notes.",
-          selected: "Selected note",
-          pitch: "Pitch",
-          alter: "Alter",
-          octave: "Octave",
-          duration: "Duration",
-          rawDuration: "Internal duration",
-          save: "Save pitch/duration",
-          saving: "Saving...",
-          success: "Saved a new corrected revision.",
-          failed: "Visual edit could not be saved.",
-          insert: "Insert note",
-          inserting: "Inserting...",
-          delete: "Delete note",
-          deleting: "Deleting...",
-          moveLeft: "Move left",
-          moveRight: "Move right",
-          moving: "Moving...",
-          inserted: "Inserted a new note.",
-          deleted: "Deleted the note.",
-          reordered: "Adjusted the measure position.",
-          up: "Raise semitone",
-          down: "Lower semitone",
-          previous: "Previous",
-          next: "Next",
-          unsaved: "Unsaved changes",
-          clean: "Synced",
-           dragHint: "Drag up/down for pitch, left/right for measure position",
-          copied: "Selected notes copied. Paste after the current note.",
-          cut: "Selected notes cut. Choose a destination and paste to move them.",
-          pasted: "Selected notes pasted.",
-          batchDeleted: "Selected notes deleted.",
-          conflictTitle: "Concurrent edit conflict",
-          conflictBody: "A collaborator changed this target after you started editing. Load the latest score or explicitly reapply your edit to the latest revision.",
-          conflictReason: "Reason",
-          conflictOperations: "Related operations",
-          loadLatest: "Load latest version",
-          reapplyLatest: "Reapply my edit",
-          resolving: "Resolving conflict...",
-          latestLoaded: "Loaded the latest server revision.",
-          conflictResolved: "Reapplied the edit to the latest revision.",
-          queuedOffline: (count: number) => `Network unavailable. Safely queued ${count} edit${count === 1 ? "" : "s"} for sync.`,
-          offlineTitle: "Offline edit queue",
-          offlineBody: "These edits stay in this browser without storing an access token and sync in order after reconnection.",
-          syncNow: "Sync now",
-          syncingQueue: "Syncing...",
-          queueSynced: "Offline edits synced to the server.",
-          queueFailed: "The offline edit queue is unavailable. This edit was not saved.",
-          historyTitle: "Shared undo and redo",
-          undo: "Undo my operation",
-          redo: "Redo my operation",
-          undoing: "Undoing...",
-          redoing: "Redoing...",
-          undoSuccess: "Undid the latest shared edit.",
-          redoSuccess: "Redid the latest shared edit.",
-          historyFailed: "Shared undo or redo failed.",
-        };
 
   useEffect(() => {
     let cancelled = false;
@@ -472,7 +350,7 @@ export function ScoreVisualEditorPanel({
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x") {
       event.preventDefault();
       updateClipboard({ eventIds: selectedNoteIds, mode: "cut" });
-      setStatus(copy.cut);
+      setStatus(copy.cutDone);
       setStatusKind("success");
       return;
     }
@@ -599,7 +477,7 @@ export function ScoreVisualEditorPanel({
       if (operationId && canonicalCommand && baseRevisionId && result.status === 0) {
         const count = await queueOfflineCommand({ operationId, baseRevisionId, command: canonicalCommand, targetEventIds: targetEventIdsForPatch(body) });
         if (count !== null) {
-          setStatus(copy.queuedOffline(count));
+          setStatus(formatMessage(copy.queuedOffline, { count: formatNumber(count, locale) }));
           setStatusKind("success");
           return true;
         }
@@ -680,7 +558,7 @@ export function ScoreVisualEditorPanel({
       if (operationId && canonicalCommand && baseRevisionId && result.status === 0) {
         const count = await queueOfflineCommand({ operationId, baseRevisionId, command: canonicalCommand, targetEventIds: [selectedNote.id] });
         if (count !== null) {
-          setStatus(copy.queuedOffline(count));
+          setStatus(formatMessage(copy.queuedOffline, { count: formatNumber(count, locale) }));
           setStatusKind("success");
           return;
         }
@@ -999,7 +877,7 @@ export function ScoreVisualEditorPanel({
 
   if (notes.length === 0) {
     return (
-      <section className="surface-panel stack-lg">
+      <section className="surface-panel stack-lg" aria-label={copy.panelAria}>
         <div className="stack-sm">
           <p className="eyebrow">{copy.eyebrow}</p>
           <h2 className="card-title">{copy.title}</h2>
@@ -1011,26 +889,29 @@ export function ScoreVisualEditorPanel({
   }
 
   return (
-    <section className="surface-panel stack-lg" onKeyDown={handleKeyDown}>
+    <section className="surface-panel stack-lg" aria-label={copy.panelAria} onKeyDown={handleKeyDown}>
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 className="card-title">{copy.title}</h2>
         <p className="body-copy">{copy.body}</p>
       </div>
 
-      <div className="visual-editor-toolbar" aria-label={copy.duration}>
+      <div className="visual-editor-toolbar" aria-label={copy.durationToolbarAria}>
         {DURATION_TYPES.map((item) => (
           <button key={item} type="button" className={`tool-chip${durationType === item ? " is-active" : ""}`} onClick={() => setDurationPreset(item)} disabled={busy}>
-            {durationGlyph(item)}
-            <span>{item}</span>
+            <span aria-hidden="true">{durationGlyph(item)}</span>
+            <span>{messages.durations[item]}</span>
           </button>
         ))}
-        <span className={`status-chip ${hasUnsavedChanges ? "tone-amber" : "tone-cyan"}`}>{hasUnsavedChanges ? copy.unsaved : copy.clean}</span>
+        <span className={`status-chip ${hasUnsavedChanges ? "tone-amber" : "tone-cyan"}`} role="status" aria-label={copy.statusAria}>
+          {hasUnsavedChanges ? copy.unsaved : copy.clean}
+        </span>
       </div>
 
       <div className="visual-score-editor">
-        <div className="visual-score-scroll" aria-label={copy.title}>
+        <div className="visual-score-scroll" aria-label={copy.scoreViewportAria}>
           <p className="item-meta">{copy.dragHint}</p>
+          <p className="item-meta">{copy.shortcutHint}</p>
           <VexFlowNotationSurface
             scoreJson={scoreJson}
             selectedEventIds={selectedNoteIds}
@@ -1042,18 +923,18 @@ export function ScoreVisualEditorPanel({
         <div className="mini-card stack-sm">
           <p className="metric-label">{copy.selected}</p>
           <p className="item-title">
-            {selectedNote ? formatDraftLabel(selectedNote, { step, alter, octave, durationType }) : "-"}
-            {selectedNoteIds.length > 1 ? ` (${selectedNoteIds.length})` : ""}
+            {selectedNote ? formatDraftLabel(selectedNote, { step, alter, octave, durationType }, messages) : "-"}
+            {selectedNoteIds.length > 1 ? ` · ${formatMessage(copy.selectedCount, { count: formatNumber(selectedNoteIds.length, locale) })}` : ""}
           </p>
           <div className="button-row">
             <button type="button" className="button button-secondary button-ghost" onClick={() => updateClipboard({ eventIds: selectedNoteIds, mode: "copy" })} disabled={busy || selectedNoteIds.length === 0}>
-              {locale === "zh-CN" ? "复制" : "Copy"}
+              {copy.copy}
             </button>
             <button type="button" className="button button-secondary button-ghost" onClick={() => updateClipboard({ eventIds: selectedNoteIds, mode: "cut" })} disabled={busy || selectedNoteIds.length === 0}>
-              {locale === "zh-CN" ? "剪切" : "Cut"}
+              {copy.cut}
             </button>
             <button type="button" className="button button-secondary button-ghost" onClick={() => void pasteClipboard()} disabled={busy || clipboard.eventIds.length === 0 || !selectedNote}>
-              {locale === "zh-CN" ? "粘贴" : "Paste"}
+              {copy.paste}
             </button>
           </div>
           <div className="button-row">
@@ -1066,10 +947,10 @@ export function ScoreVisualEditorPanel({
           </div>
           <div className="button-row">
             <button type="button" className="button button-secondary button-ghost" onClick={() => nudgePitch(-1)} disabled={busy}>
-              {copy.down}
+              {copy.lower}
             </button>
             <button type="button" className="button button-secondary button-ghost" onClick={() => nudgePitch(1)} disabled={busy}>
-              {copy.up}
+              {copy.raise}
             </button>
           </div>
           <div className="button-row">
@@ -1109,7 +990,7 @@ export function ScoreVisualEditorPanel({
               <select className="field-select" value={durationType} onChange={(event) => setDurationPreset(event.target.value as keyof typeof DURATION_TO_VALUE)} disabled={busy}>
                 {DURATION_TYPES.map((item) => (
                   <option key={item} value={item}>
-                    {item}
+                    {messages.durations[item]}
                   </option>
                 ))}
               </select>
@@ -1119,19 +1000,19 @@ export function ScoreVisualEditorPanel({
               <input className="field-control" type="number" min={0.0625} step={0.0625} value={duration} onChange={(event) => setDuration(Number(event.target.value))} disabled={busy} />
             </label>
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "附点" : "Dots"}</span>
+              <span>{copy.dots}</span>
               <input className="field-control" type="number" min={0} max={4} step={1} value={dots} onChange={(event) => setDots(Number(event.target.value))} disabled={busy} />
             </label>
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "声部" : "Voice"}</span>
+              <span>{copy.voice}</span>
               <input className="field-control" type="text" maxLength={20} value={voice} onChange={(event) => setVoice(event.target.value)} disabled={busy} />
             </label>
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "谱表" : "Staff"}</span>
+              <span>{copy.staff}</span>
               <input className="field-control" type="number" min={1} max={8} step={1} value={staff} onChange={(event) => setStaff(Number(event.target.value))} disabled={busy} />
             </label>
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "和弦音" : "Chord tone"}</span>
+              <span>{copy.chordTone}</span>
               <input type="checkbox" checked={chord} onChange={(event) => setChord(event.target.checked)} disabled={busy} />
             </label>
           </div>
@@ -1161,7 +1042,7 @@ export function ScoreVisualEditorPanel({
           ) : null}
           {offlineQueueCount > 0 ? (
             <div className="collaboration-offline-panel" role="status">
-              <p className="item-title">{copy.offlineTitle} ({offlineQueueCount})</p>
+              <p className="item-title">{formatMessage(copy.offlineTitleWithCount, { count: formatNumber(offlineQueueCount, locale) })}</p>
               <p className="body-copy">{copy.offlineBody}</p>
               <button type="button" className="button button-secondary" onClick={() => void flushOfflineQueue()} disabled={syncingOfflineQueue}>
                 {syncingOfflineQueue ? copy.syncingQueue : copy.syncNow}
@@ -1173,7 +1054,7 @@ export function ScoreVisualEditorPanel({
               <p className="item-title">{copy.conflictTitle}</p>
               <p className="body-copy">{copy.conflictBody}</p>
               <p className="item-meta">
-                {copy.conflictReason}: {formatConflictReason(pendingConflict.payload.command?.conflictReason, locale)}
+                {copy.conflictReason}: {formatConflictReason(pendingConflict.payload.command?.conflictReason, messages.conflictReasons)}
               </p>
               {pendingConflict.payload.command?.conflictingCommandIds.length ? (
                 <p className="item-meta">
@@ -1190,7 +1071,7 @@ export function ScoreVisualEditorPanel({
               </div>
             </div>
           ) : null}
-          {status && statusKind ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+          {status && statusKind ? <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"} aria-label={copy.statusAria}>{status}</p> : null}
         </div>
       </div>
     </section>
@@ -1283,14 +1164,10 @@ function applyDraftFromPayload(
   setters.setChord(event.chord ?? false);
 }
 
-function formatConflictReason(reason: string | null | undefined, locale: string) {
-  const labels: Record<string, { zh: string; en: string }> = {
-    "target-overlap": { zh: "同一音符或小节已被修改", en: "The same note or measure changed" },
-    "revision-history-diverged": { zh: "版本历史包含无法安全合并的修改", en: "Revision history contains unmergeable changes" },
-    "command-no-longer-applicable": { zh: "目标内容已不存在或不再适用", en: "The target no longer exists or applies" },
-  };
-  const label = reason ? labels[reason] : null;
-  return label ? (locale === "zh-CN" ? label.zh : label.en) : (reason ?? (locale === "zh-CN" ? "未知冲突" : "Unknown conflict"));
+function formatConflictReason(reason: string | null | undefined, copy: ScoreEditorMessages["conflictReasons"]) {
+  if (!reason) return copy.unknown;
+  if (reason in copy) return copy[reason as keyof typeof copy];
+  return reason;
 }
 
 function countEventsForMeasure(scoreJson: ScoreJson, measureId: string) {
@@ -1332,6 +1209,15 @@ function pitchText(pitch: DraftPitch) {
   return `${pitch.step}${accidental}${pitch.octave}`;
 }
 
-function formatDraftLabel(note: VisualNote, draft: DraftPitch & { durationType: string }) {
-  return `${note.partName} m.${note.measureNumber} ${pitchText(draft)} ${draft.durationType}`.trim();
+function formatDraftLabel(
+  note: VisualNote,
+  draft: DraftPitch & { durationType: keyof ScoreEditorMessages["durations"] },
+  messages: ScoreEditorMessages,
+) {
+  return formatMessage(messages.editor.draftLabel, {
+    part: note.partName,
+    measure: note.measureNumber,
+    pitch: pitchText(draft),
+    duration: messages.durations[draft.durationType],
+  }).trim();
 }

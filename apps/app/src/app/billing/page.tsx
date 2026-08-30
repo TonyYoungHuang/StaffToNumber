@@ -1,16 +1,27 @@
+import type { Metadata } from "next";
 import { BillingManager } from "../../components/BillingManager";
+import { getBillingMessages, getLocalizedPricingPlanCatalog } from "../../lib/billing-messages";
 import { readAppLocale } from "../../lib/locale";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await readAppLocale();
+  const { page } = getBillingMessages(locale).billing;
+  return { title: page.title, description: page.body };
+}
 
 export default async function BillingPage() {
   const locale = await readAppLocale();
+  const copy = getBillingMessages(locale);
+  const freePlanCredits = getLocalizedPricingPlanCatalog(locale).find((plan) => plan.code === "free")?.resources[0] ?? "";
   return (
     <section className="container page-shell">
       <div className="page-banner">
-        <p className="eyebrow">{locale === "zh-CN" ? "账单中心" : "Billing"}</p>
-        <h1 className="page-title">{locale === "zh-CN" ? "管理订阅、续费、退款与学校席位。" : "Manage subscriptions, renewals, refunds, and school seats."}</h1>
-        <p className="body-copy large">{locale === "zh-CN" ? "订阅访问以支付平台 Webhook 账本为准，续费失败、取消和退款会同步反映在权限状态中。" : "Subscription access follows the verified provider webhook ledger, including renewal failures, cancellations, and refunds."}</p>
+        <p className="eyebrow">{copy.billing.page.eyebrow}</p>
+        <h1 className="page-title">{copy.billing.page.title}</h1>
+        <p className="body-copy large">{copy.billing.page.body}</p>
+        {copy.reviewNotice ? <p className="helper-copy">{copy.reviewNotice}</p> : null}
       </div>
-      <BillingManager />
+      <BillingManager locale={locale} copy={copy.billing.manager} freePlanCredits={freePlanCredits} />
     </section>
   );
 }

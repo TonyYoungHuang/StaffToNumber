@@ -1,3 +1,5 @@
+import { stripLocalePrefix } from "@score/i18n";
+
 export function resolvePaddleSuccessUrl(input: {
   candidate: string | null;
   orderId: string | null;
@@ -15,7 +17,10 @@ export function resolvePaddleSuccessUrl(input: {
         return [];
       }
     }));
-    if (!allowedOrigins.has(successUrl.origin) || successUrl.pathname !== "/checkout/success") return null;
+    if (
+      !allowedOrigins.has(successUrl.origin)
+      || stripLocalePrefix(successUrl.pathname).pathname !== "/checkout/success"
+    ) return null;
     if (successUrl.searchParams.get("provider") !== "paddle") return null;
     if (successUrl.searchParams.get("order_id") !== input.orderId) return null;
     if (successUrl.searchParams.get("token") !== input.publicToken) return null;

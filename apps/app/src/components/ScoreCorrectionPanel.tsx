@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { MIDI_PROGRAM_PRESETS, suggestMidiProgramPresetForPartName } from "@score/shared";
 import type { ScoreArticulation, ScoreBeam, ScoreClef, ScoreDynamic, ScoreEvent, ScoreJson, ScoreLyric, ScoreMeasure, ScoreNoteEvent, ScoreOrnament, ScorePart, ScorePitchStep, ScoreSlur, ScoreTempo, ScoreTuplet, ScoreWedge } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
+import type { ScoreCorrectionMessages } from "../lib/score-correction-messages/types";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type ScoreRevision = {
@@ -82,6 +85,7 @@ export function ScoreCorrectionPanel({
   onUpdated: (payload: ScorePayload) => void | Promise<void>;
 }) {
   const { locale } = useAppLocale();
+  const messages = useScoreReviewMessages().correction;
   const events = useMemo(() => collectEditableEvents(scoreJson), [scoreJson]);
   const measures = useMemo(() => collectEditableMeasures(scoreJson), [scoreJson]);
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
@@ -159,214 +163,14 @@ export function ScoreCorrectionPanel({
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
 
-  const copy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            eyebrow: "识别校对",
-            title: "音符属性面板",
-            body: "从最常见的 OMR 错误开始：选择音符，调整音名、升降号、八度和时值，再保存为新的 manual_edit 修谱版本。",
-            choose: "选择音符",
-            step: "音名",
-            alter: "升降",
-            octave: "八度",
-            duration: "内部时长",
-            durationType: "时值类型",
-            lyric: "歌词",
-            save: "保存修谱版本",
-            saving: "正在保存...",
-            success: "已创建新的修谱版本。",
-            failed: "无法保存修谱结果。",
-            empty: "当前版本没有可编辑的音符。",
-          }
-        : {
-            eyebrow: "Correction",
-            title: "Note property panel",
-            body: "Start with the most common OMR fixes: choose a note, adjust pitch, accidental, octave, and duration, then save a new manual_edit revision.",
-            choose: "Choose note",
-            step: "Step",
-            alter: "Alter",
-            octave: "Octave",
-            duration: "Duration",
-            durationType: "Duration type",
-            lyric: "Lyric",
-            save: "Save corrected revision",
-            saving: "Saving...",
-            success: "Created a corrected revision.",
-            failed: "Correction could not be saved.",
-            empty: "This revision has no editable notes.",
-          },
-    [locale],
-  );
-  const measureCopy = useMemo<Record<string, string | undefined>>(
-    () =>
-      locale === "zh-CN"
-        ? {
-            title: "小节属性",
-            choose: "选择小节",
-            divisions: "Divisions",
-            keyFifths: "调号五度数",
-            keyMode: "调式",
-            timeBeats: "每小节拍数",
-            timeBeatType: "拍号分母",
-            clefSign: "谱号",
-            clefLine: "谱号线位",
-            clefOctaveChange: "谱号八度偏移",
-            newSystem: "从本小节另起一行",
-            newPage: "从本小节另起一页",
-            measureWidth: "小节宽度（tenths）",
-            staffDistance: "谱表间距（tenths）",
-            save: "保存小节属性版本",
-            empty: "当前版本没有可编辑的小节。",
-          }
-        : {
-            title: "Measure attributes",
-            choose: "Choose measure",
-            divisions: "Divisions",
-            keyFifths: "Key fifths",
-            keyMode: "Key mode",
-            timeBeats: "Time beats",
-            timeBeatType: "Beat type",
-            clefSign: "Clef",
-            clefLine: "Clef line",
-            clefOctaveChange: "Clef octave",
-            newSystem: "Start a new system",
-            newPage: "Start a new page",
-            measureWidth: "Measure width (tenths)",
-            staffDistance: "Staff distance (tenths)",
-            save: "Save measure attributes revision",
-            empty: "This revision has no editable measures.",
-          },
-    [locale],
-  );
-  const partCopy = useMemo(
-    () => ({
-      title: "Part settings",
-      choose: "Choose part",
-      name: "Part name",
-      abbreviation: "Abbreviation",
-      instrumentPreset: "Instrument preset",
-      suggestInstrument: "Suggest from name",
-      midiProgram: "MIDI program",
-      midiHelp: "Use 1-128. Empty keeps no program override.",
-      save: "Save part settings revision",
-      empty: "This revision has no editable parts.",
-    }),
-    [],
-  );
-  const harmonyCopy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            choose: "选择小节",
-            root: "根音",
-            alter: "升降",
-            kind: "类型",
-            text: "显示文本",
-            save: "保存和弦标记",
-            clear: "清空和弦",
-          }
-        : {
-            choose: "Choose measure",
-            root: "Root",
-            alter: "Alter",
-            kind: "Kind",
-            text: "Display text",
-            save: "Save chord symbol",
-            clear: "Clear chord",
-          },
-    [locale],
-  );
-  const dynamicCopy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            choose: "选择小节",
-            value: "强弱",
-            placement: "位置",
-            save: "保存强弱记号",
-            clear: "清空强弱记号",
-          }
-        : {
-            choose: "Choose measure",
-            value: "Dynamic",
-            placement: "Placement",
-            save: "Save dynamics",
-            clear: "Clear dynamics",
-          },
-    [locale],
-  );
-  const tempoCopy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            choose: "选择小节",
-            event: "速度标记",
-            newEvent: "新建速度标记",
-            bpm: "速度 BPM",
-            beatUnit: "拍单位",
-            offset: "小节内偏移（divisions）",
-            placement: "位置",
-            save: "保存速度标记",
-            clear: "清空本小节速度标记",
-          }
-        : {
-            choose: "Choose measure",
-            event: "Tempo event",
-            newEvent: "New tempo event",
-            bpm: "Tempo BPM",
-            beatUnit: "Beat unit",
-            offset: "Offset in measure (divisions)",
-            placement: "Placement",
-            save: "Save tempo",
-            clear: "Clear measure tempos",
-          },
-    [locale],
-  );
-  const wedgeCopy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            choose: "选择小节",
-            type: "渐强/渐弱",
-            placement: "位置",
-            number: "编号",
-            save: "保存渐强渐弱线",
-            clear: "清空渐强渐弱线",
-          }
-        : {
-            choose: "Choose measure",
-            type: "Hairpin",
-            placement: "Placement",
-            number: "Number",
-            save: "Save hairpin",
-            clear: "Clear hairpin",
-          },
-    [locale],
-  );
-  const barlineCopy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            choose: "选择小节",
-            location: "位置",
-            style: "小节线样式",
-            repeat: "反复方向",
-            repeatTimes: "反复次数",
-            save: "保存小节线",
-            clear: "清空小节线",
-          }
-        : {
-            choose: "Choose measure",
-            location: "Location",
-            style: "Barline style",
-            repeat: "Repeat",
-            repeatTimes: "Repeat times",
-            save: "Save barline",
-            clear: "Clear barline",
-          },
-    [locale],
-  );
+  const copy = { ...messages.intro, ...messages.note, ...messages.status, empty: messages.empty.events };
+  const measureCopy = { ...messages.measure, empty: messages.empty.measures };
+  const partCopy = { ...messages.part, empty: messages.empty.parts };
+  const harmonyCopy = { choose: messages.measure.choose, ...messages.harmony };
+  const dynamicCopy = { choose: messages.measure.choose, ...messages.dynamics };
+  const tempoCopy = { choose: messages.measure.choose, ...messages.tempo };
+  const wedgeCopy = { choose: messages.measure.choose, ...messages.wedge };
+  const barlineCopy = { choose: messages.measure.choose, ...messages.barline };
 
   useEffect(() => {
     if (!selectedEvent) {
@@ -589,7 +393,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -628,7 +432,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -675,7 +479,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -719,7 +523,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -761,7 +565,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -806,7 +610,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -849,7 +653,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -893,7 +697,7 @@ export function ScoreCorrectionPanel({
     setSaving(false);
 
     if (!result.ok) {
-      setStatus(result.error || copy.failed);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -904,7 +708,7 @@ export function ScoreCorrectionPanel({
   }
 
   return (
-    <section className="surface-panel stack-lg">
+    <section className="surface-panel stack-lg" aria-label={messages.aria.panel} aria-busy={saving}>
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 className="card-title">{copy.title}</h2>
@@ -917,35 +721,35 @@ export function ScoreCorrectionPanel({
         <form className="correction-panel" onSubmit={handleSave}>
           <label className="field-group wide">
             <span>{copy.choose}</span>
-            <ScalableEntityPicker items={events} value={selectedEventId} onChange={setSelectedEventId} formatLabel={(event) => `${event.partName} m.${event.measureNumber} ${formatEventPreview(event)}`} />
+            <ScalableEntityPicker items={events} value={selectedEventId} onChange={setSelectedEventId} formatLabel={(event) => formatEntityPreview(event.partName, event.measureNumber, formatEventPreview(event, messages), messages)} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "事件类型" : "Event type"}</span>
+            <span>{messages.note.eventType}</span>
             <select className="field-select" value={eventType} onChange={(event) => setEventType(event.target.value as "note" | "rest")}>
-              <option value="note">{locale === "zh-CN" ? "音符" : "Note"}</option>
-              <option value="rest">{locale === "zh-CN" ? "休止符" : "Rest"}</option>
+              <option value="note">{messages.enums.eventType.note}</option>
+              <option value="rest">{messages.enums.eventType.rest}</option>
             </select>
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "附点" : "Dots"}</span>
+            <span>{messages.note.dots}</span>
             <input className="field-control" type="number" min={0} max={4} step={1} value={dots} onChange={(event) => setDots(Number(event.target.value))} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "声部" : "Voice"}</span>
+            <span>{messages.note.voice}</span>
             <input className="field-control" type="text" maxLength={20} value={voice} onChange={(event) => setVoice(event.target.value)} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "谱表" : "Staff"}</span>
+            <span>{messages.note.staff}</span>
             <input className="field-control" type="number" min={1} max={8} step={1} value={staff} onChange={(event) => setStaff(Number(event.target.value))} />
           </label>
 
           {eventType === "note" ? (
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "和弦音" : "Chord tone"}</span>
+              <span>{messages.note.chordTone}</span>
               <input type="checkbox" checked={chord} onChange={(event) => setChord(event.target.checked)} />
             </label>
           ) : null}
@@ -953,55 +757,55 @@ export function ScoreCorrectionPanel({
           {eventType === "note" ? (
             <>
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "倚音" : "Grace note"}</span>
+            <span>{messages.note.graceNote}</span>
             <input type="checkbox" checked={graceEnabled} onChange={(event) => setGraceEnabled(event.target.checked)} />
           </label>
 
           {graceEnabled ? (
             <>
               <label className="field-group">
-                <span>{locale === "zh-CN" ? "斜线倚音" : "Slashed grace"}</span>
+                <span>{messages.note.slashedGrace}</span>
                 <input type="checkbox" checked={graceSlash} onChange={(event) => setGraceSlash(event.target.checked)} />
               </label>
               <label className="field-group">
-                <span>{locale === "zh-CN" ? "占前音百分比" : "Steal previous %"}</span>
+                <span>{messages.note.stealPrevious}</span>
                 <input className="field-control" type="number" min={0} max={100} step={0.5} value={graceStealPrevious} onChange={(event) => setGraceStealPrevious(Number(event.target.value))} />
               </label>
               <label className="field-group">
-                <span>{locale === "zh-CN" ? "占后音百分比" : "Steal following %"}</span>
+                <span>{messages.note.stealFollowing}</span>
                 <input className="field-control" type="number" min={0} max={100} step={0.5} value={graceStealFollowing} onChange={(event) => setGraceStealFollowing(Number(event.target.value))} />
               </label>
             </>
           ) : null}
 
           <div className="field-group wide">
-            <span>{locale === "zh-CN" ? "装饰音" : "Ornaments"}</span>
+            <span>{messages.note.ornaments}</span>
             <div className="stack-sm">
               {ornamentDrafts.map((draft, index) => (
                 <div className="form-grid" key={draft.id || `ornament-${index}`}>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "类型" : "Type"}</span>
+                    <span>{messages.note.type}</span>
                     <select className="field-select" value={draft.type} onChange={(event) => updateOrnamentDraft(index, { type: event.target.value as ScoreOrnament["type"] })}>
-                      {ORNAMENT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                      {ORNAMENT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{messages.enums.ornamentType[type]}</option>)}
                     </select>
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "位置" : "Placement"}</span>
+                    <span>{messages.note.placement}</span>
                     <select className="field-select" value={draft.placement ?? "above"} onChange={(event) => updateOrnamentDraft(index, { placement: event.target.value as ScoreOrnament["placement"] })}>
-                      <option value="above">above</option><option value="below">below</option>
+                      <option value="above">{messages.enums.placement.above}</option><option value="below">{messages.enums.placement.below}</option>
                     </select>
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "数值" : "Value"}</span>
+                    <span>{messages.note.value}</span>
                     <input className="field-control" type="text" maxLength={40} value={draft.value ?? ""} onChange={(event) => updateOrnamentDraft(index, { value: event.target.value })} />
                   </label>
                   <button type="button" className="button button-secondary button-ghost" onClick={() => setOrnamentDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index))}>
-                    {locale === "zh-CN" ? "移除" : "Remove"}
+                    {messages.actions.remove}
                   </button>
                 </div>
               ))}
               <button type="button" className="button button-secondary button-ghost" onClick={addOrnamentDraft} disabled={ornamentDrafts.length >= 8}>
-                {locale === "zh-CN" ? "添加装饰音" : "Add ornament"}
+                {messages.actions.addOrnament}
               </button>
             </div>
           </div>
@@ -1039,117 +843,117 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={durationType} onChange={(event) => setDurationType(event.target.value)}>
               {DURATION_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {messages.enums.durationType[type as keyof typeof messages.enums.durationType]}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="field-group">
-            <span>Fermata</span>
+            <span>{messages.note.fermata}</span>
             <input type="checkbox" checked={fermataEnabled} onChange={(event) => setFermataEnabled(event.target.checked)} />
           </label>
 
           {fermataEnabled ? (
             <>
               <label className="field-group">
-                <span>Fermata type</span>
+                <span>{messages.note.fermataType}</span>
                 <select className="field-select" value={fermataType} onChange={(event) => setFermataType(event.target.value as "upright" | "inverted")}>
-                  <option value="upright">upright</option>
-                  <option value="inverted">inverted</option>
+                  <option value="upright">{messages.enums.fermataType.upright}</option>
+                  <option value="inverted">{messages.enums.fermataType.inverted}</option>
                 </select>
               </label>
 
               <label className="field-group">
-                <span>Fermata shape</span>
+                <span>{messages.note.fermataShape}</span>
                 <input className="field-control" type="text" maxLength={40} value={fermataShape} onChange={(event) => setFermataShape(event.target.value)} />
               </label>
             </>
           ) : null}
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "连音时值比例" : "Time modification"}</span>
+            <span>{messages.note.timeModification}</span>
             <input type="checkbox" checked={timeModificationEnabled} onChange={(event) => setTimeModificationEnabled(event.target.checked)} />
           </label>
 
           {timeModificationEnabled ? (
             <>
               <label className="field-group">
-                <span>{locale === "zh-CN" ? "实际音符数" : "Actual notes"}</span>
+                <span>{messages.note.actualNotes}</span>
                 <input className="field-control" type="number" min={1} max={64} step={1} value={actualNotes} onChange={(event) => setActualNotes(Number(event.target.value))} />
               </label>
               <label className="field-group">
-                <span>{locale === "zh-CN" ? "标准音符数" : "Normal notes"}</span>
+                <span>{messages.note.normalNotes}</span>
                 <input className="field-control" type="number" min={1} max={64} step={1} value={normalNotes} onChange={(event) => setNormalNotes(Number(event.target.value))} />
               </label>
             </>
           ) : null}
 
           <div className="field-group wide">
-            <span>{locale === "zh-CN" ? "符杠" : "Beams"}</span>
+            <span>{messages.note.beams}</span>
             <div className="stack-sm">
               {beamDrafts.map((draft, index) => (
                 <div className="form-grid" key={draft.id || `beam-${index}`}>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "层级" : "Level"}</span>
+                    <span>{messages.note.level}</span>
                     <input className="field-control" type="number" min={1} max={8} step={1} value={draft.number} onChange={(event) => updateBeamDraft(index, { number: Number(event.target.value) })} />
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "类型" : "Type"}</span>
+                    <span>{messages.note.type}</span>
                     <select className="field-select" value={draft.type} onChange={(event) => updateBeamDraft(index, { type: event.target.value as ScoreBeam["type"] })}>
-                      {BEAM_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                      {BEAM_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{messages.enums.beamType[type]}</option>)}
                     </select>
                   </label>
                   <button type="button" className="button button-secondary button-ghost" onClick={() => setBeamDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index))}>
-                    {locale === "zh-CN" ? "移除" : "Remove"}
+                    {messages.actions.remove}
                   </button>
                 </div>
               ))}
               <button type="button" className="button button-secondary button-ghost" onClick={addBeamDraft} disabled={beamDrafts.length >= 8}>
-                {locale === "zh-CN" ? "添加符杠" : "Add beam"}
+                {messages.actions.addBeam}
               </button>
             </div>
           </div>
 
           <div className="field-group wide">
-            <span>{locale === "zh-CN" ? "连音组标记" : "Tuplet markers"}</span>
+            <span>{messages.note.tupletMarkers}</span>
             <div className="stack-sm">
               {tupletDrafts.map((draft, index) => (
                 <div className="form-grid" key={draft.id || `tuplet-${index}`}>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "起止" : "Boundary"}</span>
+                    <span>{messages.note.boundary}</span>
                     <select className="field-select" value={draft.type} onChange={(event) => updateTupletDraft(index, { type: event.target.value as ScoreTuplet["type"] })}>
-                      <option value="start">start</option><option value="stop">stop</option>
+                      <option value="start">{messages.enums.tupletBoundary.start}</option><option value="stop">{messages.enums.tupletBoundary.stop}</option>
                     </select>
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "编号" : "Number"}</span>
+                    <span>{messages.note.number}</span>
                     <input className="field-control" type="number" min={1} max={99} step={1} value={draft.number ?? ""} onChange={(event) => updateTupletDraft(index, { number: event.target.value })} />
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "括号" : "Bracket"}</span>
+                    <span>{messages.note.bracket}</span>
                     <input type="checkbox" checked={draft.bracket ?? false} onChange={(event) => updateTupletDraft(index, { bracket: event.target.checked })} />
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "数字显示" : "Show number"}</span>
+                    <span>{messages.note.showNumber}</span>
                     <select className="field-select" value={draft.showNumber ?? "actual"} onChange={(event) => updateTupletDraft(index, { showNumber: event.target.value as ScoreTuplet["showNumber"] })}>
-                      <option value="actual">actual</option><option value="both">both</option><option value="none">none</option>
+                      <option value="actual">{messages.enums.tupletShowNumber.actual}</option><option value="both">{messages.enums.tupletShowNumber.both}</option><option value="none">{messages.enums.tupletShowNumber.none}</option>
                     </select>
                   </label>
                   <button type="button" className="button button-secondary button-ghost" onClick={() => setTupletDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index))}>
-                    {locale === "zh-CN" ? "移除" : "Remove"}
+                    {messages.actions.remove}
                   </button>
                 </div>
               ))}
               <button type="button" className="button button-secondary button-ghost" onClick={addTupletDraft} disabled={tupletDrafts.length >= 8}>
-                {locale === "zh-CN" ? "添加连音组" : "Add tuplet"}
+                {messages.actions.addTuplet}
               </button>
             </div>
           </div>
 
           {eventType === "rest" ? (
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "整小节休止" : "Measure rest"}</span>
+              <span>{messages.note.measureRest}</span>
               <input type="checkbox" checked={measureRest} onChange={(event) => setMeasureRest(event.target.checked)} />
             </label>
           ) : null}
@@ -1157,36 +961,36 @@ export function ScoreCorrectionPanel({
           {eventType === "note" ? (
             <>
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "延音开始" : "Tie start"}</span>
+            <span>{messages.note.tieStart}</span>
             <input type="checkbox" checked={tieStart} onChange={(event) => setTieStart(event.target.checked)} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "延音结束" : "Tie stop"}</span>
+            <span>{messages.note.tieStop}</span>
             <input type="checkbox" checked={tieStop} onChange={(event) => setTieStop(event.target.checked)} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "圆滑线开始" : "Slur start"}</span>
+            <span>{messages.note.slurStart}</span>
             <input type="checkbox" checked={slurStart} onChange={(event) => setSlurStart(event.target.checked)} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "圆滑线结束" : "Slur stop"}</span>
+            <span>{messages.note.slurStop}</span>
             <input type="checkbox" checked={slurStop} onChange={(event) => setSlurStop(event.target.checked)} />
           </label>
 
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "圆滑线编号" : "Slur number"}</span>
+            <span>{messages.note.slurNumber}</span>
             <input className="field-control" type="number" min={1} max={99} step={1} value={slurNumber} onChange={(event) => setSlurNumber(event.target.value)} />
           </label>
 
           <div className="field-group wide">
-            <span>{locale === "zh-CN" ? "演奏法" : "Articulations"}</span>
+            <span>{messages.note.articulations}</span>
             <div className="button-row">
               {ARTICULATION_OPTIONS.map((type) => (
                 <label className="field-group" key={type}>
-                  <span>{formatArticulationLabel(type, locale)}</span>
+                  <span>{messages.enums.articulation[type]}</span>
                   <input
                     type="checkbox"
                     checked={articulationDrafts[type]}
@@ -1203,64 +1007,64 @@ export function ScoreCorrectionPanel({
           </div>
 
           <div className="field-group wide">
-            <span>{locale === "zh-CN" ? "歌词" : "Lyrics"}</span>
+            <span>{messages.note.lyrics}</span>
             <div className="stack-sm">
               {lyricDrafts.map((draft, index) => (
                 <div className="form-grid" key={`lyric-${index}`}>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "段落" : "Verse"}</span>
+                    <span>{messages.note.verse}</span>
                     <input className="field-control" type="text" maxLength={20} value={draft.number} onChange={(event) => updateLyricDraft(index, "number", event.target.value)} />
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "音节" : "Syllabic"}</span>
+                    <span>{messages.note.syllabic}</span>
                     <select className="field-select" value={draft.syllabic} onChange={(event) => updateLyricDraft(index, "syllabic", event.target.value)}>
                       {LYRIC_SYLLABIC_OPTIONS.map((option) => (
                         <option key={option} value={option}>
-                          {option}
+                          {messages.enums.syllabic[option as keyof typeof messages.enums.syllabic]}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="field-group">
-                    <span>{locale === "zh-CN" ? "文本" : "Text"}</span>
+                    <span>{messages.note.text}</span>
                     <input className="field-control" type="text" maxLength={500} value={draft.text} onChange={(event) => updateLyricDraft(index, "text", event.target.value)} />
                   </label>
                   <div className="button-row">
                     <button type="button" className="button button-secondary button-ghost" onClick={() => removeLyricDraft(index)}>
-                      {locale === "zh-CN" ? "移除" : "Remove"}
+                      {messages.actions.remove}
                     </button>
                   </div>
                 </div>
               ))}
               <div className="button-row">
                 <button type="button" className="button button-secondary button-ghost" onClick={addLyricDraft} disabled={lyricDrafts.length >= 8}>
-                  {locale === "zh-CN" ? "添加歌词行" : "Add lyric line"}
+                  {messages.actions.addLyric}
                 </button>
               </div>
             </div>
           </div>
 
           <div className="field-group wide">
-            <span>{locale === "zh-CN" ? "指法" : "Fingerings"}</span>
+            <span>{messages.note.fingerings}</span>
             <div className="stack-sm">
               {fingeringDrafts.map((draft, index) => (
                 <div className="form-grid" key={`fingering-${index}`}>
                   <label className="field-group">
                     <span>
-                      {locale === "zh-CN" ? "指法" : "Fingering"} {index + 1}
+                      {formatMessage(messages.note.fingering, { number: formatNumber(index + 1, locale) })}
                     </span>
                     <input className="field-control" type="text" maxLength={50} value={draft} onChange={(event) => updateFingeringDraft(index, event.target.value)} />
                   </label>
                   <div className="button-row">
                     <button type="button" className="button button-secondary button-ghost" onClick={() => removeFingeringDraft(index)}>
-                      {locale === "zh-CN" ? "移除" : "Remove"}
+                      {messages.actions.remove}
                     </button>
                   </div>
                 </div>
               ))}
               <div className="button-row">
                 <button type="button" className="button button-secondary button-ghost" onClick={addFingeringDraft} disabled={fingeringDrafts.length >= 8}>
-                  {locale === "zh-CN" ? "添加指法" : "Add fingering"}
+                  {messages.actions.addFingering}
                 </button>
               </div>
             </div>
@@ -1285,7 +1089,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={selectedPartId} onChange={(event) => setSelectedPartId(event.target.value)}>
               {scoreJson.parts.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {formatPartPreview(part)}
+                  {formatPartPreview(part, messages, locale)}
                 </option>
               ))}
             </select>
@@ -1304,10 +1108,10 @@ export function ScoreCorrectionPanel({
           <label className="field-group">
             <span>{partCopy.instrumentPreset}</span>
             <select className="field-select" value={partMidiProgram} onChange={(event) => setPartMidiProgram(event.target.value)}>
-              <option value="">No preset</option>
+              <option value="">{partCopy.noPreset}</option>
               {MIDI_PROGRAM_PRESETS.map((preset) => (
                 <option key={preset.program} value={String(preset.program)}>
-                  {preset.label} ({preset.program})
+                  {formatMidiPresetLabel(preset.program, messages, locale)}
                 </option>
               ))}
             </select>
@@ -1349,7 +1153,7 @@ export function ScoreCorrectionPanel({
         <form className="correction-panel" onSubmit={handleSaveMeasureAttributes}>
           <label className="field-group wide">
             <span>{measureCopy.choose}</span>
-            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => `${measure.partName} m.${measure.number} ${formatMeasureAttributes(measure)}`} />
+            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => formatEntityPreview(measure.partName, measure.number, formatMeasureAttributes(measure, messages, locale), messages)} />
           </label>
 
           <label className="field-group">
@@ -1367,7 +1171,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={keyMode} onChange={(event) => setKeyMode(event.target.value as "major" | "minor")}>
               {KEY_MODE_OPTIONS.map((mode) => (
                 <option key={mode} value={mode}>
-                  {mode}
+                  {messages.enums.keyMode[mode]}
                 </option>
               ))}
             </select>
@@ -1390,23 +1194,23 @@ export function ScoreCorrectionPanel({
           </label>
 
           <label className="field-group">
-            <span>{measureCopy.clefSign ?? "Clef"}</span>
+            <span>{measureCopy.clefSign}</span>
             <select className="field-select" value={clefSign} onChange={(event) => setClefSign(event.target.value as ScoreClef["sign"])}>
               {CLEF_SIGN_OPTIONS.map((sign) => (
                 <option key={sign} value={sign}>
-                  {formatClefSign(sign)}
+                  {enumLabel(messages.enums.clef, sign)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="field-group">
-            <span>{measureCopy.clefLine ?? "Clef line"}</span>
+            <span>{measureCopy.clefLine}</span>
             <input className="field-control" type="number" min={1} max={5} step={1} value={clefLine} onChange={(event) => setClefLine(Number(event.target.value))} />
           </label>
 
           <label className="field-group">
-            <span>{measureCopy.clefOctaveChange ?? "Clef octave"}</span>
+            <span>{measureCopy.clefOctaveChange}</span>
             <input
               className="field-control"
               type="number"
@@ -1430,12 +1234,12 @@ export function ScoreCorrectionPanel({
 
           <label className="field-group">
             <span>{measureCopy.measureWidth}</span>
-            <input className="field-control" type="number" min={20} max={2000} step={1} value={layoutMeasureWidth} onChange={(event) => setLayoutMeasureWidth(event.target.value)} placeholder="auto" />
+            <input className="field-control" type="number" min={20} max={2000} step={1} value={layoutMeasureWidth} onChange={(event) => setLayoutMeasureWidth(event.target.value)} placeholder={measureCopy.automatic} />
           </label>
 
           <label className="field-group">
             <span>{measureCopy.staffDistance}</span>
-            <input className="field-control" type="number" min={10} max={500} step={1} value={layoutStaffDistance} onChange={(event) => setLayoutStaffDistance(event.target.value)} placeholder="auto" />
+            <input className="field-control" type="number" min={10} max={500} step={1} value={layoutStaffDistance} onChange={(event) => setLayoutStaffDistance(event.target.value)} placeholder={measureCopy.automatic} />
           </label>
 
           <div className="button-row wide">
@@ -1456,7 +1260,7 @@ export function ScoreCorrectionPanel({
         >
           <label className="field-group wide">
             <span>{harmonyCopy.choose}</span>
-            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => `${measure.partName} m.${measure.number} ${formatHarmonyPreview(measure)}`} />
+            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => formatEntityPreview(measure.partName, measure.number, formatHarmonyPreview(measure, messages), messages)} />
           </label>
 
           <label className="field-group">
@@ -1480,7 +1284,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={harmonyKind} onChange={(event) => setHarmonyKind(event.target.value)}>
               {HARMONY_KIND_OPTIONS.map((kind) => (
                 <option key={kind} value={kind}>
-                  {kind}
+                  {enumLabel(messages.enums.harmonyKind, kind)}
                 </option>
               ))}
             </select>
@@ -1512,7 +1316,7 @@ export function ScoreCorrectionPanel({
         >
           <label className="field-group wide">
             <span>{tempoCopy.choose}</span>
-            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => `${measure.partName} m.${measure.number} ${formatTempoPreview(measure)}`} />
+            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => formatEntityPreview(measure.partName, measure.number, formatTempoPreview(measure, messages, locale), messages)} />
           </label>
 
           <label className="field-group">
@@ -1531,7 +1335,7 @@ export function ScoreCorrectionPanel({
               }}
             >
               {(selectedMeasure.tempos ?? []).map((tempo) => (
-                <option key={tempo.id} value={tempo.id}>{formatTempoEvent(tempo)}</option>
+                <option key={tempo.id} value={tempo.id}>{formatTempoEvent(tempo, messages, locale)}</option>
               ))}
               <option value="__new__">{tempoCopy.newEvent}</option>
             </select>
@@ -1547,7 +1351,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={tempoBeatUnit} onChange={(event) => setTempoBeatUnit(event.target.value)}>
               {TEMPO_BEAT_UNIT_OPTIONS.map((unit) => (
                 <option key={unit} value={unit}>
-                  {unit}
+                  {enumLabel(messages.enums.tempoBeatUnit, unit)}
                 </option>
               ))}
             </select>
@@ -1563,7 +1367,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={tempoPlacement} onChange={(event) => setTempoPlacement(event.target.value as "above" | "below")}>
               {DYNAMIC_PLACEMENT_OPTIONS.map((placement) => (
                 <option key={placement} value={placement}>
-                  {placement}
+                  {messages.enums.placement[placement]}
                 </option>
               ))}
             </select>
@@ -1590,7 +1394,7 @@ export function ScoreCorrectionPanel({
         >
           <label className="field-group wide">
             <span>{wedgeCopy.choose}</span>
-            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => `${measure.partName} m.${measure.number} ${formatWedgePreview(measure)}`} />
+            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => formatEntityPreview(measure.partName, measure.number, formatWedgePreview(measure, messages), messages)} />
           </label>
 
           <label className="field-group">
@@ -1598,7 +1402,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={wedgeType} onChange={(event) => setWedgeType(event.target.value as ScoreWedge["type"])}>
               {WEDGE_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {messages.enums.wedgeType[type]}
                 </option>
               ))}
             </select>
@@ -1609,7 +1413,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={wedgePlacement} onChange={(event) => setWedgePlacement(event.target.value as "above" | "below")}>
               {DYNAMIC_PLACEMENT_OPTIONS.map((placement) => (
                 <option key={placement} value={placement}>
-                  {placement}
+                  {messages.enums.placement[placement]}
                 </option>
               ))}
             </select>
@@ -1641,7 +1445,7 @@ export function ScoreCorrectionPanel({
         >
           <label className="field-group wide">
             <span>{dynamicCopy.choose}</span>
-            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => `${measure.partName} m.${measure.number} ${formatDynamicPreview(measure)}`} />
+            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => formatEntityPreview(measure.partName, measure.number, formatDynamicPreview(measure, messages), messages)} />
           </label>
 
           <label className="field-group">
@@ -1660,7 +1464,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={dynamicPlacement} onChange={(event) => setDynamicPlacement(event.target.value as "above" | "below")}>
               {DYNAMIC_PLACEMENT_OPTIONS.map((placement) => (
                 <option key={placement} value={placement}>
-                  {placement}
+                  {messages.enums.placement[placement]}
                 </option>
               ))}
             </select>
@@ -1687,7 +1491,7 @@ export function ScoreCorrectionPanel({
         >
           <label className="field-group wide">
             <span>{barlineCopy.choose}</span>
-            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => `${measure.partName} m.${measure.number} ${formatBarlinePreview(measure)}`} />
+            <ScalableEntityPicker items={measures} value={selectedMeasureId} onChange={setSelectedMeasureId} formatLabel={(measure) => formatEntityPreview(measure.partName, measure.number, formatBarlinePreview(measure, messages, locale), messages)} />
           </label>
 
           <label className="field-group">
@@ -1695,7 +1499,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={barlineLocation} onChange={(event) => setBarlineLocation(event.target.value as "left" | "right" | "middle")}>
               {BARLINE_LOCATION_OPTIONS.map((location) => (
                 <option key={location} value={location}>
-                  {location}
+                  {messages.enums.barlineLocation[location]}
                 </option>
               ))}
             </select>
@@ -1706,7 +1510,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={barlineStyle} onChange={(event) => setBarlineStyle(event.target.value)}>
               {BARLINE_STYLE_OPTIONS.map((style) => (
                 <option key={style} value={style}>
-                  {style}
+                  {enumLabel(messages.enums.barlineStyle, style)}
                 </option>
               ))}
             </select>
@@ -1717,7 +1521,7 @@ export function ScoreCorrectionPanel({
             <select className="field-select" value={repeatDirection} onChange={(event) => setRepeatDirection(event.target.value)}>
               {REPEAT_DIRECTION_OPTIONS.map((repeat) => (
                 <option key={repeat} value={repeat}>
-                  {repeat}
+                  {enumLabel(messages.enums.repeatDirection, repeat)}
                 </option>
               ))}
             </select>
@@ -1748,7 +1552,11 @@ export function ScoreCorrectionPanel({
         </form>
       ) : null}
 
-      {status && statusKind ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+      {status && statusKind ? (
+        <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"} aria-live="polite" aria-label={messages.aria.status}>
+          {status}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -1820,20 +1628,29 @@ function formatPitch(note: ScoreNoteEvent) {
   return `${note.pitch.step}${accidental}${note.pitch.octave}`;
 }
 
-function formatEventPreview(event: EditableScoreEvent) {
-  if (event.type === "rest") {
-    return `${event.measureRest ? "measure rest" : "rest"} ${event.durationType ?? ""} ${formatFermataPreview(event)}`.trim();
-  }
-
-  return `${formatPitch(event)} ${event.durationType ?? ""} ${formatTiePreview(event)} ${formatSlurPreview(event)} ${formatArticulationPreview(event)} ${formatFermataPreview(event)} ${formatLyricPreview(event)} ${formatFingeringPreview(event)}`.trim();
+function enumLabel(messages: Readonly<Record<string, string>>, value: string | null | undefined) {
+  return value ? messages[value] ?? value : "";
 }
 
-function formatTiePreview(note: ScoreNoteEvent) {
+function formatEntityPreview(part: string, measure: string, preview: string, messages: ScoreCorrectionMessages) {
+  return formatMessage(messages.previews.entity, { part, measure, preview });
+}
+
+function formatEventPreview(event: EditableScoreEvent, messages: ScoreCorrectionMessages) {
+  const durationType = enumLabel(messages.enums.durationType, event.durationType);
+  if (event.type === "rest") {
+    return `${event.measureRest ? messages.previews.measureRest : messages.previews.rest} ${durationType} ${formatFermataPreview(event, messages)}`.trim();
+  }
+
+  return `${formatPitch(event)} ${durationType} ${formatTiePreview(event, messages)} ${formatSlurPreview(event, messages)} ${formatArticulationPreview(event, messages)} ${formatFermataPreview(event, messages)} ${formatLyricPreview(event)} ${formatFingeringPreview(event)}`.trim();
+}
+
+function formatTiePreview(note: ScoreNoteEvent, messages: ScoreCorrectionMessages) {
   if (note.ties.length === 0) {
     return "";
   }
 
-  return `[tie ${note.ties.map((tie) => tie.type).join("/")}]`;
+  return `[${messages.previews.tie} ${note.ties.map((tie) => enumLabel(messages.enums.tupletBoundary, tie.type)).join("/")}]`;
 }
 
 function lyricsToDrafts(lyrics: ScoreLyric[]): LyricDraft[] {
@@ -1939,44 +1756,19 @@ function fermatasFromDraft(enabled: boolean, type: "upright" | "inverted", shape
   ];
 }
 
-function formatArticulationPreview(note: ScoreNoteEvent) {
-  const text = note.articulations?.map((articulation) => articulation.type).join("/");
+function formatArticulationPreview(note: ScoreNoteEvent, messages: ScoreCorrectionMessages) {
+  const text = note.articulations?.map((articulation) => enumLabel(messages.enums.articulation, articulation.type)).join("/");
   return text ? `[${text}]` : "";
 }
 
-function formatFermataPreview(event: ScoreEvent) {
-  const text = event.fermatas?.map((fermata) => [fermata.type, fermata.shape].filter(Boolean).join(" ")).filter(Boolean).join("/");
-  return event.fermatas?.length ? `[fermata${text ? ` ${text}` : ""}]` : "";
+function formatFermataPreview(event: ScoreEvent, messages: ScoreCorrectionMessages) {
+  const text = event.fermatas?.map((fermata) => [enumLabel(messages.enums.fermataType, fermata.type), fermata.shape].filter(Boolean).join(" ")).filter(Boolean).join("/");
+  return event.fermatas?.length ? `[${messages.previews.fermata}${text ? ` ${text}` : ""}]` : "";
 }
 
-function formatSlurPreview(note: ScoreNoteEvent) {
-  const text = note.slurs?.map((slur) => `${slur.type}${slur.number ? `#${slur.number}` : ""}`).join("/");
-  return text ? `[slur ${text}]` : "";
-}
-
-function formatArticulationLabel(type: ScoreArticulation["type"], locale: string) {
-  if (type === "breath-mark") {
-    return "Breath";
-  }
-
-  if (type === "caesura") {
-    return "Caesura";
-  }
-
-  if (locale !== "zh-CN") {
-    return type;
-  }
-
-  switch (type) {
-    case "accent":
-      return "重音";
-    case "staccato":
-      return "断奏";
-    case "tenuto":
-      return "保持音";
-    default:
-      return type;
-  }
+function formatSlurPreview(note: ScoreNoteEvent, messages: ScoreCorrectionMessages) {
+  const text = note.slurs?.map((slur) => `${enumLabel(messages.enums.tupletBoundary, slur.type)}${slur.number ? `#${slur.number}` : ""}`).join("/");
+  return text ? `[${messages.previews.slur} ${text}]` : "";
 }
 
 function fingeringsToDrafts(fingerings: string[] | undefined): string[] {
@@ -1988,90 +1780,90 @@ function normalizeFingeringDrafts(drafts: string[]) {
   return drafts.map((draft) => draft.trim()).filter(Boolean);
 }
 
-function formatMeasureAttributes(measure: ScoreMeasure) {
-  const key = measure.attributes?.key ? `key ${measure.attributes.key.fifths} ${measure.attributes.key.mode ?? "major"}` : "key -";
-  const time = measure.attributes?.time ? `${measure.attributes.time.beats}/${measure.attributes.time.beatType}` : "time -";
+function formatMeasureAttributes(measure: ScoreMeasure, messages: ScoreCorrectionMessages, locale: SupportedLocale) {
+  const key = measure.attributes?.key
+    ? `${messages.previews.key} ${formatNumber(measure.attributes.key.fifths, locale)} ${enumLabel(messages.enums.keyMode, measure.attributes.key.mode ?? "major")}`
+    : `${messages.previews.key} -`;
+  const time = measure.attributes?.time ? `${messages.previews.time} ${measure.attributes.time.beats}/${measure.attributes.time.beatType}` : `${messages.previews.time} -`;
   const clef = measure.attributes?.clef
-    ? `clef ${formatClefSign(measure.attributes.clef.sign)}${measure.attributes.clef.line ? ` line ${measure.attributes.clef.line}` : ""}${
-        measure.attributes.clef.octaveChange ? ` octave ${measure.attributes.clef.octaveChange}` : ""
+    ? `${messages.previews.clef} ${enumLabel(messages.enums.clef, measure.attributes.clef.sign)}${measure.attributes.clef.line ? ` ${messages.previews.line} ${formatNumber(measure.attributes.clef.line, locale)}` : ""}${
+        measure.attributes.clef.octaveChange ? ` ${messages.previews.octave} ${formatNumber(measure.attributes.clef.octaveChange, locale)}` : ""
       }`
-    : "clef -";
+    : `${messages.previews.clef} -`;
   return `${key} ${time} ${clef}`;
 }
 
-function formatClefSign(sign: ScoreClef["sign"]) {
-  switch (sign) {
-    case "G":
-      return "G / treble";
-    case "F":
-      return "F / bass";
-    case "C":
-      return "C / alto-tenor";
-    case "percussion":
-      return "Percussion";
-    case "TAB":
-      return "TAB";
-    default:
-      return sign;
-  }
+function formatMidiPresetLabel(program: number, messages: ScoreCorrectionMessages, locale: SupportedLocale) {
+  const name = enumLabel(messages.midiPresets, String(program)) || messages.part.midiProgram;
+  return `${name} (${formatNumber(program, locale)})`;
 }
 
-function formatPartPreview(part: ScorePart) {
+function formatPartPreview(part: ScorePart, messages: ScoreCorrectionMessages, locale: SupportedLocale) {
   const abbreviation = part.abbreviation ? ` (${part.abbreviation})` : "";
-  const preset = MIDI_PROGRAM_PRESETS.find((item) => item.program === part.midiProgram);
-  const midiProgram = part.midiProgram ? `${preset?.label ?? "program"} ${part.midiProgram}` : "no program";
+  const midiProgram = part.midiProgram
+    ? formatMessage(messages.previews.program, {
+        name: enumLabel(messages.midiPresets, String(part.midiProgram)) || messages.part.midiProgram,
+        number: formatNumber(part.midiProgram, locale),
+      })
+    : messages.previews.noProgram;
   return `${part.name}${abbreviation} | ${midiProgram}`;
 }
 
-function formatHarmonyPreview(measure: ScoreMeasure) {
+function formatHarmonyPreview(measure: ScoreMeasure, messages: ScoreCorrectionMessages) {
   const harmony = measure.harmonies?.[0];
   if (!harmony) {
     return "-";
   }
 
   const accidental = harmony.rootAlter > 0 ? "#".repeat(harmony.rootAlter) : harmony.rootAlter < 0 ? "b".repeat(Math.abs(harmony.rootAlter)) : "";
-  return harmony.text || `${harmony.rootStep}${accidental} ${harmony.kind}`;
+  return harmony.text || `${harmony.rootStep}${accidental} ${enumLabel(messages.enums.harmonyKind, harmony.kind)}`;
 }
 
-function formatTempoPreview(measure: ScoreMeasure) {
+function formatTempoPreview(measure: ScoreMeasure, messages: ScoreCorrectionMessages, locale: SupportedLocale) {
   const tempos = measure.tempos ?? [];
   if (tempos.length === 0) {
     return "-";
   }
 
-  return tempos.map(formatTempoEvent).join("; ");
+  return tempos.map((tempo) => formatTempoEvent(tempo, messages, locale)).join("; ");
 }
 
-function formatTempoEvent(tempo: ScoreTempo) {
-  const offset = tempo.offsetDivisions ? `@${tempo.offsetDivisions}` : "@0";
-  return [tempo.beatUnit ?? "quarter", `=${tempo.bpm}`, offset, tempo.placement].filter(Boolean).join(" ");
+function formatTempoEvent(tempo: ScoreTempo, messages: ScoreCorrectionMessages, locale: SupportedLocale) {
+  const offset = `@${formatNumber(tempo.offsetDivisions ?? 0, locale)}`;
+  return [enumLabel(messages.enums.tempoBeatUnit, tempo.beatUnit ?? "quarter"), `=${formatNumber(tempo.bpm, locale)}`, offset, enumLabel(messages.enums.placement, tempo.placement)].filter(Boolean).join(" ");
 }
 
-function formatDynamicPreview(measure: ScoreMeasure) {
+function formatDynamicPreview(measure: ScoreMeasure, messages: ScoreCorrectionMessages) {
   const dynamic = measure.dynamics?.[0];
   if (!dynamic) {
     return "-";
   }
 
-  return [dynamic.value, dynamic.placement].filter(Boolean).join(" ");
+  return [dynamic.value, enumLabel(messages.enums.placement, dynamic.placement)].filter(Boolean).join(" ");
 }
 
-function formatWedgePreview(measure: ScoreMeasure) {
+function formatWedgePreview(measure: ScoreMeasure, messages: ScoreCorrectionMessages) {
   const wedge = measure.wedges?.[0];
   if (!wedge) {
     return "-";
   }
 
-  return [wedge.type, wedge.placement, wedge.number ? `#${wedge.number}` : ""].filter(Boolean).join(" ");
+  return [enumLabel(messages.enums.wedgeType, wedge.type), enumLabel(messages.enums.placement, wedge.placement), wedge.number ? `#${wedge.number}` : ""].filter(Boolean).join(" ");
 }
 
-function formatBarlinePreview(measure: ScoreMeasure) {
+function formatBarlinePreview(measure: ScoreMeasure, messages: ScoreCorrectionMessages, locale: SupportedLocale) {
   const barline = measure.barlines?.[0];
   if (!barline) {
     return "-";
   }
 
-  return [barline.location, barline.barStyle, barline.repeatDirection, barline.repeatTimes ? `x${barline.repeatTimes}` : "", barline.ending ? `ending ${barline.ending.number} ${barline.ending.type}` : ""].filter(Boolean).join(" ");
+  return [
+    enumLabel(messages.enums.barlineLocation, barline.location),
+    enumLabel(messages.enums.barlineStyle, barline.barStyle),
+    enumLabel(messages.enums.repeatDirection, barline.repeatDirection),
+    barline.repeatTimes ? `×${formatNumber(barline.repeatTimes, locale)}` : "",
+    barline.ending ? `${messages.previews.ending} ${barline.ending.number} ${messages.enums.endingType[barline.ending.type]}` : "",
+  ].filter(Boolean).join(" ");
 }
 
 function formatLyricPreview(note: ScoreNoteEvent) {

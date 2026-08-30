@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { AnalyticsConsentMessages } from "@score/i18n";
 import {
   analyticsConsentKey,
   analyticsReadyEvent,
@@ -66,7 +67,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
   );
 }
 
-export function ProductAnalytics() {
+export function ProductAnalytics({ copy }: { copy: AnalyticsConsentMessages }) {
   const { locale } = useAppLocale();
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true";
@@ -75,6 +76,8 @@ export function ProductAnalytics() {
   const gaId = configuredGaId && /^G-[A-Z0-9]+$/u.test(configuredGaId) ? configuredGaId : undefined;
   const clarityId = configuredClarityId && /^[a-z0-9]+$/u.test(configuredClarityId) ? configuredClarityId : undefined;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://scoretransposer.com";
+  const privacyParams = new URLSearchParams({ locale, next: "/privacy" });
+  const privacyHref = `${siteUrl.replace(/\/$/u, "")}/api/locale?${privacyParams.toString()}`;
 
   useEffect(() => {
     const cookieConsent = readAnalyticsConsent();
@@ -94,14 +97,14 @@ export function ProductAnalytics() {
   };
 
   return (
-    <aside className="analytics-consent" aria-label={locale === "zh-CN" ? "分析 Cookie 选择" : "Analytics cookie choice"}>
+    <aside className="analytics-consent" aria-label={copy.ariaLabel}>
       <p>
-        {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进免费编辑与升级流程。" : "We use analytics only after consent to improve the free editing and upgrade flow."}{" "}
-        <a href={`${siteUrl.replace(/\/$/u, "")}/privacy`}>{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</a>
+        {copy.body}{" "}
+        <a href={privacyHref}>{copy.privacy}</a>
       </p>
       <div className="button-row">
-        <button type="button" className="button button-primary" onClick={() => choose("granted")}>{locale === "zh-CN" ? "同意" : "Accept"}</button>
-        <button type="button" className="button button-tertiary" onClick={() => choose("denied")}>{locale === "zh-CN" ? "拒绝" : "Decline"}</button>
+        <button type="button" className="button button-primary" onClick={() => choose("granted")}>{copy.accept}</button>
+        <button type="button" className="button button-tertiary" onClick={() => choose("denied")}>{copy.decline}</button>
       </div>
     </aside>
   );

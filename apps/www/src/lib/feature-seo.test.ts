@@ -3,8 +3,20 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { LOCALE_ROUTE_PREFIXES, SUPPORTED_LOCALES } from "@score/i18n";
 import { buildFeatureExampleFile } from "./feature-example-files.js";
-import { getFeaturePageUi, localizeFeaturePage } from "./feature-page-localization.js";
+import {
+  FEATURE_OPEN_GRAPH_LOCALES,
+  getFeatureIndexCatalog,
+  getFeaturePageTranslationCatalog,
+  getFeaturePageUi,
+  getFeaturePracticeCopy,
+  localizeFeatureEvidence,
+  localizeFeaturePage,
+} from "./feature-page-localization.js";
+import { BETA_FEATURE_IDS, FEATURE_TRANSLATION_SLUGS, FORMAL_FEATURE_IDS } from "./feature-localization/types.js";
+import { localizePublicHref } from "./locale-routing.js";
+import { getFeatureProductMedia, type FeatureProductMediaSlug } from "./product-media/index.js";
 import { auditFeatureSeo, buildFeatureSeoManifest, buildSeoSuggestions, featureSeoRecords } from "./feature-seo.js";
 import { platformFeaturePages } from "./platform-feature-pages.js";
 
@@ -179,18 +191,117 @@ test("each feature publishes parseable native-format input and output examples",
   assert.notDeepEqual(sourceWav.bytes, shiftedWav.bytes, "transposed audio must not reuse the source waveform");
 });
 
-test("every public feature page has complete Chinese content with an English fallback", () => {
-  for (const page of platformFeaturePages) {
-    const chinese = localizeFeaturePage(page, "zh-CN");
-    assert.match(chinese.title, /[\u3400-\u9fff]/u, `${page.slug} needs a Chinese title`);
-    assert.match(chinese.description, /[\u3400-\u9fff]/u, `${page.slug} needs a Chinese description`);
-    assert.equal(chinese.canonical, page.canonical);
-    assert.equal(chinese.workflow.length, page.workflow.length);
-    assert.equal(chinese.details.length, page.details.length);
-    assert.ok(chinese.modules.some((module) => /[\u3400-\u9fff]/u.test(module)));
-    assert.strictEqual(localizeFeaturePage(page, "en"), page);
-  }
+test("feature-page catalogs cover the exact approved inventory in every translated locale", () => {
+  const expectedSlugs = [...FEATURE_TRANSLATION_SLUGS].sort();
+  assert.deepEqual(platformFeaturePages.map((page) => page.slug).sort(), expectedSlugs);
+  assert.equal(getFeaturePageTranslationCatalog("en"), null);
 
-  assert.equal(getFeaturePageUi("zh-CN").actions.scores, "打开我的乐谱");
-  assert.equal(getFeaturePageUi("en").actions.scores, "Open score projects");
+  for (const locale of SUPPORTED_LOCALES.filter((item) => item !== "en")) {
+    const catalog = getFeaturePageTranslationCatalog(locale);
+    assert.ok(catalog, `${locale} must have a feature-page catalog`);
+    assert.deepEqual(Object.keys(catalog).sort(), expectedSlugs, `${locale} must translate every approved feature slug`);
+  }
+});
+
+test("every feature page has complete nine-locale content without changing route or product truth", () => {
+  for (const page of platformFeaturePages) {
+    assert.strictEqual(localizeFeaturePage(page, "en"), page);
+
+    for (const locale of SUPPORTED_LOCALES.filter((item) => item !== "en")) {
+      const localized = localizeFeaturePage(page, locale);
+      assert.notEqual(localized.title, page.title, `${locale}/${page.slug} must not fall back to the English title`);
+      assert.notEqual(localized.description, page.description, `${locale}/${page.slug} must not fall back to the English description`);
+      assert.notDeepEqual(localized.keywords, page.keywords, `${locale}/${page.slug} needs localized metadata keywords`);
+      assert.equal(localized.slug, page.slug);
+      assert.equal(localized.canonical, page.canonical);
+      assert.equal(localized.status, page.status);
+      assert.equal(localized.releaseRequirement, page.releaseRequirement);
+      assert.equal(localized.primaryAction, page.primaryAction);
+      assert.equal(localized.updatedAt, page.updatedAt);
+      assert.equal(localized.modules.length, page.modules.length);
+      assert.equal(localized.workflow.length, page.workflow.length);
+      assert.equal(localized.details.length, page.details.length);
+      assert.ok(localized.modules.every((module) => module.trim().length > 0));
+      assert.ok(localized.workflow.every((step) => step.title.trim() && step.body.trim()));
+      assert.ok(localized.details.every((detail) => detail.title.trim() && detail.body.trim()));
+      assert.ok(localized.guardrail.trim());
+    }
+  }
+});
+
+test("feature index, shell UI, practice controls, and Open Graph locale maps cover all nine locales", () => {
+  const englishIndex = getFeatureIndexCatalog("en");
+  const englishUi = getFeaturePageUi("en");
+  const englishPractice = getFeaturePracticeCopy("en");
+
+  assert.deepEqual(Object.keys(FEATURE_OPEN_GRAPH_LOCALES), [...SUPPORTED_LOCALES]);
+  assert.equal(new Set(Object.values(FEATURE_OPEN_GRAPH_LOCALES)).size, SUPPORTED_LOCALES.length);
+
+  for (const locale of SUPPORTED_LOCALES) {
+    const index = getFeatureIndexCatalog(locale);
+    const ui = getFeaturePageUi(locale);
+    const practice = getFeaturePracticeCopy(locale);
+    assert.deepEqual(Object.keys(index.formal).sort(), [...FORMAL_FEATURE_IDS].sort());
+    assert.deepEqual(Object.keys(index.betaFeatures).sort(), [...BETA_FEATURE_IDS].sort());
+    assert.ok(Object.values(index.formal).every((item) => item.title.trim() && item.body.trim()));
+    assert.ok(Object.values(index.betaFeatures).every((item) => item.title.trim() && item.body.trim()));
+    assert.ok(Object.values(practice).every((value) => typeof value === "string" && value.trim().length > 0));
+    assert.ok(ui.faqEyebrow.trim());
+
+    if (locale !== "en") {
+      assert.notEqual(index.metadata.title, englishIndex.metadata.title, `${locale} feature-index metadata must be localized`);
+      assert.notEqual(index.page.title, englishIndex.page.title, `${locale} feature-index heading must be localized`);
+      assert.notEqual(ui.actions.scores, englishUi.actions.scores, `${locale} feature action must be localized`);
+      assert.notEqual(practice.title, englishPractice.title, `${locale} practice demo must be localized`);
+      assert.notEqual(practice.readyDetail, englishPractice.readyDetail, `${locale} practice state detail must be localized`);
+    }
+  }
+});
+
+test("localized feature evidence renders exact-locale media or an explicit pending placeholder", () => {
+  for (const page of platformFeaturePages) {
+    const source = featureSeoRecords[page.slug];
+    for (const locale of SUPPORTED_LOCALES) {
+      const localizedPage = localizeFeaturePage(page, locale);
+      const slug = page.slug as FeatureProductMediaSlug;
+      const expectedMedia = getFeatureProductMedia(slug, locale);
+      const localized = localizeFeatureEvidence(source, locale, localizedPage.title, slug);
+      if (expectedMedia) {
+        assert.ok(localized.screenshot, `${locale}/${page.slug} ready media`);
+        assert.equal(localized.pendingMedia, null);
+        assert.equal(localized.screenshot.src, expectedMedia.src);
+        assert.equal(localized.screenshot.width, expectedMedia.width);
+        assert.equal(localized.screenshot.height, expectedMedia.height);
+        assert.equal(localized.screenshot.capturedAt, expectedMedia.capturedAt);
+        assert.equal(localized.screenshot.sourceLocale, locale);
+      } else {
+        assert.equal(localized.screenshot, null, `${locale}/${page.slug} must not display another locale`);
+        assert.ok(localized.pendingMedia?.title.trim());
+        assert.ok(localized.pendingMedia?.body.trim());
+        assert.ok(localized.pendingMedia?.ariaLabel.trim());
+      }
+      assert.equal(localized.example.input, source.example.input);
+      assert.equal(localized.example.output, source.example.output);
+      if (locale !== "en") assert.notEqual(localized.example.notes, source.example.notes);
+    }
+  }
+});
+
+test("feature pages use the localized homepage pricing anchor and escape localized JSON-LD", () => {
+  const detailSource = fs.readFileSync(path.join(process.cwd(), "src", "app", "[featureSlug]", "page.tsx"), "utf8");
+  const indexSource = fs.readFileSync(path.join(process.cwd(), "src", "app", "features", "page.tsx"), "utf8");
+  const openGraphSource = fs.readFileSync(path.join(process.cwd(), "src", "app", "[featureSlug]", "opengraph-image.tsx"), "utf8");
+  const escapedJsonLd = 'JSON.stringify(structuredData).replaceAll("<", "\\\\u003c")';
+
+  assert.ok(detailSource.includes('localizePublicHref("/#pricing", locale)'), "pricing CTA must use the real homepage section");
+  assert.equal(detailSource.includes('localizePublicHref("/pricing", locale)'), false, "pricing CTA must not target a missing route");
+  assert.ok(detailSource.includes('/opengraph-image/default'), "feature metadata must target the generated Open Graph image id");
+  assert.ok(openGraphSource.includes('export const dynamic = "force-dynamic"'), "localized Open Graph images must be able to read the route locale header");
+  assert.ok(detailSource.includes(escapedJsonLd), "feature detail JSON-LD must neutralize a translated < character");
+  assert.ok(indexSource.includes(escapedJsonLd), "feature index JSON-LD must neutralize a translated < character");
+
+  for (const locale of SUPPORTED_LOCALES) {
+    const pricingHref = localizePublicHref("/#pricing", locale);
+    assert.equal(pricingHref, `${LOCALE_ROUTE_PREFIXES[locale] || "/"}#pricing`);
+  }
 });

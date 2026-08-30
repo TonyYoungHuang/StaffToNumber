@@ -1,11 +1,21 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { formatDateTime } from "@score/i18n";
 import type { PaymentProvider, PaymentOrderStatus } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEventOnce } from "../lib/analytics";
-import { getAppActivateUrl, getAppHomeUrl, getAppRegisterUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../lib/site";
+import type { CheckoutStatusCopy } from "../lib/checkout-localization";
+import { localizePublicHref } from "../lib/locale-routing";
+import {
+  getAppActivateUrl,
+  getAppRegisterUrl,
+  getAppScoreProjectsUrl,
+  getCheckoutUrl,
+  getSupportUrl,
+  siteConfig,
+} from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 type PublicOrder = {
@@ -22,129 +32,29 @@ type PublicOrder = {
   paidAt: string | null;
 };
 
-type OrderPayload = {
-  order: PublicOrder | null;
-};
+type OrderPayload = { order: PublicOrder | null };
 
 export function CheckoutStatusClient({
   orderId,
   token,
   provider,
   sessionId,
+  copy,
+  translationNotice,
 }: {
   orderId: string;
   token: string;
   provider: PaymentProvider;
   sessionId?: string;
+  copy: CheckoutStatusCopy;
+  translationNotice: string;
 }) {
   const { locale } = useSiteLocale();
-  const activateUrl = getAppActivateUrl();
+  const activateUrl = getAppActivateUrl(locale);
   const checkoutUrl = getCheckoutUrl(locale);
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const copy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            pendingBadge: "订单确认中",
-            paidBadge: "支付已确认",
-            stalledBadge: "可能需要人工复核",
-            pendingTitle: "正在确认你的付款",
-            pendingBody: "如果你刚刚完成支付，系统正在核对支付渠道返回并自动发放激活码。请先保留此页面。",
-            paidTitle: "支付成功，激活码已发放",
-            paidBody: "你的订单已确认。请先保存激活码，然后到应用内完成兑换。",
-            subscriptionPaidTitle: "订阅已成功开通",
-            subscriptionPaidBody: "支付渠道已确认首期付款。请登录现有账号，或使用付款邮箱注册账号来使用订阅权益。",
-            stalledTitle: "这笔订单暂未自动确认",
-            stalledBody: "这不一定代表扣款失败。有时支付回跳信息不完整，需要再次校验或人工处理。",
-            missingTitle: "暂时没有找到可确认的订单",
-            missingBody: "支付成功页已回跳，但我们还没有找到能自动核对的订单记录。请保留支付截图、邮箱和时间，然后联系支持人工处理。",
-            errorTitle: "暂时无法读取支付状态",
-            errorBody: "网站暂时无法自动获取订单状态。你可以稍后刷新，或联系支持进行人工核查。",
-            activationCode: "激活码",
-            orderStatus: "订单状态",
-            provider: "支付渠道",
-            email: "联系邮箱",
-            redeem: "前往应用兑换",
-            openSubscription: "进入产品",
-            registerSubscription: "注册并使用订阅",
-            retry: "返回重新支付",
-            home: "返回首页",
-            contact: "联系支持",
-            nextTitle: "建议的下一步",
-            paidSteps: [
-              "先复制并保存激活码，再离开当前页面。",
-              "打开应用并兑换激活码，即可开通对应的预付访问权限。",
-              "如果兑换失败，请把激活码和订单信息一起发给支持团队。",
-            ],
-            subscriptionPaidSteps: [
-              "使用付款时填写的邮箱登录或注册 ScoreTransposer。",
-              "订阅会通过该邮箱与账号关联，无需输入激活码。",
-              "如账号内暂未显示权益，请保留订单信息并联系支持。",
-            ],
-            pendingSteps: [
-              "先不要立刻发起第二次付款。",
-              "保留当前页面，让系统继续刷新并校验支付返回。",
-              "如果仍未确认，请保留付款凭证并联系支持。",
-            ],
-            stalledSteps: [
-              "先确认支付渠道是否已经完整回跳到这个成功页。",
-              "保留付款截图、邮箱和购买时间，方便人工复核。",
-              "如果你已经通过其他渠道拿到激活码，也可以直接走兑换路径。",
-            ],
-          }
-        : {
-            pendingBadge: "Order confirmation in progress",
-            paidBadge: "Payment confirmed",
-            stalledBadge: "Manual review may be needed",
-            pendingTitle: "Confirming your payment",
-            pendingBody: "If you just paid, we are checking the provider response and issuing your activation code automatically. Keep this page open for a moment.",
-            paidTitle: "Payment successful and activation code issued",
-            paidBody: "Your order is confirmed. Save the activation code first, then redeem it inside the app.",
-            subscriptionPaidTitle: "Your subscription is active",
-            subscriptionPaidBody: "The payment provider confirmed the first payment. Sign in, or create an account with the payment email, to use your subscription.",
-            stalledTitle: "This order was not auto-confirmed yet",
-            stalledBody: "That does not always mean the charge failed. Sometimes the provider return is incomplete and needs another check or manual review.",
-            missingTitle: "We could not find a confirmed order yet",
-            missingBody: "The success page returned without an order we can verify. Keep your payment screenshot, email, and timestamp, then contact support for manual review.",
-            errorTitle: "We could not check the payment status",
-            errorBody: "The site could not read the order state automatically. Refresh shortly or contact support for a manual check.",
-            activationCode: "Activation code",
-            orderStatus: "Order status",
-            provider: "Payment provider",
-            email: "Contact email",
-            redeem: "Redeem in app",
-            openSubscription: "Open the app",
-            registerSubscription: "Create account and continue",
-            retry: "Return to checkout",
-            home: "Back to homepage",
-            contact: "Contact support",
-            nextTitle: "Recommended next steps",
-            paidSteps: [
-              "Copy and save the activation code before leaving this page.",
-              "Open the app and redeem the code to unlock the prepaid access attached to it.",
-              "If redemption fails, send the code and order details to support.",
-            ],
-            subscriptionPaidSteps: [
-              "Sign in or register with the email used at checkout.",
-              "Your subscription is linked by email, so no activation code is required.",
-              "If access is not visible yet, keep the order details and contact support.",
-            ],
-            pendingSteps: [
-              "Do not start a second payment yet.",
-              "Let the page refresh and re-check the provider response.",
-              "If confirmation still does not appear, keep your payment proof and contact support.",
-            ],
-            stalledSteps: [
-              "Check whether the provider fully returned you to this success page.",
-              "Keep the payment screenshot, email, and purchase time for manual review.",
-              "If you already have an activation code from another channel, you can use that path instead.",
-            ],
-          },
-    [locale],
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -153,14 +63,10 @@ export function CheckoutStatusClient({
 
     const load = async () => {
       const params = new URLSearchParams({ token, provider });
-      if (sessionId) {
-        params.set("sessionId", sessionId);
-      }
+      if (sessionId) params.set("sessionId", sessionId);
 
       const result = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}?${params.toString()}`);
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
 
       setLoading(false);
       if (!result.ok) {
@@ -171,19 +77,14 @@ export function CheckoutStatusClient({
       setOrder(result.data.order);
       if (result.data.order?.status === "pending" && attempts < 10) {
         attempts += 1;
-        timer = window.setTimeout(() => {
-          void load();
-        }, 3000);
+        timer = window.setTimeout(() => void load(), 3000);
       }
     };
 
     void load();
-
     return () => {
       cancelled = true;
-      if (timer) {
-        window.clearTimeout(timer);
-      }
+      if (timer) window.clearTimeout(timer);
     };
   }, [orderId, provider, sessionId, token]);
 
@@ -211,7 +112,7 @@ export function CheckoutStatusClient({
   const body = isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
   const steps = isSubscriptionPaid ? copy.subscriptionPaidSteps : isPaid ? copy.paidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
   const paidActionUrl = isSubscriptionPaid
-    ? order?.userId ? getAppHomeUrl() : getAppRegisterUrl()
+    ? order?.userId ? getAppScoreProjectsUrl(locale) : getAppRegisterUrl(locale)
     : activateUrl;
   const paidActionLabel = isSubscriptionPaid
     ? order?.userId ? copy.openSubscription : copy.registerSubscription
@@ -219,33 +120,33 @@ export function CheckoutStatusClient({
 
   return (
     <div className="surface-panel stack-xl">
-      <div className="stack-sm">
+      <div className="stack-sm" aria-live="polite">
         <StatusPill tone={isPaid ? "green" : isStalled ? "amber" : "cyan"}>{badge}</StatusPill>
         {loading ? <p className="body-copy">{copy.pendingBody}</p> : null}
         {error ? (
           <>
             <h1 className="page-title">{copy.errorTitle}</h1>
             <p className="body-copy large">{copy.errorBody}</p>
+            <p className="form-status error" role="alert">{error}</p>
           </>
         ) : null}
         {!loading && !error && order ? (
-          <>
-            <h1 className="page-title">{title}</h1>
-            <p className="body-copy large">{body}</p>
-          </>
+          <><h1 className="page-title">{title}</h1><p className="body-copy large">{body}</p></>
         ) : null}
         {!loading && !error && !order ? (
-          <>
-            <h1 className="page-title">{copy.missingTitle}</h1>
-            <p className="body-copy large">{copy.missingBody}</p>
-          </>
+          <><h1 className="page-title">{copy.missingTitle}</h1><p className="body-copy large">{copy.missingBody}</p></>
         ) : null}
+        {translationNotice ? <p className="helper-copy" role="note">{translationNotice}</p> : null}
       </div>
 
       {!loading && !error && order ? (
         <div className="metric-grid">
-          <MetricCard label={copy.orderStatus} value={translateStatus(order.status, locale)} body={isPaid ? copy.paidBody : body} />
-          <MetricCard label={copy.provider} value={translateProvider(order.provider, locale)} body={order.paidAt ?? order.id} />
+          <MetricCard label={copy.orderStatus} value={copy.statuses[order.status]} body={isPaid ? copy.paidBody : body} />
+          <MetricCard
+            label={copy.provider}
+            value={copy.providers[order.provider]}
+            body={order.paidAt ? safelyFormatDateTime(order.paidAt, locale) : order.id}
+          />
           {order.customerEmail ? <MetricCard label={copy.email} value={order.customerEmail} body={siteConfig.supportEmail} /> : null}
           {isPaid && order.activationCode ? <MetricCard label={copy.activationCode} value={order.activationCode} body={copy.paidSteps[0]} /> : null}
         </div>
@@ -254,27 +155,15 @@ export function CheckoutStatusClient({
       {!loading && !error ? (
         <Panel variant="sunken" className="stack-md">
           <h2 className="card-title">{copy.nextTitle}</h2>
-          {steps.map((item) => (
-            <p key={item} className="body-copy">
-              {item}
-            </p>
-          ))}
+          {steps.map((item) => <p key={item} className="body-copy">{item}</p>)}
           <div className="button-row">
             {isPaid ? (
-              <a href={paidActionUrl} className="public-button primary">
-                {paidActionLabel}
-              </a>
+              <a href={paidActionUrl} className="public-button primary">{paidActionLabel}</a>
             ) : (
-              <a href={checkoutUrl} className="public-button primary">
-                {copy.retry}
-              </a>
+              <a href={checkoutUrl} className="public-button primary">{copy.retry}</a>
             )}
-            <a href={getSupportUrl("payment", "checkout-success")} className="public-button tertiary">
-              {copy.contact}
-            </a>
-            <a href="/" className="public-button secondary">
-              {copy.home}
-            </a>
+            <a href={localizePublicHref(getSupportUrl("payment", "checkout-success"), locale)} className="public-button tertiary">{copy.contact}</a>
+            <a href={localizePublicHref("/", locale)} className="public-button secondary">{copy.home}</a>
           </div>
         </Panel>
       ) : null}
@@ -282,36 +171,10 @@ export function CheckoutStatusClient({
   );
 }
 
-function translateStatus(status: PaymentOrderStatus, locale: string) {
-  if (locale === "zh-CN") {
-    switch (status) {
-      case "paid":
-        return "已支付";
-      case "cancelled":
-        return "已取消";
-      case "failed":
-        return "失败";
-      default:
-        return "处理中";
-    }
+function safelyFormatDateTime(value: string, locale: Parameters<typeof formatDateTime>[1]) {
+  try {
+    return formatDateTime(value, locale);
+  } catch {
+    return value;
   }
-
-  switch (status) {
-    case "paid":
-      return "Paid";
-    case "cancelled":
-      return "Cancelled";
-    case "failed":
-      return "Failed";
-    default:
-      return "Pending";
-  }
-}
-
-function translateProvider(provider: PaymentProvider, locale: string) {
-  if (provider === "paddle") {
-    return locale === "zh-CN" ? "Paddle 收银台" : "Paddle checkout";
-  }
-
-  return locale === "zh-CN" ? "Stripe 收银台" : "Stripe checkout";
 }

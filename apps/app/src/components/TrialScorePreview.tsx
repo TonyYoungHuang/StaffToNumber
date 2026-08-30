@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES, type ScoreJson } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent, trackFunnelEventOnce } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
 import { buildSupportTemplates } from "../lib/support";
 import { accountActivationRoute } from "../lib/release";
+import {
+  ScoreReviewMessagesProvider,
+  type ScoreReviewMessages,
+} from "../lib/score-entry-messages/client";
+import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
+import { ScoreEditorMessagesProvider } from "../lib/score-editor-messages/client";
+import type { ScoreEditorMessages } from "../lib/score-editor-messages/types";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
 import { ScoreCandidateReviewWorkspace } from "./ScoreCandidateReviewWorkspace";
@@ -55,7 +63,15 @@ type AssetsPayload = {
   }>;
 };
 
-export function TrialScorePreview() {
+export function TrialScorePreview({
+  copy,
+  reviewMessages,
+  editorMessages,
+}: {
+  copy: ScoreEntryMessages["trial"];
+  reviewMessages: ScoreReviewMessages;
+  editorMessages: ScoreEditorMessages;
+}) {
   const { locale } = useAppLocale();
   const params = useParams<{ id: string }>();
   const scoreId = params?.id;
@@ -112,11 +128,14 @@ export function TrialScorePreview() {
 
   const scoreJson = score?.pendingRevision?.scoreJson ?? score?.currentRevision?.scoreJson ?? null;
   const latestDiagnostic = diagnostics[0] ?? null;
-  const diagnosticSummary = latestDiagnostic ? summarizeTrialDiagnostic(latestDiagnostic, locale) : null;
-  const supportHref = buildSupportTemplates(locale).find((item) => item.key === "job")?.href;
+  const diagnosticSummary = latestDiagnostic ? summarizeTrialDiagnostic(latestDiagnostic, locale, copy) : null;
+  const supportHref = useMemo(
+    () => buildSupportTemplates(locale).find((item) => item.key === "job")?.href,
+    [locale],
+  );
   const jobLabel = job
-    ? `${translateJobStatus(job.status, locale)}${job.status === "processing" ? ` · ${job.progressPercent}%` : ""}`
-    : locale === "zh-CN" ? "正在读取任务" : "Loading job";
+    ? `${copy.statuses[job.status]}${job.status === "processing" ? ` · ${formatNumber(job.progressPercent / 100, locale, { style: "percent", maximumFractionDigits: 0 })}` : ""}`
+    : copy.loadingJob;
 
   useEffect(() => {
     if (job?.status !== "completed" || !scoreJson) return;
@@ -130,31 +149,35 @@ export function TrialScorePreview() {
 
   if (score?.pendingRevision?.scoreJson) {
     return (
-      <ScoreCandidateReviewWorkspace
-        title={score.title}
-        scoreId={score.id}
-        revision={score.pendingRevision}
-        sourceFile={sourcePreviewAsset?.file ?? null}
-        pageFiles={omrPageFiles}
-        token={token}
-        locale={locale}
-        generatedMusicXml={musicXml}
-        selectedEventId={selectedEventId}
-        onEventSelect={setSelectedEventId}
-        onAccept={() => undefined}
-        onReject={() => undefined}
-        submittingAction={null}
-        actionError={error}
-        onCandidateUpdated={refresh}
-        onUndo={() => undefined}
-        onRedo={() => undefined}
-        canUndo={false}
-        canRedo={false}
-        restoring={false}
-        revisionStatus={null}
-        revisionStatusKind={null}
-        freeEditing
-      />
+      <ScoreReviewMessagesProvider messages={reviewMessages}>
+        <ScoreEditorMessagesProvider locale={locale} messages={editorMessages}>
+          <ScoreCandidateReviewWorkspace
+            title={score.title}
+            scoreId={score.id}
+            revision={score.pendingRevision}
+            sourceFile={sourcePreviewAsset?.file ?? null}
+            pageFiles={omrPageFiles}
+            token={token}
+            locale={locale}
+            generatedMusicXml={musicXml}
+            selectedEventId={selectedEventId}
+            onEventSelect={setSelectedEventId}
+            onAccept={() => undefined}
+            onReject={() => undefined}
+            submittingAction={null}
+            actionError={error}
+            onCandidateUpdated={refresh}
+            onUndo={() => undefined}
+            onRedo={() => undefined}
+            canUndo={false}
+            canRedo={false}
+            restoring={false}
+            revisionStatus={null}
+            revisionStatusKind={null}
+            freeEditing
+          />
+        </ScoreEditorMessagesProvider>
+      </ScoreReviewMessagesProvider>
     );
   }
 
@@ -162,13 +185,9 @@ export function TrialScorePreview() {
     <div className="page-stack">
       <section className="page-banner split">
         <div className="stack-sm">
-          <p className="eyebrow">{locale === "zh-CN" ? "免费编辑准备中" : "Preparing free editing"}</p>
-          <h1 className="page-title">{score?.title ?? (locale === "zh-CN" ? "正在读取乐谱..." : "Loading score...")}</h1>
-          <p className="body-copy large">
-            {locale === "zh-CN"
-              ? "识别完成后会进入完整免费项目，可继续校正、播放、移调、转简谱、保留版本、分享和导出；升级用于处理更多乐谱。"
-              : "When recognition finishes, the complete free project opens for correction, playback, transposition, Jianpu, versions, sharing, and export. Upgrade to process more scores."}
-          </p>
+          <p className="eyebrow">{copy.preparing}</p>
+          <h1 className="page-title">{score?.title ?? copy.loadingScore}</h1>
+          <p className="body-copy large">{copy.intro}</p>
         </div>
         <div className="stack-sm">
           <span className={`status-chip ${job?.status === "failed" ? "tone-red" : job?.status === "completed" ? "tone-green" : "tone-amber"}`}>
@@ -180,57 +199,53 @@ export function TrialScorePreview() {
               className="button button-primary"
               onClick={() => trackFunnelEvent("upgrade_click", { source: "trial_score_preview" })}
             >
-              {locale === "zh-CN" ? "开通完整功能" : "Unlock full access"}
+              {copy.unlock}
             </Link>
             <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-secondary">
-              {locale === "zh-CN" ? "返回工程库" : "Back to library"}
+              {copy.back}
             </Link>
           </div>
         </div>
       </section>
 
-      {error ? <p className="form-status error">{error}</p> : null}
+      {error ? <p className="form-status error" role="alert">{error}</p> : null}
       {job?.status === "failed" ? (
         <section className="surface-panel stack-sm">
-          <p className="form-status error">{locale === "zh-CN" ? "识别任务未能完成，请按下方建议检查文件。" : "Recognition did not finish. Check the file using the guidance below."}</p>
-          <p className="body-copy">
-            {locale === "zh-CN"
-              ? "请确认页面方向正确、谱面清晰且没有大面积阴影或裁切。免费任务失败需要人工核查额度，请不要重复付款。"
-              : "Check that the page is upright, sharply focused, and not heavily shadowed or cropped. A failed free job needs a manual quota review; do not start another payment."}
-          </p>
-          {job.errorMessage ? <details className="technical-details"><summary>{locale === "zh-CN" ? "技术详情" : "Technical details"}</summary><p className="micro-copy">{job.errorMessage}</p></details> : null}
-          {supportHref ? <a href={supportHref} className="button button-secondary">{locale === "zh-CN" ? "提交识别问题" : "Report recognition issue"}</a> : null}
+          <p className="form-status error" role="alert">{copy.failedTitle}</p>
+          <p className="body-copy">{copy.failedBody}</p>
+          {job.errorMessage ? <details className="technical-details"><summary>{copy.technicalDetails}</summary><p className="micro-copy">{job.errorMessage}</p></details> : null}
+          {supportHref ? <a href={supportHref} className="button button-secondary">{copy.reportIssue}</a> : null}
         </section>
       ) : null}
 
       {diagnosticSummary ? (
         <section className="surface-panel stack-md">
           <div className="stack-sm">
-            <p className="eyebrow">{locale === "zh-CN" ? "识别诊断" : "Recognition diagnostics"}</p>
-            <h2 className="card-title">{locale === "zh-CN" ? "先检查置信度和警告，再决定是否开通。" : "Review confidence and warnings before you upgrade."}</h2>
+            <p className="eyebrow">{copy.diagnosticsEyebrow}</p>
+            <h2 className="card-title">{copy.diagnosticsTitle}</h2>
             {diagnosticSummary.message ? <p className="body-copy">{diagnosticSummary.message}</p> : null}
             {diagnosticSummary.technicalMessage ? (
               <details className="technical-details">
-                <summary>{locale === "zh-CN" ? "技术详情" : "Technical details"}</summary>
+                <summary>{copy.technicalDetails}</summary>
                 <p className="micro-copy">{diagnosticSummary.technicalMessage}</p>
               </details>
             ) : null}
           </div>
           <div className="metric-grid">
             <div className="metric-card">
-              <p className="metric-label">{locale === "zh-CN" ? "整体置信度" : "Overall confidence"}</p>
+              <p className="metric-label">{copy.confidenceLabel}</p>
               <p className="metric-value">{diagnosticSummary.confidence}</p>
-              <p className="helper-copy">{locale === "zh-CN" ? "置信度较低时必须逐小节复核。" : "Lower confidence requires a measure-by-measure review."}</p>
+              <p className="helper-copy">{copy.confidenceHelp}</p>
             </div>
             <div className="metric-card">
-              <p className="metric-label">{locale === "zh-CN" ? "识别页数" : "Pages recognized"}</p>
+              <p className="metric-label">{copy.pagesLabel}</p>
               <p className="metric-value">{diagnosticSummary.pages}</p>
-              <p className="helper-copy">{locale === "zh-CN" ? "免费项目支持一份完整多页 PDF。" : "The free project supports one complete multi-page PDF."}</p>
+              <p className="helper-copy">{copy.pagesHelp}</p>
             </div>
             <div className="metric-card">
-              <p className="metric-label">{locale === "zh-CN" ? "警告数量" : "Warnings"}</p>
+              <p className="metric-label">{copy.warningsLabel}</p>
               <p className="metric-value">{diagnosticSummary.warnings}</p>
-              <p className="helper-copy">{locale === "zh-CN" ? "识谱引擎诊断" : diagnosticSummary.engine}</p>
+              <p className="helper-copy">{diagnosticSummary.engine || copy.engineFallback}</p>
             </div>
           </div>
         </section>
@@ -238,50 +253,44 @@ export function TrialScorePreview() {
 
       <section className="surface-panel stack-md">
         <div className="stack-sm">
-          <p className="eyebrow">{locale === "zh-CN" ? "五线谱预览" : "Staff preview"}</p>
-          <h2 className="card-title">{locale === "zh-CN" ? "Audiveris 识别候选" : "Audiveris recognition candidate"}</h2>
+          <p className="eyebrow">{copy.previewEyebrow}</p>
+          <h2 className="card-title">{copy.previewTitle}</h2>
         </div>
         <ScoreMusicXmlPreview
           fileId={null}
           token={token}
           musicXml={musicXml}
           scoreJson={scoreJson}
-          emptyLabel={locale === "zh-CN" ? "任务完成后，候选五线谱会显示在这里。" : "The candidate staff preview will appear here when processing finishes."}
-          loadingLabel={locale === "zh-CN" ? "正在渲染五线谱..." : "Rendering staff notation..."}
-          errorLabel={locale === "zh-CN" ? "识别结果不完整，暂时无法显示五线谱。请换一页更清晰、方向正确且边缘完整的乐谱，或联系支持核查。" : "The recognition result is incomplete and cannot be displayed. Try a clearer, upright, uncropped page or contact support."}
-          retryLabel={locale === "zh-CN" ? "重新渲染" : "Try rendering again"}
-          technicalDetailsLabel={locale === "zh-CN" ? "技术详情" : "Technical details"}
+          emptyLabel={copy.previewEmpty}
+          loadingLabel={copy.previewLoading}
+          errorLabel={copy.previewError}
+          retryLabel={copy.previewRetry}
+          technicalDetailsLabel={copy.technicalDetails}
+          deferredLabel={copy.previewDeferred}
+          renderLabel={copy.previewRender}
+          eventLabelTemplate={copy.previewEventLabel}
+          noteLabel={copy.previewNote}
+          restLabel={copy.previewRest}
         />
       </section>
     </div>
   );
 }
 
-function translateJobStatus(status: JobsPayload["jobs"][number]["status"], locale: string) {
-  if (locale !== "zh-CN") return status;
-  switch (status) {
-    case "queued": return "等待处理";
-    case "processing": return "正在识别";
-    case "completed": return "识别完成";
-    case "failed": return "识别失败";
-    default: return "已取消";
-  }
-}
-
-function summarizeTrialDiagnostic(input: JobsPayload["omrDiagnostics"][number], locale: string) {
+function summarizeTrialDiagnostic(
+  input: JobsPayload["omrDiagnostics"][number],
+  locale: SupportedLocale,
+  copy: ScoreEntryMessages["trial"],
+) {
   const details = input.diagnostics;
   const warnings = Array.isArray(details.warnings) ? details.warnings.length : 0;
-  const engine = typeof details.engine === "string" && details.engine.trim() ? details.engine : "OMR";
+  const engine = typeof details.engine === "string" && details.engine.trim() ? details.engine : copy.engineFallback;
   const technicalMessage = typeof details.message === "string" && details.message.trim() ? details.message : null;
-  const message = technicalMessage
-    ? locale === "zh-CN"
-      ? "识别引擎返回了需要人工检查的提示，建议先查看下方候选谱。"
-      : "The recognition engine returned a warning that needs a manual review."
-    : null;
+  const message = technicalMessage ? copy.diagnosticsWarning : null;
   return {
-    confidence: input.confidence === null ? "—" : `${Math.round(input.confidence * 100)}%`,
-    pages: input.sourcePageCount ?? 1,
-    warnings,
+    confidence: input.confidence === null ? "—" : formatNumber(input.confidence, locale, { style: "percent", maximumFractionDigits: 0 }),
+    pages: formatNumber(input.sourcePageCount ?? 1, locale),
+    warnings: formatNumber(warnings, locale),
     engine,
     message,
     technicalMessage,

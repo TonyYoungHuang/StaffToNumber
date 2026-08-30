@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatDateTime, formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
 import type {
   AssignmentPracticeSettings,
@@ -32,6 +33,8 @@ import { JianpuNotationView } from "./JianpuNotationView";
 import type { PlaybackPracticeSettings } from "./ScorePlaybackPanel";
 import type { PracticePerformanceAnalysis } from "../lib/practice-performance-analysis";
 import type { ScoreCollaborationOperation } from "../lib/score-collaboration-document";
+import type { ScoreDetailMessages } from "../lib/score-detail-messages/types";
+import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 
 type ScoreRevision = {
   id: string;
@@ -550,803 +553,34 @@ export function ScoreDetailClient() {
   const [partExtractStatusKind, setPartExtractStatusKind] = useState<"success" | "error" | null>(null);
   const [extractedScore, setExtractedScore] = useState<ScoreDocument | null>(null);
 
-  const copy =
-    locale === "zh-CN"
-      ? {
-          loading: "正在加载乐谱工程...",
-          missing: "未找到乐谱工程。",
-          back: "返回乐谱库",
-          status: "工程状态",
-          current: "当前版本",
-          source: "源 MusicXML",
-          download: "下载 MusicXML",
-          downloadFailed: "下载失败。",
-          restore: "恢复此版本",
-          restoring: "正在恢复...",
-          restoreSuccess: "已从历史版本创建新的当前版本。",
-          restoreFailed: "版本恢复失败。",
-          currentBadge: "当前",
-          previewTitle: "OSMD 五线谱预览",
-          previewBody: "OpenSheetMusicDisplay 会在浏览器中把导入的 MusicXML 渲染为五线谱。",
-          modelTitle: "Score JSON 结构",
-          modelBody: "编辑、移调、播放和导出都从这份结构化乐谱模型生成。",
-          revisions: "版本历史",
-        }
-      : {
-          loading: "Loading score project...",
-          missing: "Score project not found.",
-          back: "Back to score library",
-          status: "Project status",
-          current: "Current revision",
-          source: "Source MusicXML",
-          download: "Download MusicXML",
-          downloadFailed: "Download failed.",
-          restore: "Restore version",
-          restoring: "Restoring...",
-          restoreSuccess: "Created a new current revision from history.",
-          restoreFailed: "Revision restore failed.",
-          currentBadge: "Current",
-          previewTitle: "OSMD staff preview",
-          previewBody: "OpenSheetMusicDisplay renders the imported MusicXML as browser-native staff notation here.",
-          modelTitle: "Score JSON structure",
-          modelBody: "Editing, transposition, playback, and exports are generated from this structured score model.",
-          revisions: "Revision history",
-        };
-  const summaryCopy =
-    locale === "zh-CN"
-      ? {
-          parts: "声部",
-          measures: "小节",
-          notes: "音符",
-          rests: "休止符",
-          parser: "解析器",
-          warnings: "导入说明",
-        }
-      : {
-          parts: "Parts",
-          measures: "Measures",
-          notes: "Notes",
-          rests: "Rests",
-          parser: "Parser",
-          warnings: "Import notes",
-        };
-  const jianpuCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "五线谱转简谱",
-          title: "简谱预览",
-          body: "由当前 Score JSON 版本生成，因此移调、编辑和播放都能从同一结构重新生成简谱。",
-          loading: "正在生成简谱...",
-          error: "简谱生成失败。",
-          key: "调号",
-          source: "来源",
-          warnings: "简谱投影提示",
-          pitchSystem: "唱名法",
-          movableDo: "首调唱名",
-          fixedDo: "固定唱名",
-          accidentals: "升降号策略",
-          preserve: "保留原拼写",
-          preferSharps: "优先升号",
-          preferFlats: "优先降号",
-          apply: "重新生成",
-          sourceText: "简谱源文本",
-          empty: "当前版本还没有可用于生成简谱的结构化乐谱数据。",
-        }
-      : {
-          eyebrow: "Staff to Jianpu",
-          title: "Jianpu preview",
-          body: "Generated from the current Score JSON revision, so transposition, editing, and playback can regenerate it from the same structure.",
-          loading: "Generating Jianpu...",
-          error: "Jianpu generation failed.",
-          key: "Key",
-          source: "Source",
-          warnings: "Jianpu projection notes",
-          pitchSystem: "Solfège system",
-          movableDo: "Movable do",
-          fixedDo: "Fixed do",
-          accidentals: "Accidentals",
-          preserve: "Preserve spelling",
-          preferSharps: "Prefer sharps",
-          preferFlats: "Prefer flats",
-          apply: "Regenerate",
-          sourceText: "Jianpu source text",
-          empty: "This revision does not have structured score data for Jianpu yet.",
-        };
-  const transposeCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "移调",
-          title: "创建移调版本",
-          body: "从当前 Score JSON 创建新的乐谱版本，简谱、播放和导出都会基于新版本重新生成。",
-          semitones: "半音数",
-          down: "-1",
-          up: "+1",
-          submit: "创建移调版本",
-          working: "正在移调...",
-          success: "已创建新的移调版本。",
-          failed: "移调失败。",
-        }
-      : {
-          eyebrow: "Transpose",
-          title: "Create transposed revision",
-          body: "Generate a new score revision from the current Score JSON. Jianpu, playback, and exports regenerate from the new version.",
-          semitones: "Semitones",
-          down: "-1",
-          up: "+1",
-          submit: "Create transposed revision",
-          working: "Transposing...",
-          success: "Created a new transposed revision.",
-          failed: "Transpose failed.",
-        };
-  const transposeTargetCopy =
-    locale === "zh-CN"
-      ? {
-          mode: "移调方式",
-          semitoneMode: "按半音数",
-          targetKeyMode: "移到目标调",
-          targetKey: "目标调",
-          targetMode: "调式",
-          major: "大调",
-          minor: "小调",
-        }
-      : {
-          mode: "Transpose mode",
-          semitoneMode: "By semitones",
-          targetKeyMode: "To target key",
-          targetKey: "Target key",
-          targetMode: "Mode",
-          major: "Major",
-          minor: "Minor",
-        };
-  const transposeRangeCopy =
-    locale === "zh-CN"
-      ? {
-          label: "音域检查",
-          part: "检查声部",
-          allParts: "全部声部",
-          perPart: "按声部设置音域",
-          noPartProfile: "不检查该声部",
-          none: "不检查音域",
-          summary: "音域结果",
-          noIssues: "所有音符都在所选音域内。",
-          affected: "受影响声部",
-          notes: "个音符",
-          suggestions: "舒适音域建议",
-          loadSuggestions: "查找合适移调",
-          loadingSuggestions: "正在检查音域...",
-          suggestionFailed: "无法加载移调建议。",
-          applySuggestion: "采用",
-          checked: "已检查",
-          savePreset: "保存工程预设",
-          savingPreset: "正在保存预设...",
-          presetSaved: "工程移调预设已保存。",
-          presetFailed: "无法保存工程移调预设。",
-        }
-      : {
-          label: "Range check",
-          part: "Checked part",
-          allParts: "All parts",
-          perPart: "Per-part ranges",
-          noPartProfile: "No part range",
-          none: "No range check",
-          summary: "Range result",
-          noIssues: "All notes fit the selected range.",
-          affected: "Affected parts",
-          notes: "notes",
-          suggestions: "Comfort suggestions",
-          loadSuggestions: "Find comfortable moves",
-          loadingSuggestions: "Checking ranges...",
-          suggestionFailed: "Could not load transpose suggestions.",
-          applySuggestion: "Use",
-          checked: "Checked",
-          savePreset: "Save project preset",
-          savingPreset: "Saving preset...",
-          presetSaved: "Project transpose preset saved.",
-          presetFailed: "Could not save project transpose preset.",
-        };
-  const clefRecommendationCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "谱号助手",
-          title: "自动谱号建议",
-          body: "分析各声部音域，并创建采用易读首小节谱号的新 Score JSON 版本。",
-          load: "分析谱号",
-          loading: "正在分析谱号...",
-          apply: "应用建议谱号",
-          applying: "正在应用谱号...",
-          success: "已创建谱号建议版本。",
-          failed: "无法更新谱号。",
-          current: "当前",
-          recommended: "建议",
-          range: "音域",
-          noNotes: "没有带音高的音符",
-        }
-      : {
-          eyebrow: "Clef assistant",
-          title: "Automatic clef recommendations",
-          body: "Analyze each part's pitch range and create a new Score JSON revision with readable first-measure clefs.",
-          load: "Analyze clefs",
-          loading: "Analyzing clefs...",
-          apply: "Apply recommended clefs",
-          applying: "Applying clefs...",
-          success: "Clef recommendation revision created.",
-          failed: "Could not update clefs.",
-          current: "Current",
-          recommended: "Recommended",
-          range: "Range",
-          noNotes: "No pitched notes",
-        };
-  const exportCopy =
-    locale === "zh-CN"
-      ? {
-          midi: "导出 MIDI",
-          exporting: "正在加入队列...",
-          success: "MIDI 已导出。",
-          failed: "MIDI 导出失败。",
-        }
-      : {
-          midi: "Export MIDI",
-          exporting: "Queueing MIDI...",
-          success: "MIDI exported.",
-          failed: "MIDI export failed.",
-        };
-  const jianpuExportCopy =
-    locale === "zh-CN"
-      ? {
-          button: "导出简谱",
-          exporting: "正在导出简谱...",
-          success: "简谱已导出。",
-          failed: "简谱导出失败。",
-        }
-      : {
-          button: "Export Jianpu",
-          exporting: "Exporting Jianpu...",
-          success: "Jianpu exported.",
-          failed: "Jianpu export failed.",
-        };
-  const scoreJsonExportCopy =
-    locale === "zh-CN"
-      ? {
-          button: "导出 Score JSON",
-          exporting: "正在导出 Score JSON...",
-          success: "Score JSON 快照已导出。",
-          failed: "Score JSON 导出失败。",
-        }
-      : {
-          button: "Export Score JSON",
-          exporting: "Exporting Score JSON...",
-          success: "Score JSON snapshot exported.",
-          failed: "Score JSON export failed.",
-        };
-  const wavExportCopy =
-    locale === "zh-CN"
-      ? {
-          button: "导出 WAV",
-          exporting: "正在加入队列...",
-          success: "WAV 已导出。",
-          failed: "WAV 导出失败。",
-        }
-      : {
-          button: "Export WAV",
-          exporting: "Queueing WAV...",
-          success: "WAV exported.",
-          failed: "WAV export failed.",
-        };
-  const mp3ExportCopy =
-    locale === "zh-CN"
-      ? {
-          button: "导出 MP3",
-          exporting: "正在加入队列...",
-          success: "MP3 已导出。",
-          failed: "MP3 导出失败，请检查 FluidSynth、SoundFont 和 ffmpeg 配置。",
-        }
-      : {
-          button: "Export MP3",
-          exporting: "Queueing MP3...",
-          success: "MP3 exported.",
-          failed: "MP3 export failed. Check FluidSynth, SoundFont, and ffmpeg configuration.",
-        };
-  const musicXmlExportCopy =
-    locale === "zh-CN"
-      ? {
-          button: "导出 MusicXML",
-          exporting: "正在加入队列...",
-          success: "MusicXML 已生成。",
-          failed: "MusicXML 导出失败。",
-        }
-      : {
-          button: "Export MusicXML",
-          exporting: "Queueing MusicXML...",
-          success: "MusicXML generated.",
-          failed: "MusicXML export failed.",
-        };
-  const pdfExportCopy =
-    locale === "zh-CN"
-      ? {
-          button: "导出 PDF",
-          exporting: "正在加入队列...",
-          success: "PDF 已导出。",
-          failed: "PDF 导出失败。",
-        }
-      : {
-          button: "Export PDF",
-          exporting: "Queueing PDF...",
-          success: "PDF exported.",
-          failed: "PDF export failed.",
-        };
-  const renderedImageExportCopy =
-    locale === "zh-CN"
-      ? {
-          svg: "导出 SVG",
-          png: "导出 PNG",
-          exportingSvg: "正在加入队列...",
-          exportingPng: "正在加入队列...",
-          successSvg: "SVG 已导出。",
-          successPng: "PNG 已导出。",
-          failedSvg: "SVG 导出失败。",
-          failedPng: "PNG 导出失败。",
-        }
-      : {
-          svg: "Export SVG",
-          png: "Export PNG",
-          exportingSvg: "Queueing SVG...",
-          exportingPng: "Queueing PNG...",
-          successSvg: "SVG exported.",
-          successPng: "PNG exported.",
-          failedSvg: "SVG export failed.",
-          failedPng: "PNG export failed.",
-        };
-  const renderedExportOptionsCopy = locale === "zh-CN"
-    ? {
-        eyebrow: "PDF、SVG、PNG 高质量导出",
-        title: "PDF、SVG、PNG 高质量导出设置",
-        body: "设置页面尺寸、边距、PNG 分辨率以及 SVG/PNG 留白裁切。",
-        dpi: "PNG 分辨率",
-        trim: "裁切 SVG/PNG 留白",
-        trimMargin: "裁切边距",
-        pageSize: "页面尺寸",
-        margins: "页面边距",
-        defaultOption: "默认",
-        a4: "A4",
-        letter: "Letter",
-        narrow: "窄",
-        normal: "标准",
-        wide: "宽",
-        helper: "页面预设写入任务的 MusicXML 快照，再由 MuseScore 渲染；多页图片会作为多个任务产物保存。",
-      }
-    : {
-        eyebrow: "High-quality PDF, SVG & PNG Export",
-        title: "High-quality PDF, SVG & PNG Export Settings",
-        body: "Set page size, margins, PNG resolution, and SVG/PNG whitespace trimming.",
-        dpi: "PNG DPI",
-        trim: "Trim SVG/PNG whitespace",
-        trimMargin: "Trim margin",
-        pageSize: "Page size",
-        margins: "Page margins",
-        defaultOption: "Default",
-        a4: "A4",
-        letter: "Letter",
-        narrow: "Narrow",
-        normal: "Normal",
-        wide: "Wide",
-        helper: "Page presets are written into the job's MusicXML snapshot before MuseScore renders it. Multi-page images are stored as separate job outputs.",
-      };
-  const audioExportOptionsCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "WAV、MP3 音频导出",
-          title: "WAV、MP3 音频导出设置",
-          body: "WAV 与 MP3 通过 MIDI、FluidSynth 和商业可用 SoundFont 离线生成，再由 ffmpeg 做响度与编码处理。",
-          sampleRate: "采样率",
-          channels: "声道",
-          stereo: "立体声",
-          mono: "单声道",
-          gain: "SoundFont 增益",
-          reverb: "混响",
-          chorus: "合唱效果",
-          normalize: "响度标准化",
-          loudness: "目标响度（LUFS）",
-          bitrate: "MP3 码率",
-        }
-      : {
-          eyebrow: "WAV & MP3 Audio Export",
-          title: "WAV & MP3 Audio Export Settings",
-          body: "WAV and MP3 run through MIDI, FluidSynth, a licensed SoundFont, and ffmpeg loudness/encoding processing.",
-          sampleRate: "Sample rate",
-          channels: "Channels",
-          stereo: "Stereo",
-          mono: "Mono",
-          gain: "SoundFont gain",
-          reverb: "Reverb",
-          chorus: "Chorus",
-          normalize: "Loudness normalization",
-          loudness: "Target loudness (LUFS)",
-          bitrate: "MP3 bitrate",
-        };
-  const partExtractCopy = locale === "zh-CN"
-    ? {
-        eyebrow: "声部分谱副本 Beta",
-        title: "生成独立声部练习副本",
-        body: "把所选声部提取为新的 Score JSON 工程，用于个人练习、教学链接、移调、播放和导出；副本暂不会自动跟随总谱后续修改。",
-        titleLabel: "新工程名称",
-        parts: "选择声部",
-        applyClefs: "自动优化谱号",
-        submit: "生成声部副本",
-        working: "正在生成...",
-        success: "声部副本工程已创建。",
-        failed: "无法创建声部副本。",
-        open: "打开声部副本",
-      }
-    : {
-        eyebrow: "Part Copy Generator Beta",
-        title: "Create an independent part practice copy",
-        body: "Extract selected parts into a new Score JSON project for practice, teaching links, transposition, playback, and export. Copies do not yet follow later full-score edits.",
-        titleLabel: "New project title",
-        parts: "Parts",
-        applyClefs: "Apply automatic clef cleanup",
-        submit: "Create part copy",
-        working: "Creating part copy...",
-        success: "Part copy project created.",
-        failed: "Could not create the part copy.",
-        open: "Open part copy",
-      };
-  const assetCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "导出中心",
-          title: "项目文件与导出记录",
-          body: "这里汇总当前乐谱工程的源文件和导出文件，生成过的 MusicXML、MIDI 等文件可以重复下载。",
-          loading: "正在加载导出记录...",
-          empty: "还没有导出文件。先生成 MusicXML 或 MIDI。",
-          failed: "导出记录加载失败。",
-          download: "下载",
-          source: "源文件",
-          export: "导出",
-        }
-      : {
-          eyebrow: "Export center",
-          title: "Project files and exports",
-          body: "Source files and generated exports stay here so MusicXML, Score JSON, Jianpu, MIDI, PDF, image, and audio outputs can be downloaded again.",
-          loading: "Loading exports...",
-          empty: "No exported files yet. Generate MusicXML, Score JSON, Jianpu, or MIDI first.",
-          failed: "Could not load export records.",
-          download: "Download",
-          source: "Source",
-          export: "Export",
-        };
-  const omrCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "处理记录",
-          title: "识别、转谱与导出进度",
-          body: "这里统一显示 Audiveris 扫描、Basic Pitch 音频转谱和 MuseScore/FluidSynth 导出的进度、失败原因、重试与产物。",
-          loading: "正在加载处理记录...",
-          empty: "当前项目还没有处理记录。",
-          failed: "处理记录加载失败。",
-          refresh: "刷新状态",
-          diagnostics: "识别诊断",
-          confidence: "置信度",
-          pages: "页数",
-          revision: "生成版本",
-          outputs: "输出文件",
-        }
-      : {
-          eyebrow: "Score jobs",
-          title: "Recognition, transcription, and export jobs",
-          body: "Audiveris scans, Basic Pitch transcription, MuseScore rendering, and FluidSynth audio exports share this progress, retry, failure, and output queue.",
-          loading: "Loading score jobs...",
-          empty: "No background score jobs for this project yet.",
-          failed: "Could not load score jobs.",
-          refresh: "Refresh status",
-          diagnostics: "Recognition diagnostics",
-          confidence: "Confidence",
-          pages: "Pages",
-          revision: "Revision",
-          outputs: "Output files",
-        };
-  const commentCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "协作批注",
-          title: "项目评论",
-          body: "评论可绑定整份乐谱、小节、音符或学生提交；账号身份与分享链接身份均由服务端标记。",
-          target: "批注对象",
-          scoreTarget: "整份乐谱",
-          placeholder: "写下修谱建议、教学提醒或练习反馈...",
-          submit: "发布评论",
-          posting: "正在发布...",
-          loading: "正在加载评论...",
-          empty: "还没有评论。",
-          failed: "评论加载失败。",
-          postFailed: "评论发布失败。",
-          author: "用户",
-          accountIdentity: "账号身份",
-          shareIdentity: "链接身份",
-          resolved: "已解决",
-          resolve: "标记解决",
-          reopen: "重新打开",
-        }
-      : {
-          eyebrow: "Collaboration",
-          title: "Project comments",
-          body: "Comments can target a score, measure, note, or student submission. Account and share-link identities are marked by the server.",
-          target: "Comment target",
-          scoreTarget: "Whole score",
-          placeholder: "Add a correction note, teaching reminder, or practice feedback...",
-          submit: "Post comment",
-          posting: "Posting...",
-          loading: "Loading comments...",
-          empty: "No comments yet.",
-          failed: "Could not load comments.",
-          postFailed: "Could not post comment.",
-          author: "User",
-          accountIdentity: "Account identity",
-          shareIdentity: "Link identity",
-          resolved: "Resolved",
-          resolve: "Resolve",
-          reopen: "Reopen",
-        };
-  const shareCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "分享",
-          title: "乐谱协作分享链接",
-          body: "为学生、同事或排练成员创建可撤销链接，并明确选择查看、评论或编辑权限。",
-          create: "创建分享链接",
-          creating: "正在创建...",
-          copy: "复制链接",
-          revoke: "撤销",
-          revoking: "正在撤销...",
-          copied: "分享链接已复制。",
-          created: "分享链接已创建。",
-          failed: "分享链接操作失败。",
-          loading: "正在加载分享链接...",
-          empty: "还没有分享链接。",
-          active: "可用",
-          revoked: "已撤销",
-          expires: "过期",
-          never: "永不过期",
-          permission: "权限",
-          label: "链接身份名称",
-          labelPlaceholder: "例如：李老师、合唱团女高音负责人",
-          view: "仅查看",
-          comment: "可评论",
-          edit: "可编辑",
-        }
-      : {
-          eyebrow: "Share",
-          title: "Score collaboration links",
-          body: "Create revocable links for students, collaborators, or ensemble members with an explicit view, comment, or edit role.",
-          create: "Create share link",
-          creating: "Creating...",
-          copy: "Copy link",
-          revoke: "Revoke",
-          revoking: "Revoking...",
-          copied: "Share link copied.",
-          created: "Share link created.",
-          failed: "Share link action failed.",
-          loading: "Loading share links...",
-          empty: "No share links yet.",
-          active: "Active",
-          revoked: "Revoked",
-          expires: "Expires",
-          never: "Never",
-          permission: "Permission",
-          label: "Link identity name",
-          labelPlaceholder: "For example: Violin coach or Soprano lead",
-          view: "View only",
-          comment: "Comment",
-          edit: "Edit",
-        };
-  const assignmentCopy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "教学作业",
-          title: "布置乐谱练习",
-          body: "把当前乐谱版本、练习说明和只读学生链接沉淀为作业。后续可继续扩展学生提交、批改和班级管理。",
-          titleLabel: "作业标题",
-          titlePlaceholder: "例如：第 12 小节到第 24 小节慢练",
-          instructions: "练习说明",
-          instructionsPlaceholder: "写下速度、循环范围、分声部或提交要求...",
-          dueAt: "截止时间",
-          create: "创建作业",
-          creating: "正在创建...",
-          archive: "归档",
-          archiving: "正在归档...",
-          copy: "复制学生链接",
-          copied: "学生链接已复制。",
-          created: "作业已创建。",
-          failed: "作业操作失败。",
-          loading: "正在加载作业...",
-          empty: "还没有作业。",
-          open: "进行中",
-          archived: "已归档",
-          noDue: "无截止时间",
-          linkMissing: "分享链接不可用",
-          revision: "版本",
-          submissions: "学生提交",
-          submissionsLoading: "正在加载学生提交...",
-          submissionsEmpty: "还没有学生提交。",
-          submissionsFailed: "学生提交加载失败。",
-          submittedAt: "提交时间",
-          practiceMinutes: "练习分钟",
-          recording: "录音链接",
-          contact: "联系方式",
-          noRecording: "无录音链接",
-          performanceFile: "演奏文件",
-          downloadPerformanceFile: "下载演奏文件",
-          loadPerformancePreview: "播放审阅",
-          loadingPerformancePreview: "正在加载播放器...",
-          performancePreviewFailed: "演奏文件预览加载失败。",
-          performanceTime: "当前时间",
-          performanceComment: "时间点批注",
-          performanceCommentPlaceholder: "写下这个时间点的音准、节奏、呼吸、指法或练习建议...",
-          postPerformanceComment: "保存时间点批注",
-          postingPerformanceComment: "正在保存...",
-          performanceCommentSaved: "时间点批注已保存到项目评论。",
-          performanceCommentFailed: "时间点批注保存失败。",
-        }
-      : {
-          eyebrow: "Teaching",
-          title: "Score assignments",
-          body: "Turn the current score revision, practice instructions, and a read-only student link into an assignment. Shared pages now accept lightweight student submissions; grading and student accounts can build on this later.",
-          titleLabel: "Assignment title",
-          titlePlaceholder: "Example: slow practice from measure 12 to 24",
-          instructions: "Practice instructions",
-          instructionsPlaceholder: "Add tempo, loop range, part focus, or submission expectations...",
-          dueAt: "Due date",
-          create: "Create assignment",
-          creating: "Creating...",
-          archive: "Archive",
-          archiving: "Archiving...",
-          copy: "Copy student link",
-          copied: "Student link copied.",
-          created: "Assignment created.",
-          failed: "Assignment action failed.",
-          loading: "Loading assignments...",
-          empty: "No assignments yet.",
-          open: "Open",
-          archived: "Archived",
-          noDue: "No due date",
-          linkMissing: "Share link unavailable",
-          revision: "Revision",
-          submissions: "Student submissions",
-          submissionsLoading: "Loading student submissions...",
-          submissionsEmpty: "No student submissions yet.",
-          submissionsFailed: "Could not load student submissions.",
-          submittedAt: "Submitted",
-          practiceMinutes: "Practice minutes",
-          recording: "Recording",
-          contact: "Contact",
-          noRecording: "No recording link",
-          performanceFile: "Performance file",
-          downloadPerformanceFile: "Download performance file",
-          loadPerformancePreview: "Review playback",
-          loadingPerformancePreview: "Loading player...",
-          performancePreviewFailed: "Could not load the performance preview.",
-          performanceTime: "Current time",
-          performanceComment: "Timed comment",
-          performanceCommentPlaceholder: "Add pitch, rhythm, breathing, fingering, or practice guidance for this moment...",
-          postPerformanceComment: "Save timed comment",
-          postingPerformanceComment: "Saving...",
-          performanceCommentSaved: "Timed comment saved to project comments.",
-          performanceCommentFailed: "Could not save the timed comment.",
-          feedback: "Teacher feedback",
-          feedbackPlaceholder: "Add correction notes, next practice focus, or encouragement...",
-          saveFeedback: "Save feedback",
-          savingFeedback: "Saving...",
-          feedbackSaved: "Feedback saved and submission marked reviewed.",
-          feedbackFailed: "Could not save feedback.",
-        };
-
-  const reviewCopy =
-    locale === "zh-CN"
-      ? {
-          feedback: "老师反馈",
-          feedbackPlaceholder: "写下批改意见、下一次练习重点或鼓励...",
-          saveFeedback: "保存反馈",
-          savingFeedback: "正在保存...",
-          feedbackSaved: "反馈已保存，提交已标记为已批阅。",
-          feedbackFailed: "反馈保存失败。",
-        }
-      : {
-          feedback: "Teacher feedback",
-          feedbackPlaceholder: "Add correction notes, next practice focus, or encouragement...",
-          saveFeedback: "Save feedback",
-          savingFeedback: "Saving...",
-          feedbackSaved: "Feedback saved and submission marked reviewed.",
-          feedbackFailed: "Could not save feedback.",
-        };
-
-  const gradeCopy =
-    locale === "zh-CN"
-      ? {
-          grade: "评分",
-          score: "得分",
-          max: "满分",
-          scorePlaceholder: "例如 85",
-          maxPlaceholder: "例如 100",
-          gradeSaved: "评分与反馈已保存。",
-        }
-      : {
-          grade: "Grade",
-          score: "Score",
-          max: "Max",
-          scorePlaceholder: "e.g. 85",
-          maxPlaceholder: "e.g. 100",
-          gradeSaved: "Grade and feedback saved.",
-        };
-
-  const analyticsCopy =
-    locale === "zh-CN"
-      ? {
-          title: "作业统计",
-          loading: "正在加载作业统计...",
-          failed: "作业统计加载失败。",
-          empty: "还没有可统计的作业。",
-          submissions: "提交",
-          reviewed: "已批阅",
-          graded: "已评分",
-          average: "平均分",
-          rubricAverage: "维度平均",
-        }
-      : {
-          title: "Assignment analytics",
-          loading: "Loading assignment analytics...",
-          failed: "Could not load assignment analytics.",
-          empty: "No assignment analytics yet.",
-          submissions: "Submissions",
-          reviewed: "Reviewed",
-          graded: "Graded",
-          average: "Average",
-          rubricAverage: "Rubric averages",
-        };
-
-  const rubricCopy =
-    locale === "zh-CN"
-      ? {
-          rubric: "评分细则",
-          criterion: "评分维度",
-          maxScore: "维度满分",
-          criterionPlaceholder: "例如：音准 / 节奏 / 表现力",
-          maxPlaceholder: "例如 20",
-          empty: "未设置评分细则。",
-          templates: "评分模板",
-          templateName: "模板名称",
-          templatePlaceholder: "例如：声乐课通用评分",
-          applyTemplate: "套用模板",
-          saveTemplate: "保存为模板",
-          savingTemplate: "正在保存...",
-          deleteTemplate: "删除模板",
-          deletingTemplate: "正在删除...",
-          templatesLoading: "正在加载评分模板...",
-          templatesEmpty: "还没有评分模板。",
-          templateSaved: "评分模板已保存。",
-          templateDeleted: "评分模板已删除。",
-          templateFailed: "评分模板操作失败。",
-        }
-      : {
-          rubric: "Rubric",
-          criterion: "Criterion",
-          maxScore: "Criterion max",
-          criterionPlaceholder: "e.g. Pitch / Rhythm / Expression",
-          maxPlaceholder: "e.g. 20",
-          empty: "No rubric criteria set.",
-          templates: "Rubric templates",
-          templateName: "Template name",
-          templatePlaceholder: "e.g. Voice lesson standard rubric",
-          applyTemplate: "Apply template",
-          saveTemplate: "Save as template",
-          savingTemplate: "Saving...",
-          deleteTemplate: "Delete template",
-          deletingTemplate: "Deleting...",
-          templatesLoading: "Loading rubric templates...",
-          templatesEmpty: "No rubric templates yet.",
-          templateSaved: "Rubric template saved.",
-          templateDeleted: "Rubric template deleted.",
-          templateFailed: "Rubric template action failed.",
-        };
-
+  const detailCopy = useScoreReviewMessages().detail;
+  const copy = detailCopy.project;
+  const summaryCopy = detailCopy.summary;
+  const jianpuCopy = detailCopy.jianpu;
+  const transposeCopy = detailCopy.transpose;
+  const transposeTargetCopy = detailCopy.transposeTarget;
+  const transposeRangeCopy = detailCopy.transposeRange;
+  const clefRecommendationCopy = detailCopy.clef;
+  const exportCopy = detailCopy.exports.midi;
+  const jianpuExportCopy = detailCopy.exports.jianpu;
+  const scoreJsonExportCopy = detailCopy.exports.scoreJson;
+  const wavExportCopy = detailCopy.exports.wav;
+  const mp3ExportCopy = detailCopy.exports.mp3;
+  const musicXmlExportCopy = detailCopy.exports.musicXml;
+  const pdfExportCopy = detailCopy.exports.pdf;
+  const renderedImageExportCopy = detailCopy.exports.image;
+  const renderedExportOptionsCopy = detailCopy.renderedExportOptions;
+  const audioExportOptionsCopy = detailCopy.audioExportOptions;
+  const partExtractCopy = detailCopy.partExtract;
+  const assetCopy = detailCopy.assets;
+  const omrCopy = detailCopy.jobs;
+  const commentCopy = detailCopy.comments;
+  const shareCopy = detailCopy.shares;
+  const assignmentCopy = detailCopy.assignments;
+  const reviewCopy = detailCopy.review;
+  const gradeCopy = detailCopy.grade;
+  const analyticsCopy = detailCopy.analytics;
+  const rubricCopy = detailCopy.rubric;
   function applyScoreProjectSettings(settings: ScoreProjectSettings | undefined, scoreJson: ScoreJson | undefined) {
     const knownPartIds = new Set(scoreJson?.parts.map((part) => part.id) ?? []);
     const rangeProfileIds = new Set<string>(SCORE_RANGE_PROFILES.map((profile) => profile.id));
@@ -1553,7 +787,7 @@ export function ScoreDetailClient() {
     const operation: ScoreCollaborationOperation = {
       id: mutation.operationId ?? crypto.randomUUID(),
       actorId: "current-session",
-      actorName: locale === "zh-CN" ? "当前用户" : "Current user",
+      actorName: detailCopy.currentUser,
       role: "owner",
       commandType: mutation.commandType,
       baseRevisionId: mutation.baseRevisionId ?? baseRevisionId,
@@ -1562,7 +796,7 @@ export function ScoreDetailClient() {
       createdAt: new Date().toISOString(),
     };
     setPendingCollaborationOperations((current) => [...current.slice(-99), operation]);
-  }, [locale, payload?.score.currentRevisionId, payload?.score.pendingRevisionId]);
+  }, [detailCopy.currentUser, payload?.score.currentRevisionId, payload?.score.pendingRevisionId]);
 
   useEffect(() => {
     if (!currentScoreJson) {
@@ -1591,7 +825,7 @@ export function ScoreDetailClient() {
   }
 
   const revisions = payload.revisions;
-  const commentTargetOptions = buildCommentTargetOptions(currentScoreJson, locale, commentCopy.scoreTarget);
+  const commentTargetOptions = buildCommentTargetOptions(currentScoreJson, commentCopy, locale);
   const selectedCommentTarget = commentTargetOptions.find((option) => option.id === commentTargetId) ?? commentTargetOptions[0];
   const scoreSummary = currentScoreJson
     ? {
@@ -1621,7 +855,7 @@ export function ScoreDetailClient() {
     setJianpuLoading(false);
     if (!jianpuResult.ok) {
       setJianpu(null);
-      setJianpuError(jianpuResult.error || jianpuCopy.error);
+      setJianpuError(jianpuResult.error);
       return;
     }
     setJianpu(jianpuResult.data.jianpu);
@@ -1643,7 +877,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setAssets([]);
-      setAssetsError(result.error || assetCopy.failed);
+      setAssetsError(result.error);
       return;
     }
 
@@ -1691,7 +925,7 @@ export function ScoreDetailClient() {
     if (!result.ok) {
       setScoreJobs([]);
       setOmrDiagnostics([]);
-      setJobsError(result.error || omrCopy.failed);
+      setJobsError(result.error);
       return;
     }
 
@@ -1718,7 +952,7 @@ export function ScoreDetailClient() {
     });
     setJobActionId(null);
     if (!result.ok) {
-      setJobsError(result.error || (locale === "zh-CN" ? "任务操作失败。" : "Could not update the job."));
+      setJobsError(result.error);
       return;
     }
     setScoreJobs((current) => current.map((item) => (item.id === result.data.job.id ? result.data.job : item)));
@@ -1740,7 +974,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setComments([]);
-      setCommentsError(result.error || commentCopy.failed);
+      setCommentsError(result.error);
       return;
     }
 
@@ -1762,7 +996,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setShares([]);
-      setShareStatus(result.error || shareCopy.failed);
+      setShareStatus(result.error);
       setShareStatusKind("error");
       return;
     }
@@ -1785,7 +1019,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setAssignments([]);
-      setAssignmentStatus(result.error || assignmentCopy.failed);
+      setAssignmentStatus(result.error);
       setAssignmentStatusKind("error");
       return;
     }
@@ -1808,7 +1042,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setRubricTemplates([]);
-      setRubricTemplateStatus(result.error || rubricCopy.templateFailed);
+      setRubricTemplateStatus(result.error);
       setRubricTemplateStatusKind("error");
       return;
     }
@@ -1832,7 +1066,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setAssignmentSubmissions([]);
-      setAssignmentSubmissionsError(result.error || assignmentCopy.submissionsFailed);
+      setAssignmentSubmissionsError(result.error);
       return;
     }
 
@@ -1892,7 +1126,7 @@ export function ScoreDetailClient() {
 
     if (!result.ok) {
       setAssignmentAnalytics([]);
-      setAssignmentAnalyticsError(result.error || analyticsCopy.failed);
+      setAssignmentAnalyticsError(result.error);
       return;
     }
 
@@ -1932,7 +1166,7 @@ export function ScoreDetailClient() {
     setCreatingShare(false);
 
     if (!result.ok) {
-      setShareStatus(result.error || shareCopy.failed);
+      setShareStatus(result.error);
       setShareStatusKind("error");
       return;
     }
@@ -1962,7 +1196,7 @@ export function ScoreDetailClient() {
     setRevokingShareId(null);
 
     if (!result.ok) {
-      setShareStatus(result.error || shareCopy.failed);
+      setShareStatus(result.error);
       setShareStatusKind("error");
       return;
     }
@@ -2057,7 +1291,7 @@ export function ScoreDetailClient() {
     setSavingRubricTemplate(false);
 
     if (!result.ok) {
-      setRubricTemplateStatus(result.error || rubricCopy.templateFailed);
+      setRubricTemplateStatus(result.error);
       setRubricTemplateStatusKind("error");
       return;
     }
@@ -2087,7 +1321,7 @@ export function ScoreDetailClient() {
     setDeletingRubricTemplateId(null);
 
     if (!result.ok) {
-      setRubricTemplateStatus(result.error || rubricCopy.templateFailed);
+      setRubricTemplateStatus(result.error);
       setRubricTemplateStatusKind("error");
       return;
     }
@@ -2130,7 +1364,7 @@ export function ScoreDetailClient() {
     setCreatingAssignment(false);
 
     if (!result.ok) {
-      setAssignmentStatus(result.error || assignmentCopy.failed);
+      setAssignmentStatus(result.error);
       setAssignmentStatusKind("error");
       return;
     }
@@ -2171,7 +1405,7 @@ export function ScoreDetailClient() {
     setArchivingAssignmentId(null);
 
     if (!result.ok) {
-      setAssignmentStatus(result.error || assignmentCopy.failed);
+      setAssignmentStatus(result.error);
       setAssignmentStatusKind("error");
       return;
     }
@@ -2270,7 +1504,7 @@ export function ScoreDetailClient() {
     setReviewingSubmissionId(null);
 
     if (!result.ok) {
-      setAssignmentReviewStatus(result.error || reviewCopy.feedbackFailed);
+      setAssignmentReviewStatus(result.error);
       setAssignmentReviewStatusKind("error");
       return;
     }
@@ -2333,7 +1567,8 @@ export function ScoreDetailClient() {
       });
 
       if (!response.ok) {
-        throw new Error(assignmentCopy.performancePreviewFailed);
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(typeof payload?.error === "string" ? payload.error : assignmentCopy.performancePreviewFailed);
       }
 
       const blob = await response.blob();
@@ -2374,7 +1609,7 @@ export function ScoreDetailClient() {
 
     const timeSeconds = Math.max(0, performancePlaybackTimes[submission.id] ?? 0);
     const roundedTimeSeconds = Math.round(timeSeconds * 10) / 10;
-    const timeLabel = formatDuration(roundedTimeSeconds);
+    const timeLabel = formatDuration(roundedTimeSeconds, locale);
     const targetLabel = `${submission.submitterName} ${assignmentCopy.performanceFile} ${timeLabel}`;
 
     setPostingPerformanceCommentId(submission.id);
@@ -2402,7 +1637,7 @@ export function ScoreDetailClient() {
     setPostingPerformanceCommentId(null);
 
     if (!result.ok) {
-      setCommentsError(result.error || assignmentCopy.performanceCommentFailed);
+      setCommentsError(result.error);
       return;
     }
 
@@ -2439,7 +1674,7 @@ export function ScoreDetailClient() {
     setPostingComment(false);
 
     if (!result.ok) {
-      setCommentsError(result.error || commentCopy.postFailed);
+      setCommentsError(result.error);
       return;
     }
 
@@ -2458,7 +1693,7 @@ export function ScoreDetailClient() {
     });
     setResolvingCommentId(null);
     if (!result.ok) {
-      setCommentsError(result.error || commentCopy.failed);
+      setCommentsError(result.error);
       return;
     }
     setComments(
@@ -2488,7 +1723,7 @@ export function ScoreDetailClient() {
     setRestoringRevisionId(null);
 
     if (!result.ok) {
-      setRevisionStatus(result.error || copy.restoreFailed);
+      setRevisionStatus(result.error);
       setRevisionStatusKind("error");
       return false;
     }
@@ -2608,7 +1843,7 @@ export function ScoreDetailClient() {
 
     setTransposing(false);
     if (!result.ok) {
-      setTransposeStatus(result.error || transposeCopy.failed);
+      setTransposeStatus(result.error);
       setTransposeStatusKind("error");
       return;
     }
@@ -2654,7 +1889,7 @@ export function ScoreDetailClient() {
     setTransposeSuggestionsLoading(false);
 
     if (!result.ok) {
-      setTransposeSuggestionsError(result.error || transposeRangeCopy.suggestionFailed);
+      setTransposeSuggestionsError(result.error);
       return;
     }
 
@@ -2686,7 +1921,7 @@ export function ScoreDetailClient() {
     setClefRecommendationsLoading(false);
 
     if (!result.ok) {
-      setClefRecommendationStatus(result.error || clefRecommendationCopy.failed);
+      setClefRecommendationStatus(result.error);
       setClefRecommendationStatusKind("error");
       return;
     }
@@ -2713,7 +1948,7 @@ export function ScoreDetailClient() {
     setApplyingClefRecommendations(false);
 
     if (!result.ok) {
-      setClefRecommendationStatus(result.error || clefRecommendationCopy.failed);
+      setClefRecommendationStatus(result.error);
       setClefRecommendationStatusKind("error");
       return;
     }
@@ -2769,7 +2004,7 @@ export function ScoreDetailClient() {
     setExtractingParts(false);
 
     if (!result.ok) {
-      setPartExtractStatus(result.error || partExtractCopy.failed);
+      setPartExtractStatus(result.error);
       setPartExtractStatusKind("error");
       return;
     }
@@ -2808,7 +2043,7 @@ export function ScoreDetailClient() {
 
     setSavingTransposePreset(false);
     if (!result.ok) {
-      setTransposePresetStatus(result.error || transposeRangeCopy.presetFailed);
+      setTransposePresetStatus(result.error);
       setTransposePresetStatusKind("error");
       return;
     }
@@ -2842,12 +2077,12 @@ export function ScoreDetailClient() {
     });
     setLoading(false);
     if (!result.ok) {
-      setExportStatus(result.error || failedMessage);
+      setExportStatus(result.error);
       setExportStatusKind("error");
       return;
     }
     setScoreJobs((current) => [result.data.job, ...current.filter((job) => job.id !== result.data.job.id)]);
-    setExportStatus(locale === "zh-CN" ? `${format.toUpperCase()} 已加入渲染队列，完成后可在任务列表下载。` : `${format.toUpperCase()} was queued. Download it from the job list when rendering completes.`);
+    setExportStatus(formatMessage(detailCopy.exports.queued, { format: format.toUpperCase() }));
     setExportStatusKind("success");
   }
 
@@ -2900,7 +2135,7 @@ export function ScoreDetailClient() {
     setExportingJianpu(false);
 
     if (!result.ok) {
-      setExportStatus(result.error || jianpuExportCopy.failed);
+      setExportStatus(result.error);
       setExportStatusKind("error");
       return;
     }
@@ -2934,7 +2169,7 @@ export function ScoreDetailClient() {
     setExportingScoreJson(false);
 
     if (!result.ok) {
-      setExportStatus(result.error || scoreJsonExportCopy.failed);
+      setExportStatus(result.error);
       setExportStatusKind("error");
       return;
     }
@@ -3010,9 +2245,7 @@ export function ScoreDetailClient() {
   async function handleCandidateDecision(action: "accept" | "reject") {
     const pendingRevisionId = score?.pendingRevisionId;
     if (!token || !scoreId || !pendingRevisionId) {
-      setCandidateActionError(
-        locale === "zh-CN" ? "没有可处理的候选修订。" : "There is no candidate revision to process.",
-      );
+      setCandidateActionError(detailCopy.candidateMissing);
       return;
     }
 
@@ -3029,7 +2262,7 @@ export function ScoreDetailClient() {
     setCandidateAction(null);
 
     if (!result.ok) {
-      setCandidateActionError(result.error || (locale === "zh-CN" ? "候选处理失败。" : "Candidate review failed."));
+      setCandidateActionError(result.error);
       return;
     }
 
@@ -3078,10 +2311,10 @@ export function ScoreDetailClient() {
     <div className="page-stack">
       <div className="page-banner split">
         <div className="stack-md">
-          <p className="eyebrow">{copy.status}: {score.status}</p>
+          <p className="eyebrow">{copy.status}: {detailCopy.status.score[score.status]}</p>
           <h1 className="page-title">{score.title}</h1>
           <p className="body-copy large">
-            {copy.current}: {score.currentRevision?.revisionNumber ?? 0} | {formatLocal(score.updatedAt, locale)}
+            {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)} | {formatDateTime(score.updatedAt, locale)}
           </p>
         </div>
         <div className="page-banner-actions">
@@ -3107,7 +2340,7 @@ export function ScoreDetailClient() {
             {exportingPng ? renderedImageExportCopy.exportingPng : renderedImageExportCopy.png}
           </button>
           <button type="button" className="button button-primary" onClick={() => void handleExportMidi()} disabled={exportingMidi}>
-            {exportingMidi ? exportCopy.exporting : exportCopy.midi}
+            {exportingMidi ? exportCopy.exporting : exportCopy.button}
           </button>
           <button type="button" className="button button-primary" onClick={() => void handleExportWav()} disabled={exportingWav || !currentScoreJson}>
             {exportingWav ? wavExportCopy.exporting : wavExportCopy.button}
@@ -3234,9 +2467,9 @@ export function ScoreDetailClient() {
           <label className="field-group">
             <span className="field-label">{audioExportOptionsCopy.sampleRate}</span>
             <select className="field-select" value={audioSampleRate} onChange={(event) => setAudioSampleRate(Number(event.target.value) as 44100 | 48000 | 96000)}>
-              <option value={44100}>44.1 kHz</option>
-              <option value={48000}>48 kHz</option>
-              <option value={96000}>96 kHz</option>
+              <option value={44100}>{formatNumber(44.1, locale)} kHz</option>
+              <option value={48000}>{formatNumber(48, locale)} kHz</option>
+              <option value={96000}>{formatNumber(96, locale)} kHz</option>
             </select>
           </label>
           <label className="field-group">
@@ -3247,13 +2480,13 @@ export function ScoreDetailClient() {
             </select>
           </label>
           <label className="field-group">
-            <span className="field-label">{audioExportOptionsCopy.gain}: {soundFontGain.toFixed(2)}</span>
+            <span className="field-label">{audioExportOptionsCopy.gain}: {formatNumber(soundFontGain, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             <input className="field-control" type="range" min={0.05} max={2} step={0.05} value={soundFontGain} onChange={(event) => setSoundFontGain(Number(event.target.value))} />
           </label>
           <label className="field-group">
             <span className="field-label">{audioExportOptionsCopy.bitrate}</span>
             <select className="field-select" value={audioBitrateKbps} onChange={(event) => setAudioBitrateKbps(Number(event.target.value) as 128 | 192 | 256 | 320)}>
-              {[128, 192, 256, 320].map((bitrate) => <option key={bitrate} value={bitrate}>{bitrate} kbps</option>)}
+              {[128, 192, 256, 320].map((bitrate) => <option key={bitrate} value={bitrate}>{formatNumber(bitrate, locale)} kbps</option>)}
             </select>
           </label>
           <label className="field-group">
@@ -3315,7 +2548,7 @@ export function ScoreDetailClient() {
                       </span>
                     </p>
                     <p className="item-meta">
-                      {share.label ? `${share.label} | ` : ""}{shareCopy.permission}: {shareCopy[share.permission]} | {shareCopy.expires}: {share.expiresAt ? formatLocal(share.expiresAt, locale) : shareCopy.never} | {formatLocal(share.createdAt, locale)}
+                      {share.label ? `${share.label} | ` : ""}{shareCopy.permission}: {shareCopy[share.permission]} | {shareCopy.expires}: {share.expiresAt ? formatDateTime(share.expiresAt, locale) : shareCopy.never} | {formatDateTime(share.createdAt, locale)}
                     </p>
                   </div>
                   <div className="button-row">
@@ -3384,7 +2617,7 @@ export function ScoreDetailClient() {
               checked={assignmentIncludePracticeSettings}
               onChange={(event) => setAssignmentIncludePracticeSettings(event.target.checked)}
             />
-            <span>Attach current playback practice settings</span>
+            <span>{assignmentCopy.attachPractice}</span>
           </label>
           <div className="stack-sm">
             <p className="item-title">{rubricCopy.rubric}</p>
@@ -3490,18 +2723,18 @@ export function ScoreDetailClient() {
                       </span>
                     </p>
                     <p className="item-meta">
-                      {assignmentCopy.dueAt}: {assignment.dueAt ? formatLocal(assignment.dueAt, locale) : assignmentCopy.noDue} | {assignmentCopy.revision}:{" "}
-                      {assignment.revisionId ? assignment.revisionId.slice(0, 8) : "-"} | {formatLocal(assignment.createdAt, locale)}
+                      {assignmentCopy.dueAt}: {assignment.dueAt ? formatDateTime(assignment.dueAt, locale) : assignmentCopy.noDue} | {assignmentCopy.revision}:{" "}
+                      {assignment.revisionId ? assignment.revisionId.slice(0, 8) : "-"} | {formatDateTime(assignment.createdAt, locale)}
                     </p>
                     {assignment.instructions ? <p className="body-copy">{assignment.instructions}</p> : null}
                     {assignment.rubric.length > 0 ? (
                       <p className="item-meta">
-                        {rubricCopy.rubric}: {assignment.rubric.map((criterion) => `${criterion.label} / ${criterion.maxScore}`).join(" | ")}
+                        {rubricCopy.rubric}: {assignment.rubric.map((criterion) => `${criterion.label} / ${formatNumber(criterion.maxScore, locale)}`).join(" | ")}
                       </p>
                     ) : null}
                     {assignment.practiceSettings ? (
                       <p className="item-meta">
-                        Practice preset: {formatAssignmentPracticeSettings(assignment.practiceSettings, currentScoreJson)}
+                        {assignmentCopy.practicePreset}: {formatAssignmentPracticeSettings(assignment.practiceSettings, currentScoreJson, locale, detailCopy.practice)}
                       </p>
                     ) : null}
                   </div>
@@ -3512,7 +2745,7 @@ export function ScoreDetailClient() {
                         className="button button-secondary button-ghost"
                         onClick={() => setPlaybackPracticeSettings(assignment.practiceSettings!)}
                       >
-                        Apply practice preset
+                        {assignmentCopy.applyPracticePreset}
                       </button>
                     ) : null}
                     <button
@@ -3551,14 +2784,14 @@ export function ScoreDetailClient() {
                   <div className="list-item-content">
                     <p className="item-title">{item.assignmentTitle}</p>
                     <p className="item-meta">
-                      {analyticsCopy.submissions}: {item.submissionCount} | {analyticsCopy.reviewed}: {item.reviewedCount} | {analyticsCopy.graded}:{" "}
-                      {item.gradedCount} | {analyticsCopy.average}: {item.averageGradePercent === null ? "-" : `${item.averageGradePercent}%`}
+                      {analyticsCopy.submissions}: {formatNumber(item.submissionCount, locale)} | {analyticsCopy.reviewed}: {formatNumber(item.reviewedCount, locale)} | {analyticsCopy.graded}:{" "}
+                      {formatNumber(item.gradedCount, locale)} | {analyticsCopy.average}: {item.averageGradePercent === null ? "-" : formatNumber(item.averageGradePercent / 100, locale, { style: "percent", maximumFractionDigits: 1 })}
                     </p>
                     {item.rubricAverages.length > 0 ? (
                       <p className="item-meta">
                         {analyticsCopy.rubricAverage}:{" "}
                         {item.rubricAverages
-                          .map((criterion) => `${criterion.label} ${criterion.averageScore === null ? "-" : `${criterion.averageScore}/${criterion.maxScore}`}`)
+                          .map((criterion) => `${criterion.label} ${criterion.averageScore === null ? "-" : `${formatNumber(criterion.averageScore, locale)}/${formatNumber(criterion.maxScore, locale)}`}`)
                           .join(" | ")}
                       </p>
                     ) : null}
@@ -3590,7 +2823,7 @@ export function ScoreDetailClient() {
                             return (
                               <label className="field-group" key={`${submission.id}-${criterion.id}`}>
                                 <span>
-                                  {criterion.label} / {criterion.maxScore}
+                                  {criterion.label} / {formatNumber(criterion.maxScore, locale)}
                                 </span>
                                 <input
                                   className="field-control"
@@ -3607,42 +2840,42 @@ export function ScoreDetailClient() {
                       ) : null;
                     })()}
                     <p className="item-title">
-                      {submission.submitterName} <span className="status-chip tone-cyan">{submission.status}</span>
+                      {submission.submitterName} <span className="status-chip tone-cyan">{submission.status === "reviewed" ? assignmentCopy.statusReviewed : assignmentCopy.statusSubmitted}</span>
                     </p>
                     <p className="item-meta">
                       {submission.assignmentTitle ?? submission.assignmentId.slice(0, 8)} | {assignmentCopy.submittedAt}:{" "}
-                      {formatLocal(submission.submittedAt, locale)}
+                      {formatDateTime(submission.submittedAt, locale)}
                     </p>
                     <p className="item-meta">
-                      {assignmentCopy.practiceMinutes}: {submission.practiceMinutes ?? "-"} | {assignmentCopy.contact}:{" "}
+                      {assignmentCopy.practiceMinutes}: {submission.practiceMinutes === null ? "-" : formatNumber(submission.practiceMinutes, locale)} | {assignmentCopy.contact}:{" "}
                       {submission.submitterContact ?? "-"}
                     </p>
                     {submission.practiceSettings ? (
                       <p className="item-meta">
-                        Submitted practice: {formatAssignmentPracticeSettings(submission.practiceSettings, currentScoreJson)}
+                        {assignmentCopy.submittedPractice}: {formatAssignmentPracticeSettings(submission.practiceSettings, currentScoreJson, locale, detailCopy.practice)}
                       </p>
                     ) : null}
                     {submission.performanceAnalysis ? (
                       <details className="list-item">
                         <summary className="item-title">
-                          {locale === "zh-CN" ? "浏览器逐音分析" : "Browser per-note analysis"} · {submission.performanceAnalysis.completeness.detected}/{submission.performanceAnalysis.completeness.expected}
+                          {assignmentCopy.analysisTitle} · {formatNumber(submission.performanceAnalysis.completeness.detected, locale)}/{formatNumber(submission.performanceAnalysis.completeness.expected, locale)}
                         </summary>
                         <p className="item-meta">
-                          {submission.performanceAnalysis.algorithmVersion} · {locale === "zh-CN" ? "对齐" : "alignment"}: {submission.performanceAnalysis.alignment.source} · {submission.performanceAnalysis.alignment.timeScale.toFixed(3)}x
+                          {submission.performanceAnalysis.algorithmVersion} · {assignmentCopy.alignment}: {detailCopy.alignmentSources[submission.performanceAnalysis.alignment.source]} · {formatNumber(submission.performanceAnalysis.alignment.timeScale, locale, { maximumFractionDigits: 3 })}x
                         </p>
                         <p className="item-meta">
-                          {locale === "zh-CN" ? "乐谱修订" : "Score revision"}: {submission.performanceAnalysis.scoreRevisionId?.slice(0, 12) ?? (locale === "zh-CN" ? "未记录" : "not recorded")}
+                          {assignmentCopy.scoreRevision}: {submission.performanceAnalysis.scoreRevisionId?.slice(0, 12) ?? assignmentCopy.notRecorded}
                         </p>
                         <div className="metric-grid">
                           {submission.performanceAnalysis.measures.map((measure) => (
                             <div className="metric-card" key={measure.measureId}>
-                              <p className="metric-label">{locale === "zh-CN" ? "小节" : "Measure"} {measure.measureNumber}</p>
-                              <p className="item-meta">{locale === "zh-CN" ? "检测" : "Detected"}: {measure.detectedCount}/{measure.eventCount}</p>
-                              <p className="item-meta">Pitch: {measure.pitchAttentionCount} · Rhythm: {measure.rhythmAttentionCount} · Polyphonic: {measure.polyphonicUnscoredCount}</p>
+                              <p className="metric-label">{assignmentCopy.measure} {formatMaybeNumber(measure.measureNumber, locale)}</p>
+                              <p className="item-meta">{assignmentCopy.detected}: {formatNumber(measure.detectedCount, locale)}/{formatNumber(measure.eventCount, locale)}</p>
+                              <p className="item-meta">{assignmentCopy.pitch}: {formatNumber(measure.pitchAttentionCount, locale)} · {assignmentCopy.rhythm}: {formatNumber(measure.rhythmAttentionCount, locale)} · {assignmentCopy.polyphonic}: {formatNumber(measure.polyphonicUnscoredCount, locale)}</p>
                             </div>
                           ))}
                         </div>
-                        <p className="helper-copy">{locale === "zh-CN" ? "这是浏览器算法的辅助结果，教师应结合原始录音复核。" : "This browser analysis is assistive; review it against the original recording."}</p>
+                        <p className="helper-copy">{assignmentCopy.analysisHelper}</p>
                       </details>
                     ) : null}
                     {submission.note ? <p className="body-copy">{submission.note}</p> : null}
@@ -3660,7 +2893,7 @@ export function ScoreDetailClient() {
                       <div className="stack-sm">
                         <div className="button-row">
                           <span className="item-meta">
-                            {assignmentCopy.performanceFile}: {submission.performanceFile.originalName} | {formatSize(submission.performanceFile.sizeBytes)}
+                            {assignmentCopy.performanceFile}: {submission.performanceFile.originalName} | {formatSize(submission.performanceFile.sizeBytes, locale)}
                           </span>
                           <button
                             type="button"
@@ -3698,7 +2931,7 @@ export function ScoreDetailClient() {
                               />
                             )}
                             <p className="item-meta">
-                              {assignmentCopy.performanceTime}: {formatDuration(performancePlaybackTimes[submission.id] ?? 0)}
+                              {assignmentCopy.performanceTime}: {formatDuration(performancePlaybackTimes[submission.id] ?? 0, locale)}
                             </p>
                             <label className="field-group wide">
                               <span>{assignmentCopy.performanceComment}</span>
@@ -3739,7 +2972,7 @@ export function ScoreDetailClient() {
                     ) : null}
                     {submission.gradeScore !== null || submission.gradeMax !== null ? (
                       <p className="item-meta">
-                        {gradeCopy.grade}: {submission.gradeScore ?? "-"} / {submission.gradeMax ?? "-"}
+                        {gradeCopy.grade}: {submission.gradeScore === null ? "-" : formatNumber(submission.gradeScore, locale)} / {submission.gradeMax === null ? "-" : formatNumber(submission.gradeMax, locale)}
                       </p>
                     ) : null}
                     <div className="form-grid">
@@ -3810,7 +3043,7 @@ export function ScoreDetailClient() {
         </div>
         {hasActiveScoreJob ? (
           <p className="helper-copy">
-            {locale === "zh-CN" ? "乐谱正在处理中，页面会自动刷新。" : "A score operation is running; this page will refresh automatically."}
+            {omrCopy.running}
           </p>
         ) : null}
         {jobsError ? <p className="form-status error">{jobsError}</p> : null}
@@ -3823,17 +3056,17 @@ export function ScoreDetailClient() {
                 <div key={job.id} className="list-item">
                   <div className="list-item-content">
                     <p className="item-title">
-                      {formatScoreJobLabel(job)} <span className={`status-chip ${toneForJobStatus(job.status)}`}>{job.status}</span>
+                      {formatScoreJobLabel(job, omrCopy.types)} <span className={`status-chip ${toneForJobStatus(job.status)}`}>{omrCopy.statuses[job.status]}</span>
                     </p>
                     <p className="item-meta">
-                      {formatLocal(job.createdAt, locale)} | {omrCopy.revision}: {job.resultRevisionId ? job.resultRevisionId.slice(0, 8) : "-"} |{" "}
-                      {omrCopy.outputs}: {job.outputFileIds?.length ?? 0} | {locale === "zh-CN" ? "尝试" : "Attempt"}: {job.attemptCount}
-                      {job.queuePosition ? ` | ${locale === "zh-CN" ? "队列位置" : "Queue"}: ${job.queuePosition}` : ""}
+                      {formatDateTime(job.createdAt, locale)} | {omrCopy.revision}: {job.resultRevisionId ? job.resultRevisionId.slice(0, 8) : "-"} |{" "}
+                      {omrCopy.outputs}: {formatNumber(job.outputFileIds?.length ?? 0, locale)} | {omrCopy.attempt}: {formatNumber(job.attemptCount, locale)}
+                      {job.queuePosition ? ` | ${omrCopy.queue}: ${formatNumber(job.queuePosition, locale)}` : ""}
                     </p>
                     {(job.status === "queued" || job.status === "processing") ? (
                       <div className="stack-sm">
-                        <progress max={100} value={job.progressPercent} aria-label={locale === "zh-CN" ? "任务进度" : "Job progress"} />
-                        <p className="helper-copy">{job.progressPercent}%</p>
+                        <progress max={100} value={job.progressPercent} aria-label={omrCopy.progressAria} />
+                        <p className="helper-copy">{formatNumber(job.progressPercent / 100, locale, { style: "percent" })}</p>
                       </div>
                     ) : null}
                     {job.errorMessage ? <p className="form-status error">{job.errorMessage}</p> : null}
@@ -3847,17 +3080,17 @@ export function ScoreDetailClient() {
                           key={`${job.id}-${asset.file.id}`}
                           onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
                         >
-                          {assetCopy.download} {formatAssetKind(asset.assetKind)}
+                          {assetCopy.download} {formatAssetKind(asset.assetKind, assetCopy.kinds)}
                         </button>
                       ))}
                       {(job.status === "queued" || job.status === "processing") ? (
                         <button type="button" className="button button-secondary button-ghost" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "cancel")}>
-                          {jobActionId === job.id ? (locale === "zh-CN" ? "处理中..." : "Working...") : (locale === "zh-CN" ? "取消" : "Cancel")}
+                          {jobActionId === job.id ? omrCopy.working : omrCopy.cancel}
                         </button>
                       ) : null}
                       {(job.status === "failed" || job.status === "cancelled") ? (
                         <button type="button" className="button button-primary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "retry")}>
-                          {jobActionId === job.id ? (locale === "zh-CN" ? "处理中..." : "Working...") : (locale === "zh-CN" ? "重试" : "Retry")}
+                          {jobActionId === job.id ? omrCopy.working : omrCopy.retry}
                         </button>
                       ) : null}
                     </div>
@@ -3872,16 +3105,16 @@ export function ScoreDetailClient() {
             <h3 className="card-title">{omrCopy.diagnostics}</h3>
             <div className="list-grid">
               {omrDiagnostics.map((diagnostic) => {
-                const summary = summarizeOmrDiagnostic(diagnostic.diagnostics);
+                const summary = summarizeOmrDiagnostic(diagnostic.diagnostics, detailCopy.diagnostics, locale);
                 return (
                   <div key={diagnostic.id} className="list-item">
                     <div className="list-item-content">
                       <p className="item-title">
-                        {summary.status} <span className={`status-chip ${toneForDiagnosticStatus(summary.status)}`}>{summary.engine}</span>
+                        {summary.status} <span className={`status-chip ${toneForDiagnosticStatus(summary.statusCode)}`}>{summary.engine}</span>
                       </p>
                       <p className="item-meta">
-                        {formatLocal(diagnostic.createdAt, locale)} | {omrCopy.confidence}: {formatPercent(diagnostic.confidence)} | {omrCopy.pages}:{" "}
-                        {diagnostic.sourcePageCount ?? "-"}
+                        {formatDateTime(diagnostic.createdAt, locale)} | {omrCopy.confidence}: {formatPercent(diagnostic.confidence, locale)} | {omrCopy.pages}:{" "}
+                        {diagnostic.sourcePageCount === null ? "-" : formatNumber(diagnostic.sourcePageCount, locale)}
                       </p>
                       {summary.message ? <p className="helper-copy">{summary.message}</p> : null}
                       {summary.counts.length > 0 ? <p className="helper-copy">{summary.counts.join(" | ")}</p> : null}
@@ -3910,13 +3143,13 @@ export function ScoreDetailClient() {
               <div key={asset.id} className="list-item">
                 <div className="list-item-content">
                   <p className="item-title">
-                    {asset.file.originalName} {asset.isStale ? <span className="status-chip tone-amber">{locale === "zh-CN" ? "旧版本" : "Stale"}</span> : null}
+                    {asset.file.originalName} {asset.isStale ? <span className="status-chip tone-amber">{assetCopy.stale}</span> : null}
                   </p>
                   <p className="item-meta">
-                    {isSourceAsset(asset.assetKind) ? assetCopy.source : assetCopy.export} | {formatAssetKind(asset.assetKind)} | {formatSize(asset.file.sizeBytes)} |{" "}
-                    {formatLocal(asset.createdAt, locale)}
+                    {isSourceAsset(asset.assetKind) ? assetCopy.source : assetCopy.export} | {formatAssetKind(asset.assetKind, assetCopy.kinds)} | {formatSize(asset.file.sizeBytes, locale)} |{" "}
+                    {formatDateTime(asset.createdAt, locale)}
                   </p>
-                  {asset.revisionId ? <p className="helper-copy">{locale === "zh-CN" ? "来源版本" : "Source revision"}: {asset.revisionId.slice(0, 8)}</p> : null}
+                  {asset.revisionId ? <p className="helper-copy">{assetCopy.sourceRevision}: {asset.revisionId.slice(0, 8)}</p> : null}
                   {asset.checksumSha256 ? <p className="helper-copy">SHA-256: {asset.checksumSha256.slice(0, 16)}...</p> : null}
                 </div>
                 <button
@@ -3982,9 +3215,9 @@ export function ScoreDetailClient() {
       ) : (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">Correction</p>
-            <h2 className="card-title">Waiting for editable notation</h2>
-            <p className="body-copy">The correction panel will appear after MusicXML import or OMR creates a Score JSON revision.</p>
+            <p className="eyebrow">{detailCopy.emptyStates.correctionEyebrow}</p>
+            <h2 className="card-title">{detailCopy.emptyStates.correctionTitle}</h2>
+            <p className="body-copy">{detailCopy.emptyStates.correctionBody}</p>
           </div>
         </section>
       )}
@@ -4000,9 +3233,9 @@ export function ScoreDetailClient() {
             <span>{transposeTargetCopy.mode}</span>
             <select className="field-select" value={transposeMode} onChange={(event) => setTransposeMode(event.target.value as "semitones" | "interval" | "targetKey" | "instrument")}>
               <option value="semitones">{transposeTargetCopy.semitoneMode}</option>
-              <option value="interval">{locale === "zh-CN" ? "按音程/八度" : "By interval/octave"}</option>
+              <option value="interval">{transposeTargetCopy.intervalMode}</option>
               <option value="targetKey">{transposeTargetCopy.targetKeyMode}</option>
-              <option value="instrument">{locale === "zh-CN" ? "按移调乐器" : "For transposing instrument"}</option>
+              <option value="instrument">{transposeTargetCopy.instrumentMode}</option>
             </select>
           </label>
           <label className="field-group">
@@ -4010,14 +3243,10 @@ export function ScoreDetailClient() {
               {transposeMode === "targetKey"
                 ? transposeTargetCopy.targetKey
                 : transposeMode === "instrument"
-                  ? locale === "zh-CN"
-                    ? "移调乐器"
-                    : "Instrument"
+                  ? transposeTargetCopy.instrument
                   : transposeMode === "interval"
-                    ? locale === "zh-CN"
-                      ? "音程"
-                      : "Interval"
-                  : transposeCopy.semitones}
+                    ? transposeTargetCopy.interval
+                    : transposeCopy.semitones}
             </span>
             {transposeMode === "targetKey" ? (
               <select className="field-select" value={targetTonic} onChange={(event) => setTargetTonic(event.target.value)}>
@@ -4031,7 +3260,7 @@ export function ScoreDetailClient() {
               <select className="field-select" value={instrumentProfileId} onChange={(event) => setInstrumentProfileId(event.target.value as typeof instrumentProfileId)}>
                 {TRANSPOSING_INSTRUMENT_PROFILES.map((profile) => (
                   <option key={profile.id} value={profile.id}>
-                    {profile.label} ({profile.semitonesFromConcertPitch >= 0 ? "+" : ""}{profile.semitonesFromConcertPitch})
+                    {detailCopy.profiles.instruments[profile.id].label} ({profile.semitonesFromConcertPitch >= 0 ? "+" : ""}{formatNumber(profile.semitonesFromConcertPitch, locale)})
                   </option>
                 ))}
               </select>
@@ -4043,7 +3272,7 @@ export function ScoreDetailClient() {
               >
                 {TRANSPOSE_INTERVAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.label} ({option.semitones} {locale === "zh-CN" ? "半音" : "semitones"})
+                    {option.label} ({formatMessage(transposeTargetCopy.intervalSemitones, { count: formatNumber(option.semitones, locale) })})
                   </option>
                 ))}
               </select>
@@ -4069,7 +3298,7 @@ export function ScoreDetailClient() {
               >
                 {TARGET_MODE_OPTIONS.map((mode) => (
                   <option key={mode} value={mode}>
-                    {mode === "major" ? transposeTargetCopy.major : mode === "minor" ? transposeTargetCopy.minor : mode[0].toUpperCase() + mode.slice(1)}
+                    {formatTransposeMode(mode, transposeTargetCopy)}
                   </option>
                 ))}
               </select>
@@ -4077,40 +3306,40 @@ export function ScoreDetailClient() {
           ) : null}
           {transposeMode === "interval" ? (
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "方向" : "Direction"}</span>
+              <span>{transposeTargetCopy.direction}</span>
               <select
                 className="field-select"
                 value={transposeIntervalDirection}
                 onChange={(event) => setTransposeIntervalDirection(Number(event.target.value) === -1 ? -1 : 1)}
               >
-                <option value={1}>{locale === "zh-CN" ? "向上" : "Up"}</option>
-                <option value={-1}>{locale === "zh-CN" ? "向下" : "Down"}</option>
+                <option value={1}>{transposeTargetCopy.up}</option>
+                <option value={-1}>{transposeTargetCopy.down}</option>
               </select>
             </label>
           ) : null}
           <label className="field-group">
-            <span>{locale === "zh-CN" ? "异名同音策略" : "Accidental spelling"}</span>
+            <span>{transposeTargetCopy.spelling}</span>
             <select
               className="field-select"
               value={transposeSpellingPolicy}
               onChange={(event) => setTransposeSpellingPolicy(event.target.value as TransposeSpellingPolicy)}
             >
-              <option value="auto">{locale === "zh-CN" ? "跟随目标调号" : "Follow target key"}</option>
-              <option value="preserve">{locale === "zh-CN" ? "保持原拼写倾向" : "Preserve source tendency"}</option>
-              <option value="prefer-sharps">{locale === "zh-CN" ? "优先升号" : "Prefer sharps"}</option>
-              <option value="prefer-flats">{locale === "zh-CN" ? "优先降号" : "Prefer flats"}</option>
+              <option value="auto">{transposeTargetCopy.spellingAuto}</option>
+              <option value="preserve">{transposeTargetCopy.spellingPreserve}</option>
+              <option value="prefer-sharps">{transposeTargetCopy.spellingSharps}</option>
+              <option value="prefer-flats">{transposeTargetCopy.spellingFlats}</option>
             </select>
           </label>
           {transposeMode === "instrument" ? (
             <label className="field-group">
-              <span>{locale === "zh-CN" ? "音高方向" : "Pitch direction"}</span>
+              <span>{transposeTargetCopy.pitchDirection}</span>
               <select
                 className="field-select"
                 value={transposePitchMode}
                 onChange={(event) => setTransposePitchMode(event.target.value as TransposePitchMode)}
               >
-                <option value="concert-to-written">{locale === "zh-CN" ? "实际音转记谱音" : "Concert to written"}</option>
-                <option value="written-to-concert">{locale === "zh-CN" ? "记谱音转实际音" : "Written to concert"}</option>
+                <option value="concert-to-written">{transposeTargetCopy.concertToWritten}</option>
+                <option value="written-to-concert">{transposeTargetCopy.writtenToConcert}</option>
               </select>
             </label>
           ) : null}
@@ -4128,7 +3357,7 @@ export function ScoreDetailClient() {
               <option value="none">{transposeRangeCopy.none}</option>
               {SCORE_RANGE_PROFILES.map((profile) => (
                 <option key={profile.id} value={profile.id}>
-                  {profile.label}
+                  {detailCopy.profiles.ranges[profile.id]}
                 </option>
               ))}
             </select>
@@ -4176,7 +3405,7 @@ export function ScoreDetailClient() {
                       <option value="none">{transposeRangeCopy.noPartProfile}</option>
                       {SCORE_RANGE_PROFILES.map((profile) => (
                         <option key={profile.id} value={profile.id}>
-                          {profile.label}
+                          {detailCopy.profiles.ranges[profile.id]}
                         </option>
                       ))}
                     </select>
@@ -4187,7 +3416,7 @@ export function ScoreDetailClient() {
           ) : null}
           {transposeMode === "instrument" ? (
             <p className="helper-copy">
-              {TRANSPOSING_INSTRUMENT_PROFILES.find((profile) => profile.id === instrumentProfileId)?.examples}
+              {formatInstrumentExamples(instrumentProfileId, detailCopy.profiles.instruments)}
             </p>
           ) : null}
           <div className="button-row">
@@ -4220,7 +3449,7 @@ export function ScoreDetailClient() {
         {transposeStatus && transposeStatusKind ? <p className={`form-status ${transposeStatusKind}`}>{transposeStatus}</p> : null}
         {transposeEngineResult ? (
           <p className="helper-copy">
-            {locale === "zh-CN" ? "移调引擎" : "Transpose engine"}: {transposeEngineResult === "music21" ? "music21" : "Score JSON fallback"}
+            {transposeTargetCopy.engine}: {transposeEngineResult === "music21" ? "music21" : transposeTargetCopy.scoreJsonFallback}
           </p>
         ) : null}
         {transposeWarnings.map((warning) => (
@@ -4237,15 +3466,15 @@ export function ScoreDetailClient() {
               <div key={suggestion.semitones} className="list-item">
                 <div className="list-item-content">
                   <p className="item-title">
-                    {suggestion.directionLabel} semitones to {suggestion.targetKey.display}{" "}
+                    {formatMessage(transposeRangeCopy.suggestionTitle, { value: formatSignedNumber(suggestion.semitones, locale), target: suggestion.targetKey.display })}{" "}
                     <span className={`status-chip ${suggestion.rangeDiagnostic.outOfRangeNoteCount > 0 ? "tone-amber" : "tone-cyan"}`}>
                       {suggestion.rangeDiagnostic.outOfRangeNoteCount > 0
-                        ? `${suggestion.rangeDiagnostic.outOfRangeNoteCount} / ${suggestion.rangeDiagnostic.noteCount} ${transposeRangeCopy.notes}`
+                        ? `${formatNumber(suggestion.rangeDiagnostic.outOfRangeNoteCount, locale)} / ${formatNumber(suggestion.rangeDiagnostic.noteCount, locale)} ${transposeRangeCopy.notes}`
                         : transposeRangeCopy.noIssues}
                     </span>
                   </p>
                   <p className="item-meta">
-                    From {suggestion.sourceKey.display} | Score {suggestion.rangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.lowestMidi)}-
+                    {transposeRangeCopy.from} {suggestion.sourceKey.display} | {transposeRangeCopy.score} {suggestion.rangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.lowestMidi)}-
                     {suggestion.rangeDiagnostic.highestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.highestMidi)}
                     {suggestion.rangeDiagnostic.checkedPartIds.length > 0 ? ` | ${transposeRangeCopy.checked}: ${formatScorePartIds(suggestion.rangeDiagnostic.checkedPartIds, currentScoreJson)}` : ""}
                   </p>
@@ -4264,12 +3493,12 @@ export function ScoreDetailClient() {
                 {transposeRangeCopy.summary}: {transposeRangeDiagnostic.label}{" "}
                 <span className={`status-chip ${transposeRangeDiagnostic.outOfRangeNoteCount > 0 ? "tone-amber" : "tone-cyan"}`}>
                   {transposeRangeDiagnostic.outOfRangeNoteCount > 0
-                    ? `${transposeRangeDiagnostic.outOfRangeNoteCount} / ${transposeRangeDiagnostic.noteCount} ${transposeRangeCopy.notes}`
+                    ? `${formatNumber(transposeRangeDiagnostic.outOfRangeNoteCount, locale)} / ${formatNumber(transposeRangeDiagnostic.noteCount, locale)} ${transposeRangeCopy.notes}`
                     : transposeRangeCopy.noIssues}
                 </span>
               </p>
               <p className="item-meta">
-                Range {formatMidiNote(transposeRangeDiagnostic.minMidi)}-{formatMidiNote(transposeRangeDiagnostic.maxMidi)} | Score{" "}
+                {transposeRangeCopy.range} {formatMidiNote(transposeRangeDiagnostic.minMidi)}-{formatMidiNote(transposeRangeDiagnostic.maxMidi)} | {transposeRangeCopy.score}{" "}
                 {transposeRangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(transposeRangeDiagnostic.lowestMidi)}-
                 {transposeRangeDiagnostic.highestMidi === null ? "-" : formatMidiNote(transposeRangeDiagnostic.highestMidi)}
                 {transposeRangeDiagnostic.checkedPartIds.length > 0 ? ` | ${transposeRangeCopy.checked}: ${formatScorePartIds(transposeRangeDiagnostic.checkedPartIds, currentScoreJson)}` : ""}
@@ -4282,7 +3511,7 @@ export function ScoreDetailClient() {
               {transposeRangeDiagnostics.length > 1
                 ? transposeRangeDiagnostics.map((diagnostic) => (
                     <p key={`${diagnostic.profileId}-${diagnostic.checkedPartIds.join("-")}`} className="helper-copy">
-                      {diagnostic.label} / {formatScorePartIds(diagnostic.checkedPartIds, currentScoreJson)}: {diagnostic.outOfRangeNoteCount} / {diagnostic.noteCount}{" "}
+                      {diagnostic.label} / {formatScorePartIds(diagnostic.checkedPartIds, currentScoreJson)}: {formatNumber(diagnostic.outOfRangeNoteCount, locale)} / {formatNumber(diagnostic.noteCount, locale)}{" "}
                       {transposeRangeCopy.notes}
                     </p>
                   ))
@@ -4326,12 +3555,12 @@ export function ScoreDetailClient() {
                     <p className="item-title">
                       {recommendation.partName}{" "}
                       <span className={`status-chip ${recommendation.noteCount > 0 ? "tone-cyan" : "tone-neutral"}`}>
-                        {recommendation.noteCount > 0 ? formatClefForDisplay(recommendation.clef) : clefRecommendationCopy.noNotes}
+                        {recommendation.noteCount > 0 ? formatClefForDisplay(recommendation.clef, clefRecommendationCopy, locale) : clefRecommendationCopy.noNotes}
                       </span>
                     </p>
                     <p className="item-meta">
-                      {clefRecommendationCopy.current}: {recommendation.currentClef ? formatClefForDisplay(recommendation.currentClef) : "-"} |{" "}
-                      {clefRecommendationCopy.recommended}: {formatClefForDisplay(recommendation.clef)} | {clefRecommendationCopy.range}:{" "}
+                      {clefRecommendationCopy.current}: {recommendation.currentClef ? formatClefForDisplay(recommendation.currentClef, clefRecommendationCopy, locale) : "-"} |{" "}
+                      {clefRecommendationCopy.recommended}: {formatClefForDisplay(recommendation.clef, clefRecommendationCopy, locale)} | {clefRecommendationCopy.range}:{" "}
                       {recommendation.lowestMidi === null ? "-" : formatMidiNote(recommendation.lowestMidi)}-
                       {recommendation.highestMidi === null ? "-" : formatMidiNote(recommendation.highestMidi)}
                     </p>
@@ -4357,7 +3586,7 @@ export function ScoreDetailClient() {
               onPlaybackEventChange={setSelectedScoreEventId}
               exportActions={{
                 midi: {
-                  label: exportCopy.midi,
+                  label: exportCopy.button,
                   loadingLabel: exportCopy.exporting,
                   loading: exportingMidi,
                   disabled: !currentScoreJson,
@@ -4394,9 +3623,9 @@ export function ScoreDetailClient() {
       ) : (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">Playback practice</p>
-            <h2 className="card-title">Waiting for a score revision</h2>
-            <p className="body-copy">Playback will be available after OMR produces a MusicXML/Score JSON candidate revision.</p>
+            <p className="eyebrow">{detailCopy.emptyStates.playbackEyebrow}</p>
+            <h2 className="card-title">{detailCopy.emptyStates.playbackTitle}</h2>
+            <p className="body-copy">{detailCopy.emptyStates.playbackBody}</p>
           </div>
         </section>
       )}
@@ -4425,9 +3654,16 @@ export function ScoreDetailClient() {
             scoreJson={currentScoreJson}
             selectedEventId={selectedScoreEventId}
             onEventSelect={handleScoreEventSelect}
-            emptyLabel={locale === "zh-CN" ? "暂无可渲染的 MusicXML。" : "No renderable MusicXML yet."}
-            loadingLabel={locale === "zh-CN" ? "正在渲染五线谱预览..." : "Rendering staff notation preview..."}
-            errorLabel={locale === "zh-CN" ? "MusicXML 预览渲染失败。" : "MusicXML preview could not be rendered."}
+            emptyLabel={detailCopy.preview.empty}
+            loadingLabel={detailCopy.preview.loading}
+            errorLabel={detailCopy.preview.error}
+            retryLabel={detailCopy.preview.retry}
+            technicalDetailsLabel={detailCopy.preview.technicalDetails}
+            deferredLabel={detailCopy.preview.deferred}
+            renderLabel={detailCopy.preview.render}
+            eventLabelTemplate={detailCopy.preview.eventLabel}
+            noteLabel={detailCopy.preview.note}
+            restLabel={detailCopy.preview.rest}
           />
         </section>
       </div>
@@ -4442,19 +3678,19 @@ export function ScoreDetailClient() {
             <div className="score-summary-grid">
               <div className="mini-card stack-xs">
                 <p className="metric-label">{summaryCopy.parts}</p>
-                <p className="metric-value compact">{scoreSummary.parts}</p>
+                <p className="metric-value compact">{formatNumber(scoreSummary.parts, locale)}</p>
               </div>
               <div className="mini-card stack-xs">
                 <p className="metric-label">{summaryCopy.measures}</p>
-                <p className="metric-value compact">{scoreSummary.measures}</p>
+                <p className="metric-value compact">{formatNumber(scoreSummary.measures, locale)}</p>
               </div>
               <div className="mini-card stack-xs">
                 <p className="metric-label">{summaryCopy.notes}</p>
-                <p className="metric-value compact">{scoreSummary.notes}</p>
+                <p className="metric-value compact">{formatNumber(scoreSummary.notes, locale)}</p>
               </div>
               <div className="mini-card stack-xs">
                 <p className="metric-label">{summaryCopy.rests}</p>
-                <p className="metric-value compact">{scoreSummary.rests}</p>
+                <p className="metric-value compact">{formatNumber(scoreSummary.rests, locale)}</p>
               </div>
               <div className="mini-card stack-xs wide">
                 <p className="metric-label">{summaryCopy.parser}</p>
@@ -4511,7 +3747,7 @@ export function ScoreDetailClient() {
         {jianpu ? (
           <div className="jianpu-preview">
             <div className="jianpu-meta">
-              <span>{jianpuCopy.key}: 1={jianpu.key.tonic} ({jianpu.key.mode})</span>
+              <span>{jianpuCopy.key}: 1={jianpu.key.tonic} ({transposeTargetCopy[jianpu.key.mode]})</span>
               <span>{jianpuCopy.source}: {jianpu.metadata.sourceRevisionParser}</span>
             </div>
             {jianpu.metadata.warnings.length > 0 ? (
@@ -4586,7 +3822,7 @@ export function ScoreDetailClient() {
                     {comment.resolvedAt ? <span className="status-chip tone-green">{commentCopy.resolved}</span> : null}
                   </div>
                   <p className="item-meta">
-                    {formatCommentTarget(comment.target, commentCopy.scoreTarget)} | {formatLocal(comment.createdAt, locale)}
+                    {formatCommentTarget(comment.target, commentCopy.scoreTarget)} | {formatDateTime(comment.createdAt, locale)}
                   </p>
                   <p className="body-copy">{comment.body}</p>
                 </div>
@@ -4604,14 +3840,14 @@ export function ScoreDetailClient() {
           <p className="eyebrow">{copy.revisions}</p>
           <h2 className="card-title">{copy.revisions}</h2>
         </div>
-        <div className="button-row" role="group" aria-label={locale === "zh-CN" ? "版本撤销与重做" : "Revision undo and redo"}>
+        <div className="button-row" role="group" aria-label={detailCopy.revision.undoRedoAria}>
           <button
             type="button"
             className="button button-secondary button-ghost"
             onClick={() => void handleUndoRevision()}
             disabled={undoRevisionIds.length === 0 || Boolean(restoringRevisionId)}
           >
-            {locale === "zh-CN" ? "撤销" : "Undo"}
+            {detailCopy.revision.undo}
           </button>
           <button
             type="button"
@@ -4619,7 +3855,7 @@ export function ScoreDetailClient() {
             onClick={() => void handleRedoRevision()}
             disabled={redoRevisionIds.length === 0 || Boolean(restoringRevisionId)}
           >
-            {locale === "zh-CN" ? "重做" : "Redo"}
+            {detailCopy.revision.redo}
           </button>
         </div>
         {revisionStatus && revisionStatusKind ? <p className={`form-status ${revisionStatusKind}`}>{revisionStatus}</p> : null}
@@ -4630,10 +3866,10 @@ export function ScoreDetailClient() {
               <div key={revision.id} className="list-item">
                 <div className="list-item-content">
                   <p className="item-title">
-                    v{revision.revisionNumber} {isCurrentRevision ? <span className="status-chip tone-primary">{copy.currentBadge}</span> : null}
+                    v{formatNumber(revision.revisionNumber, locale)} {isCurrentRevision ? <span className="status-chip tone-primary">{copy.currentBadge}</span> : null}
                   </p>
                   <p className="item-meta">
-                    {revision.createdFrom} | {formatLocal(revision.createdAt, locale)}
+                    {formatRevisionSource(revision.createdFrom, detailCopy.revision.sources)} | {formatDateTime(revision.createdAt, locale)}
                   </p>
                 </div>
                 <div className="button-row">
@@ -4664,14 +3900,18 @@ export function ScoreDetailClient() {
   );
 }
 
-function buildCommentTargetOptions(scoreJson: ScoreJson | undefined, locale: string, scoreTargetLabel: string): CommentTargetOption[] {
+function buildCommentTargetOptions(
+  scoreJson: ScoreJson | undefined,
+  copy: ScoreDetailMessages["comments"],
+  locale: SupportedLocale,
+): CommentTargetOption[] {
   const options: CommentTargetOption[] = [
     {
       id: "score",
-      label: scoreTargetLabel,
+      label: copy.scoreTarget,
       target: {
         type: "score",
-        label: scoreTargetLabel,
+        label: copy.scoreTarget,
       },
     },
   ];
@@ -4681,12 +3921,9 @@ function buildCommentTargetOptions(scoreJson: ScoreJson | undefined, locale: str
   }
 
   const partNames = new Map(scoreJson.parts.map((part) => [part.id, part.name]));
-  const measureLabel = locale === "zh-CN" ? "小节" : "Measure";
-  const noteLabel = locale === "zh-CN" ? "音符" : "Note";
-
   for (const measure of scoreJson.measures) {
     const partName = partNames.get(measure.partId) ?? measure.partId;
-    const label = `${partName} ${measureLabel} ${measure.number}`;
+    const label = `${partName} ${copy.measure} ${formatMaybeNumber(measure.number, locale)}`;
     options.push({
       id: `measure:${measure.id}`,
       label,
@@ -4705,7 +3942,7 @@ function buildCommentTargetOptions(scoreJson: ScoreJson | undefined, locale: str
       }
 
       const noteText = `${formatScorePitch(event.pitch)} ${event.durationType ?? ""}`.trim();
-      const noteOptionLabel = `${partName} ${measureLabel} ${measure.number} ${noteLabel} ${noteText}`;
+      const noteOptionLabel = `${partName} ${copy.measure} ${formatMaybeNumber(measure.number, locale)} ${copy.note} ${noteText}`;
       options.push({
         id: `note:${event.id}`,
         label: noteOptionLabel,
@@ -4759,16 +3996,23 @@ function jobHasMissingOutputAssets(job: ScoreJob, assets: ScoreAsset[]) {
   return outputFileIds.some((fileId) => !assetFileIds.has(fileId));
 }
 
-function formatAssignmentPracticeSettings(settings: AssignmentPracticeSettings, scoreJson: ScoreJson | undefined) {
+function formatAssignmentPracticeSettings(
+  settings: AssignmentPracticeSettings,
+  scoreJson: ScoreJson | undefined,
+  locale: SupportedLocale,
+  copy: ScoreDetailMessages["practice"],
+) {
   const parts =
     settings.soloPartIds.length > 0
-      ? `solo ${formatScorePartIds(settings.soloPartIds, scoreJson)}`
+      ? `${copy.solo} ${formatScorePartIds(settings.soloPartIds, scoreJson)}`
       : settings.mutedPartIds.length > 0
-        ? `mute ${formatScorePartIds(settings.mutedPartIds, scoreJson)}`
-        : "all parts";
-  const loop = settings.loopEnabled ? `loop ${settings.loopStartBeat}-${settings.loopEndBeat}` : "full score";
-  const helpers = [settings.metronomeEnabled ? "metronome" : null, settings.countInEnabled ? "count-in" : null].filter(Boolean).join(", ");
-  return `${settings.tempoBpm} BPM, ${loop}, ${parts}${helpers ? `, ${helpers}` : ""}`;
+        ? `${copy.mute} ${formatScorePartIds(settings.mutedPartIds, scoreJson)}`
+        : copy.allParts;
+  const loop = settings.loopEnabled
+    ? `${copy.loop} ${formatNumber(settings.loopStartBeat, locale)}-${formatNumber(settings.loopEndBeat, locale)}`
+    : copy.fullScore;
+  const helpers = [settings.metronomeEnabled ? copy.metronome : null, settings.countInEnabled ? copy.countIn : null].filter(Boolean).join(", ");
+  return `${formatNumber(settings.tempoBpm, locale)} BPM, ${loop}, ${parts}${helpers ? `, ${helpers}` : ""}`;
 }
 
 function buildRangeAssignments(partRangeProfileIds: Record<string, string>) {
@@ -4780,6 +4024,38 @@ function buildRangeAssignments(partRangeProfileIds: Record<string, string>) {
     }));
 }
 
+function formatTransposeMode(
+  mode: (typeof TARGET_MODE_OPTIONS)[number],
+  copy: ScoreDetailMessages["transposeTarget"],
+) {
+  return copy[mode];
+}
+
+function formatInstrumentExamples(
+  profileId: string,
+  copy: ScoreDetailMessages["profiles"]["instruments"],
+) {
+  const profile = TRANSPOSING_INSTRUMENT_PROFILES.find((item) => item.id === profileId);
+  return profile ? copy[profile.id].examples : "";
+}
+
+function formatSignedNumber(value: number, locale: SupportedLocale) {
+  return `${value > 0 ? "+" : ""}${formatNumber(value, locale)}`;
+}
+
+function formatMaybeNumber(value: string | number, locale: SupportedLocale) {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numericValue) && String(value).trim().length > 0
+    ? formatNumber(numericValue, locale)
+    : String(value);
+}
+
+function formatRevisionSource(value: string, copy: ScoreDetailMessages["revision"]["sources"]) {
+  return Object.prototype.hasOwnProperty.call(copy, value)
+    ? copy[value as keyof typeof copy]
+    : value.replace(/_/gu, " ");
+}
+
 function formatMidiNote(midi: number) {
   const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const pitchClass = ((midi % 12) + 12) % 12;
@@ -4787,9 +4063,13 @@ function formatMidiNote(midi: number) {
   return `${names[pitchClass]}${octave}`;
 }
 
-function formatClefForDisplay(clef: { sign: string; line?: number; octaveChange?: number }) {
-  const octave = clef.octaveChange ? ` ${clef.octaveChange > 0 ? "+" : ""}${clef.octaveChange}oct` : "";
-  return `${clef.sign}${clef.line ? ` line ${clef.line}` : ""}${octave}`;
+function formatClefForDisplay(
+  clef: { sign: string; line?: number; octaveChange?: number },
+  copy: ScoreDetailMessages["clef"],
+  locale: SupportedLocale,
+) {
+  const octave = clef.octaveChange ? ` ${formatSignedNumber(clef.octaveChange, locale)} ${copy.octave}` : "";
+  return `${clef.sign}${clef.line ? ` ${copy.line} ${formatNumber(clef.line, locale)}` : ""}${octave}`;
 }
 
 function formatCommentTarget(target: Record<string, unknown> | null, fallback: string) {
@@ -4800,82 +4080,90 @@ function formatCommentTarget(target: Record<string, unknown> | null, fallback: s
   return typeof target.label === "string" && target.label.trim().length > 0 ? target.label : fallback;
 }
 
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
+function formatSize(sizeBytes: number, locale: SupportedLocale) {
+  if (sizeBytes < 1024) return `${formatNumber(sizeBytes, locale)} B`;
+  if (sizeBytes < 1024 * 1024) return `${formatNumber(sizeBytes / 1024, locale, { maximumFractionDigits: 1 })} KB`;
+  return `${formatNumber(sizeBytes / (1024 * 1024), locale, { maximumFractionDigits: 2 })} MB`;
 }
 
-function formatSize(sizeBytes: number) {
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  return `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function formatDuration(timeSeconds: number) {
+function formatDuration(timeSeconds: number, locale: SupportedLocale) {
   const safeSeconds = Math.max(0, Math.floor(Number.isFinite(timeSeconds) ? timeSeconds : 0));
   const minutes = Math.floor(safeSeconds / 60);
   const seconds = safeSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return `${formatNumber(minutes, locale)}:${formatNumber(seconds, locale, { minimumIntegerDigits: 2, useGrouping: false })}`;
 }
 
 function isSourceAsset(assetKind: string) {
   return assetKind.startsWith("source_");
 }
 
-function formatAssetKind(assetKind: string) {
+function formatAssetKind(assetKind: string, copy: ScoreDetailMessages["assets"]["kinds"]) {
   switch (assetKind) {
     case "source_musicxml":
-      return "MusicXML source";
+      return copy.sourceMusicXml;
     case "source_jianpu":
-      return "Jianpu source";
+      return copy.sourceJianpu;
     case "source_pdf":
-      return "PDF source";
+      return copy.sourcePdf;
     case "source_image":
-      return "Image source";
+      return copy.sourceImage;
     case "source_audio":
-      return "Audio source";
+      return copy.sourceAudio;
     case "score_musicxml":
-      return "MusicXML";
+      return copy.scoreMusicXml;
     case "score_json_snapshot":
-      return "Score JSON";
+      return copy.scoreJsonSnapshot;
     case "output_jianpu":
-      return "Jianpu";
+      return copy.outputJianpu;
     case "output_midi":
-      return "MIDI";
+      return copy.outputMidi;
     case "rendered_pdf":
-      return "PDF";
+      return copy.renderedPdf;
     case "rendered_png":
-      return "PNG";
+      return copy.renderedPng;
     case "rendered_svg":
-      return "SVG";
+      return copy.renderedSvg;
     case "output_audio":
-      return "Audio/WAV";
+      return copy.outputAudio;
     default:
       return assetKind.replace(/_/g, " ");
   }
 }
 
-function formatScoreJobType(jobType: string) {
+function formatScoreJobType(jobType: string, copy: ScoreDetailMessages["jobs"]["types"]) {
   switch (jobType) {
     case "omr_import":
-      return "OMR import";
+      return copy.omrImport;
+    case "musicxml_import":
+      return copy.musicXmlImport;
+    case "jianpu_import":
+      return copy.jianpuImport;
+    case "staff_to_jianpu":
+      return copy.staffToJianpu;
+    case "jianpu_to_staff":
+      return copy.jianpuToStaff;
     case "transpose":
-      return "Transpose";
+      return copy.transpose;
     case "export":
-      return "Export";
+      return copy.export;
     case "render_audio":
-      return "Render audio";
+      return copy.renderAudio;
+    case "render_pdf":
+      return copy.renderPdf;
+    case "render_midi":
+      return copy.renderMidi;
     case "render_export":
-      return "Score export";
+      return copy.renderExport;
     case "audio_transcribe":
-      return "Audio transcription";
+      return copy.audioTranscribe;
     default:
       return jobType.replace(/_/g, " ");
   }
 }
 
-function formatScoreJobLabel(job: ScoreJob) {
+function formatScoreJobLabel(job: ScoreJob, copy: ScoreDetailMessages["jobs"]["types"]) {
   const format = typeof job.params?.format === "string" ? job.params.format.toUpperCase() : null;
-  return format ? `${format} ${formatScoreJobType(job.jobType)}` : formatScoreJobType(job.jobType);
+  return format ? `${format} ${formatScoreJobType(job.jobType, copy)}` : formatScoreJobType(job.jobType, copy);
 }
 
 function toneForJobStatus(status: string) {
@@ -4906,27 +4194,33 @@ function toneForDiagnosticStatus(status: string) {
   }
 }
 
-function formatPercent(value: number | null) {
+function formatPercent(value: number | null, locale: SupportedLocale) {
   if (value === null || Number.isNaN(value)) {
     return "-";
   }
 
-  return `${Math.round(value * 100)}%`;
+  return formatNumber(value, locale, { style: "percent", maximumFractionDigits: 0 });
 }
 
-function summarizeOmrDiagnostic(diagnostics: Record<string, unknown>) {
-  const status = stringValue(diagnostics.status) ?? "diagnostic";
+function summarizeOmrDiagnostic(
+  diagnostics: Record<string, unknown>,
+  copy: ScoreDetailMessages["diagnostics"],
+  locale: SupportedLocale,
+) {
+  const statusCode = stringValue(diagnostics.status) ?? "diagnostic";
+  const status = formatDiagnosticStatus(statusCode, copy.statuses);
   const engine = stringValue(diagnostics.engine) ?? "OMR";
   const message = stringValue(diagnostics.message);
   const counts = [
-    numberLabel("Measures", diagnostics.measureCount),
-    numberLabel("Notes", diagnostics.noteCount),
-    shortIdLabel("Revision", diagnostics.revisionId),
-    shortIdLabel("MIDI", diagnostics.midiFileId),
-    warningCountLabel(diagnostics.warnings),
+    numberLabel(copy.measures, diagnostics.measureCount, locale),
+    numberLabel(copy.notes, diagnostics.noteCount, locale),
+    shortIdLabel(copy.revision, diagnostics.revisionId),
+    shortIdLabel(copy.midi, diagnostics.midiFileId),
+    warningCountLabel(diagnostics.warnings, copy.warnings, locale),
   ].filter((value): value is string => Boolean(value));
 
   return {
+    statusCode,
     status,
     engine,
     message,
@@ -4938,14 +4232,20 @@ function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-function numberLabel(label: string, value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? `${label}: ${value}` : null;
+function numberLabel(label: string, value: unknown, locale: SupportedLocale) {
+  return typeof value === "number" && Number.isFinite(value) ? `${label}: ${formatNumber(value, locale)}` : null;
 }
 
 function shortIdLabel(label: string, value: unknown) {
   return typeof value === "string" && value.trim() ? `${label}: ${value.slice(0, 8)}` : null;
 }
 
-function warningCountLabel(value: unknown) {
-  return Array.isArray(value) && value.length > 0 ? `Warnings: ${value.length}` : null;
+function warningCountLabel(value: unknown, label: string, locale: SupportedLocale) {
+  return Array.isArray(value) && value.length > 0 ? `${label}: ${formatNumber(value.length, locale)}` : null;
+}
+
+function formatDiagnosticStatus(status: string, copy: ScoreDetailMessages["diagnostics"]["statuses"]) {
+  return Object.prototype.hasOwnProperty.call(copy, status)
+    ? copy[status as keyof typeof copy]
+    : copy.diagnostic;
 }

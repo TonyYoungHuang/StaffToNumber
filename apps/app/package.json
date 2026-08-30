@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "build:cloudflare": "opennextjs-cloudflare build",
+    "build:cloudflare": "opennextjs-cloudflare build --skipWranglerConfigCheck",
     "deploy:cloudflare:staging": "wrangler deploy --config wrangler.staging.jsonc",
     "start": "next start -p 3001",
-    "test": "node --import tsx --test src/lib/auth-return.test.ts src/lib/user-facing-error.test.ts src/lib/vexflow-layout.test.ts src/lib/vexflow-event-groups.test.ts src/lib/vexflow-beam-groups.test.ts src/lib/vexflow-voice-layout.test.ts src/lib/vexflow-modifier-layout.test.ts src/lib/vexflow-measure-annotations.test.ts src/lib/vexflow-key-signature.test.ts src/lib/vexflow-page-invalidation.test.ts src/lib/score-editor-clipboard.test.ts src/lib/score-collaboration-queue.test.ts src/lib/practice-performance-analysis.test.ts src/lib/score-collaboration-document.test.ts src/lib/omr-overlay-geometry.test.ts src/lib/score-review-viewport.test.ts src/lib/playback-timeline.test.ts",
+    "test": "node --import tsx --test src/lib/app-i18n.test.ts src/lib/auth-messages.test.ts src/lib/score-entry-messages/score-entry-messages.test.ts src/lib/score-detail-messages/score-detail-messages.test.ts src/lib/score-correction-messages/score-correction-messages.test.ts src/lib/score-editor-messages/score-editor-messages.test.ts src/lib/workspace-messages/workspace-messages.test.ts src/lib/billing-messages/billing-messages.test.ts src/lib/score-sharing-messages/score-sharing-messages.test.ts src/lib/playback-practice-messages/playback-practice-messages.test.ts src/lib/education-messages/education-messages.test.ts src/app/api/locale/route.test.ts src/middleware.test.ts src/lib/auth-return.test.ts src/lib/vexflow-layout.test.ts src/lib/vexflow-event-groups.test.ts src/lib/vexflow-beam-groups.test.ts src/lib/vexflow-voice-layout.test.ts src/lib/vexflow-modifier-layout.test.ts src/lib/vexflow-measure-annotations.test.ts src/lib/vexflow-key-signature.test.ts src/lib/vexflow-page-invalidation.test.ts src/lib/score-editor-clipboard.test.ts src/lib/score-collaboration-queue.test.ts src/lib/practice-performance-analysis.test.ts src/lib/score-collaboration-document.test.ts src/lib/omr-overlay-geometry.test.ts src/lib/score-review-viewport.test.ts src/lib/playback-timeline.test.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.3.0",
+    "@score/i18n": "0.1.0",
     "@score/shared": "0.1.0",
     "@score/ui": "0.1.0",
     "next": "^16.3.0",

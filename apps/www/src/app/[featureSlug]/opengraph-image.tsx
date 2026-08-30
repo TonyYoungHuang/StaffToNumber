@@ -1,14 +1,30 @@
 import { ImageResponse } from "next/og";
 import { notFound } from "next/navigation";
-import { localizeFeaturePage } from "../../lib/feature-page-localization";
+import { getFeaturePageUi, localizeFeaturePage } from "../../lib/feature-page-localization";
 import { readSiteLocale } from "../../lib/locale";
 import { findPlatformFeaturePage } from "../../lib/platform-feature-pages";
 
-export const alt = "ScoreTransposer sheet music tool";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const dynamic = "force-dynamic";
 
-export default async function OpenGraphImage({ params }: { params: Promise<{ featureSlug: string }> }) {
+export async function generateImageMetadata({ params }: { params: { featureSlug: string } }) {
+  const sourcePage = findPlatformFeaturePage(params.featureSlug);
+  if (!sourcePage) return [];
+
+  const locale = await readSiteLocale();
+  const page = localizeFeaturePage(sourcePage, locale);
+  return [{ id: "default", alt: `${page.title} | ScoreTransposer`, size, contentType }];
+}
+
+export default async function OpenGraphImage({
+  params,
+  id,
+}: {
+  params: Promise<{ featureSlug: string }>;
+  id: Promise<string | number>;
+}) {
+  await id;
   const { featureSlug } = await params;
   const sourcePage = findPlatformFeaturePage(featureSlug);
   if (!sourcePage) {
@@ -16,6 +32,7 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ fea
   }
   const locale = await readSiteLocale();
   const page = localizeFeaturePage(sourcePage, locale);
+  const ui = getFeaturePageUi(locale);
 
   return new ImageResponse(
     <div
@@ -33,7 +50,7 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ fea
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontSize: 30, fontWeight: 700 }}>ScoreTransposer</div>
-        <div style={{ fontSize: 22, color: "#0f766e" }}>{page.status}</div>
+        <div style={{ fontSize: 22, color: "#0f766e" }}>{ui.statuses[page.status]}</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 1000 }}>
         <div style={{ fontSize: 24, color: "#52615e" }}>{page.eyebrow}</div>

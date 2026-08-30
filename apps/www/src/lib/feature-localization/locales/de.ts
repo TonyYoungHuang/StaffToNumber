@@ -1,0 +1,81 @@
+import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
+
+export const deFeaturePages = {
+  "staff-to-jianpu": defineFeatureTranslation(
+    "Notensystem in Jianpu umwandeln", "Vom Fünfliniensystem zur Ziffernnotation", "Erzeuge Jianpu aus derselben strukturierten Partitur, die auch für Bearbeitung, Wiedergabe, Transposition und Export verwendet wird.",
+    ["Notensystem zu Jianpu", "Noten zu Ziffernnotation", "Jianpu Konverter", "MusicXML zu Jianpu"], ["Score JSON", "Jianpu-Generator", "MusicXML-Vorschau", "Exportzentrum"],
+    [["Partitur importieren oder scannen", "Beginne mit MusicXML, MIDI, Jianpu-Text, Score JSON oder einem OMR-Kandidaten aus PDF oder Bild."], ["Jianpu aus Score JSON erzeugen", "Die Vorschau liest strukturierte Noten, Tonarten, Takte, Texte und Akkorde statt PDF-Text."], ["Exportieren oder weiterarbeiten", "Lade Jianpu herunter, erzeuge Notensysteme neu, transponiere oder erstelle MIDI und Übungsaudio."]],
+    [["Unterstützung chinesischer Notation", "Grundton, Stufen, Oktav- und Dauermarkierungen, Liedtext, Taktgruppen und Akkorde bleiben sichtbar."], ["Wiederverwendbares Projektmodell", "Jianpu bleibt mit MusicXML, MIDI, gerenderten Bildern und Score-JSON-Sicherungen verbunden."]],
+    "Die Funktion konvertiert strukturierte Notensysteme; sie verspricht keine perfekte Erkennung beliebiger gescannter Jianpu-Bilder.",
+  ),
+  "jianpu-to-staff": defineFeatureTranslation(
+    "Jianpu in Notensystem umwandeln", "Von Ziffernnotation zum Fünfliniensystem", "Füge strukturierten Jianpu-Text ein, erstelle ein bearbeitbares Score JSON, zeige es als Notensystem an und exportiere MusicXML.",
+    ["Jianpu zu Notensystem", "Ziffernnotation zu Noten", "Jianpu zu MusicXML", "Jianpu Editor"], ["Jianpu-Parser", "Score JSON", "MusicXML-Export", "Notensystem-Vorschau"],
+    [["Strukturiertes Jianpu eingeben", "Nutze Text mit optionalen Stimmen, Tonart, Takt, Akkorden und Liedzeilen."], ["Notenprojekt erstellen", "Der Parser erzeugt Score JSON für Vorschau, Korrektur, Transposition, Wiedergabe und Export."], ["Notensystem exportieren", "Erzeuge MusicXML und bei konfiguriertem MuseScore-Dienst auch PDF, SVG oder PNG."]],
+    [["Für den Unterricht geeignet", "Erstelle aus Ziffernnotation schrittweise Notensysteme, MIDI und Übungsmaterial aus einer Quelle."], ["Strukturierte Eingabe zuerst", "Die aktuelle Version erwartet eingegebenen Text; freie Bilderkennung ist ein späterer Importweg."]],
+    "Die Konvertierung arbeitet mit strukturiertem Jianpu-Text, nicht mit beliebigen gescannten Ziffernnotationsbildern.",
+  ),
+  "transpose-score": defineFeatureTranslation(
+    "Intelligente Notentransposition", "Zieltonart, Halbtöne und transponierende Instrumente", "Transponiere nach Halbton, Zieltonart oder Instrumentenprofil, behalte das Original und prüfe Umfang und Schreibweise in einer neuen Revision.",
+    ["Noten transponieren", "Noten online transponieren", "Tonart ändern", "Stimme für transponierendes Instrument"], ["Score-JSON-Transposition", "Zieltonartmodus", "Instrumentenprofile", "Umfangsdiagnose"],
+    [["Notenprojekt öffnen", "Nutze eine Score-JSON-Revision aus MusicXML, OMR, Jianpu, MIDI oder Snapshot."], ["Modus wählen", "Verschiebe in Halbtönen, wähle eine Zieltonart oder erstelle notierte Stimmen für B-, A-, Es- oder F-Instrumente."], ["Tonumfang prüfen", "Optionale Profile melden zu tiefe oder hohe Noten und speichern Hinweise in der neuen Revision."]],
+    [["Revisionsbasierter Ablauf", "Jede Transposition erzeugt eine Version, ohne die Quelle zu überschreiben, sodass Ergebnisse vergleichbar bleiben."], ["Ausgaben neu erzeugen", "Jianpu, MusicXML, MIDI, PDF, Bilder und Audio werden aus der transponierten Revision neu erstellt."]],
+    "Komplexe enharmonische Schreibweise, passende Schlüssel und tatsächlicher Spielumfang benötigen eine manuelle Prüfung.",
+  ),
+  "score-editor": defineFeatureTranslation(
+    "Online-Noteneditor", "Notation erstellen, korrigieren und gemeinsam bearbeiten", "Importiere MusicXML, MIDI, Jianpu oder einen Scan-Kandidaten als bearbeitbare Revision, korrigiere die Partitur, extrahiere Stimmen und arbeite online zusammen.",
+    ["Noteneditor", "Noten online bearbeiten", "Partitur erstellen", "Stimmen extrahieren", "kollaborativer Noteneditor"], ["OSMD-Vorschau", "Score-JSON-Revisionen", "Korrekturpanel", "Stimmenkopien Beta", "Wiederherstellung", "Echtzeit-Zusammenarbeit Beta"],
+    [["Strukturierte Partitur importieren", "Beginne mit MusicXML, MIDI, Jianpu, Score JSON oder einem zur Bearbeitung freigegebenen OMR-Kandidaten."], ["Korrektur auswählen", "Bearbeite Noten, Pausen, Takte, Harmonie, Tempo, Dynamik, Artikulationen, Haltebögen, Liedtext und Taktstriche."], ["Neue Revision speichern", "Jede Korrektur wird als neue Score-JSON-Revision gespeichert und der Verlauf bleibt wiederherstellbar."]],
+    [["Für OMR-Bereinigung", "Da Scans selten perfekt sind, korrigiere Erkennungsfehler vor Wiedergabe, Konvertierung oder Export."], ["Strukturierte Notenerstellung", "Wähle gerenderte Noten, ziehe Tonhöhe und Dauer, füge ein, lösche und ändere Eigenschaften. Freie Komplettgravur ist im Aufbau."], ["Gemeinsame Bearbeitung Beta", "Präsenz, Konfliktbehandlung, Offline-Warteschlange und Rollen unterstützen Zusammenarbeit. Vor großen Proben klein testen."], ["Stimmen extrahieren Beta", "Teile Stimmen in eigenständige Übungsprojekte. Kopien kennen ihre Quelle, folgen späteren Änderungen der Gesamtpartitur aber noch nicht."]],
+    "Bearbeitet werden Score JSON und MusicXML, nicht direkt PDF-Text oder Bildpixel.",
+  ),
+  "score-to-audio": defineFeatureTranslation(
+    "Noten in MP3 und WAV umwandeln", "Online-Wiedergabe, Übungsfeedback und Audioexport", "Spiele strukturierte Noten ab, steuere Tempo, Schleifen, Metronom und Stimmen und exportiere MIDI-, WAV- oder MP3-Übungsdateien.",
+    ["Noten zu MP3", "MusicXML zu MP3", "Notenplayer", "Noten zu Audio", "Noten online üben"], ["Tone.js-Wiedergabe", "Zeitleiste", "Browseraufnahme Beta", "Übungsfeedback Beta", "MIDI-Export", "WAV/MP3-Renderer"],
+    [["Wiedergabeereignisse erzeugen", "Score JSON wird zur Zeitleiste mit Tempo, Takten, Dynamik, Artikulationen, Bögen und Wiederholungen."], ["Im Browser üben", "Steuere Tempo, Schleife, Metronom, Einzählen, Solo/Stumm und Stimmenlautstärke; die Aufnahme ergänzt prüfbare einstimmige Hinweise."], ["Übungsmaterial exportieren", "Erzeuge reproduzierbare MIDI-, WAV- oder MP3-Dateien aus einer unveränderlichen Revision und aktuellen Einstellungen."]],
+    [["Korrigierten Scan abspielen", "Nach der Korrektur kannst du eine Stimme isolieren, schwierige Takte verlangsamen und einen Übungsausschnitt exportieren."], ["MP3 oder WAV exportieren", "Serveraudio benötigt FluidSynth, ein SoundFont und ffmpeg; fehlende Konfiguration wird klar gemeldet."], ["Aufnahmefeedback Beta", "Vergleiche Tonhöhe und Timing einer einstimmigen Übung. Dies ist Übungshilfe, keine zertifizierte Bewertung."]],
+    "Audio wird aus strukturierten Noten erzeugt; Audio-zu-Noten ist ein separater experimenteller Importweg.",
+  ),
+  "audio-to-score": defineFeatureTranslation(
+    "Audio in Noten umwandeln", "Von MP3/WAV zum MIDI-Kandidaten und zur bearbeitbaren Partitur", "Wandle erlaubtes Audio mit unterstützter Transkription in MIDI- und Notenkandidaten um und prüfe sowie korrigiere sie online.",
+    ["Audio zu Noten", "MP3 zu MIDI", "KI Musiktranskription", "WAV zu MIDI"], ["Audio-Upload", "Basic-Pitch-Worker", "MIDI-Kandidat", "Score-JSON-Korrektur"],
+    [["Audioquelle hochladen", "Die Quelle wird gespeichert und ein mit dem Projekt verknüpfter Transkriptionsauftrag eingereiht."], ["MIDI-Kandidaten erzeugen", "Wenn konfiguriert, erzeugt Basic Pitch MIDI und speichert Diagnosen im Auftragsbereich."], ["Bearbeitbaren Entwurf erstellen", "MIDI wird zur ersten Score-JSON-Revision für Vorschau, Korrektur, Jianpu, Wiedergabe, Transposition und Export."]],
+    [["KI-unterstützter Kandidat", "Polyphonie, Begleitung, Hall und Rauschen erfordern oft Korrektur; der Entwurf ist keine fertige Partitur."], ["Gleiches Modell nach Import", "Der Kandidat nutzt dasselbe Score JSON/MusicXML wie OMR-, MIDI-, Jianpu- und MusicXML-Importe."]],
+    "Nutze nur erlaubte Quellen und plane menschliche Prüfung ein; perfekte automatische Transkription kommerzieller Aufnahmen wird nicht versprochen.",
+  ),
+  "musicxml-midi": defineFeatureTranslation(
+    "MusicXML-Editor und MIDI/PDF-Konverter", "Offene Bearbeitung, Konvertierung und Druckexport", "Bearbeite MusicXML oder MIDI online, korrigiere die Partitur und exportiere MusicXML, MIDI, PDF, SVG, PNG oder Score JSON.",
+    ["MusicXML Editor", "MusicXML zu MIDI", "MIDI zu Noten", "MusicXML zu PDF", "Noten SVG"], ["MusicXML-Import/Export", "MIDI-Import/Export", "PDF/SVG/PNG-Rendering", "Score-JSON-Snapshot", "OSMD-Vorschau"],
+    [["Offenes Format importieren", "Erstelle aus MusicXML, MXL, MIDI oder Score-JSON-Snapshot ein wiederverwendbares Projekt."], ["In Score JSON normalisieren", "Wiedergabe, Jianpu, Transposition, Korrektur und Export verwenden dasselbe Modell."], ["Ohne Bindung exportieren", "Lade MusicXML, MIDI, Jianpu, Renderingdateien, Audio oder eine Score-JSON-Sicherung herunter."]],
+    [["Parser-Herkunft", "Metadaten halten fest, ob das Projekt aus MusicXML, Jianpu, MIDI oder Snapshot entstand."], ["MIDI als Entwurf", "Spuren, Tempo, Taktarten, Programme, Akkorde und Bögen werden importiert und bleiben bearbeitbar."], ["MusicXML zu PDF und Bildern", "Mit MuseScore-Dienst entstehen seitenbezogene PDFs und hochauflösende SVG/PNG aus einer unveränderlichen Revision."]],
+    "Komplexe Notengravur aus MIDI braucht weiterhin menschliche Prüfung und Korrektur.",
+  ),
+  "pdf-score-scanner": defineFeatureTranslation(
+    "Notenscanner für PDF und Bilder", "OMR-Import mit Korrektur", "Scanne eine PDF- oder Bildpartitur, erzeuge einen bearbeitbaren MusicXML-Kandidaten, prüfe Diagnosen und korrigiere OMR-Fehler online.",
+    ["Notenscanner", "Noten PDF scannen", "OMR online", "Scan zu MusicXML"], ["OMR-Upload", "Audiveris-Worker", "MusicXML-Ausgabe", "Diagnosepanel"],
+    [["PDF oder Bild hochladen", "Die Quelle wird gespeichert und ein OMR-Auftrag mit dem Projekt verknüpft."], ["Audiveris ausführen", "Wenn konfiguriert, erzeugt der Dienst MusicXML und eine bearbeitbare Kandidatenrevision."], ["Kandidaten korrigieren", "Prüfe Diagnose und Vorschau, korrigiere Fehler und exportiere oder erstelle Übungsmaterial."]],
+    [["Kandidat statt Endergebnis", "OMR-Ergebnisse behalten Konfidenz und Diagnosen für menschliche Korrekturen."], ["Ein vollständiges Projekt kostenlos", "Ein Gratis-Konto scannt eine vollständige mehrseitige PDF oder ein Bild und kann dieses Projekt weiter korrigieren, abspielen, transponieren, in Jianpu umwandeln, teilen und exportieren."]],
+    "Scannen bedeutet Import plus Korrektur; perfekte automatische Erkennung aller PDFs und Fotos wird nicht garantiert.",
+  ),
+  "pdf-to-musicxml": defineFeatureTranslation(
+    "PDF-zu-MusicXML-Konverter online", "Bearbeitbares MusicXML aus PDF oder Bild", "Wandle PDF oder Notenbild in einen MusicXML- und Score-JSON-Kandidaten mit Diagnosen um, korrigiere Fehler und exportiere die akzeptierte Revision.",
+    ["PDF zu MusicXML", "Bild zu MusicXML", "Noten PDF Konverter", "Scan zu MusicXML"], ["PDF und Bilder", "Audiveris OMR", "MusicXML-Kandidat", "Notenkorrektur"],
+    [["PDF oder Bild hochladen", "Nutze PDF, PNG, JPG, WebP oder TIFF, zu dessen Verarbeitung du berechtigt bist."], ["MusicXML-Kandidaten erstellen", "OMR erkennt Notation, speichert Diagnosen und erstellt MusicXML und Score JSON statt PDF-Pixel zu bearbeiten."], ["Prüfen, korrigieren, exportieren", "Kontrolliere Noten, Rhythmus, Tonart, Takte, Text und Symbole vor dem MusicXML-Export."]],
+    [["Korrigierbare Konvertierung", "Quelle, Diagnose und Kandidat bleiben zusammen, damit unsichere Stellen vor Export korrigiert werden."], ["Gleicher Ablauf für Bilder", "Klare, gerade, hochauflösende Bilder brauchen meist weniger Korrekturen; komplexes Layout muss geprüft werden."]],
+    "Die Konvertierung erzeugt einen bearbeitbaren Kandidaten; komplexe Gravur, schwache Scans, Handschrift und dichte Polyphonie benötigen menschliche Prüfung.",
+  ),
+  teaching: defineFeatureTranslation(
+    "Notationssoftware für Lernende und Lehrkräfte", "Klassen, Aufgaben, Üben und Feedback", "Verwalte Klassen, teile Noten, erteile Übungen, sammle Aufnahmen und Abgaben und nutze Raster, zeitbezogenes Feedback und einen LTI-Pilot.",
+    ["Notensoftware für Schüler", "Musikbildungssoftware", "Musikbildungsplattform", "Software für Musiklehrer", "Online Musikaufgaben"], ["Klassen", "Freigabelinks", "Aufgaben", "Abgaben", "Aufnahmen", "Bewertungsraster", "LTI-Pilot"],
+    [["Notenprojekt erstellen", "Importiere oder scanne die Partitur, korrigiere sie und behalte die Lehrkraft-Version als Referenz."], ["Klasse und Aufgabe erstellen", "Organisiere Lernende, erstelle einen Nur-Lese-Link und ergänze Anweisungen, Termin und wiederverwendbare Kriterien."], ["Abgaben prüfen", "Lernende senden Notizen, Links, Übungszeit und Dateien; Lehrkräfte bewerten und geben zeitbezogenes Feedback."]],
+    [["Weg ohne Schüler-Login", "Die erste Version hält Abgaben leicht und nutzt private Tokens zum Abruf von Feedback."], ["Classroom / School Beta", "Listen, Aufgaben, Abgaben, Aufnahmen, Raster, Feedback und LTI-Pilot sind rollenbasiert als Beta verfügbar."]],
+    "Schulabläufe sind Beta. Prüfe Listenrechte, Benachrichtigungen, Aufnahme-Einwilligung und den begrenzten LTI-Pilot vor breiter Einführung.",
+  ),
+  pricing: defineFeatureTranslation(
+    "ScoreTransposer-Preise", "Zugang zu Konvertierung und Projekten", "Starte kostenlos mit einem vollständigen Notenprojekt und wähle Starter oder Converter Pro für mehr Projekte und monatliche Serverkapazität.",
+    ["ScoreTransposer Preise", "Notenkonverter Preis", "Notenwerkzeug Tarife", "Noten Credits"], ["Checkout", "Aktivierungscodes", "Berechtigungen", "Exportsteuerung"],
+    [["Tarif wählen", "Wähle monatlich oder jährlich passend zur Einzel- oder Stapelverarbeitung."], ["Anmelden und bezahlen", "Bestellung und Kontorechte werden verbunden; aktive Regionen gehen zum passenden Checkout."], ["Projekte nutzen", "Erstelle, importiere, korrigiere, transponiere, übe und exportiere die akzeptierte Revision."]],
+    [["Klare Kapazitäten", "Free enthält ein vollständiges Projekt und monatlich 25 Credits, Starter 50 und Converter Pro 200."], ["Betrieblicher Support", "Checkout, Aktivierung, Upload, Aufträge und Exporte werden im gemeinsamen Support verfolgt."]],
+    "Der öffentliche Katalog bestimmt angezeigte Preise. Checkout bleibt deaktiviert, bis jeder bezahlte Tarif eine passende Price ID besitzt.",
+  ),
+} satisfies FeaturePageTranslationCatalog;

@@ -1,26 +1,24 @@
 import type { MetadataRoute } from "next";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
 import { isFeatureIndexable, platformFeaturePages } from "../lib/platform-feature-pages";
-import { localizePublicPath } from "../lib/locale-routing";
+import { getLocalizedAbsoluteUrl } from "../lib/locale-routing";
 import { publicContentLastUpdated, siteConfig } from "../lib/site";
 import { publicScoreLibrary } from "../lib/public-score-library";
 
 function addLocalizedEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
   return entries.flatMap((entry) => {
     const pathname = new URL(entry.url).pathname;
-    const englishUrl = new URL(localizePublicPath(pathname, "en"), `${siteConfig.siteUrl}/`).toString();
-    const chineseUrl = new URL(localizePublicPath(pathname, "zh-CN"), `${siteConfig.siteUrl}/`).toString();
+    const localizedUrls = Object.fromEntries(
+      SUPPORTED_LOCALES.map((locale) => [locale, getLocalizedAbsoluteUrl(siteConfig.siteUrl, pathname, locale)]),
+    ) as Record<SupportedLocale, string>;
     const alternates = {
       languages: {
-        en: englishUrl,
-        "zh-CN": chineseUrl,
-        "x-default": englishUrl,
+        ...localizedUrls,
+        "x-default": localizedUrls[DEFAULT_LOCALE],
       },
     };
 
-    return [
-      { ...entry, url: englishUrl, alternates },
-      { ...entry, url: chineseUrl, alternates },
-    ];
+    return SUPPORTED_LOCALES.map((locale) => ({ ...entry, url: localizedUrls[locale], alternates }));
   });
 }
 

@@ -2,42 +2,22 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import type { SupportedLocale } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { useAppLocale } from "./AppLocaleProvider";
+import type { AuthMessageCatalog } from "../lib/auth-messages";
 
-export function PasswordResetRequestForm() {
-  const { locale } = useAppLocale();
+export function PasswordResetRequestForm({
+  locale,
+  copy,
+}: {
+  locale: SupportedLocale;
+  copy: AuthMessageCatalog["resetRequest"];
+}) {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
-
-  const copy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "找回密码",
-          title: "发送密码重置链接",
-          body: "输入注册邮箱后，系统会向该账号发送密码重置邮件。如果当前没有配置正式邮件服务，链接会进入 API 预览日志。",
-          email: "注册邮箱",
-          placeholder: "you@example.com",
-          submit: "发送重置邮件",
-          submitting: "发送中...",
-          back: "返回登录",
-          success: "如果该账号存在，密码重置邮件已准备好，请检查收件箱或联系支持。",
-        }
-      : {
-          eyebrow: "Password reset",
-          title: "Send a reset link",
-          body: "Enter the account email and the system will prepare a password reset email. If transactional email is not configured yet, the link will appear in API preview logs.",
-          email: "Account email",
-          placeholder: "you@example.com",
-          submit: "Send reset email",
-          submitting: "Sending...",
-          back: "Back to sign in",
-          success: "If that account exists, a password reset email has been prepared. Check your inbox or contact support.",
-        };
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -95,7 +75,11 @@ export function PasswordResetRequestForm() {
         </div>
       </form>
 
-      {status && statusKind ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+      {status && statusKind ? (
+        <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"}>
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }

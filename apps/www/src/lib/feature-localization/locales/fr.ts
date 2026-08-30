@@ -1,0 +1,81 @@
+import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
+
+export const frFeaturePages = {
+  "staff-to-jianpu": defineFeatureTranslation(
+    "Convertisseur de portée en Jianpu", "De la portée à la notation chiffrée", "Générez du Jianpu depuis la même partition structurée que celle utilisée pour l’édition, la lecture, la transposition et l’export.",
+    ["portée vers Jianpu", "partition vers notation chiffrée", "convertisseur Jianpu", "MusicXML vers Jianpu"], ["Score JSON", "Générateur Jianpu", "Aperçu MusicXML", "Centre d’export"],
+    [["Importer ou numériser", "Partez d’un MusicXML, MIDI, texte Jianpu, Score JSON ou candidat OMR issu d’un PDF ou d’une image."], ["Générer depuis Score JSON", "L’aperçu utilise les notes, tonalités, mesures, paroles et accords structurés plutôt que le texte d’un PDF."], ["Exporter ou continuer", "Téléchargez le Jianpu, recréez la portée, transposez ou produisez des fichiers MIDI et audio d’entraînement."]],
+    [["Notation chinoise prise en charge", "Le centre tonal, les degrés, marques d’octave et de durée, paroles, mesures et accords restent visibles."], ["Modèle de projet réutilisable", "Le Jianpu reste associé au MusicXML, au MIDI, aux images rendues et aux sauvegardes Score JSON."]],
+    "Cette fonction convertit une portée structurée ; elle ne promet pas de reconnaître parfaitement n’importe quelle image Jianpu numérisée.",
+  ),
+  "jianpu-to-staff": defineFeatureTranslation(
+    "Convertir le Jianpu en portée", "De la notation chiffrée à la portée", "Collez un texte Jianpu structuré, créez une partition Score JSON modifiable, prévisualisez-la sur portée et exportez-la en MusicXML.",
+    ["Jianpu vers portée", "notation chiffrée vers partition", "Jianpu vers MusicXML", "éditeur Jianpu"], ["Analyseur Jianpu", "Score JSON", "Export MusicXML", "Aperçu de portée"],
+    [["Saisir le Jianpu structuré", "Utilisez un texte avec sections de parties, tonalité, mesure, accords et paroles facultatives."], ["Créer un projet musical", "L’analyseur produit un Score JSON que vous pouvez prévisualiser, corriger, transposer, lire et exporter."], ["Exporter la portée", "Générez MusicXML, puis PDF, SVG ou PNG lorsque le service MuseScore est configuré."]],
+    [["Adapté à l’enseignement", "Partez de la notation chiffrée pour créer portée, MIDI et supports d’entraînement depuis une source unique."], ["Entrée structurée d’abord", "La version actuelle attend du texte saisi ou collé ; la reconnaissance libre d’images viendra plus tard."]],
+    "La conversion part d’un texte Jianpu structuré et non d’images arbitraires de notation chiffrée.",
+  ),
+  "transpose-score": defineFeatureTranslation(
+    "Transpositeur intelligent de partitions", "Tonalité cible, demi-tons et instruments transpositeurs", "Transposez en ligne par demi-ton, tonalité cible ou profil d’instrument, conservez l’original et vérifiez la tessiture dans une nouvelle révision.",
+    ["transposer une partition", "transposition en ligne", "changer la tonalité", "partie pour instrument transpositeur"], ["Transposition Score JSON", "Mode tonalité cible", "Profils d’instrument", "Diagnostic de tessiture"],
+    [["Ouvrir un projet", "Utilisez une révision Score JSON issue de MusicXML, OMR, Jianpu, MIDI ou d’un instantané."], ["Choisir le mode", "Déplacez par demi-tons, choisissez une tonalité ou créez une partie écrite pour instruments en si bémol, la, mi bémol ou fa."], ["Contrôler la tessiture", "Les profils facultatifs signalent les notes trop graves ou trop aiguës dans la nouvelle révision."]],
+    [["Flux par révisions", "Chaque transposition crée une version sans écraser la source, afin de comparer les résultats."], ["Sorties régénérées", "Jianpu, MusicXML, MIDI, PDF, images et audio sont recréés depuis la révision transposée."]],
+    "L’orthographe enharmonique complexe, le confort de clé et la tessiture réelle doivent encore être vérifiés manuellement.",
+  ),
+  "score-editor": defineFeatureTranslation(
+    "Éditeur de partitions en ligne", "Créer, corriger et coéditer la notation", "Importez MusicXML, MIDI, Jianpu ou un candidat de scan comme révision modifiable, corrigez la partition, extrayez des parties et collaborez en ligne.",
+    ["éditeur de partitions", "édition de partitions en ligne", "créateur de partitions", "extraire des parties", "éditeur musical collaboratif"], ["Aperçu OSMD", "Révisions Score JSON", "Panneau de correction", "Copies de parties Beta", "Restauration", "Collaboration en temps réel Beta"],
+    [["Importer une partition structurée", "Partez de MusicXML, MIDI, Jianpu, Score JSON ou d’un candidat OMR promu en révision modifiable."], ["Choisir la correction", "Modifiez notes, silences, mesures, harmonie, tempo, nuances, articulations, liaisons, paroles et barres de mesure."], ["Enregistrer une révision", "Chaque correction devient une nouvelle révision Score JSON et l’historique reste restaurable."]],
+    [["Nettoyage après OMR", "La numérisation étant rarement parfaite, corrigez les erreurs avant lecture, conversion ou export."], ["Création musicale structurée", "Sélectionnez les notes rendues, faites glisser hauteur et durée, insérez, supprimez et modifiez les propriétés. La gravure libre complète est en cours."], ["Coédition Beta", "Invitez des collaborateurs avec présence, gestion des conflits, file hors ligne et rôles. Testez avant une grande répétition."], ["Extraction de parties Beta", "Séparez des parties en projets d’entraînement indépendants. Elles gardent leur source mais ne suivent pas encore les modifications ultérieures du conducteur."]],
+    "L’édition porte sur Score JSON et MusicXML, jamais directement sur le texte ou les pixels d’un PDF.",
+  ),
+  "score-to-audio": defineFeatureTranslation(
+    "Partition vers MP3 et WAV", "Lecture en ligne, retour de pratique et export audio", "Lisez une partition structurée, contrôlez tempo, boucles, métronome et parties, puis exportez des fichiers MIDI, WAV ou MP3 d’entraînement.",
+    ["partition en MP3", "MusicXML en MP3", "lecteur de partitions", "partition en audio", "pratique musicale en ligne"], ["Lecture Tone.js", "Chronologie", "Enregistrement navigateur Beta", "Retour de pratique Beta", "Export MIDI", "Rendu WAV/MP3"],
+    [["Créer les événements de lecture", "Score JSON devient une chronologie de notes avec tempo, mesures, nuances, articulations, liaisons et reprises."], ["S’entraîner dans le navigateur", "Réglez tempo, boucle, métronome, décompte, solo/muet et volume des parties ; l’enregistreur ajoute des observations monophoniques à vérifier."], ["Exporter le matériel", "Produisez des MIDI, WAV ou MP3 reproductibles depuis une révision immuable et les réglages actuels."]],
+    [["Lire un scan après correction", "Après correction du candidat, isolez une partie, ralentissez les mesures difficiles et exportez un extrait."], ["Exporter en MP3 ou WAV", "Le rendu serveur nécessite FluidSynth, un SoundFont et ffmpeg ; une configuration absente est signalée clairement."], ["Retour d’enregistrement Beta", "Comparez hauteur et rythme d’un exercice monophonique. Il s’agit d’une aide, pas d’une note certifiée."]],
+    "Cette fonction génère l’audio depuis une partition structurée ; la transcription audio vers partition est un import expérimental distinct.",
+  ),
+  "audio-to-score": defineFeatureTranslation(
+    "Convertisseur audio en partition", "Du MP3/WAV au candidat MIDI puis à la partition", "Transformez un audio autorisé en candidat MIDI et partition avec transcription assistée, puis vérifiez et corrigez la partition en ligne.",
+    ["audio vers partition", "MP3 vers MIDI", "transcription musicale IA", "WAV vers MIDI"], ["Téléversement audio", "Worker Basic Pitch", "Candidat MIDI", "Correction Score JSON"],
+    [["Téléverser la source", "Le fichier est conservé et un travail de transcription lié au projet est mis en file."], ["Générer le candidat MIDI", "Lorsque configuré, Basic Pitch produit un MIDI et les diagnostics sont enregistrés dans le panneau des tâches."], ["Créer un brouillon modifiable", "Le MIDI devient une première révision Score JSON à prévisualiser, corriger, convertir en Jianpu, lire, transposer et exporter."]],
+    [["Candidat assisté par IA", "Polyphonie, accompagnement, réverbération et bruit exigent souvent une correction ; le brouillon n’est pas une partition finale."], ["Même modèle après import", "Le candidat utilise le même Score JSON/MusicXML que les imports OMR, MIDI, Jianpu et MusicXML."]],
+    "Utilisez uniquement des sources autorisées et prévoyez une vérification humaine ; aucune transcription parfaite d’enregistrements commerciaux n’est promise.",
+  ),
+  "musicxml-midi": defineFeatureTranslation(
+    "Éditeur MusicXML et convertisseur MIDI/PDF", "Édition ouverte, conversion et export imprimé", "Éditez MusicXML ou MIDI en ligne, corrigez la partition et exportez MusicXML, MIDI, PDF, SVG, PNG ou Score JSON.",
+    ["éditeur MusicXML", "MusicXML vers MIDI", "MIDI vers partition", "MusicXML vers PDF", "partition SVG"], ["Import/export MusicXML", "Import/export MIDI", "Rendu PDF/SVG/PNG", "Instantané Score JSON", "Aperçu OSMD"],
+    [["Importer un format ouvert", "Créez un projet réutilisable depuis MusicXML, MXL, MIDI ou un instantané Score JSON."], ["Normaliser en Score JSON", "Lecture, Jianpu, transposition, correction et export utilisent tous le même modèle."], ["Exporter sans verrouillage", "Téléchargez MusicXML, MIDI, Jianpu, rendus, audio ou une sauvegarde Score JSON."]],
+    [["Provenance de l’analyseur", "Les métadonnées indiquent si le projet vient de MusicXML, Jianpu, MIDI ou d’un instantané."], ["MIDI comme brouillon", "Pistes, tempo, mesures, programmes, accords et liaisons sont importés et restent modifiables."], ["MusicXML vers PDF et images", "Avec MuseScore configuré, créez des PDF paginés et des SVG/PNG haute résolution depuis une révision immuable."]],
+    "Une gravure complexe issue de MIDI exige encore une vérification et une correction humaines.",
+  ),
+  "pdf-score-scanner": defineFeatureTranslation(
+    "Scanner de partitions PDF et images", "Import OMR avec correction", "Numérisez une partition PDF ou image, obtenez un candidat MusicXML modifiable, consultez les diagnostics et corrigez les erreurs OMR en ligne.",
+    ["scanner de partitions", "scanner PDF musical", "OMR en ligne", "scan vers MusicXML"], ["Téléversement OMR", "Worker Audiveris", "Sortie MusicXML", "Panneau de diagnostic"],
+    [["Téléverser un PDF ou une image", "La source est conservée et un travail OMR lié au projet est créé."], ["Lancer Audiveris", "Lorsque configuré, le service produit MusicXML et une révision candidate modifiable."], ["Corriger le candidat", "Consultez diagnostics et aperçu, corrigez les erreurs, puis exportez ou créez du matériel d’entraînement."]],
+    [["Un candidat, pas une réponse finale", "Les résultats OMR gardent confiance et diagnostics pour faciliter la correction humaine."], ["Un projet complet gratuit", "Un compte gratuit peut numériser un PDF multipage complet ou une image, puis corriger, lire, transposer, convertir en Jianpu, partager et exporter ce projet."]],
+    "La numérisation est un import suivi d’une correction ; elle ne garantit pas une reconnaissance parfaite de tous les PDF et photos.",
+  ),
+  "pdf-to-musicxml": defineFeatureTranslation(
+    "Convertisseur PDF vers MusicXML en ligne", "MusicXML modifiable depuis PDF ou image", "Convertissez un PDF ou une image de partition en candidat MusicXML et Score JSON avec diagnostics, corrigez les erreurs puis exportez la révision acceptée.",
+    ["PDF vers MusicXML", "image vers MusicXML", "convertisseur PDF musical", "scan vers MusicXML"], ["PDF et images", "OMR Audiveris", "Candidat MusicXML", "Correction de partition"],
+    [["Téléverser un PDF ou une image", "Utilisez un fichier PDF, PNG, JPG, WebP ou TIFF que vous êtes autorisé à traiter."], ["Créer un candidat MusicXML", "L’OMR reconnaît la notation, conserve les diagnostics et crée MusicXML et Score JSON au lieu de modifier les pixels du PDF."], ["Vérifier, corriger, exporter", "Contrôlez notes, rythme, tonalité, mesures, paroles et symboles avant l’export MusicXML."]],
+    [["Conversion corrigeable", "Source, diagnostics et candidat restent ensemble afin de corriger les zones incertaines avant export."], ["Même parcours pour les images", "Une image nette, droite et haute résolution nécessite généralement moins de corrections ; une mise en page complexe doit être vérifiée."]],
+    "La conversion crée un candidat modifiable ; gravure complexe, scan faible, manuscrit et polyphonie dense exigent une vérification humaine.",
+  ),
+  teaching: defineFeatureTranslation(
+    "Logiciel de notation pour élèves et enseignants", "Classes, devoirs, pratique et retours", "Gérez des classes, partagez des partitions, assignez des exercices, collectez enregistrements et travaux, puis utilisez grilles, retours minutés et pilote LTI.",
+    ["logiciel de notation pour élèves", "logiciel d’éducation musicale", "plateforme d’éducation musicale", "logiciel pour professeur de musique", "devoir musical en ligne"], ["Classes", "Liens de partage", "Devoirs", "Travaux d’élèves", "Enregistrements", "Grilles", "Pilote LTI"],
+    [["Créer le projet musical", "Importez ou numérisez la partition, corrigez-la et gardez la version de l’enseignant comme référence."], ["Créer la classe et le devoir", "Organisez les élèves, créez un lien en lecture seule, ajoutez consignes, échéance et critères réutilisables."], ["Évaluer les travaux", "Les élèves envoient notes, liens, temps de pratique et fichiers ; l’enseignant note et ajoute des retours minutés."]],
+    [["Parcours élève sans connexion", "La première version simplifie les dépôts et utilise un jeton privé pour récupérer les retours."], ["Classroom / School Beta", "Listes, devoirs, dépôts, enregistrements, grilles, retours et pilote LTI sont proposés en bêta avec des rôles d’accès."]],
+    "Les parcours établissement sont en bêta. Vérifiez droits des listes, notifications, consentement d’enregistrement et pilote LTI limité avant un déploiement général.",
+  ),
+  pricing: defineFeatureTranslation(
+    "Tarifs ScoreTransposer", "Accès aux conversions et projets", "Commencez gratuitement avec un projet musical complet, puis choisissez Starter ou Converter Pro pour davantage de projets et de capacité mensuelle serveur.",
+    ["tarifs ScoreTransposer", "prix convertisseur de partitions", "offres outils musicaux", "crédits de partition"], ["Paiement", "Codes d’activation", "Droits d’accès", "Contrôle des exports"],
+    [["Choisir une offre", "Sélectionnez une formule mensuelle ou annuelle selon vos traitements individuels ou en lot."], ["Se connecter et payer", "La commande est liée aux droits du compte et les régions actives accèdent au paiement correspondant."], ["Utiliser les projets", "Créez, importez, corrigez, transposez, pratiquez et exportez la révision acceptée."]],
+    [["Capacités claires", "Free comprend un projet complet et 25 crédits mensuels, Starter 50 et Converter Pro 200 crédits par mois."], ["Assistance opérationnelle", "Paiement, activation, téléversement, tâches et exports sont suivis par le même support."]],
+    "Le catalogue public détermine les prix affichés. Le paiement reste désactivé tant que chaque offre payante n’a pas de Price ID correspondant.",
+  ),
+} satisfies FeaturePageTranslationCatalog;

@@ -1,16 +1,12 @@
 import { headers } from "next/headers";
-import { isSupportedLocale, type SupportedLocale } from "@score/shared";
+import { DEFAULT_LOCALE, normalizeLocale, type SupportedLocale } from "@score/i18n";
 import { ROUTE_LOCALE_HEADER } from "./locale-routing";
 
-export const defaultSiteLocale: SupportedLocale = "en";
+export const defaultSiteLocale: SupportedLocale = DEFAULT_LOCALE;
 
 export async function readSiteLocale() {
   const requestHeaders = await headers();
   const routeLocale = requestHeaders.get(ROUTE_LOCALE_HEADER);
 
-  if (isSupportedLocale(routeLocale)) {
-    return routeLocale;
-  }
-
-  return defaultSiteLocale;
+  return normalizeLocale(routeLocale) ?? defaultSiteLocale;
 }

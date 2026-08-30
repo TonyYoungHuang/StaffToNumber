@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { formatDateTime, formatMessage, formatNumber } from "@score/i18n";
 import type { ConversionDirection } from "@score/shared";
 import { APP_ROUTES } from "@score/shared";
 import { DotIcon, DownloadIcon, FileStackIcon, SparkIcon, StatusPill } from "@score/ui";
@@ -10,6 +11,7 @@ import { API_BASE_URL, apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { accountActivationRoute } from "../lib/release";
+import type { WorkspaceMessages } from "../lib/workspace-messages/types";
 
 type FileItem = {
   id: string;
@@ -37,7 +39,7 @@ type FilesPayload = { files: Array<{ id: string; originalName: string; createdAt
 type JobsPayload = { jobs: JobItem[] };
 type CreateJobPayload = { job: JobItem };
 
-export function JobsManager() {
+export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
   const router = useRouter();
   const { locale } = useAppLocale();
   const token = useMemo(() => getStoredToken(), []);
@@ -49,128 +51,6 @@ export function JobsManager() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const direction: ConversionDirection = "staff_pdf_to_numbered";
-  const copy =
-    locale === "zh-CN"
-      ? {
-          signInFirst: "请先登录。",
-          uploadFirst: "请先上传 PDF。",
-          downloadFailed: "下载失败。",
-          createdJob: (id: string) => `任务 ${id} 已创建。`,
-          summary: {
-            queued: ["排队中", "等待 worker 处理。"],
-            processing: ["处理中", "正在生成预览和输出包。"],
-            completed: ["已完成", "可下载正式 PDF 或草稿包。"],
-          },
-          create: {
-            eyebrow: "创建转换任务",
-            title: "发起五线谱转简谱任务",
-            body: "选择已上传的源文件，保持转换方向锁定，然后将 PDF 送入任务队列。",
-            input: "输入文件",
-            inputPlaceholder: "请选择已上传的 PDF",
-            direction: "转换方向",
-            lockedDirection: "五线谱 PDF 转简谱",
-            draftTitle: "草稿优先机制",
-            draftBody: "低置信度页面会保留为草稿结果，而不是过早升级为最终版。",
-            source: "当前选中的源文件",
-            noSource: "尚未选择源文件",
-            uploadHint: "如果下拉为空，请先去上传页添加 PDF。",
-            createButton: "创建任务",
-            creating: "创建中...",
-            refresh: "刷新队列",
-            uploads: "打开上传页",
-            recentSources: "最近源文件库",
-            emptySources: "还没有上传 PDF。请先去上传页，再回来创建转换任务。",
-            useThis: "使用此文件",
-          },
-          monitor: {
-            eyebrow: "队列监控",
-            title: "实时转换面板",
-            auto: "自动刷新中",
-            loading: "正在加载任务...",
-            empty: "还没有任务。先在左侧选择 PDF 并创建第一条任务。",
-            latest: "最新任务",
-            created: "创建于",
-            resultCenter: "结果中心",
-            final: "该任务当前已被判定为最终结果。",
-            draft: "该任务当前被保留为草稿结果。",
-            none: "该任务暂未产出可下载结果。",
-            previewWaiting: "worker 输出预览文本后会显示在这里。",
-            primary: "主输出",
-            primaryTitle: "最终 PDF",
-            primaryBody: "当任务顺利提升为 final 时可下载。",
-            fallback: "兜底输出",
-            fallbackTitle: "草稿包",
-            fallbackBody: "当结果仍需人工校对时可下载。",
-            downloadPdf: "下载结果 PDF",
-            downloadDraft: "下载草稿包",
-            notReady: "未就绪",
-          },
-          archive: {
-            eyebrow: "最近任务",
-            title: "任务归档",
-            body: "预览文本、结果类型和下载入口都会保留，方便回看旧任务。",
-          },
-        }
-      : {
-          signInFirst: "Please sign in first.",
-          uploadFirst: "Please upload a PDF first.",
-          downloadFailed: "Download failed.",
-          createdJob: (id: string) => `Created job ${id}.`,
-          summary: {
-            queued: ["Queued", "Waiting for worker pickup."],
-            processing: ["Processing", "Actively generating preview and output package."],
-            completed: ["Completed", "Ready for final PDF or draft bundle download."],
-          },
-          create: {
-            eyebrow: "Create conversion job",
-            title: "Queue a staff-to-numbered run",
-            body: "This panel now follows the Stitch converter rhythm: choose an uploaded source, keep the direction locked, and hand the PDF into the queue.",
-            input: "Input file",
-            inputPlaceholder: "Select an uploaded PDF",
-            direction: "Direction",
-            lockedDirection: "Staff PDF to numbered notation",
-            draftTitle: "Draft-aware pipeline",
-            draftBody: "Lower-confidence pages can remain draft output instead of being upgraded too early.",
-            source: "Selected source",
-            noSource: "No source selected",
-            uploadHint: "Upload a source PDF first if the selector is empty.",
-            createButton: "Create job",
-            creating: "Creating...",
-            refresh: "Refresh queue",
-            uploads: "Open uploads",
-            recentSources: "Recent source library",
-            emptySources: "No uploaded PDFs yet. Use the upload page first, then return here to queue the conversion.",
-            useThis: "Use this",
-          },
-          monitor: {
-            eyebrow: "Queue monitor",
-            title: "Live conversion surface",
-            auto: "Auto-refreshing",
-            loading: "Loading jobs...",
-            empty: "No jobs created yet. Pick an uploaded PDF on the left and create the first run.",
-            latest: "Latest job",
-            created: "Created",
-            resultCenter: "Result center",
-            final: "This run is currently classified as final.",
-            draft: "This run is currently classified as draft.",
-            none: "This run has not produced a downloadable outcome yet.",
-            previewWaiting: "Preview text will appear here after the worker emits it.",
-            primary: "Primary output",
-            primaryTitle: "Final PDF",
-            primaryBody: "Available when the run upgrades cleanly to final.",
-            fallback: "Fallback output",
-            fallbackTitle: "Draft bundle",
-            fallbackBody: "Available when review artifacts need manual correction outside the browser.",
-            downloadPdf: "Download result PDF",
-            downloadDraft: "Download draft bundle",
-            notReady: "Not ready",
-          },
-          archive: {
-            eyebrow: "Recent jobs",
-            title: "Queue archive",
-            body: "Preview text, result type, and downloads stay visible here so you can review older runs after the top panel moves on to newer jobs.",
-          },
-        };
 
   async function loadData() {
     if (!token) {
@@ -236,7 +116,7 @@ export function JobsManager() {
     event.preventDefault();
 
     if (!token) {
-      setStatus("Please sign in first.");
+      setStatus(copy.signInFirst);
       setStatusKind("error");
       return;
     }
@@ -271,14 +151,15 @@ export function JobsManager() {
       return;
     }
 
-    setStatus(copy.createdJob(result.data.job.id));
+    setStatus(formatMessage(copy.createdJob, { id: result.data.job.id }));
     setStatusKind("success");
     await loadData();
   }
 
   async function handleDownload(fileId: string, fileName: string) {
     if (!token) {
-      setStatus("Please sign in first.");
+      setStatus(copy.signInFirst);
+      setStatusKind("error");
       return;
     }
 
@@ -323,17 +204,17 @@ export function JobsManager() {
       <div className="summary-grid">
         <div className="metric-card">
           <p className="metric-label">{copy.summary.queued[0]}</p>
-          <p className="metric-value">{summary.queued}</p>
+          <p className="metric-value">{formatNumber(summary.queued, locale)}</p>
           <p className="helper-copy">{copy.summary.queued[1]}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.summary.processing[0]}</p>
-          <p className="metric-value">{summary.processing}</p>
+          <p className="metric-value">{formatNumber(summary.processing, locale)}</p>
           <p className="helper-copy">{copy.summary.processing[1]}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.summary.completed[0]}</p>
-          <p className="metric-value">{summary.completed}</p>
+          <p className="metric-value">{formatNumber(summary.completed, locale)}</p>
           <p className="helper-copy">{copy.summary.completed[1]}</p>
         </div>
       </div>
@@ -378,7 +259,7 @@ export function JobsManager() {
             <p className="item-title">{selectedFile ? selectedFile.originalName : copy.create.noSource}</p>
             <p className="helper-copy">
               {selectedFile
-                ? `${formatLocal(selectedFile.createdAt, locale)}`
+                ? formatDateTime(selectedFile.createdAt, locale)
                 : copy.create.uploadHint}
             </p>
           </div>
@@ -395,7 +276,7 @@ export function JobsManager() {
             </Link>
           </div>
 
-          {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+          {status && statusTone ? <p className={`form-status ${statusTone}`} role={statusKind === "error" ? "alert" : "status"}>{status}</p> : null}
 
           <div className="stack-sm">
             <p className="metric-label">{copy.create.recentSources}</p>
@@ -407,7 +288,7 @@ export function JobsManager() {
                   <div key={file.id} className="file-library-item">
                     <div>
                       <strong>{file.originalName}</strong>
-                      <span>{formatLocal(file.createdAt, locale)}</span>
+                      <span>{formatDateTime(file.createdAt, locale)}</span>
                     </div>
                     <button type="button" className="button button-secondary button-ghost" onClick={() => setSelectedFileId(file.id)}>
                       {copy.create.useThis}
@@ -419,7 +300,7 @@ export function JobsManager() {
           </div>
         </form>
 
-        <div className="preview-side">
+        <div className="preview-side" aria-label={copy.monitor.liveAria}>
           <div className="queue-toolbar">
             <div className="stack-xs">
               <p className="metric-label">{copy.monitor.eyebrow}</p>
@@ -434,15 +315,15 @@ export function JobsManager() {
           <div className="queue-summary-grid">
             <div className="queue-summary-chip">
               <span>{copy.summary.queued[0]}</span>
-              <strong>{summary.queued}</strong>
+              <strong>{formatNumber(summary.queued, locale)}</strong>
             </div>
             <div className="queue-summary-chip">
               <span>{copy.summary.processing[0]}</span>
-              <strong>{summary.processing}</strong>
+              <strong>{formatNumber(summary.processing, locale)}</strong>
             </div>
             <div className="queue-summary-chip">
               <span>{copy.summary.completed[0]}</span>
-              <strong>{summary.completed}</strong>
+              <strong>{formatNumber(summary.completed, locale)}</strong>
             </div>
           </div>
 
@@ -458,14 +339,14 @@ export function JobsManager() {
                   </span>
                   <div className="stack-xs">
                     <p className="item-title">{copy.monitor.latest}: {(files.find((item) => item.id === latestJob.inputFileId)?.originalName ?? latestJob.inputFileId)}</p>
-                    <p className="item-meta">{copy.monitor.created} {formatLocal(latestJob.createdAt, locale)}</p>
+                    <p className="item-meta">{copy.monitor.created} {formatDateTime(latestJob.createdAt, locale)}</p>
                   </div>
                 </div>
                 <div className="inline-meta">
                   <StatusPill tone={mapJobTone(latestJob.status)} icon={<DotIcon width={10} height={10} />}>
-                    {translateJobStatus(latestJob.status, locale)}
+                    {copy.statuses[latestJob.status]}
                   </StatusPill>
-                  <StatusPill tone={latestResultTone}>{translateResultKind(latestJob.resultKind, locale)}</StatusPill>
+                  <StatusPill tone={latestResultTone}>{copy.resultKinds[latestJob.resultKind]}</StatusPill>
                 </div>
                 <div className="stack-xs">
                   <p className="metric-label">{copy.monitor.resultCenter}</p>
@@ -544,15 +425,15 @@ export function JobsManager() {
                       </span>
                       <div className="stack-xs">
                         <p className="item-title">{file?.originalName ?? job.inputFileId}</p>
-                        <p className="item-meta">{translateDirection(job.direction, locale)} | {copy.monitor.created} {formatLocal(job.createdAt, locale)}</p>
+                        <p className="item-meta">{formatDirection(job.direction, copy.directions)} | {copy.monitor.created} {formatDateTime(job.createdAt, locale)}</p>
                       </div>
                     </div>
 
                     <div className="inline-meta">
                       <StatusPill tone={mapJobTone(job.status)} icon={<DotIcon width={10} height={10} />}>
-                        {translateJobStatus(job.status, locale)}
+                        {copy.statuses[job.status]}
                       </StatusPill>
-                      <StatusPill tone={resultTone}>{translateResultKind(job.resultKind, locale)}</StatusPill>
+                      <StatusPill tone={resultTone}>{copy.resultKinds[job.resultKind]}</StatusPill>
                     </div>
 
                     {job.previewText ? <pre className="preview-block">{job.previewText}</pre> : null}
@@ -584,7 +465,7 @@ export function JobsManager() {
 
                   <div className="stack-sm">
                     <span className="status-chip tone-neutral">{job.id.slice(0, 8)}</span>
-                    <span className="status-chip tone-primary">{translateJobPhase(job, locale)}</span>
+                    <span className="status-chip tone-primary">{formatJobPhase(job, copy.phases)}</span>
                   </div>
                 </div>
               );
@@ -596,58 +477,12 @@ export function JobsManager() {
   );
 }
 
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
+function formatDirection(direction: ConversionDirection, copy: WorkspaceMessages["jobs"]["directions"]) {
+  return direction === "staff_pdf_to_numbered" ? copy.staff_pdf_to_numbered : direction;
 }
 
-function translateJobStatus(status: JobItem["status"], locale: string) {
-  if (locale !== "zh-CN") {
-    return status;
-  }
-
-  switch (status) {
-    case "queued":
-      return "排队中";
-    case "processing":
-      return "处理中";
-    case "completed":
-      return "已完成";
-    case "failed":
-      return "失败";
-    default:
-      return status;
-  }
-}
-
-function translateResultKind(resultKind: JobItem["resultKind"], locale: string) {
-  if (locale !== "zh-CN") {
-    return resultKind;
-  }
-
-  switch (resultKind) {
-    case "final":
-      return "最终版";
-    case "draft":
-      return "草稿";
-    default:
-      return "暂无";
-  }
-}
-
-function translateDirection(direction: ConversionDirection, locale: string) {
-  if (locale !== "zh-CN") {
-    return direction;
-  }
-
-  return direction === "staff_pdf_to_numbered" ? "五线谱 PDF -> 简谱" : direction;
-}
-
-function translateJobPhase(job: JobItem, locale: string) {
-  if (locale !== "zh-CN") {
-    return job.completedAt ? "Completed" : job.startedAt ? "Running" : "Waiting";
-  }
-
-  return job.completedAt ? "已完成" : job.startedAt ? "运行中" : "等待中";
+function formatJobPhase(job: JobItem, copy: WorkspaceMessages["jobs"]["phases"]) {
+  return job.completedAt ? copy.completed : job.startedAt ? copy.running : copy.waiting;
 }
 
 function mapJobTone(status: JobItem["status"]) {

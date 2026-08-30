@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
+import { formatMessage, formatNumber } from "@score/i18n";
 import * as Y from "yjs";
 import { apiRequest } from "../lib/api";
+import { useScoreSharingMessages } from "../lib/score-sharing-messages/client";
+import type { ScoreSharingMessages } from "../lib/score-sharing-messages/types";
 import {
   appendScoreCollaborationOperation,
   currentScoreCollaborationOperation,
@@ -17,7 +20,7 @@ import {
 type Collaborator = { clientId: number; name: string; role: string; selectedEventId: string | null };
 type TrustedActor = { kind: "account" | "share_link"; displayName: string; verification: "account" | "share_link" };
 
-export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pendingOperations, selectedEventId, onRemoteEventSelect, onRemoteRevision, locale }: {
+export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pendingOperations, selectedEventId, onRemoteEventSelect, onRemoteRevision }: {
   scoreId: string;
   token: string | null;
   currentRevisionId: string | null;
@@ -25,8 +28,10 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
   selectedEventId: string | null;
   onRemoteEventSelect: (eventId: string) => void;
   onRemoteRevision: (revisionId: string) => void | Promise<void>;
-  locale: string;
+  locale?: string;
 }) {
+  const { locale, messages } = useScoreSharingMessages();
+  const copy = messages.collaboration;
   const [status, setStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [sharedNote, setSharedNote] = useState("");
@@ -39,7 +44,6 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
   const currentRevisionRef = useRef(currentRevisionId);
   const localOperationIdsRef = useRef(new Set<string>());
   const notifiedRevisionIdsRef = useRef(new Set<string>());
-  const isChinese = locale === "zh-CN";
 
   useEffect(() => {
     currentRevisionRef.current = currentRevisionId;
@@ -83,7 +87,7 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
         .filter(([clientId]) => clientId !== awareness.clientID)
         .map(([clientId, state]) => ({
           clientId,
-          name: typeof state.user?.name === "string" ? state.user.name : isChinese ? "协作者" : "Collaborator",
+          name: typeof state.user?.name === "string" ? state.user.name : copy.collaborator,
           role: typeof state.user?.role === "string" ? state.user.role : "viewer",
           selectedEventId: typeof state.selection?.eventId === "string" ? state.selection.eventId : null,
         }));
@@ -91,7 +95,7 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
     };
     const updateStatus = ({ status: nextStatus }: { status: string }) => setStatus(nextStatus === "connected" ? "connected" : nextStatus === "disconnected" ? "disconnected" : "connecting");
     provider.on("status", updateStatus);
-    provider.awareness?.setLocalStateField("user", { name: isChinese ? "当前用户" : "Current user", role: "owner" });
+    provider.awareness?.setLocalStateField("user", { name: copy.currentUser, role: "owner" });
     provider.awareness?.on("change", updateAwareness);
     note.observe(updateNote);
     sharedOperations.observeDeep(updateOperations);
@@ -113,7 +117,7 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
       noteRef.current = null;
       setStatus("disconnected");
     };
-  }, [isChinese, scoreId, token]);
+  }, [copy.collaborator, copy.currentUser, scoreId, token]);
 
   useEffect(() => {
     providerRef.current?.awareness?.setLocalStateField("selection", { eventId: selectedEventId });
@@ -149,42 +153,38 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
     }, "rehearsal-note");
   }
 
-  const copy = isChinese
-    ? { title: "多人实时协作 Beta", note: "共享排练备注", online: "在线状态（显示名未验证）", operations: "最近乐谱操作", conflicts: "并发冲突", noOperations: "等待第一条乐谱编辑操作。", revision: "修订", account: "账号身份", share: "链接身份", unverified: "未验证广播" }
-    : { title: "Real-time Collaboration Beta", note: "Shared rehearsal note", online: "Online presence (display names unverified)", operations: "Recent score operations", conflicts: "Concurrent conflicts", noOperations: "Waiting for the first score edit operation.", revision: "Revision", account: "Account identity", share: "Link identity", unverified: "Unverified broadcast" };
-
   return (
     <section className="surface-panel stack-lg">
       <div className="score-review-toolbar">
         <div><p className="eyebrow">Yjs</p><h2 className="card-title">{copy.title}</h2></div>
-        <span className={`status-chip ${status === "connected" ? "tone-cyan" : "tone-amber"}`}>{status}</span>
+        <span className={`status-chip ${status === "connected" ? "tone-cyan" : "tone-amber"}`} role="status">{copy.statuses[status]}</span>
       </div>
       <label className="field-group wide">
         <span>{copy.note}</span>
-        <textarea className="field-control" rows={3} maxLength={2000} value={sharedNote} onChange={(event) => updateSharedNote(event.target.value)} />
+        <textarea className="field-control" rows={3} maxLength={2000} value={sharedNote} aria-label={copy.noteAria} onChange={(event) => updateSharedNote(event.target.value)} />
       </label>
-      <div className="button-row">
-        <span className="item-meta">{copy.online}: {collaborators.length}</span>
-        <span className={`status-chip ${conflictCount ? "tone-red" : "tone-green"}`}>{copy.conflicts}: {conflictCount}</span>
+      <div className="button-row" aria-label={copy.presenceAria}>
+        <span className="item-meta">{copy.online}: {formatNumber(collaborators.length, locale)}</span>
+        <span className={`status-chip ${conflictCount ? "tone-red" : "tone-green"}`}>{copy.conflicts}: {formatNumber(conflictCount, locale)}</span>
         {collaborators.filter((item) => item.selectedEventId).map((item) => (
           <button key={item.clientId} type="button" className="button button-secondary button-ghost" onClick={() => onRemoteEventSelect(item.selectedEventId!)}>
-            {item.name} ({item.role}): {item.selectedEventId}
+            {item.name} ({formatCollaborationRole(item.role, copy)}): {item.selectedEventId}
           </button>
         ))}
       </div>
-      <details>
-        <summary className="item-title">{copy.operations} ({operations.length})</summary>
+      <details aria-label={copy.operationsAria}>
+        <summary className="item-title">{copy.operations} ({formatNumber(operations.length, locale)})</summary>
         {operations.length === 0 ? <p className="helper-copy">{copy.noOperations}</p> : (
           <div className="list-grid">
             {operations.map((operation) => (
               <div className="list-item" key={operation.id}>
                 <div className="list-item-content">
-                  <p className="item-title">{operation.commandType}</p>
+                  <p className="item-title">{formatCollaborationOperation(operation.commandType, copy)}</p>
                   <p className="item-meta">
-                    {trustedActors[operation.id]?.displayName ?? operation.actorName} · {copy.revision} {operation.resultRevisionId.slice(0, 8)} · {operation.targetEventIds.length} targets
+                    {trustedActors[operation.id]?.displayName ?? operation.actorName} · {copy.revision} {operation.resultRevisionId.slice(0, 8)} · {formatMessage(copy.targets, { count: formatNumber(operation.targetEventIds.length, locale) })}
                   </p>
                   <span className={`status-chip ${trustedActors[operation.id] ? "tone-green" : "tone-amber"}`}>
-                    {trustedActors[operation.id]?.verification === "account" ? copy.account : trustedActors[operation.id]?.verification === "share_link" ? copy.share : copy.unverified}
+                    {trustedActors[operation.id]?.verification === "account" ? copy.identities.account : trustedActors[operation.id]?.verification === "share_link" ? copy.identities.share_link : copy.identities.unverified}
                   </span>
                 </div>
               </div>
@@ -194,4 +194,16 @@ export function ScoreCollaborationPanel({ scoreId, token, currentRevisionId, pen
       </details>
     </section>
   );
+}
+
+function formatCollaborationRole(role: string, copy: ScoreSharingMessages["collaboration"]) {
+  return Object.prototype.hasOwnProperty.call(copy.roles, role)
+    ? copy.roles[role as keyof typeof copy.roles]
+    : role;
+}
+
+function formatCollaborationOperation(commandType: string, copy: ScoreSharingMessages["collaboration"]) {
+  return Object.prototype.hasOwnProperty.call(copy.operationTypes, commandType)
+    ? copy.operationTypes[commandType as keyof typeof copy.operationTypes]
+    : copy.operationTypes.unknown;
 }

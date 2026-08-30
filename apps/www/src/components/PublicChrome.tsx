@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getLocalizedValue } from "@score/i18n";
 import {
   ArrowNorthEastIcon,
   SiteShellFooter,
@@ -14,6 +15,7 @@ import {
 } from "@score/ui";
 import type { PublicAnnouncement } from "../lib/public-content";
 import { localizePublicHref, localizePublicPath } from "../lib/locale-routing";
+import type { SiteShellCopy } from "../lib/site-shell-localization";
 import { getAppLoginUrl, getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
@@ -23,7 +25,15 @@ type NavigatorWithPerformanceSignals = Navigator & {
   deviceMemory?: number;
 };
 
-export function PublicChrome({ children, announcement }: { children: ReactNode; announcement: PublicAnnouncement | null }) {
+export function PublicChrome({
+  children,
+  announcement,
+  copy,
+}: {
+  children: ReactNode;
+  announcement: PublicAnnouncement | null;
+  copy: SiteShellCopy;
+}) {
   const pathname = usePathname();
   const { locale } = useSiteLocale();
   const [announcementVisible, setAnnouncementVisible] = useState(false);
@@ -36,27 +46,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     useCases: localizePublicHref("/#cases", locale),
     pricing: localizePublicHref("/#pricing", locale),
   } as const;
-  const copy = locale === "zh-CN"
-    ? {
-        scanner: "扫描识谱", features: "功能", library: "曲库", education: "教学", pricing: "价格",
-        help: "帮助", guide: "五线谱入门", numberedNotation: "五线谱与简谱转换", contact: "联系我们", discord: "Discord 社群", login: "登录",
-        faq: "问答", about: "关于 / 支持", support: "支持", terms: "条款", privacy: "隐私", copyright: "版权投诉",
-        menu: "打开导航菜单", closeMenu: "关闭导航菜单",
-        app: siteConfig.release.productAppAvailable ? "免费编辑" : "上线状态", buy: "升级套餐",
-        brandLabel: "ScoreTransposer 首页",
-        brandCaption: "PDF / 图片五线谱识别工作台",
-        footerCopy: "上传一份完整多页五线谱 PDF 或图片，免费创建一个可校正、播放、转换、分享与导出的乐谱项目。",
-      }
-    : {
-        scanner: "Sheet music scanner", features: "Features", library: "Score library", education: "Education", pricing: "Pricing",
-        help: "Help", guide: "How to read sheet music", numberedNotation: "Numbered notation converter", contact: "Contact us", discord: "Discord", login: "Sign in",
-        faq: "FAQ", about: "About", support: "Support", terms: "Terms", privacy: "Privacy", copyright: "Copyright",
-        menu: "Open navigation menu", closeMenu: "Close navigation menu",
-        app: siteConfig.release.productAppAvailable ? "Edit for free" : "Launch status", buy: "Upgrade",
-        brandLabel: "ScoreTransposer home",
-        brandCaption: "PDF and image score scanner",
-        footerCopy: `Create one free project from a complete staff-score PDF or image, then correct, convert, transpose, play, share, and export it in the ${sonataCopy.currentScope.toLowerCase()}.`,
-      };
+  const primaryActionLabel = siteConfig.release.productAppAvailable ? copy.editForFree : copy.launchStatus;
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -110,10 +100,10 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
   const actions: SiteShellAction[] = [
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true, desktopOnly: true }] : []),
     { href: loginUrl, label: copy.login, tone: "secondary", desktopOnly: true },
-    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.buy, tone: "tertiary" as const }] : []),
+    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.upgrade, tone: "tertiary" as const }] : []),
     {
       href: homepageScanUrl,
-      label: copy.app,
+      label: primaryActionLabel,
       tone: "primary",
       icon: <ArrowNorthEastIcon width={16} height={16} />,
       onClick: pathname === localizePublicPath("/", locale) ? (event) => {
@@ -123,8 +113,8 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     },
   ];
   const footerLinks = [
-    { href: homeSections.workflow, label: locale === "zh-CN" ? "使用流程" : "How it works" },
-    { href: homeSections.useCases, label: locale === "zh-CN" ? "使用场景" : "Use cases" },
+    { href: homeSections.workflow, label: copy.workflow },
+    { href: homeSections.useCases, label: copy.useCases },
     { href: homeSections.pricing, label: copy.pricing },
     { href: localizePublicHref("/features", locale), label: copy.features },
     { href: localizePublicHref("/library", locale), label: copy.library },
@@ -136,20 +126,20 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
     { href: localizePublicHref("/privacy", locale), label: copy.privacy },
     { href: localizePublicHref("/terms", locale), label: copy.terms },
     { href: localizePublicHref("/copyright-complaint", locale), label: copy.copyright },
-    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.buy }] : []),
-    { href: appUrl, label: copy.app },
+    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.upgrade }] : []),
+    { href: appUrl, label: primaryActionLabel },
   ];
-  const announcementCopy = announcement?.copy[locale];
+  const announcementCopy = announcement ? getLocalizedValue(announcement.copy, locale) : undefined;
 
   return (
     <div className="public-frame">
       {announcement && announcementCopy && announcementVisible ? (
-        <aside className="public-announcement" role="status" aria-label={locale === "zh-CN" ? "活动公告" : "Event announcement"}>
+        <aside className="public-announcement" role="status" aria-label={copy.eventAnnouncement}>
           <div className="public-container public-announcement-inner">
-            <span className="public-announcement-label">{locale === "zh-CN" ? "限时活动" : "Live event"}</span>
+            <span className="public-announcement-label">{copy.liveEvent}</span>
             <p>{announcementCopy.label}</p>
             <a href={localizePublicHref(announcement.href, locale)}>{announcementCopy.action}<ArrowNorthEastIcon width={14} height={14} /></a>
-            <button type="button" onClick={dismissAnnouncement} aria-label={locale === "zh-CN" ? "关闭活动公告" : "Dismiss event announcement"}>×</button>
+            <button type="button" onClick={dismissAnnouncement} aria-label={copy.dismissAnnouncement}>×</button>
           </div>
         </aside>
       ) : null}
@@ -159,9 +149,9 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
         brandCaption={copy.brandCaption}
         navItems={navItems}
         actions={actions}
-        localeControl={<SiteLocaleSwitcher />}
-        navLabel={locale === "zh-CN" ? "主导航" : "Primary navigation"}
-        openMenuLabel={copy.menu}
+        localeControl={<SiteLocaleSwitcher label={copy.languageSwitcher} />}
+        navLabel={copy.primaryNavigation}
+        openMenuLabel={copy.openMenu}
         closeMenuLabel={copy.closeMenu}
         linkComponent={Link}
       />
@@ -170,7 +160,7 @@ export function PublicChrome({ children, announcement }: { children: ReactNode; 
         title={sonataCopy.productTitle}
         description={copy.footerCopy}
         links={footerLinks}
-        localeControl={<SiteLocaleSwitcher />}
+        localeControl={<SiteLocaleSwitcher label={copy.languageSwitcher} />}
         linkComponent={Link}
       />
     </div>

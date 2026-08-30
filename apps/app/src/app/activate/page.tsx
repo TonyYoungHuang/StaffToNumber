@@ -1,20 +1,29 @@
+import type { Metadata } from "next";
 import { AuthShell } from "../../components/AuthShell";
 import { ActivationForm } from "../../components/ActivationForm";
+import { getAuthMessages } from "../../lib/auth-messages";
+import { getBillingMessages } from "../../lib/billing-messages";
 import { readAppLocale } from "../../lib/locale";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await readAppLocale();
+  const { page } = getBillingMessages(locale).activation;
+  return { title: page.title, description: page.description };
+}
 
 export default async function ActivatePage() {
   const locale = await readAppLocale();
+  const shellCopy = getAuthMessages(locale).shell;
+  const copy = getBillingMessages(locale);
 
   return (
     <AuthShell
-      title={locale === "zh-CN" ? "兑换激活码" : "Redeem activation code"}
-      description={
-        locale === "zh-CN"
-          ? "输入购买后获得的激活码，即可开通当前工作台的一年使用权限。"
-          : "Enter the code from your purchase to activate the current studio workflow for one year of use."
-      }
+      title={copy.activation.page.title}
+      description={copy.activation.page.description}
+      copy={shellCopy}
     >
-      <ActivationForm />
+      {copy.reviewNotice ? <p className="micro-copy">{copy.reviewNotice}</p> : null}
+      <ActivationForm copy={copy.activation.form} />
     </AuthShell>
   );
 }

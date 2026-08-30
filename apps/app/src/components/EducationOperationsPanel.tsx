@@ -1,9 +1,11 @@
 "use client";
 
+import { formatDateTime, formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
 import { apiMultipartRequest, apiRequest, downloadAuthenticatedFile } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
-import { useAppLocale } from "./AppLocaleProvider";
+import { useEducationMessages } from "../lib/education-messages/client";
+import { resolveEducationLabel } from "../lib/education-messages/format";
 
 type ClassroomResource = {
   id: string;
@@ -71,9 +73,10 @@ type ResourceDraft = {
 const emptyResource: ResourceDraft = { title: "", url: "", resourceType: "score", folderId: "", folderPath: "", tags: "", visibility: "classroom", selectedStudentIds: [] };
 
 export function EducationOperationsPanel() {
-  const { locale } = useAppLocale();
+  const { locale, messages } = useEducationMessages();
+  const copy = messages.operations;
+  const shared = messages.shared;
   const token = getStoredToken();
-  const isChinese = locale === "zh-CN";
   const [classrooms, setClassrooms] = useState<EducationClassroom[]>([]);
   const [classroomId, setClassroomId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -141,7 +144,7 @@ export function EducationOperationsPanel() {
       return;
     }
     clear();
-    setStatus(isChinese ? "已保存到课堂。" : "Saved to the classroom.");
+    setStatus(copy.saved);
     setStatusKind("success");
     await refresh();
   }
@@ -159,7 +162,7 @@ export function EducationOperationsPanel() {
       setStatusKind("error");
       return;
     }
-    setStatus(isChinese ? "已归档。" : "Archived.");
+    setStatus(copy.archived);
     setStatusKind("success");
     await refresh();
   }
@@ -178,7 +181,7 @@ export function EducationOperationsPanel() {
       setStatusKind("error");
       return;
     }
-    setStatus(isChinese ? `已重新加入 ${result.data.retried} 封失败邮件。` : `${result.data.retried} failed email deliveries queued again.`);
+    setStatus(formatMessage(copy.retriedEmails, { count: formatNumber(result.data.retried, locale) }));
     setStatusKind("success");
     await refresh();
   }
@@ -197,7 +200,10 @@ export function EducationOperationsPanel() {
       setStatusKind("error");
       return;
     }
-    setStatus(isChinese ? `已同步 ${result.data.imported} 名学生，跳过 ${result.data.skipped} 条非学生记录。` : `${result.data.imported} learners synced; ${result.data.skipped} non-learner records skipped.`);
+    setStatus(formatMessage(copy.rosterSynced, {
+      imported: formatNumber(result.data.imported, locale),
+      skipped: formatNumber(result.data.skipped, locale),
+    }));
     setStatusKind("success");
     await refresh();
   }
@@ -211,7 +217,7 @@ export function EducationOperationsPanel() {
     });
     setBusyId(null);
     if (!result.ok) { setStatus(result.error); setStatusKind("error"); return; }
-    setStatus(isChinese ? "资源版本保留策略已保存。" : "Resource version retention policy saved.");
+    setStatus(copy.retentionSaved);
     setStatusKind("success");
     await refresh();
   }
@@ -233,7 +239,7 @@ export function EducationOperationsPanel() {
     });
     setBusyId(null);
     if (!result.ok) { setStatus(result.error); setStatusKind("error"); return; }
-    setStatus(isChinese ? `已清理 ${result.data.result.purged} 个过期历史版本的文件内容。` : `Purged file content from ${result.data.result.purged} expired historical versions.`);
+    setStatus(formatMessage(copy.retentionPurged, { count: formatNumber(result.data.result.purged, locale) }));
     setStatusKind("success");
     setRetentionPreview(null);
     setResourceHistory(null);
@@ -300,7 +306,7 @@ export function EducationOperationsPanel() {
       return;
     }
     clearResourceDraft();
-    setStatus(isChinese ? "文件已安全上传到课堂。" : "File uploaded securely to the classroom.");
+    setStatus(copy.fileUploaded);
     setStatusKind("success");
     await refresh();
   }
@@ -360,7 +366,10 @@ export function EducationOperationsPanel() {
       setStatusKind("error");
       return;
     }
-    setStatus(isChinese ? `已将 v${item.versionNumber} 恢复为新的 v${result.data.resource.versionNumber}。` : `Restored v${item.versionNumber} as new v${result.data.resource.versionNumber}.`);
+    setStatus(formatMessage(copy.versionRestored, {
+      from: formatNumber(item.versionNumber, locale),
+      to: formatNumber(result.data.resource.versionNumber, locale),
+    }));
     setStatusKind("success");
     await refresh();
     await fetchResourceHistory(result.data.resource);
@@ -376,7 +385,7 @@ export function EducationOperationsPanel() {
     setBusyId(null);
     if (!result.ok) { setStatus(result.error); setStatusKind("error"); return; }
     setFolderDraft({ name: "", parentId: "" });
-    setStatus(isChinese ? "文件夹已创建。" : "Folder created.");
+    setStatus(copy.folderCreated);
     setStatusKind("success");
     await refresh();
   }
@@ -391,7 +400,7 @@ export function EducationOperationsPanel() {
     setBusyId(null);
     if (!result.ok) { setStatus(result.error); setStatusKind("error"); return; }
     setReuseDraft({ sourceClassroomId: "", sourceResourceId: "", folderId: "" });
-    setStatus(isChinese ? "资源已复用到当前课堂。" : "Resource reused in this classroom.");
+    setStatus(copy.resourceReused);
     setStatusKind("success");
     await refresh();
   }
@@ -409,9 +418,7 @@ export function EducationOperationsPanel() {
     if (!result.ok) { setStatus(result.error); setStatusKind("error"); return; }
     setFolderEditing(null);
     setResourceHistory(null);
-    setStatus(isChinese
-      ? `文件夹已更新；${result.data.resources.length} 项资源已生成不可变新版本。`
-      : `Folder updated; ${result.data.resources.length} resource versions created.`);
+    setStatus(formatMessage(copy.folderUpdated, { count: formatNumber(result.data.resources.length, locale) }));
     setStatusKind("success");
     await refresh();
   }
@@ -432,7 +439,7 @@ export function EducationOperationsPanel() {
       return next;
     });
     setResourceHistory(null);
-    setStatus(isChinese ? `资源已移动，并创建 v${result.data.resource.versionNumber}。` : `Resource moved as immutable v${result.data.resource.versionNumber}.`);
+    setStatus(formatMessage(copy.resourceMoved, { version: formatNumber(result.data.resource.versionNumber, locale) }));
     setStatusKind("success");
     await refresh();
   }
@@ -456,41 +463,41 @@ export function EducationOperationsPanel() {
   return (
     <section className="surface-panel stack-lg">
       <div className="stack-sm">
-        <p className="eyebrow">{isChinese ? "课堂运营" : "Class operations"}</p>
-        <h2 className="card-title">{isChinese ? "通知、资源库与 LMS" : "Notifications, resources, and LMS"}</h2>
-        <p className="body-copy">{isChinese ? "学生账户按花名册邮箱关联；课堂资源、定时通知和阅读回执在这里统一管理。" : "Student accounts link by roster email; manage versioned resources, scheduled notices, and read receipts here."}</p>
+        <p className="eyebrow">{copy.eyebrow}</p>
+        <h2 className="card-title">{copy.title}</h2>
+        <p className="body-copy">{copy.body}</p>
       </div>
       <label className="field-group">
-        <span>{isChinese ? "课堂" : "Classroom"}</span>
-        <select className="field-select" aria-label={isChinese ? "当前课堂" : "Current classroom"} value={classroomId} onChange={(event) => { setClassroomId(event.target.value); setResourceHistory(null); setFolderEditing(null); }}>
-          <option value="">{isChinese ? "选择课堂" : "Select classroom"}</option>
+        <span>{copy.classroom}</span>
+        <select className="field-select" aria-label={copy.currentClassroomAria} value={classroomId} onChange={(event) => { setClassroomId(event.target.value); setResourceHistory(null); setFolderEditing(null); }}>
+          <option value="">{copy.selectClassroom}</option>
           {classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name}</option>)}
         </select>
       </label>
 
       <div className="three-column-grid">
         <form className="mini-card stack-sm" onSubmit={(event) => void saveResource(event)}>
-          <p className="item-title">{versioningResourceId ? (isChinese ? "发布资源新版本" : "Publish resource version") : (isChinese ? "添加资源" : "Add resource")}</p>
-          <div className="button-row" role="group" aria-label={isChinese ? "资源来源" : "Resource source"}>
-            <button type="button" className={`button button-secondary button-ghost${resourceSource === "external" ? " is-active" : ""}`} aria-pressed={resourceSource === "external"} onClick={() => { setResourceSource("external"); setResourceFile(null); }}>{isChinese ? "外链" : "Link"}</button>
-            <button type="button" className={`button button-secondary button-ghost${resourceSource === "file" ? " is-active" : ""}`} aria-pressed={resourceSource === "file"} onClick={() => setResourceSource("file")}>{isChinese ? "上传文件" : "Upload file"}</button>
+          <p className="item-title">{versioningResourceId ? copy.resource.publishVersion : copy.resource.add}</p>
+          <div className="button-row" role="group" aria-label={copy.resource.sourceAria}>
+            <button type="button" className={`button button-secondary button-ghost${resourceSource === "external" ? " is-active" : ""}`} aria-pressed={resourceSource === "external"} onClick={() => { setResourceSource("external"); setResourceFile(null); }}>{shared.resourceSources.external}</button>
+            <button type="button" className={`button button-secondary button-ghost${resourceSource === "file" ? " is-active" : ""}`} aria-pressed={resourceSource === "file"} onClick={() => setResourceSource("file")}>{shared.resourceSources.file}</button>
           </div>
-          <input className="field-control" maxLength={160} placeholder={isChinese ? "资源标题" : "Resource title"} value={resource.title} onChange={(event) => setResource({ ...resource, title: event.target.value })} />
-          {resourceSource === "external" ? <input className="field-control" type="url" placeholder="https://..." value={resource.url} onChange={(event) => setResource({ ...resource, url: event.target.value })} /> : <label className="field-group"><span>{isChinese ? "资源文件" : "Resource file"}</span><input className="field-control" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.musicxml,.xml,.mxl,.json,.mid,.midi,.wav,.mp3,.aac,.flac,.ogg,.aiff,.m4a,.mp4,.mov,.webm" onChange={(event) => { const selected = event.target.files?.[0] ?? null; setResourceFile(selected); if (selected && !resource.title) setResource((current) => ({ ...current, title: selected.name.replace(/\.[^.]+$/u, "") })); }} /></label>}
+          <input className="field-control" maxLength={160} placeholder={copy.resource.title} value={resource.title} onChange={(event) => setResource({ ...resource, title: event.target.value })} />
+          {resourceSource === "external" ? <input className="field-control" type="url" placeholder="https://..." value={resource.url} onChange={(event) => setResource({ ...resource, url: event.target.value })} /> : <label className="field-group"><span>{copy.resource.file}</span><input className="field-control" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.musicxml,.xml,.mxl,.json,.mid,.midi,.wav,.mp3,.aac,.flac,.ogg,.aiff,.m4a,.mp4,.mov,.webm" onChange={(event) => { const selected = event.target.files?.[0] ?? null; setResourceFile(selected); if (selected && !resource.title) setResource((current) => ({ ...current, title: selected.name.replace(/\.[^.]+$/u, "") })); }} /></label>}
           <div className="form-grid two-column-grid">
-            <select className="field-select" value={resource.resourceType} onChange={(event) => setResource({ ...resource, resourceType: event.target.value })}><option value="score">Score</option><option value="audio">Audio</option><option value="video">Video</option><option value="document">Document</option></select>
-            <select className="field-select" aria-label={isChinese ? "资源可见范围" : "Resource visibility"} value={resource.visibility} onChange={(event) => {
+            <select className="field-select" aria-label={copy.resource.typeAria} value={resource.resourceType} onChange={(event) => setResource({ ...resource, resourceType: event.target.value })}><option value="score">{shared.resourceTypes.score}</option><option value="audio">{shared.resourceTypes.audio}</option><option value="video">{shared.resourceTypes.video}</option><option value="document">{shared.resourceTypes.document}</option></select>
+            <select className="field-select" aria-label={copy.resource.visibilityAria} value={resource.visibility} onChange={(event) => {
               const visibility = event.target.value as ResourceDraft["visibility"];
               setResource({ ...resource, visibility, selectedStudentIds: visibility === "selected" ? resource.selectedStudentIds : [] });
             }}>
-              <option value="classroom">{isChinese ? "全班可见" : "Classroom"}</option>
-              <option value="selected">{isChinese ? "指定学生" : "Selected students"}</option>
-              <option value="staff">{isChinese ? "仅教师团队" : "Staff only"}</option>
+              <option value="classroom">{shared.resourceVisibilities.classroom}</option>
+              <option value="selected">{shared.resourceVisibilities.selected}</option>
+              <option value="staff">{shared.resourceVisibilities.staff}</option>
             </select>
           </div>
           {resource.visibility === "selected" ? (
             <fieldset className="resource-student-access stack-sm">
-              <legend>{isChinese ? "可访问学生" : "Students with access"}</legend>
+              <legend>{copy.resource.studentsWithAccess}</legend>
               {selected?.students.length ? selected.students.map((student) => (
                 <label className="resource-student-option" key={student.id}>
                   <input
@@ -505,91 +512,91 @@ export function EducationOperationsPanel() {
                   />
                   <span>{student.displayName}{student.contactEmail ? ` (${student.contactEmail})` : ""}</span>
                 </label>
-              )) : <p className="item-meta">{isChinese ? "当前课堂没有可授权的活跃学生。" : "This classroom has no active students to authorize."}</p>}
+              )) : <p className="item-meta">{copy.resource.noActiveStudents}</p>}
             </fieldset>
           ) : null}
-          <select className="field-select" aria-label={isChinese ? "资源文件夹" : "Resource folder"} value={resource.folderId} onChange={(event) => setResource({ ...resource, folderId: event.target.value, folderPath: "" })}><option value="">{isChinese ? "根目录" : "Root folder"}</option>{selected?.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select>
-          <input className="field-control" placeholder={isChinese ? "标签，用逗号分隔" : "Comma-separated tags"} value={resource.tags} onChange={(event) => setResource({ ...resource, tags: event.target.value })} />
+          <select className="field-select" aria-label={copy.resource.folderAria} value={resource.folderId} onChange={(event) => setResource({ ...resource, folderId: event.target.value, folderPath: "" })}><option value="">{copy.resource.rootFolder}</option>{selected?.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select>
+          <input className="field-control" placeholder={copy.resource.tags} value={resource.tags} onChange={(event) => setResource({ ...resource, tags: event.target.value })} />
           <div className="button-row">
-            <button className="button button-secondary" disabled={!canOperate || busyId !== null || !classroomId || !resource.title || (resource.visibility === "selected" && resource.selectedStudentIds.length === 0) || (resourceSource === "external" ? !resource.url : !resourceFile)}>{resourceSource === "file" ? (isChinese ? "上传资源" : "Upload resource") : (isChinese ? "保存资源" : "Save resource")}</button>
-            {versioningResourceId ? <button type="button" className="button button-ghost" onClick={clearResourceDraft}>{isChinese ? "取消" : "Cancel"}</button> : null}
+            <button className="button button-secondary" disabled={!canOperate || busyId !== null || !classroomId || !resource.title || (resource.visibility === "selected" && resource.selectedStudentIds.length === 0) || (resourceSource === "external" ? !resource.url : !resourceFile)}>{resourceSource === "file" ? copy.resource.upload : copy.resource.save}</button>
+            {versioningResourceId ? <button type="button" className="button button-ghost" onClick={clearResourceDraft}>{copy.resource.cancel}</button> : null}
           </div>
         </form>
 
         <form className="mini-card stack-sm" onSubmit={(event) => void submit("notifications", { ...notice, publishAt: notice.publishAt ? new Date(notice.publishAt).toISOString() : null }, () => setNotice({ title: "", body: "", publishAt: "" }), event)}>
-          <p className="item-title">{isChinese ? "发布通知" : "Publish notification"}</p>
-          <input className="field-control" maxLength={160} placeholder={isChinese ? "通知标题" : "Notification title"} value={notice.title} onChange={(event) => setNotice({ ...notice, title: event.target.value })} />
-          <textarea className="field-control" rows={4} maxLength={4000} value={notice.body} onChange={(event) => setNotice({ ...notice, body: event.target.value })} />
-          <label className="field-group"><span>{isChinese ? "定时发布（留空则立即）" : "Schedule (blank publishes now)"}</span><input className="field-control" type="datetime-local" value={notice.publishAt} onChange={(event) => setNotice({ ...notice, publishAt: event.target.value })} /></label>
-          <button className="button button-secondary" disabled={!canOperate || busyId === "notifications" || !classroomId || !notice.title || !notice.body}>{notice.publishAt ? (isChinese ? "安排发布" : "Schedule") : (isChinese ? "立即发布" : "Publish now")}</button>
+          <p className="item-title">{copy.notification.publish}</p>
+          <input className="field-control" maxLength={160} placeholder={copy.notification.title} value={notice.title} onChange={(event) => setNotice({ ...notice, title: event.target.value })} />
+          <textarea className="field-control" rows={4} maxLength={4000} placeholder={copy.notification.body} value={notice.body} onChange={(event) => setNotice({ ...notice, body: event.target.value })} />
+          <label className="field-group"><span>{copy.notification.scheduleLabel}</span><input className="field-control" type="datetime-local" value={notice.publishAt} onChange={(event) => setNotice({ ...notice, publishAt: event.target.value })} /></label>
+          <button className="button button-secondary" disabled={!canOperate || busyId === "notifications" || !classroomId || !notice.title || !notice.body}>{notice.publishAt ? copy.notification.schedule : copy.notification.publishNow}</button>
         </form>
 
         <form className="mini-card stack-sm" onSubmit={(event) => void saveRetentionPolicy(event)}>
-          <p className="item-title">{isChinese ? "历史版本保留" : "Version retention"}</p>
-          <label className="toggle-row"><input type="checkbox" checked={retentionDraft.enabled} onChange={(event) => setRetentionDraft({ ...retentionDraft, enabled: event.target.checked })} /><span>{isChinese ? "启用自动清理" : "Enable automatic cleanup"}</span></label>
-          <label className="field-group"><span>{isChinese ? "历史版本保留天数" : "Historical version days"}</span><input className="field-control" type="number" min={30} max={3650} value={retentionDraft.historicalVersionDays} onChange={(event) => setRetentionDraft({ ...retentionDraft, historicalVersionDays: Number(event.target.value) })} /></label>
-          <label className="field-group"><span>{isChinese ? "每组至少保留的历史版本" : "Minimum historical versions per group"}</span><input className="field-control" type="number" min={1} max={20} value={retentionDraft.minimumVersionsPerGroup} onChange={(event) => setRetentionDraft({ ...retentionDraft, minimumVersionsPerGroup: Number(event.target.value) })} /></label>
-          <p className="item-meta">{isChinese ? "当前版本和手动锁定版本不会清理。清理只移除文件内容，版本记录仍保留。" : "Current and held versions are never purged. Cleanup removes file content while preserving version history."}</p>
-          {retentionPreview ? <p className="item-meta">{isChinese ? `将清理 ${retentionPreview.versions.length} 个版本，约 ${formatBytes(retentionPreview.totalBytes)}。` : `${retentionPreview.versions.length} versions, about ${formatBytes(retentionPreview.totalBytes)}, are eligible.`}</p> : null}
+          <p className="item-title">{copy.retention.title}</p>
+          <label className="toggle-row"><input type="checkbox" checked={retentionDraft.enabled} onChange={(event) => setRetentionDraft({ ...retentionDraft, enabled: event.target.checked })} /><span>{copy.retention.enable}</span></label>
+          <label className="field-group"><span>{copy.retention.days}</span><input className="field-control" type="number" min={30} max={3650} value={retentionDraft.historicalVersionDays} onChange={(event) => setRetentionDraft({ ...retentionDraft, historicalVersionDays: Number(event.target.value) })} /></label>
+          <label className="field-group"><span>{copy.retention.minimumVersions}</span><input className="field-control" type="number" min={1} max={20} value={retentionDraft.minimumVersionsPerGroup} onChange={(event) => setRetentionDraft({ ...retentionDraft, minimumVersionsPerGroup: Number(event.target.value) })} /></label>
+          <p className="item-meta">{copy.retention.note}</p>
+          {retentionPreview ? <p className="item-meta">{formatMessage(copy.retention.previewSummary, { count: formatNumber(retentionPreview.versions.length, locale), size: formatBytes(retentionPreview.totalBytes, locale) })}</p> : null}
           <div className="button-row">
-            <button className="button button-secondary" disabled={!canAdmin || busyId === "retention-policy"}>{isChinese ? "保存策略" : "Save policy"}</button>
-            <button type="button" className="button button-secondary button-ghost" disabled={!classroomId || busyId === "retention-preview"} onClick={() => void previewRetention()}>{isChinese ? "预览" : "Preview"}</button>
-            {retentionPreview && retentionPreview.versions.length > 0 ? <button type="button" className="button button-secondary button-ghost" disabled={!canAdmin || !retentionDraft.enabled || busyId === "retention-purge"} onClick={() => void purgeRetentionCandidates()}>{isChinese ? "执行清理" : "Purge eligible"}</button> : null}
+            <button className="button button-secondary" disabled={!canAdmin || busyId === "retention-policy"}>{copy.retention.save}</button>
+            <button type="button" className="button button-secondary button-ghost" disabled={!classroomId || busyId === "retention-preview"} onClick={() => void previewRetention()}>{copy.retention.preview}</button>
+            {retentionPreview && retentionPreview.versions.length > 0 ? <button type="button" className="button button-secondary button-ghost" disabled={!canAdmin || !retentionDraft.enabled || busyId === "retention-purge"} onClick={() => void purgeRetentionCandidates()}>{copy.retention.purge}</button> : null}
           </div>
         </form>
 
         <form className="mini-card stack-sm" onSubmit={(event) => void submit("lms", lms, () => setLms(emptyLms), event)}>
-          <p className="item-title">{isChinese ? "LTI 1.3 连接" : "LTI 1.3 connection"}</p>
-          <select className="field-select" value={lms.provider} onChange={(event) => setLms({ ...lms, provider: event.target.value })}><option value="manual">Manual/LTI</option><option value="canvas">Canvas</option><option value="moodle">Moodle</option><option value="google-classroom">Google Classroom</option></select>
-          <input className="field-control" placeholder={isChinese ? "课程编号" : "Course reference"} value={lms.courseRef} onChange={(event) => setLms({ ...lms, courseRef: event.target.value })} />
-          <input className="field-control" type="url" placeholder={isChinese ? "LMS 地址（可选）" : "LMS URL (optional)"} value={lms.baseUrl} onChange={(event) => setLms({ ...lms, baseUrl: event.target.value })} />
-          <input className="field-control" type="url" placeholder="Issuer (https://...)" value={lms.issuer} onChange={(event) => setLms({ ...lms, issuer: event.target.value })} />
-          <div className="form-grid two-column"><input className="field-control" placeholder="Client ID" value={lms.clientId} onChange={(event) => setLms({ ...lms, clientId: event.target.value })} /><input className="field-control" placeholder="Deployment ID" value={lms.deploymentId} onChange={(event) => setLms({ ...lms, deploymentId: event.target.value })} /></div>
-          <input className="field-control" type="url" placeholder={isChinese ? "OIDC 授权地址" : "OIDC authorization URL"} value={lms.oidcAuthUrl} onChange={(event) => setLms({ ...lms, oidcAuthUrl: event.target.value })} />
-          <input className="field-control" type="url" placeholder={isChinese ? "OAuth Token 地址" : "OAuth token URL"} value={lms.tokenUrl} onChange={(event) => setLms({ ...lms, tokenUrl: event.target.value })} />
-          <input className="field-control" type="url" placeholder={isChinese ? "平台 JWKS 地址" : "Platform JWKS URL"} value={lms.jwksUrl} onChange={(event) => setLms({ ...lms, jwksUrl: event.target.value })} />
-          <p className="item-meta">{isChinese ? "保存后从 LMS 发起一次工具启动；只有签名、nonce、deployment 与 target link 全部验证通过才会启用连接。" : "After saving, launch the tool once from the LMS. The connection activates only after signature, nonce, deployment, and target-link verification."}</p>
-          <button className="button button-secondary" disabled={!canOperate || busyId === "lms" || !classroomId || !lms.courseRef}>{isChinese ? "保存草稿" : "Save draft"}</button>
+          <p className="item-title">{copy.lms.title}</p>
+          <select className="field-select" value={lms.provider} onChange={(event) => setLms({ ...lms, provider: event.target.value })}><option value="manual">{copy.lms.providers.manual}</option><option value="canvas">{copy.lms.providers.canvas}</option><option value="moodle">{copy.lms.providers.moodle}</option><option value="google-classroom">{copy.lms.providers["google-classroom"]}</option></select>
+          <input className="field-control" placeholder={copy.lms.courseRef} value={lms.courseRef} onChange={(event) => setLms({ ...lms, courseRef: event.target.value })} />
+          <input className="field-control" type="url" placeholder={copy.lms.baseUrl} value={lms.baseUrl} onChange={(event) => setLms({ ...lms, baseUrl: event.target.value })} />
+          <input className="field-control" type="url" placeholder={copy.lms.issuer} value={lms.issuer} onChange={(event) => setLms({ ...lms, issuer: event.target.value })} />
+          <div className="form-grid two-column"><input className="field-control" placeholder={copy.lms.clientId} value={lms.clientId} onChange={(event) => setLms({ ...lms, clientId: event.target.value })} /><input className="field-control" placeholder={copy.lms.deploymentId} value={lms.deploymentId} onChange={(event) => setLms({ ...lms, deploymentId: event.target.value })} /></div>
+          <input className="field-control" type="url" placeholder={copy.lms.oidcAuthUrl} value={lms.oidcAuthUrl} onChange={(event) => setLms({ ...lms, oidcAuthUrl: event.target.value })} />
+          <input className="field-control" type="url" placeholder={copy.lms.tokenUrl} value={lms.tokenUrl} onChange={(event) => setLms({ ...lms, tokenUrl: event.target.value })} />
+          <input className="field-control" type="url" placeholder={copy.lms.jwksUrl} value={lms.jwksUrl} onChange={(event) => setLms({ ...lms, jwksUrl: event.target.value })} />
+          <p className="item-meta">{copy.lms.note}</p>
+          <button className="button button-secondary" disabled={!canOperate || busyId === "lms" || !classroomId || !lms.courseRef}>{copy.lms.saveDraft}</button>
         </form>
       </div>
 
       {selected ? (
         <div className="stack-lg">
           <div className="stack-sm">
-            <div className="section-heading-row"><div><p className="eyebrow">{isChinese ? "资源库" : "Resource library"}</p><h3 className="card-title">{selected.resources.length} {isChinese ? "项资源" : "resources"}</h3></div><input className="field-control compact-control" type="search" placeholder={isChinese ? "搜索标题、文件夹或标签" : "Search title, folder, or tag"} value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} /></div>
+            <div className="section-heading-row"><div><p className="eyebrow">{copy.library.eyebrow}</p><h3 className="card-title">{formatMessage(copy.library.resourceCount, { count: formatNumber(selected.resources.length, locale) })}</h3></div><input className="field-control compact-control" type="search" placeholder={copy.library.search} value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} /></div>
             {canOperate ? <div className="resource-library-tools">
               <form className="form-grid resource-tool-form" onSubmit={(event) => void createResourceFolder(event)}>
-                <input className="field-control" maxLength={80} placeholder={isChinese ? "新文件夹名称" : "New folder name"} value={folderDraft.name} onChange={(event) => setFolderDraft({ ...folderDraft, name: event.target.value })} />
-                <select className="field-select" aria-label={isChinese ? "父文件夹" : "Parent folder"} value={folderDraft.parentId} onChange={(event) => setFolderDraft({ ...folderDraft, parentId: event.target.value })}><option value="">{isChinese ? "根目录下" : "Under root"}</option>{selected.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select>
-                <button className="button button-secondary" disabled={!folderDraft.name || busyId === "resource-folder"}>{isChinese ? "创建文件夹" : "Create folder"}</button>
+                <input className="field-control" maxLength={80} placeholder={copy.library.newFolder} value={folderDraft.name} onChange={(event) => setFolderDraft({ ...folderDraft, name: event.target.value })} />
+                <select className="field-select" aria-label={copy.library.parentFolderAria} value={folderDraft.parentId} onChange={(event) => setFolderDraft({ ...folderDraft, parentId: event.target.value })}><option value="">{copy.library.underRoot}</option>{selected.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select>
+                <button className="button button-secondary" disabled={!folderDraft.name || busyId === "resource-folder"}>{copy.library.createFolder}</button>
               </form>
               <form className="form-grid resource-tool-form resource-reuse-form" onSubmit={(event) => void reuseResource(event)}>
-                <select className="field-select" aria-label={isChinese ? "来源课堂" : "Source classroom"} value={reuseDraft.sourceClassroomId} onChange={(event) => setReuseDraft({ sourceClassroomId: event.target.value, sourceResourceId: "", folderId: reuseDraft.folderId })}><option value="">{isChinese ? "选择来源课堂" : "Source classroom"}</option>{classrooms.filter((classroom) => classroom.id !== classroomId).map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name}</option>)}</select>
-                <select className="field-select" aria-label={isChinese ? "来源资源" : "Source resource"} value={reuseDraft.sourceResourceId} onChange={(event) => setReuseDraft({ ...reuseDraft, sourceResourceId: event.target.value })}><option value="">{isChinese ? "选择资源" : "Select resource"}</option>{reuseSource?.resources.map((item) => <option key={item.id} value={item.id}>{item.title} · v{item.versionNumber}</option>)}</select>
-                <select className="field-select" aria-label={isChinese ? "复用目标文件夹" : "Reuse target folder"} value={reuseDraft.folderId} onChange={(event) => setReuseDraft({ ...reuseDraft, folderId: event.target.value })}><option value="">{isChinese ? "复用到根目录" : "Reuse to root"}</option>{selected.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select>
-                <button className="button button-secondary" disabled={!reuseDraft.sourceResourceId || busyId === "reuse-resource"}>{isChinese ? "复用资源" : "Reuse resource"}</button>
+                <select className="field-select" aria-label={copy.library.sourceClassroomAria} value={reuseDraft.sourceClassroomId} onChange={(event) => setReuseDraft({ sourceClassroomId: event.target.value, sourceResourceId: "", folderId: reuseDraft.folderId })}><option value="">{copy.library.sourceClassroom}</option>{classrooms.filter((classroom) => classroom.id !== classroomId).map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name}</option>)}</select>
+                <select className="field-select" aria-label={copy.library.sourceResourceAria} value={reuseDraft.sourceResourceId} onChange={(event) => setReuseDraft({ ...reuseDraft, sourceResourceId: event.target.value })}><option value="">{copy.library.selectResource}</option>{reuseSource?.resources.map((item) => <option key={item.id} value={item.id}>{item.title} · {formatMessage(copy.resource.version, { version: formatNumber(item.versionNumber, locale) })}</option>)}</select>
+                <select className="field-select" aria-label={copy.library.reuseFolderAria} value={reuseDraft.folderId} onChange={(event) => setReuseDraft({ ...reuseDraft, folderId: event.target.value })}><option value="">{copy.library.reuseRoot}</option>{selected.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select>
+                <button className="button button-secondary" disabled={!reuseDraft.sourceResourceId || busyId === "reuse-resource"}>{copy.library.reuse}</button>
               </form>
-              {selected.resourceFolders.length > 0 ? <div className="resource-folder-manager" aria-label={isChinese ? "文件夹管理" : "Folder management"}>
+              {selected.resourceFolders.length > 0 ? <div className="resource-folder-manager" aria-label={copy.library.folderManagementAria}>
                 {selected.resourceFolders.map((folder) => <div className="resource-folder-row" key={folder.id}>
                   {folderEditing?.id === folder.id ? <form className="resource-folder-edit" onSubmit={(event) => void updateResourceFolder(event)}>
-                    <input className="field-control" aria-label={isChinese ? `重命名 ${folder.path}` : `Rename ${folder.path}`} maxLength={80} value={folderEditing.name} onChange={(event) => setFolderEditing({ ...folderEditing, name: event.target.value })} />
-                    <select className="field-select" aria-label={isChinese ? `${folder.path} 的父文件夹` : `Parent for ${folder.path}`} value={folderEditing.parentId} onChange={(event) => setFolderEditing({ ...folderEditing, parentId: event.target.value })}><option value="">{isChinese ? "根目录下" : "Under root"}</option>{selected.resourceFolders.filter((candidate) => candidate.id !== folder.id && !candidate.path.startsWith(`${folder.path}/`)).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.path}</option>)}</select>
-                    <div className="button-row"><button className="button button-secondary button-ghost" disabled={!folderEditing.name.trim() || busyId === `folder-update-${folder.id}`}>{isChinese ? "保存" : "Save"}</button><button type="button" className="button button-secondary button-ghost" onClick={() => setFolderEditing(null)}>{isChinese ? "取消" : "Cancel"}</button></div>
-                  </form> : <><span title={folder.path}>{folder.path}</span><div className="button-row"><button type="button" className="button button-secondary button-ghost" onClick={() => setFolderEditing({ id: folder.id, name: folder.name, parentId: folder.parentId ?? "" })}>{isChinese ? "编辑" : "Edit"}</button><button type="button" className="button button-secondary button-ghost" disabled={busyId === folder.id} onClick={() => void archive("resource-folders", folder.id)}>{isChinese ? "归档空文件夹" : "Archive empty folder"}</button></div></>}
+                    <input className="field-control" aria-label={formatMessage(copy.library.renameAria, { path: folder.path })} maxLength={80} value={folderEditing.name} onChange={(event) => setFolderEditing({ ...folderEditing, name: event.target.value })} />
+                    <select className="field-select" aria-label={formatMessage(copy.library.parentForAria, { path: folder.path })} value={folderEditing.parentId} onChange={(event) => setFolderEditing({ ...folderEditing, parentId: event.target.value })}><option value="">{copy.library.underRoot}</option>{selected.resourceFolders.filter((candidate) => candidate.id !== folder.id && !candidate.path.startsWith(`${folder.path}/`)).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.path}</option>)}</select>
+                    <div className="button-row"><button className="button button-secondary button-ghost" disabled={!folderEditing.name.trim() || busyId === `folder-update-${folder.id}`}>{copy.library.save}</button><button type="button" className="button button-secondary button-ghost" onClick={() => setFolderEditing(null)}>{copy.library.cancel}</button></div>
+                  </form> : <><span title={folder.path}>{folder.path}</span><div className="button-row"><button type="button" className="button button-secondary button-ghost" onClick={() => setFolderEditing({ id: folder.id, name: folder.name, parentId: folder.parentId ?? "" })}>{copy.library.edit}</button><button type="button" className="button button-secondary button-ghost" disabled={busyId === folder.id} onClick={() => void archive("resource-folders", folder.id)}>{copy.library.archiveEmptyFolder}</button></div></>}
                 </div>)}
               </div> : null}
             </div> : null}
-            {visibleResources.length === 0 ? <div className="empty-state">{isChinese ? "没有匹配的资源。" : "No matching resources."}</div> : visibleResources.map((item) => (
+            {visibleResources.length === 0 ? <div className="empty-state">{copy.library.noMatches}</div> : visibleResources.map((item) => (
               <Fragment key={item.id}>
                 <div className="list-item">
-                  <div><p className="item-title">{item.sourceType === "external" && item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a> : <button type="button" className="text-action" disabled={busyId === `download-${item.id}`} onClick={() => void downloadResource(item)}>{item.title}</button>} <span className="status-chip tone-cyan">v{item.versionNumber}</span></p><p className="item-meta">{item.folderPath || (isChinese ? "根目录" : "Root")} · {item.resourceType} · {item.sourceType === "file" ? (item.originalName ?? (isChinese ? "上传文件" : "Uploaded file")) : (isChinese ? "外链" : "Link")} · {item.visibility === "staff" ? (isChinese ? "仅教师团队" : "Staff") : item.visibility === "selected" ? `${isChinese ? "指定学生" : "Selected students"} (${item.selectedStudentIds.length})` : (isChinese ? "全班" : "Classroom")}{item.sizeBytes ? ` · ${formatBytes(item.sizeBytes)}` : ""}{item.tags.length ? ` · ${item.tags.join(" / ")}` : ""}</p></div>
-                  <div className="resource-row-actions"><div className="button-row"><button type="button" className="button button-secondary button-ghost" disabled={busyId === `history-${item.id}`} aria-expanded={resourceHistory?.groupId === item.versionGroupId} onClick={() => void toggleResourceHistory(item)}>{isChinese ? "版本历史" : "History"}</button><button type="button" className="button button-secondary button-ghost" disabled={!canOperate} onClick={() => editResourceVersion(item)}>{isChinese ? "新版本" : "New version"}</button><button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === item.id} onClick={() => void archive("resources", item.id)}>{isChinese ? "归档" : "Archive"}</button></div>{canOperate ? <div className="resource-move-control"><select className="field-select compact-control" aria-label={isChinese ? `移动 ${item.title}` : `Move ${item.title}`} value={resourceMoveTargets[item.id] ?? item.folderId ?? ""} onChange={(event) => setResourceMoveTargets((current) => ({ ...current, [item.id]: event.target.value }))}><option value="">{isChinese ? "根目录" : "Root folder"}</option>{selected.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select><button type="button" className="button button-secondary button-ghost" disabled={busyId === `move-${item.id}` || (resourceMoveTargets[item.id] ?? item.folderId ?? "") === (item.folderId ?? "")} onClick={() => void moveResource(item)}>{isChinese ? "移动" : "Move"}</button></div> : null}</div>
+                  <div><p className="item-title">{item.sourceType === "external" && item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a> : <button type="button" className="text-action" disabled={busyId === `download-${item.id}`} onClick={() => void downloadResource(item)}>{item.title}</button>} <span className="status-chip tone-cyan">{formatMessage(copy.resource.version, { version: formatNumber(item.versionNumber, locale) })}</span></p><p className="item-meta">{item.folderPath || copy.library.root} · {resolveEducationLabel(shared.resourceTypes, item.resourceType)} · {item.sourceType === "file" ? (item.originalName ?? shared.resourceSources.file) : shared.resourceSources.external} · {item.visibility === "selected" ? formatMessage(copy.resource.selectedStudents, { count: formatNumber(item.selectedStudentIds.length, locale) }) : shared.resourceVisibilities[item.visibility]}{item.sizeBytes ? ` · ${formatBytes(item.sizeBytes, locale)}` : ""}{item.tags.length ? ` · ${item.tags.join(" / ")}` : ""}</p></div>
+                  <div className="resource-row-actions"><div className="button-row"><button type="button" className="button button-secondary button-ghost" disabled={busyId === `history-${item.id}`} aria-expanded={resourceHistory?.groupId === item.versionGroupId} onClick={() => void toggleResourceHistory(item)}>{copy.resource.history}</button><button type="button" className="button button-secondary button-ghost" disabled={!canOperate} onClick={() => editResourceVersion(item)}>{copy.resource.newVersion}</button><button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === item.id} onClick={() => void archive("resources", item.id)}>{copy.resource.archive}</button></div>{canOperate ? <div className="resource-move-control"><select className="field-select compact-control" aria-label={formatMessage(copy.resource.moveAria, { title: item.title })} value={resourceMoveTargets[item.id] ?? item.folderId ?? ""} onChange={(event) => setResourceMoveTargets((current) => ({ ...current, [item.id]: event.target.value }))}><option value="">{copy.resource.rootFolder}</option>{selected.resourceFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.path}</option>)}</select><button type="button" className="button button-secondary button-ghost" disabled={busyId === `move-${item.id}` || (resourceMoveTargets[item.id] ?? item.folderId ?? "") === (item.folderId ?? "")} onClick={() => void moveResource(item)}>{copy.resource.move}</button></div> : null}</div>
                 </div>
-                {resourceHistory?.groupId === item.versionGroupId ? <div className="resource-version-history stack-sm" aria-label={isChinese ? `${item.title} 版本历史` : `${item.title} version history`}>
-                  <p className="item-meta">{isChinese ? "历史版本保持只读；恢复会创建新的当前版本。" : "History is read-only. Restoring creates a new current version."}</p>
+                {resourceHistory?.groupId === item.versionGroupId ? <div className="resource-version-history stack-sm" aria-label={formatMessage(copy.history.aria, { title: item.title })}>
+                  <p className="item-meta">{copy.history.note}</p>
                   {resourceHistory.versions.map((version) => <div className="list-item compact-list-item" key={version.id}>
-                    <div><p className="item-title">v{version.versionNumber} <span className={`status-chip ${version.archivedAt ? "tone-neutral" : "tone-cyan"}`}>{version.contentPurgedAt ? (isChinese ? "内容已过期" : "Content expired") : version.archivedAt ? (isChinese ? "历史" : "Historical") : (isChinese ? "当前" : "Current")}</span>{version.retentionHold ? <span className="status-chip tone-cyan">{isChinese ? "保留锁" : "Held"}</span> : null}</p><p className="item-meta">{new Date(version.createdAt).toLocaleString(locale)} · {version.sourceType === "file" ? (version.originalName ?? (isChinese ? "上传文件" : "Uploaded file")) : (isChinese ? "外链" : "Link")}{version.restoredFromId ? ` · ${isChinese ? "由历史版本恢复" : "Restored from history"}` : ""}</p></div>
-                    <div className="button-row">{version.downloadPath ? <button type="button" className="button button-secondary button-ghost" disabled={busyId === `download-${version.id}`} onClick={() => void downloadResource(version)}>{isChinese ? "下载" : "Download"}</button> : version.url ? <a className="button button-secondary button-ghost" href={version.url} target="_blank" rel="noreferrer">{isChinese ? "打开" : "Open"}</a> : null}{version.archivedAt && !version.contentPurgedAt ? <button type="button" className="button button-secondary button-ghost" disabled={!canAdmin || busyId === `retention-hold-${version.id}`} onClick={() => void toggleRetentionHold(version)}>{version.retentionHold ? (isChinese ? "取消保留" : "Remove hold") : (isChinese ? "永久保留" : "Keep")}</button> : null}{version.archivedAt && !version.contentPurgedAt ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === `restore-${version.id}`} onClick={() => void restoreResourceVersion(version)}>{isChinese ? "恢复为新版" : "Restore"}</button> : null}</div>
+                    <div><p className="item-title">{formatMessage(copy.resource.version, { version: formatNumber(version.versionNumber, locale) })} <span className={`status-chip ${version.archivedAt ? "tone-neutral" : "tone-cyan"}`}>{version.contentPurgedAt ? copy.history.contentExpired : version.archivedAt ? copy.history.historical : copy.history.current}</span>{version.retentionHold ? <span className="status-chip tone-cyan">{copy.history.held}</span> : null}</p><p className="item-meta">{formatDateTime(version.createdAt, locale)} · {version.sourceType === "file" ? (version.originalName ?? shared.resourceSources.file) : shared.resourceSources.external}{version.restoredFromId ? ` · ${copy.history.restoredFromHistory}` : ""}</p></div>
+                    <div className="button-row">{version.downloadPath ? <button type="button" className="button button-secondary button-ghost" disabled={busyId === `download-${version.id}`} onClick={() => void downloadResource(version)}>{copy.history.download}</button> : version.url ? <a className="button button-secondary button-ghost" href={version.url} target="_blank" rel="noreferrer">{copy.history.open}</a> : null}{version.archivedAt && !version.contentPurgedAt ? <button type="button" className="button button-secondary button-ghost" disabled={!canAdmin || busyId === `retention-hold-${version.id}`} onClick={() => void toggleRetentionHold(version)}>{version.retentionHold ? copy.history.removeHold : copy.history.keep}</button> : null}{version.archivedAt && !version.contentPurgedAt ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === `restore-${version.id}`} onClick={() => void restoreResourceVersion(version)}>{copy.history.restore}</button> : null}</div>
                   </div>)}
                 </div> : null}
               </Fragment>
@@ -597,22 +604,22 @@ export function EducationOperationsPanel() {
           </div>
 
           <div className="stack-sm">
-            <p className="eyebrow">{isChinese ? "通知记录" : "Notification history"}</p>
-            {selected.notifications.length === 0 ? <div className="empty-state">{isChinese ? "还没有通知。" : "No notifications yet."}</div> : selected.notifications.map((item) => (
-              <div className="list-item" key={item.id}><div><p className="item-title">{item.title} <span className="status-chip tone-cyan">{item.status}</span></p><p className="body-copy">{item.body}</p><p className="item-meta">{new Date(item.publishedAt).toLocaleString(locale)} · {isChinese ? "已读" : "Read"} {item.readCount}/{item.recipientCount} · {isChinese ? "邮件" : "Email"} {isChinese ? "已发送" : "sent"} {item.emailSentCount}, {isChinese ? "待发送" : "pending"} {item.emailPendingCount}, {isChinese ? "失败" : "failed"} {item.emailFailedCount}</p></div><div className="button-row">{item.emailFailedCount > 0 && item.status !== "cancelled" ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === `retry-${item.id}`} onClick={() => void retryFailedNotification(item.id)}>{isChinese ? "重试失败邮件" : "Retry failed email"}</button> : null}{item.status !== "cancelled" ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === item.id} onClick={() => void archive("notifications", item.id)}>{isChinese ? "取消" : "Cancel"}</button> : null}</div></div>
+            <p className="eyebrow">{copy.notification.history}</p>
+            {selected.notifications.length === 0 ? <div className="empty-state">{copy.notification.empty}</div> : selected.notifications.map((item) => (
+              <div className="list-item" key={item.id}><div><p className="item-title">{item.title} <span className="status-chip tone-cyan">{resolveEducationLabel(shared.statuses, item.status)}</span></p><p className="body-copy">{item.body}</p><p className="item-meta">{formatDateTime(item.publishedAt, locale)} · {copy.notification.read} {formatNumber(item.readCount, locale)}/{formatNumber(item.recipientCount, locale)} · {copy.notification.email} {copy.notification.sent} {formatNumber(item.emailSentCount, locale)}, {copy.notification.pending} {formatNumber(item.emailPendingCount, locale)}, {copy.notification.failed} {formatNumber(item.emailFailedCount, locale)}</p></div><div className="button-row">{item.emailFailedCount > 0 && item.status !== "cancelled" ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === `retry-${item.id}`} onClick={() => void retryFailedNotification(item.id)}>{copy.notification.retryFailed}</button> : null}{item.status !== "cancelled" ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === item.id} onClick={() => void archive("notifications", item.id)}>{copy.notification.cancel}</button> : null}</div></div>
             ))}
           </div>
 
-          {selected.lmsConnections.length > 0 ? <div className="stack-sm"><p className="eyebrow">LMS / LTI</p>{selected.lmsConnections.map((connection) => <div className="list-item" key={connection.id}><div><p className="item-title">{connection.provider} · {connection.courseRef} <span className={`status-chip ${connection.status === "verified" ? "tone-green" : "tone-amber"}`}>{connection.status}</span></p><p className="item-meta">{connection.deploymentId ?? (isChinese ? "尚未配置 Deployment ID" : "Deployment ID not configured")}{connection.verifiedAt ? ` · ${new Date(connection.verifiedAt).toLocaleString(locale)}` : ""}{connection.lastRosterSyncAt ? ` · ${isChinese ? "名单同步" : "roster synced"} ${new Date(connection.lastRosterSyncAt).toLocaleString(locale)}` : ""}</p>{connection.lastError ? <p className="form-status error">{connection.lastError}</p> : null}</div>{connection.status === "verified" && connection.nrpsUrl ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === `lms-sync-${connection.id}`} onClick={() => void syncLmsRoster(connection.id)}>{isChinese ? "同步名单" : "Sync roster"}</button> : null}</div>)}</div> : null}
+          {selected.lmsConnections.length > 0 ? <div className="stack-sm"><p className="eyebrow">{copy.lms.section}</p>{selected.lmsConnections.map((connection) => <div className="list-item" key={connection.id}><div><p className="item-title">{resolveEducationLabel(copy.lms.providers, connection.provider)} · {connection.courseRef} <span className={`status-chip ${connection.status === "verified" ? "tone-green" : "tone-amber"}`}>{resolveEducationLabel(shared.statuses, connection.status)}</span></p><p className="item-meta">{connection.deploymentId ?? copy.lms.deploymentMissing}{connection.verifiedAt ? ` · ${formatDateTime(connection.verifiedAt, locale)}` : ""}{connection.lastRosterSyncAt ? ` · ${copy.lms.rosterSynced} ${formatDateTime(connection.lastRosterSyncAt, locale)}` : ""}</p>{connection.lastError ? <p className="form-status error">{connection.lastError}</p> : null}</div>{connection.status === "verified" && connection.nrpsUrl ? <button type="button" className="button button-secondary button-ghost" disabled={!canOperate || busyId === `lms-sync-${connection.id}`} onClick={() => void syncLmsRoster(connection.id)}>{copy.lms.syncRoster}</button> : null}</div>)}</div> : null}
         </div>
       ) : null}
-      {status ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+      {status ? <p className={`form-status ${statusKind}`} role="status" aria-label={copy.statusAria}>{status}</p> : null}
     </section>
   );
 }
 
-function formatBytes(value: number) {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+function formatBytes(value: number, locale: SupportedLocale) {
+  if (value < 1024) return `${formatNumber(value, locale)} B`;
+  if (value < 1024 * 1024) return `${formatNumber(value / 1024, locale, { maximumFractionDigits: 1 })} KB`;
+  return `${formatNumber(value / (1024 * 1024), locale, { maximumFractionDigits: 1 })} MB`;
 }

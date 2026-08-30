@@ -921,7 +921,7 @@ async function readOfflineCollaborationQueueCount(page: Page) {
 }
 
 async function prepareAuthenticatedApp(page: Page, context: BrowserContext, token: string) {
-  await context.addCookies([{ name: "score-locale", value: "en", domain: "127.0.0.1", path: "/" }]);
+  await context.addCookies([{ name: "score_locale", value: "en", domain: "127.0.0.1", path: "/" }]);
   await page.route(/^http:\/\/(?:localhost|127\.0\.0\.1):4000\//u, async (route) => {
     try {
       const requestUrl = new URL(route.request().url());

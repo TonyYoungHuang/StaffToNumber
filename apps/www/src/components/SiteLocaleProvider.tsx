@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { type SupportedLocale } from "@score/shared";
+import type { SupportedLocale } from "@score/i18n";
 
 type SiteLocaleContextValue = {
   locale: SupportedLocale;

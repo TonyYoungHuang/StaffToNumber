@@ -1,10 +1,15 @@
 import { ImageResponse } from "next/og";
+import { getAppMessages } from "../lib/app-messages";
+import { readAppLocale } from "../lib/locale";
 
-export const alt = "ScoreTransposer online sheet-music scanner, editor, and transposer";
+export const alt = "ScoreTransposer";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpenGraphImage() {
+export default async function OpenGraphImage() {
+  const locale = await readAppLocale();
+  const messages = getAppMessages(locale).openGraph;
+
   return new ImageResponse(
     (
       <div
@@ -24,8 +29,8 @@ export default function OpenGraphImage() {
           ScoreTransposer
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "22px", maxWidth: 950 }}>
-          <div style={{ fontSize: 64, lineHeight: 1.08, fontWeight: 800 }}>Scan, edit, transpose, and practice sheet music online.</div>
-          <div style={{ fontSize: 28, color: "#59627d" }}>PDF & images → reviewable notation → Jianpu, playback, and export</div>
+          <div style={{ fontSize: 64, lineHeight: 1.08, fontWeight: 800 }}>{messages.title}</div>
+          <div style={{ fontSize: 28, color: "#59627d" }}>{messages.subtitle}</div>
         </div>
       </div>
     ),

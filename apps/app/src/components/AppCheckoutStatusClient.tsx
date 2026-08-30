@@ -1,11 +1,13 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { PaymentProvider, PaymentOrderStatus } from "@score/shared";
-import { APP_ROUTES } from "@score/shared";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { SupportedLocale } from "@score/i18n";
+import { APP_ROUTES, type PaymentOrderStatus, type PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEventOnce } from "../lib/analytics";
-import { useAppLocale } from "./AppLocaleProvider";
+import { rawApiErrorOrFallback } from "../lib/billing-messages/client";
+import type { BillingMessageCatalog } from "../lib/billing-messages/types";
 
 type PublicOrder = {
   id: string;
@@ -20,44 +22,26 @@ type PublicOrder = {
 };
 
 type OrderPayload = { order: PublicOrder | null };
+type CheckoutStatusCopy = BillingMessageCatalog["checkout"]["status"];
 
 export function AppCheckoutStatusClient({
   orderId,
   token,
   provider,
   sessionId,
+  locale,
+  copy,
 }: {
   orderId: string;
   token: string;
   provider: PaymentProvider;
   sessionId?: string;
+  locale: SupportedLocale;
+  copy: CheckoutStatusCopy;
 }) {
-  const { locale } = useAppLocale();
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const copy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            pendingTitle: "正在确认支付结果",
-            pendingBody: "支付完成后，系统会自动把权限开通到你当前账户。",
-            successTitle: "支付成功，账户已自动开通",
-            successBody: "现在可以直接进入控制台并开始使用，无需手动兑换激活码。",
-            dashboard: "进入控制台",
-            jobs: "查看任务",
-          }
-        : {
-            pendingTitle: "Confirming your payment",
-            pendingBody: "After payment completes, access is activated automatically on your current account.",
-            successTitle: "Payment successful and account activated",
-            successBody: "You can go straight into the studio now. No manual activation-code redemption is needed.",
-            dashboard: "Open dashboard",
-            jobs: "Open jobs",
-          },
-    [locale],
-  );
 
   useEffect(() => {
     let disposed = false;
@@ -66,21 +50,18 @@ export function AppCheckoutStatusClient({
 
     const load = async () => {
       const params = new URLSearchParams({ token, provider });
-      if (sessionId) {
-        params.set("sessionId", sessionId);
-      }
+      if (sessionId) params.set("sessionId", sessionId);
 
       const result = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}?${params.toString()}`);
-      if (disposed) {
-        return;
-      }
+      if (disposed) return;
 
       setLoading(false);
       if (!result.ok) {
-        setError(result.error);
+        setError(rawApiErrorOrFallback(result.error, copy.fallbackError));
         return;
       }
 
+      setError(null);
       setOrder(result.data.order);
       if (result.data.order?.status === "pending" && attempts < 10) {
         attempts += 1;
@@ -94,11 +75,9 @@ export function AppCheckoutStatusClient({
 
     return () => {
       disposed = true;
-      if (timer) {
-        window.clearTimeout(timer);
-      }
+      if (timer) window.clearTimeout(timer);
     };
-  }, [orderId, provider, sessionId, token]);
+  }, [copy.fallbackError, orderId, provider, sessionId, token]);
 
   const isPaid = order?.status === "paid";
 
@@ -117,23 +96,27 @@ export function AppCheckoutStatusClient({
     });
   }, [isPaid, order]);
 
+  const statusCopy = order?.status === "paid"
+    ? { title: copy.successTitle, body: copy.successBody }
+    : order?.status === "cancelled"
+      ? { title: copy.cancelledTitle, body: copy.cancelledBody }
+      : order?.status === "failed"
+        ? { title: copy.failedTitle, body: copy.failedBody }
+        : { title: copy.pendingTitle, body: copy.pendingBody };
+
   return (
-    <div className="surface-panel stack-lg">
-      {loading ? <p className="body-copy large">{copy.pendingBody}</p> : null}
-      {error ? <p className="form-status error">{error}</p> : null}
+    <div className="surface-panel stack-lg" lang={locale}>
+      {loading ? <p className="body-copy large" role="status" aria-live="polite">{copy.loading}</p> : null}
+      {error ? <p className="form-status error" role="alert">{error}</p> : null}
       {!loading && !error ? (
         <>
-          <div className="stack-sm">
-            <h1 className="page-title">{isPaid ? copy.successTitle : copy.pendingTitle}</h1>
-            <p className="body-copy large">{isPaid ? copy.successBody : copy.pendingBody}</p>
+          <div className="stack-sm" role="status" aria-live="polite">
+            <h1 className="page-title">{statusCopy.title}</h1>
+            <p className="body-copy large">{statusCopy.body}</p>
           </div>
           <div className="button-row">
-            <a href={APP_ROUTES.dashboard} className="button button-primary">
-              {copy.dashboard}
-            </a>
-            <a href={APP_ROUTES.jobs} className="button button-secondary">
-              {copy.jobs}
-            </a>
+            <Link href={APP_ROUTES.scores} className="button button-primary">{copy.scores}</Link>
+            <Link href={APP_ROUTES.jobs} className="button button-secondary">{copy.jobs}</Link>
           </div>
         </>
       ) : null}

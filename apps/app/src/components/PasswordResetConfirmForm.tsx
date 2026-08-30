@@ -5,52 +5,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { useAppLocale } from "./AppLocaleProvider";
+import type { AuthMessageCatalog } from "../lib/auth-messages";
 
-export function PasswordResetConfirmForm() {
+export function PasswordResetConfirmForm({ copy }: { copy: AuthMessageCatalog["resetConfirm"] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale } = useAppLocale();
   const token = searchParams.get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [tokenStatus, setTokenStatus] = useState<"loading" | "valid" | "invalid">("loading");
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const copy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "重置密码",
-          title: "设置新密码",
-          body: "这个页面会验证重置链接是否仍然有效。提交后，旧登录会话会被撤销，需要重新登录。",
-          loading: "正在检查重置链接...",
-          invalid: "这个重置链接无效或已过期，请重新申请。",
-          password: "新密码",
-          confirm: "确认新密码",
-          placeholder: "至少 8 个字符",
-          submit: "保存新密码",
-          submitting: "保存中...",
-          back: "重新申请链接",
-          mismatch: "两次输入的密码不一致。",
-          success: "密码已更新，正在跳转到登录页...",
-        }
-      : {
-          eyebrow: "Reset password",
-          title: "Set a new password",
-          body: "This page verifies that the reset link is still valid. Submitting a new password revokes previous sign-in sessions and requires a fresh login.",
-          loading: "Checking the reset link...",
-          invalid: "This reset link is invalid or expired. Request a new one.",
-          password: "New password",
-          confirm: "Confirm new password",
-          placeholder: "At least 8 characters",
-          submit: "Save new password",
-          submitting: "Saving...",
-          back: "Request a new link",
-          mismatch: "The two passwords do not match.",
-          success: "Password updated. Redirecting to sign in...",
-        };
 
   useEffect(() => {
     if (!token) {
@@ -59,7 +26,13 @@ export function PasswordResetConfirmForm() {
     }
 
     apiRequest<{ valid: boolean }>(`/api/auth/reset-password/verify?token=${encodeURIComponent(token)}`).then((result) => {
-      if (!result.ok || !result.data.valid) {
+      if (!result.ok) {
+        setVerificationError(result.error);
+        setTokenStatus("invalid");
+        return;
+      }
+
+      if (!result.data.valid) {
         setTokenStatus("invalid");
         return;
       }
@@ -107,7 +80,7 @@ export function PasswordResetConfirmForm() {
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 className="card-title">{copy.title}</h2>
-        <p className="body-copy">{copy.loading}</p>
+        <p className="body-copy" role="status" aria-live="polite">{copy.loading}</p>
       </div>
     );
   }
@@ -118,14 +91,14 @@ export function PasswordResetConfirmForm() {
         <div className="stack-sm">
           <p className="eyebrow">{copy.eyebrow}</p>
           <h2 className="card-title">{copy.title}</h2>
-          <p className="form-status error">{copy.invalid}</p>
+          <p className="form-status error" role="alert">{verificationError ?? copy.invalid}</p>
         </div>
         <div className="button-row">
           <Link href={APP_ROUTES.forgotPassword} className="button button-primary">
-            {copy.back}
+            {copy.requestAgain}
           </Link>
           <Link href={APP_ROUTES.login} className="button button-secondary">
-            {locale === "zh-CN" ? "返回登录" : "Back to sign in"}
+            {copy.backToSignIn}
           </Link>
         </div>
       </div>
@@ -171,12 +144,16 @@ export function PasswordResetConfirmForm() {
             {submitting ? copy.submitting : copy.submit}
           </button>
           <Link href={APP_ROUTES.login} className="button button-secondary">
-            {locale === "zh-CN" ? "返回登录" : "Back to sign in"}
+            {copy.backToSignIn}
           </Link>
         </div>
       </form>
 
-      {status && statusKind ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+      {status && statusKind ? (
+        <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"}>
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -1,23 +1,24 @@
 import { EntitlementGate } from "../../components/EntitlementGate";
 import { JobsManager } from "../../components/JobsManager";
+import { getAuthMessages } from "../../lib/auth-messages";
 import { readAppLocale } from "../../lib/locale";
+import { getWorkspaceMessages } from "../../lib/workspace-messages";
 
 export default async function JobsPage() {
   const locale = await readAppLocale();
+  const entitlementCopy = getAuthMessages(locale).entitlement;
+  const messages = getWorkspaceMessages(locale);
+  const copy = messages.pages.jobs;
 
   return (
     <section className="container page-shell">
       <div className="page-banner">
-        <p className="eyebrow">{locale === "zh-CN" ? "模块 4 + 模块 5" : "Module 4 + Module 5"}</p>
-        <h1 className="page-title">{locale === "zh-CN" ? "转换任务与结果查看。" : "Conversion jobs and output review."}</h1>
-        <p className="body-copy large">
-          {locale === "zh-CN"
-            ? "发起“五线谱 PDF -> 简谱”任务，查看状态更新、预览文本，并下载最终 PDF 或草稿包。"
-            : "Queue Staff PDF -> Jianpu jobs, watch status updates, inspect preview text, and download the final PDF or draft bundle."}
-        </p>
+        <p className="eyebrow">{copy.eyebrow}</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="body-copy large">{copy.body}</p>
       </div>
-      <EntitlementGate>
-        <JobsManager />
+      <EntitlementGate copy={entitlementCopy}>
+        <JobsManager copy={messages.jobs} />
       </EntitlementGate>
     </section>
   );

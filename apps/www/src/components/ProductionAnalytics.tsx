@@ -4,6 +4,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { AnalyticsConsentMessages } from "@score/i18n";
 import {
   analyticsConsentKey,
   analyticsReadyEvent,
@@ -12,7 +13,7 @@ import {
   writeAnalyticsConsent,
 } from "../lib/analytics";
 import { useSiteLocale } from "./SiteLocaleProvider";
-import { localizePublicHref } from "../lib/locale-routing";
+import { localizePublicHref, stripPublicLocalePrefix } from "../lib/locale-routing";
 
 const seoLandingPaths = new Set([
   "/staff-to-jianpu",
@@ -40,7 +41,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
         page_hostname: window.location.hostname,
         site_area: "public_site",
       });
-      if (seoLandingPaths.has(pathname)) {
+      if (seoLandingPaths.has(stripPublicLocalePrefix(pathname))) {
         trackFunnelEvent("seo_landing_view", {
           landing_path: pathname,
           page_location: window.location.href,
@@ -106,7 +107,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
   );
 }
 
-export function ProductionAnalytics() {
+export function ProductionAnalytics({ copy }: { copy: AnalyticsConsentMessages }) {
   const { locale } = useSiteLocale();
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true";
@@ -133,14 +134,14 @@ export function ProductionAnalytics() {
   };
 
   return (
-    <aside className="analytics-consent" aria-label={locale === "zh-CN" ? "分析 Cookie 选择" : "Analytics cookie choice"}>
+    <aside className="analytics-consent" aria-label={copy.ariaLabel}>
       <p>
-        {locale === "zh-CN" ? "我们仅在你同意后使用匿名分析来改进搜索落地和产品流程。" : "We use analytics only after consent to improve search landing pages and product flows."}{" "}
-        <Link href={localizePublicHref("/privacy", locale)}>{locale === "zh-CN" ? "隐私说明" : "Privacy details"}</Link>
+        {copy.body}{" "}
+        <Link href={localizePublicHref("/privacy", locale)}>{copy.privacy}</Link>
       </p>
       <div className="button-row">
-        <button type="button" className="public-button primary" onClick={() => choose("granted")}>{locale === "zh-CN" ? "同意" : "Accept"}</button>
-        <button type="button" className="public-button tertiary" onClick={() => choose("denied")}>{locale === "zh-CN" ? "拒绝" : "Decline"}</button>
+        <button type="button" className="public-button primary" onClick={() => choose("granted")}>{copy.accept}</button>
+        <button type="button" className="public-button tertiary" onClick={() => choose("denied")}>{copy.decline}</button>
       </div>
     </aside>
   );

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { formatDateTime, formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
 import { accountActivationRoute } from "../lib/release";
-import { userFacingError } from "../lib/user-facing-error";
+import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type ScoreDocument = {
@@ -64,7 +65,13 @@ type AccessPayload = {
 
 export type ScoreImportView = "library" | "musicxml" | "backup" | "midi" | "scan" | "audio" | "jianpu";
 
-export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportView }) {
+export function ScoreLibraryManager({
+  view = "library",
+  copy,
+}: {
+  view?: ScoreImportView;
+  copy: ScoreEntryMessages["library"];
+}) {
   const { locale } = useAppLocale();
   const token = useMemo(() => getStoredToken(), []);
   const audioTranscriptionAvailable = process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE === "true";
@@ -87,247 +94,13 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const [access, setAccess] = useState<AccessPayload["user"] | null>(null);
 
-  const copy =
-    locale === "zh-CN"
-      ? {
-          signInFirst: "请先登录。",
-          importFailed: "MusicXML 导入失败。",
-          chooseFile: "请选择 .musicxml、.xml 或 .mxl 文件。",
-          imported: "乐谱已创建，可以在“我的乐谱”中打开。",
-          metrics: {
-            projects: ["我的乐谱", "你保存过的乐谱都会显示在这里。"],
-            format: ["可继续编辑", "识别或导入后可以校对、移调、播放和导出。"],
-            revisions: ["有修改记录", "修改前的版本会保留，需要时可以找回。"],
-          },
-          import: {
-            eyebrow: "从制谱软件导入",
-            title: "选择 MusicXML 文件",
-            body: "如果你使用 MuseScore、Sibelius、Finale 等制谱软件，可把导出的 MusicXML 文件带到这里继续编辑。",
-            dropTitle: "点击选择文件",
-            dropBody: "支持 .musicxml、.xml 和 .mxl 文件。",
-            selected: "已选择",
-            empty: "尚未选择文件。",
-            button: "导入 MusicXML",
-            importing: "导入中...",
-            clear: "清空选择",
-          },
-          list: {
-            eyebrow: "我的乐谱",
-            title: "已保存的乐谱",
-            body: "打开任意乐谱，继续校对、转简谱、移调、播放或导出。",
-            loading: "正在加载乐谱...",
-            empty: "这里还没有乐谱。创建第一份乐谱后，它会出现在这里。",
-            open: "打开乐谱",
-            source: "原文件",
-            revision: "修改记录",
-          },
-        }
-      : {
-          signInFirst: "Please sign in first.",
-          importFailed: "MusicXML import failed.",
-          chooseFile: "Please choose a .musicxml, .xml, or .mxl file.",
-          imported: "Your score has been added to My Scores.",
-          metrics: {
-            projects: ["My scores", "Every score you save appears here."],
-            format: ["Ready to edit", "After recognition or import, continue correcting, transposing, practicing, and exporting."],
-            revisions: ["Edit history", "Earlier versions stay available when you need them."],
-          },
-          import: {
-            eyebrow: "Import from notation software",
-            title: "Choose a MusicXML file",
-            body: "Bring in a MusicXML export from MuseScore, Sibelius, Finale, or another notation app and continue editing here.",
-            dropTitle: "Choose a file",
-            dropBody: "Supports .musicxml, .xml, and .mxl files.",
-            selected: "Selected",
-            empty: "No file selected yet.",
-            button: "Import MusicXML",
-            importing: "Importing...",
-            clear: "Clear selection",
-          },
-          list: {
-            eyebrow: "My scores",
-            title: "Saved scores",
-            body: "Open a score to continue correcting, converting, transposing, practicing, or exporting.",
-            loading: "Loading scores...",
-            empty: "No scores yet. Create your first score and it will appear here.",
-            open: "Open score",
-            source: "Source file",
-            revision: "Edit history",
-          },
-        };
-  const omrCopy =
-    locale === "zh-CN"
-      ? {
-          chooseFile: "请选择 PDF 或图片文件。",
-          importFailed: "OMR 导入任务创建失败。",
-          imported: "文件已上传，正在识别。完成后可在“我的乐谱”中查看并校对。",
-          eyebrow: "乐谱识别",
-          title: "上传 PDF 或乐谱图片",
-          body: "把纸质谱或 PDF 变成可查看、可校对的电子乐谱。复杂谱面可能需要你手动确认少量音符。",
-          dropTitle: "点击选择 PDF 或图片",
-          dropBody: "支持 PDF、PNG、JPG、WEBP 和 TIFF。",
-          selected: "已选择",
-          empty: "尚未选择扫描件。",
-          button: "开始识别",
-          importing: "正在上传...",
-           clear: "重新选择",
-          accessLoading: "正在读取免费额度...",
-          exhaustedEyebrow: "免费额度已用完",
-          exhaustedTitle: "本账户的一个永久免费乐谱项目已经创建。",
-          exhaustedBody: "这份完整乐谱仍可继续校正、播放、移调、转简谱、保留版本、分享和导出；升级只用于创建和处理更多乐谱。",
-          exhaustedLibrary: "继续使用免费乐谱",
-          exhaustedUpgrade: "兑换激活码",
-        }
-      : {
-          chooseFile: "Please choose a PDF or image file.",
-          importFailed: "OMR import job could not be created.",
-          imported: "Your file is uploaded and recognition has started. Review it later in My Scores.",
-          eyebrow: "Score recognition",
-          title: "Upload a PDF or score image",
-          body: "Turn a printed score or PDF into a score you can review and correct. Complex notation may need a few manual fixes.",
-          dropTitle: "Choose a PDF or image",
-          dropBody: "Supports PDF, PNG, JPG, WEBP, and TIFF.",
-          selected: "Selected",
-          empty: "No scan selected yet.",
-          button: "Start recognition",
-          importing: "Uploading...",
-           clear: "Choose another file",
-          accessLoading: "Checking free-scan availability...",
-          exhaustedEyebrow: "Free editing scan used",
-          exhaustedTitle: "This account has created its one lifetime free score project.",
-          exhaustedBody: "Keep correcting, playing, transposing, converting, versioning, sharing, and exporting that complete score. Upgrade only to create and process more scores.",
-          exhaustedLibrary: "Continue with the free score",
-          exhaustedUpgrade: "Unlock full access",
-        };
-  const scoreJsonCopy =
-    locale === "zh-CN"
-      ? {
-          chooseFile: "请选择乐谱备份文件。",
-          importFailed: "备份恢复失败。",
-          imported: "乐谱备份已恢复。",
-          eyebrow: "恢复备份",
-          title: "选择乐谱备份文件",
-          body: "如果你之前从本网站下载过乐谱备份，可以在这里恢复并继续编辑。",
-          dropTitle: "点击选择备份文件",
-          dropBody: "支持 .score.json 和 .json 文件。",
-          selected: "已选择",
-          empty: "尚未选择 Score JSON 快照。",
-          button: "恢复乐谱",
-          importing: "正在导入...",
-          clear: "重新选择",
-        }
-      : {
-          chooseFile: "Please choose a score backup file.",
-          importFailed: "The backup could not be restored.",
-          imported: "Your score backup has been restored.",
-          eyebrow: "Restore a backup",
-          title: "Choose a score backup",
-          body: "Restore a score backup previously downloaded from this site and continue editing it.",
-          dropTitle: "Choose a backup file",
-          dropBody: "Supports .score.json and .json files.",
-          selected: "Selected",
-          empty: "No Score JSON snapshot selected yet.",
-          button: "Restore score",
-          importing: "Importing...",
-          clear: "Choose another file",
-        };
-  const midiCopy =
-    locale === "zh-CN"
-      ? {
-          chooseFile: "请选择 MIDI 文件。",
-          importFailed: "MIDI 导入失败。",
-          imported: "MIDI 已导入，可以在“我的乐谱”中打开。",
-          eyebrow: "导入 MIDI",
-          title: "选择 MIDI 文件",
-          body: "把 MIDI 中的音符和节奏转换成可查看、播放和移调的乐谱。复杂排版可能需要手动调整。",
-          dropTitle: "点击选择 .mid 或 .midi 文件",
-          dropBody: "支持标准 MIDI 文件。",
-          selected: "已选择",
-          empty: "尚未选择 MIDI 文件。",
-          button: "导入 MIDI",
-          importing: "正在导入...",
-          clear: "清空 MIDI",
-        }
-      : {
-          chooseFile: "Please choose a MIDI file.",
-          importFailed: "MIDI import failed.",
-          imported: "MIDI converted into a score project.",
-          eyebrow: "Foundation",
-          title: "Choose a MIDI file",
-          body: "Turn MIDI notes and rhythm into a score you can view, play, and transpose. Complex engraving may need manual adjustment.",
-          dropTitle: "Choose a .mid or .midi file",
-          dropBody: "Supports standard MIDI files.",
-          selected: "Selected",
-          empty: "No MIDI file selected yet.",
-          button: "Import MIDI",
-          importing: "Importing...",
-          clear: "Clear MIDI",
-        };
-  const audioCopy =
-    locale === "zh-CN"
-      ? {
-          chooseFile: "请选择音频文件。",
-          importFailed: "音频转谱任务创建失败。",
-          imported: "音频已上传，正在尝试生成乐谱。完成后请检查音高和节奏。",
-          eyebrow: "录音转乐谱（试用功能）",
-          title: "选择录音文件",
-          body: "上传一段旋律录音，系统会尝试生成可编辑乐谱。多人合奏、噪声或复杂和声可能影响结果。",
-          dropTitle: "点击选择音频",
-          dropBody: "支持 WAV、MP3、M4A、AAC、FLAC、OGG 和 AIFF。",
-          selected: "已选择",
-          empty: "尚未选择音频。",
-          button: "开始转谱",
-          importing: "正在上传...",
-          clear: "重新选择",
-        }
-      : {
-          chooseFile: "Please choose an audio file.",
-          importFailed: "Audio transcription job could not be created.",
-          imported: "Audio transcription project created. Basic Pitch will try to create MIDI and a first-pass editable score revision.",
-          eyebrow: "Phase 7",
-          title: "Choose a recording",
-          body: "Upload a melody recording and the site will try to create an editable score. Ensembles, noise, and complex harmony can reduce accuracy.",
-          dropTitle: "Choose an audio file",
-          dropBody: "Supports WAV, MP3, M4A, AAC, FLAC, OGG, and AIFF.",
-          selected: "Selected",
-          empty: "No audio selected yet.",
-          button: "Start transcription",
-          importing: "Uploading...",
-          clear: "Choose another file",
-        };
-  const jianpuCopy =
-    locale === "zh-CN"
-      ? {
-          empty: "请输入简谱文本。",
-          importFailed: "简谱导入失败。",
-          imported: "简谱已生成，可以在“我的乐谱”中查看五线谱并继续编辑。",
-          eyebrow: "简谱转五线谱",
-          title: "输入简谱",
-          body: "填写调号、拍号和数字音符，系统会生成对应五线谱。生成后可以播放、移调和导出。",
-          titleLabel: "乐谱标题",
-          titlePlaceholder: "例如：小星星简谱",
-          textLabel: "简谱文本",
-          textPlaceholder: "1=C\n4/4\n1 1 5 5 | 6 6 5 - |",
-          button: "导入简谱",
-          importing: "正在导入...",
-          clear: "恢复示例",
-        }
-      : {
-          empty: "Please enter Jianpu text.",
-          importFailed: "Jianpu import failed.",
-          imported: "Jianpu score project created. Preview, transpose, playback, and MusicXML export can use it now.",
-          eyebrow: "Phase 2",
-          title: "Enter numbered notation",
-          body: "Enter the key, meter, numbered notes, rests, and barlines to create a staff score you can play, transpose, and export.",
-          titleLabel: "Score title",
-          titlePlaceholder: "Example: Twinkle in Jianpu",
-          textLabel: "Jianpu text",
-          textPlaceholder: "1=C\n4/4\n1 1 5 5 | 6 6 5 - |",
-          button: "Import Jianpu",
-          importing: "Importing...",
-          clear: "Restore sample",
-        };
-
+  const commonCopy = copy.common;
+  const musicXmlCopy = copy.musicxml;
+  const omrCopy = copy.scan;
+  const scoreJsonCopy = copy.backup;
+  const midiCopy = copy.midi;
+  const audioCopy = copy.audio;
+  const jianpuCopy = copy.jianpu;
   async function loadScores() {
     if (!token) {
       setLoading(false);
@@ -345,7 +118,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
     setLoading(false);
 
     if (!result.ok) {
-      setStatus(userFacingError(result.error, locale));
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }
@@ -376,7 +149,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
     }
 
     if (!selectedFile) {
-      setStatus(copy.chooseFile);
+      setStatus(musicXmlCopy.chooseFile);
       setStatusKind("error");
       return;
     }
@@ -399,12 +172,12 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
       const payload = (await response.json().catch(() => null)) as ImportPayload | { error?: string } | null;
       if (!response.ok) {
-        setStatus(userFacingError(payload && "error" in payload ? payload.error : null, locale, copy.importFailed));
+        setStatus(payload && "error" in payload && typeof payload.error === "string" ? payload.error : musicXmlCopy.importFailed);
         setStatusKind("error");
         return;
       }
 
-      setStatus(copy.imported);
+      setStatus(musicXmlCopy.imported);
       setStatusKind("success");
       setSelectedFile(null);
       const input = document.getElementById("musicxml-import-input") as HTMLInputElement | null;
@@ -414,7 +187,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
       await loadScores();
       await loadAccess();
     } catch (error) {
-      setStatus(userFacingError(error instanceof Error ? error.message : null, locale, copy.importFailed));
+      setStatus(error instanceof Error ? error.message : musicXmlCopy.importFailed);
       setStatusKind("error");
     } finally {
       setImporting(false);
@@ -452,7 +225,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
       const payload = (await response.json().catch(() => null)) as OmrImportPayload | { error?: string } | null;
       if (!response.ok) {
-        setStatus(userFacingError(payload && "error" in payload ? payload.error : null, locale, omrCopy.importFailed));
+        setStatus(payload && "error" in payload && typeof payload.error === "string" ? payload.error : omrCopy.importFailed);
         setStatusKind("error");
         return;
       }
@@ -472,7 +245,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
       await loadScores();
       await loadAccess();
     } catch (error) {
-      setStatus(userFacingError(error instanceof Error ? error.message : null, locale, omrCopy.importFailed));
+      setStatus(error instanceof Error ? error.message : omrCopy.importFailed);
       setStatusKind("error");
     } finally {
       setOmrImporting(false);
@@ -685,7 +458,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
   const freeTrialAvailable = access?.freeTrial.available ?? false;
   const scanWorkspace = (
     <>
-      {access === null ? <div className="empty-state">{omrCopy.accessLoading}</div> : null}
+      {access === null ? <div className="empty-state" role="status" aria-live="polite">{omrCopy.accessLoading}</div> : null}
 
       {access && !hasPaidAccess && !freeTrialAvailable ? (
         <div className="converter-side stack-lg" role="status">
@@ -710,17 +483,11 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
       {access && (hasPaidAccess || freeTrialAvailable) ? <div id="score-scan" className="converter-side">
         <div className="stack-sm">
           <p className="eyebrow">
-            {!hasPaidAccess && freeTrialAvailable
-              ? locale === "zh-CN" ? "登录成功 · 免费编辑" : "Signed in · edit for free"
-              : omrCopy.eyebrow}
+            {!hasPaidAccess && freeTrialAvailable ? omrCopy.freeEyebrow : omrCopy.eyebrow}
           </p>
           <h2 className="card-title">{omrCopy.title}</h2>
           <p className="body-copy">
-            {!hasPaidAccess && freeTrialAvailable
-              ? locale === "zh-CN"
-                ? "直接上传一份完整多页 PDF 或一张乐谱图片，创建终身免费的乐谱项目。该项目可继续校正、播放、移调、转简谱、分享和导出。"
-                : "Upload one complete multi-page PDF or score image to create your lifetime free score project. Keep correcting, playing, transposing, converting, sharing, and exporting it."
-              : omrCopy.body}
+            {!hasPaidAccess && freeTrialAvailable ? omrCopy.freeBody : omrCopy.body}
           </p>
         </div>
 
@@ -741,9 +508,9 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
         {selectedOmrFile ? (
           <div className="mini-card stack-sm">
-            <p className="metric-label">{omrCopy.selected}</p>
+            <p className="metric-label">{commonCopy.selected}</p>
             <p className="item-title">{selectedOmrFile.name}</p>
-            <p className="helper-copy">{formatSize(selectedOmrFile.size)}</p>
+            <p className="helper-copy">{formatSize(selectedOmrFile.size, locale)}</p>
           </div>
         ) : (
           <div className="empty-state">{omrCopy.empty}</div>
@@ -751,15 +518,15 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
         <div className="button-row">
           <button type="button" disabled={omrImporting || (!hasPaidAccess && !freeTrialAvailable)} className="button button-primary" onClick={() => void handleOmrImport()}>
-            {omrImporting ? omrCopy.importing : omrCopy.button}
+            {omrImporting ? commonCopy.uploadInProgress : omrCopy.button}
           </button>
           <button type="button" className="button button-secondary" onClick={() => setSelectedOmrFile(null)}>
-            {omrCopy.clear}
+            {commonCopy.chooseAnother}
           </button>
         </div>
       </div> : null}
 
-      {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+      {status && statusTone ? <p className={`form-status ${statusTone}`} role={statusTone === "error" ? "alert" : "status"}>{status}</p> : null}
     </>
   );
 
@@ -769,34 +536,34 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
       {view === "library" ? <div className="metric-grid">
         <div className="metric-card">
-          <p className="metric-label">{copy.metrics.projects[0]}</p>
-          <p className="metric-value">{scores.length}</p>
-          <p className="helper-copy">{copy.metrics.projects[1]}</p>
+          <p className="metric-label">{copy.metrics.projects.label}</p>
+          <p className="metric-value">{formatNumber(scores.length, locale)}</p>
+          <p className="helper-copy">{copy.metrics.projects.body}</p>
         </div>
         <div className="metric-card">
-          <p className="metric-label">{copy.metrics.format[0]}</p>
-            <p className="metric-value">{locale === "zh-CN" ? "可编辑" : "Editable"}</p>
-          <p className="helper-copy">{copy.metrics.format[1]}</p>
+          <p className="metric-label">{copy.metrics.format.label}</p>
+          <p className="metric-value">{copy.editable}</p>
+          <p className="helper-copy">{copy.metrics.format.body}</p>
         </div>
         <div className="metric-card">
-          <p className="metric-label">{copy.metrics.revisions[0]}</p>
-          <p className="metric-value">{revisionCount}</p>
-          <p className="helper-copy">{copy.metrics.revisions[1]}</p>
+          <p className="metric-label">{copy.metrics.revisions.label}</p>
+          <p className="metric-value">{formatNumber(revisionCount, locale)}</p>
+          <p className="helper-copy">{copy.metrics.revisions.body}</p>
         </div>
       </div> : null}
 
       <section className={`surface-panel${view === "library" ? "" : " single-task-panel"}`}>
         {view === "musicxml" && hasPaidAccess ? <form id="musicxml-import" onSubmit={handleImport} className="converter-side">
           <div className="stack-sm">
-            <p className="eyebrow">{copy.import.eyebrow}</p>
-            <h2 className="card-title">{copy.import.title}</h2>
-            <p className="body-copy">{copy.import.body}</p>
+            <p className="eyebrow">{musicXmlCopy.eyebrow}</p>
+            <h2 className="card-title">{musicXmlCopy.title}</h2>
+            <p className="body-copy">{musicXmlCopy.body}</p>
           </div>
 
           <label htmlFor="musicxml-import-input" className="file-dropzone">
             <div className="stack-xs">
-              <p className="dropzone-title">{copy.import.dropTitle}</p>
-              <p className="dropzone-copy">{copy.import.dropBody}</p>
+              <p className="dropzone-title">{musicXmlCopy.dropTitle}</p>
+              <p className="dropzone-copy">{musicXmlCopy.dropBody}</p>
             </div>
             <span className="status-chip tone-cyan">MusicXML</span>
           </label>
@@ -811,24 +578,24 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           {selectedFile ? (
             <div className="mini-card stack-sm">
-              <p className="metric-label">{copy.import.selected}</p>
+              <p className="metric-label">{commonCopy.selected}</p>
               <p className="item-title">{selectedFile.name}</p>
-              <p className="helper-copy">{formatSize(selectedFile.size)}</p>
+              <p className="helper-copy">{formatSize(selectedFile.size, locale)}</p>
             </div>
           ) : (
-            <div className="empty-state">{copy.import.empty}</div>
+            <div className="empty-state">{musicXmlCopy.empty}</div>
           )}
 
           <div className="button-row">
             <button type="submit" disabled={importing || !hasPaidAccess} className="button button-primary">
-              {importing ? copy.import.importing : copy.import.button}
+              {importing ? commonCopy.importInProgress : musicXmlCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedFile(null)}>
-              {copy.import.clear}
+              {commonCopy.clearSelection}
             </button>
           </div>
 
-          {status && statusTone ? <p className={`form-status ${statusTone}`}>{status}</p> : null}
+          {status && statusTone ? <p className={`form-status ${statusTone}`} role={statusTone === "error" ? "alert" : "status"}>{status}</p> : null}
         </form> : null}
 
         {view === "backup" && hasPaidAccess ? <div id="score-json-import" className="converter-side">
@@ -856,9 +623,9 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           {selectedScoreJsonFile ? (
             <div className="mini-card stack-sm">
-              <p className="metric-label">{scoreJsonCopy.selected}</p>
+              <p className="metric-label">{commonCopy.selected}</p>
               <p className="item-title">{selectedScoreJsonFile.name}</p>
-              <p className="helper-copy">{formatSize(selectedScoreJsonFile.size)}</p>
+              <p className="helper-copy">{formatSize(selectedScoreJsonFile.size, locale)}</p>
             </div>
           ) : (
             <div className="empty-state">{scoreJsonCopy.empty}</div>
@@ -866,10 +633,10 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           <div className="button-row">
             <button type="button" disabled={scoreJsonImporting || !hasPaidAccess} className="button button-primary" onClick={() => void handleScoreJsonImport()}>
-              {scoreJsonImporting ? scoreJsonCopy.importing : scoreJsonCopy.button}
+              {scoreJsonImporting ? commonCopy.importInProgress : scoreJsonCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedScoreJsonFile(null)}>
-              {scoreJsonCopy.clear}
+              {commonCopy.chooseAnother}
             </button>
           </div>
         </div> : null}
@@ -899,9 +666,9 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           {selectedMidiFile ? (
             <div className="mini-card stack-sm">
-              <p className="metric-label">{midiCopy.selected}</p>
+              <p className="metric-label">{commonCopy.selected}</p>
               <p className="item-title">{selectedMidiFile.name}</p>
-              <p className="helper-copy">{formatSize(selectedMidiFile.size)}</p>
+              <p className="helper-copy">{formatSize(selectedMidiFile.size, locale)}</p>
             </div>
           ) : (
             <div className="empty-state">{midiCopy.empty}</div>
@@ -909,10 +676,10 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           <div className="button-row">
             <button type="button" disabled={midiImporting || !hasPaidAccess} className="button button-primary" onClick={() => void handleMidiImport()}>
-              {midiImporting ? midiCopy.importing : midiCopy.button}
+              {midiImporting ? commonCopy.importInProgress : midiCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedMidiFile(null)}>
-              {midiCopy.clear}
+              {commonCopy.clearSelection}
             </button>
           </div>
         </div> : null}
@@ -931,7 +698,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
               <p className="dropzone-title">{audioCopy.dropTitle}</p>
               <p className="dropzone-copy">{audioCopy.dropBody}</p>
             </div>
-            <span className="status-chip tone-primary">Audio</span>
+            <span className="status-chip tone-primary">{audioCopy.formatLabel}</span>
           </label>
           <input
             id="audio-import-input"
@@ -944,9 +711,9 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           {selectedAudioFile ? (
             <div className="mini-card stack-sm">
-              <p className="metric-label">{audioCopy.selected}</p>
+              <p className="metric-label">{commonCopy.selected}</p>
               <p className="item-title">{selectedAudioFile.name}</p>
-              <p className="helper-copy">{formatSize(selectedAudioFile.size)}</p>
+              <p className="helper-copy">{formatSize(selectedAudioFile.size, locale)}</p>
             </div>
           ) : (
             <div className="empty-state">{audioCopy.empty}</div>
@@ -954,10 +721,10 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           <div className="button-row">
             <button type="button" disabled={audioImporting || !hasPaidAccess} className="button button-primary" onClick={() => void handleAudioImport()}>
-              {audioImporting ? audioCopy.importing : audioCopy.button}
+              {audioImporting ? commonCopy.uploadInProgress : audioCopy.button}
             </button>
             <button type="button" className="button button-secondary" onClick={() => setSelectedAudioFile(null)}>
-              {audioCopy.clear}
+              {commonCopy.chooseAnother}
             </button>
           </div>
         </div> : null}
@@ -994,7 +761,7 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
 
           <div className="button-row">
             <button type="submit" disabled={jianpuImporting || !hasPaidAccess} className="button button-primary">
-              {jianpuImporting ? jianpuCopy.importing : jianpuCopy.button}
+              {jianpuImporting ? commonCopy.importInProgress : jianpuCopy.button}
             </button>
             <button
               type="button"
@@ -1026,8 +793,8 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
                   <div className="list-item-content">
                     <p className="item-title">{score.title}</p>
                     <p className="item-meta">
-                      {translateStatus(score.status, locale)} | {copy.list.revision}{" "}
-                      {(score.pendingRevision ?? score.currentRevision)?.revisionNumber ?? 0} | {formatLocal(score.updatedAt, locale)}
+                      {translateStatus(score.status, copy.statuses)} | {copy.list.revision}{" "}
+                      {formatNumber((score.pendingRevision ?? score.currentRevision)?.revisionNumber ?? 0, locale)} | {formatDateTime(score.updatedAt, locale)}
                     </p>
                   </div>
                   <Link href={`${APP_ROUTES.scores}/${score.id}`} className="button button-secondary button-ghost">
@@ -1039,46 +806,27 @@ export function ScoreLibraryManager({ view = "library" }: { view?: ScoreImportVi
           ) : null}
           <div className="button-row">
             <Link href={`${APP_ROUTES.scores}/new`} className="button button-primary">
-              {locale === "zh-CN" ? "创建新乐谱" : "Create a new score"}
+              {copy.createNew}
             </Link>
           </div>
         </div> : null}
 
         {view !== "library" && view !== "musicxml" && view !== "scan" && status && statusTone ? (
-          <p className={`form-status ${statusTone}`}>{status}</p>
+          <p className={`form-status ${statusTone}`} role={statusTone === "error" ? "alert" : "status"}>{status}</p>
         ) : null}
       </section>
     </div>
   );
 }
 
-function formatSize(sizeBytes: number) {
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  return `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+function formatSize(sizeBytes: number, locale: SupportedLocale) {
+  if (sizeBytes < 1024) return `${formatNumber(sizeBytes, locale)} B`;
+  if (sizeBytes < 1024 * 1024) {
+    return `${formatNumber(sizeBytes / 1024, locale, { maximumFractionDigits: 1 })} KB`;
+  }
+  return `${formatNumber(sizeBytes / (1024 * 1024), locale, { maximumFractionDigits: 2 })} MB`;
 }
 
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
-}
-
-function translateStatus(status: ScoreDocument["status"], locale: string) {
-  if (locale !== "zh-CN") {
-    return status;
-  }
-
-  switch (status) {
-    case "imported":
-      return "已导入";
-    case "candidate":
-      return "待校对";
-    case "needs_review":
-      return "待确认";
-    case "ready":
-      return "可使用";
-    case "archived":
-      return "已归档";
-    default:
-      return status;
-  }
+function translateStatus(status: ScoreDocument["status"], statuses: ScoreEntryMessages["library"]["statuses"]) {
+  return statuses[status];
 }

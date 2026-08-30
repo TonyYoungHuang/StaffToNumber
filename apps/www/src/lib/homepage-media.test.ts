@@ -3,31 +3,31 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { SUPPORTED_LOCALES } from "@score/i18n";
+import { HOMEPAGE_DEMO_MEDIA_SLUGS, getHomepageDemoProductMedia } from "./product-media/index.js";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const publicRoot = path.join(appRoot, "public");
 const pageSource = readFileSync(path.join(appRoot, "src", "app", "page.tsx"), "utf8");
 
-const englishDemoNames = [
-  "demo-score-editor-en",
-  "demo-transpose-score-en",
-  "demo-staff-to-jianpu-en",
-  "demo-score-to-audio-en",
-] as const;
-
-test("English homepage demos use dedicated English recordings and posters", () => {
-  for (const name of englishDemoNames) {
-    for (const extension of ["mp4", "jpg"] as const) {
-      const suffix = extension === "jpg" ? "-poster.jpg" : ".mp4";
-      const assetPath = path.join(publicRoot, "product", `${name}${suffix}`);
-      assert.equal(existsSync(assetPath), true, `${assetPath} should exist`);
-      assert.ok(statSync(assetPath).size > 20_000, `${assetPath} should contain real media`);
-      assert.match(pageSource, new RegExp(`${name}${suffix.replace(".", "\\.")}`));
+test("homepage demos resolve only complete, same-locale recordings and posters", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    for (const slug of HOMEPAGE_DEMO_MEDIA_SLUGS) {
+      const media = getHomepageDemoProductMedia(slug, locale);
+      if (!media) continue;
+      assert.equal(media.sourceLocale, locale);
+      for (const src of [media.poster.src, media.video.src]) {
+        const assetPath = path.join(publicRoot, ...src.slice(1).split("/"));
+        assert.equal(existsSync(assetPath), true, `${assetPath} should exist`);
+        assert.ok(statSync(assetPath).size > 20_000, `${assetPath} should contain real media`);
+      }
     }
   }
 
-  assert.match(pageSource, /isChinese \? demo\.videoZh : demo\.videoEn/u);
-  assert.match(pageSource, /isChinese \? demo\.posterZh : demo\.posterEn/u);
+  assert.match(pageSource, /getHomepageDemoProductMedia\(demo\.slug, locale\)/u);
+  assert.match(pageSource, /getPendingProductMediaPresentation\(locale, title\)/u);
+  assert.doesNotMatch(pageSource, /isChinese|videoEn|videoZh|posterEn|posterZh/u);
+  assert.doesNotMatch(pageSource, /demo-[^"']+\.(?:mp4|webm|jpg)/u);
 });
 
 test("homepage score showcase excludes the Chinese Hanon scan", () => {

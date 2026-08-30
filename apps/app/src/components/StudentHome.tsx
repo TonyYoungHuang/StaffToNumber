@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatDateTime, formatNumber } from "@score/i18n";
 import { apiRequest, downloadAuthenticatedFile } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
-import { useAppLocale } from "./AppLocaleProvider";
+import { useEducationMessages } from "../lib/education-messages/client";
+import { resolveEducationLabel } from "../lib/education-messages/format";
 
 type StudentResource = {
   id: string;
@@ -66,7 +68,8 @@ type NotificationPreferences = {
 };
 
 export function StudentHome() {
-  const { locale } = useAppLocale();
+  const { locale, messages } = useEducationMessages();
+  const copy = messages.student;
   const [classrooms, setClassrooms] = useState<StudentClassroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,98 +83,6 @@ export function StudentHome() {
     updatedAt: null,
   });
   const [savingPreferences, setSavingPreferences] = useState(false);
-
-  const copy = locale === "zh-CN"
-    ? {
-        eyebrow: "学习中心",
-        title: "我的课堂",
-        body: "集中查看老师发布的乐谱作业、练习资料、通知、成绩和反馈。",
-        loading: "正在加载课堂内容...",
-        login: "请先登录，再查看已关联到你邮箱的课堂。",
-        empty: "还没有关联的课堂。请让老师把你登录使用的邮箱加入班级花名册。",
-        assignments: "乐谱作业",
-        resources: "学习资料",
-        notifications: "课堂通知",
-        unread: "条未读",
-        due: "截止",
-        noDue: "无截止时间",
-        score: "乐谱",
-        openScore: "打开乐谱",
-        noShare: "老师尚未开放乐谱",
-        pending: "待提交",
-        submitted: "已提交",
-        reviewed: "已批改",
-        feedback: "教师反馈",
-        grade: "成绩",
-        noAssignments: "暂无作业。",
-        noResources: "暂无学习资料。",
-        noNotifications: "暂无课堂通知。",
-        markRead: "标为已读",
-        read: "已读",
-        loadFailed: "课堂内容加载失败。",
-        readFailed: "通知状态更新失败。",
-        downloadFailed: "资源下载失败。",
-        guardianView: "监护人视图",
-        studentView: "学生视图",
-        exitClass: "退出课堂",
-        exitReason: "退出原因（可选）",
-        requestExit: "申请退出",
-        awaitingGuardian: "等待监护人同意",
-        cancelExit: "撤回申请",
-        approveExit: "同意退出",
-        rejectExit: "拒绝退出",
-        exitRejected: "监护人已拒绝上次申请，可重新提交。",
-        exitFailed: "退出申请处理失败。",
-        preferences: "通知设置",
-        emailAnnouncements: "通过邮件接收课堂通知",
-        emailHint: "默认关闭。开启后，新发布的课堂通知会发送到你的登录邮箱。",
-        preferenceFailed: "通知设置保存失败。",
-      }
-    : {
-        eyebrow: "Learning hub",
-        title: "My classes",
-        body: "Review assigned scores, practice resources, announcements, grades, and teacher feedback in one place.",
-        loading: "Loading class content...",
-        login: "Sign in to view classes linked to your account email.",
-        empty: "No classes are linked yet. Ask your teacher to add your sign-in email to the roster.",
-        assignments: "Score assignments",
-        resources: "Learning resources",
-        notifications: "Class announcements",
-        unread: "unread",
-        due: "Due",
-        noDue: "No due date",
-        score: "Score",
-        openScore: "Open score",
-        noShare: "The score has not been shared yet",
-        pending: "Not submitted",
-        submitted: "Submitted",
-        reviewed: "Reviewed",
-        feedback: "Teacher feedback",
-        grade: "Grade",
-        noAssignments: "No assignments yet.",
-        noResources: "No learning resources yet.",
-        noNotifications: "No announcements yet.",
-        markRead: "Mark as read",
-        read: "Read",
-        loadFailed: "Could not load class content.",
-        readFailed: "Could not update the announcement.",
-        downloadFailed: "Could not download the resource.",
-        guardianView: "Guardian view",
-        studentView: "Student view",
-        exitClass: "Leave class",
-        exitReason: "Reason for leaving (optional)",
-        requestExit: "Request to leave",
-        awaitingGuardian: "Awaiting guardian consent",
-        cancelExit: "Withdraw request",
-        approveExit: "Approve exit",
-        rejectExit: "Reject exit",
-        exitRejected: "The guardian rejected the last request. A new request can be submitted.",
-        exitFailed: "Could not process the exit request.",
-        preferences: "Notification settings",
-        emailAnnouncements: "Email me classroom announcements",
-        emailHint: "Off by default. New classroom announcements will be sent to your sign-in email when enabled.",
-        preferenceFailed: "Could not save notification settings.",
-      };
 
   const loadHome = useCallback(async () => {
     const token = getStoredToken();
@@ -187,13 +98,13 @@ export function StudentHome() {
     ]);
     setLoading(false);
     if (!result.ok) {
-      setError(result.error || copy.loadFailed);
+      setError(result.error);
       return;
     }
     setError(null);
     setClassrooms(result.data.classrooms);
     if (preferenceResult.ok) setNotificationPreferences(preferenceResult.data.preferences);
-  }, [copy.loadFailed, copy.login]);
+  }, [copy.login]);
 
   useEffect(() => {
     void loadHome();
@@ -215,7 +126,7 @@ export function StudentHome() {
     });
     setBusyNotificationId(null);
     if (!result.ok) {
-      setError(result.error || copy.readFailed);
+      setError(result.error);
       return;
     }
     setClassrooms((current) => current.map((classroom) => classroom.id !== classroomId
@@ -242,7 +153,7 @@ export function StudentHome() {
     setSavingPreferences(false);
     if (!result.ok) {
       setNotificationPreferences(previous);
-      setError(result.error || copy.preferenceFailed);
+      setError(result.error);
       return;
     }
     setError(null);
@@ -251,19 +162,19 @@ export function StudentHome() {
 
   function formatDate(value: string | null) {
     if (!value) return copy.noDue;
-    return new Intl.DateTimeFormat(locale === "zh-CN" ? "zh-CN" : "en", {
+    return formatDateTime(value, locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(new Date(value));
+    });
   }
 
   function submissionLabel(assignment: StudentAssignment) {
-    if (assignment.submissionStatus === "reviewed" || assignment.teacherFeedback || assignment.gradeScore !== null) return copy.reviewed;
-    if (assignment.submissionId) return copy.submitted;
-    return copy.pending;
+    if (assignment.submissionStatus === "reviewed" || assignment.teacherFeedback || assignment.gradeScore !== null) return copy.submissionStatuses.reviewed;
+    if (assignment.submissionId) return copy.submissionStatuses.submitted;
+    return copy.submissionStatuses.pending;
   }
 
   async function downloadResource(resource: StudentResource) {
@@ -272,7 +183,7 @@ export function StudentHome() {
     setBusyResourceId(resource.id);
     const result = await downloadAuthenticatedFile(resource.downloadPath, token, resource.originalName ?? resource.title);
     setBusyResourceId(null);
-    if (!result.ok) setError(result.error || copy.downloadFailed);
+    if (!result.ok) setError(result.error);
   }
 
   async function requestExit(classroom: StudentClassroom) {
@@ -285,7 +196,7 @@ export function StudentHome() {
       body: JSON.stringify({ reason: exitReasons[classroom.studentId]?.trim() || null }),
     });
     setBusyExitId(null);
-    if (!result.ok) { setError(result.error || copy.exitFailed); return; }
+    if (!result.ok) { setError(result.error); return; }
     if (result.data.exitRequest.status === "approved") {
       setClassrooms((current) => current.filter((item) => !(item.id === classroom.id && item.studentId === classroom.studentId)));
       return;
@@ -301,7 +212,7 @@ export function StudentHome() {
       method: "DELETE", headers: { Authorization: `Bearer ${token}` },
     });
     setBusyExitId(null);
-    if (!result.ok) { setError(result.error || copy.exitFailed); return; }
+    if (!result.ok) { setError(result.error); return; }
     setClassrooms((current) => current.map((item) => item.studentId === classroom.studentId ? { ...item, exitRequest: result.data.exitRequest } : item));
   }
 
@@ -313,7 +224,7 @@ export function StudentHome() {
       method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ decision }),
     });
     setBusyExitId(null);
-    if (!result.ok) { setError(result.error || copy.exitFailed); return; }
+    if (!result.ok) { setError(result.error); return; }
     if (decision === "approve") {
       setClassrooms((current) => current.filter((item) => !(item.id === classroom.id && item.studentId === classroom.studentId)));
       return;
@@ -329,20 +240,20 @@ export function StudentHome() {
           <h1 className="page-title">{copy.title}</h1>
           <p className="body-copy">{copy.body}</p>
         </div>
-        <div className="student-home-summary" aria-live="polite">
-          <strong>{classrooms.length}</strong>
+        <div className="student-home-summary" aria-live="polite" aria-label={copy.summaryAria}>
+          <strong>{formatNumber(classrooms.length, locale)}</strong>
           <span>{copy.title}</span>
-          <strong>{unreadCount}</strong>
+          <strong>{formatNumber(unreadCount, locale)}</strong>
           <span>{copy.unread}</span>
         </div>
       </section>
 
-      {loading ? <p className="empty-state">{copy.loading}</p> : null}
+      {loading ? <p className="empty-state" role="status" aria-label={copy.loadingAria}>{copy.loading}</p> : null}
       {error ? <p className="form-status error" role="alert">{error}</p> : null}
       {!loading && !error && classrooms.length === 0 ? <p className="empty-state">{copy.empty}</p> : null}
 
       {!loading ? (
-        <section className="student-notification-preferences" aria-labelledby="notification-preferences-title">
+        <section className="student-notification-preferences" aria-labelledby="notification-preferences-title" aria-label={copy.preferencesAria}>
           <div className="stack-xs">
             <h2 className="student-section-title" id="notification-preferences-title">{copy.preferences}</h2>
             <p className="item-meta">{copy.emailHint}</p>
@@ -365,7 +276,7 @@ export function StudentHome() {
           <section className="surface-panel stack-lg" key={`${classroom.id}-${classroom.role}-${classroom.studentId}`}>
             <div className="student-class-heading">
               <div><h2 className="card-title">{classroom.name}</h2><p className="item-meta">{classroom.role === "guardian" ? `${copy.guardianView} · ${classroom.subjectStudentName}` : copy.studentView}</p></div>
-              <span className="status-chip tone-cyan">{classUnread} {copy.unread}</span>
+              <span className="status-chip tone-cyan">{formatNumber(classUnread, locale)} {copy.unread}</span>
             </div>
 
             {classroom.role === "student" || classroom.exitRequest?.status === "pending_guardian" ? (
@@ -402,7 +313,7 @@ export function StudentHome() {
                         <p className="item-meta">{copy.due}: {formatDate(assignment.dueAt)}</p>
                         {assignment.instructions ? <p className="body-copy">{assignment.instructions}</p> : null}
                         {assignment.gradeScore !== null ? (
-                          <p className="student-grade"><span>{copy.grade}</span><strong>{assignment.gradeScore}/{assignment.gradeMax ?? 100}</strong></p>
+                          <p className="student-grade"><span>{copy.grade}</span><strong>{formatNumber(assignment.gradeScore, locale)}/{formatNumber(assignment.gradeMax ?? 100, locale)}</strong></p>
                         ) : null}
                         {assignment.teacherFeedback ? (
                           <div className="student-feedback"><strong>{copy.feedback}</strong><p>{assignment.teacherFeedback}</p></div>
@@ -444,12 +355,12 @@ export function StudentHome() {
                   <div className="list-grid">
                     {classroom.resources.map((resource) => resource.sourceType === "external" && resource.url ? (
                       <a className="student-resource" href={resource.url} target="_blank" rel="noreferrer" key={resource.id}>
-                        <span><strong>{resource.title}</strong><small>{resource.resourceType}</small></span>
+                        <span><strong>{resource.title}</strong><small>{resolveEducationLabel(messages.shared.resourceTypes, resource.resourceType)}</small></span>
                         <span aria-hidden="true">↗</span>
                       </a>
                     ) : (
                       <button type="button" className="student-resource" disabled={busyResourceId === resource.id} onClick={() => void downloadResource(resource)} key={resource.id}>
-                        <span><strong>{resource.title}</strong><small>{resource.originalName ?? resource.resourceType}</small></span>
+                        <span><strong>{resource.title}</strong><small>{resource.originalName ?? resolveEducationLabel(messages.shared.resourceTypes, resource.resourceType)}</small></span>
                         <span aria-hidden="true">↓</span>
                       </button>
                     ))}

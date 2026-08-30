@@ -1,20 +1,20 @@
-import type { SupportedLocale } from "@score/shared";
+import type { LocalizedValue } from "@score/i18n";
 
 export type PublicAnnouncement = {
   id: string;
   startsAt: string;
   endsAt: string;
   href: string;
-  copy: Record<SupportedLocale, { label: string; action: string }>;
+  copy: LocalizedValue<{ label: string; action: string }>;
   approvedAt: string;
   approvedBy: string;
 };
 
 export type ApprovedTestimonial = {
   id: string;
-  quote: Record<SupportedLocale, string>;
+  quote: LocalizedValue<string>;
   person: string;
-  role: Record<SupportedLocale, string>;
+  role: LocalizedValue<string>;
   sourceLabel: string;
   sourceUrl?: string;
   permissionReference: string;
@@ -48,8 +48,8 @@ export function getActivePublicAnnouncement(at: Date, items: PublicAnnouncement[
       && item.approvedBy.trim()
       && item.copy.en.label.trim()
       && item.copy.en.action.trim()
-      && item.copy["zh-CN"].label.trim()
-      && item.copy["zh-CN"].action.trim()
+      && item.copy["zh-CN"]?.label.trim()
+      && item.copy["zh-CN"]?.action.trim()
       && start !== null
       && end !== null
       && approved !== null
@@ -65,9 +65,9 @@ export function getPublishableTestimonials(items: ApprovedTestimonial[] = approv
     item.id.trim()
     && item.person.trim()
     && item.quote.en.trim()
-    && item.quote["zh-CN"].trim()
+    && item.quote["zh-CN"]?.trim()
     && item.role.en.trim()
-    && item.role["zh-CN"].trim()
+    && item.role["zh-CN"]?.trim()
     && item.sourceLabel.trim()
     && item.permissionReference.trim()
     && validDate(item.permissionGrantedAt) !== null

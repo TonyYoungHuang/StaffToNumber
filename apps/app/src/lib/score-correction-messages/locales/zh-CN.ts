@@ -1,0 +1,66 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const zhCNScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "乐谱校对编辑器", status: "校对状态" },
+  intro: {
+    eyebrow: "识别校对",
+    title: "音符属性面板",
+    body: "从最常见的 OMR 错误开始：选择音符或休止符，调整音高、升降号、八度和时值，再保存为新的手动修谱版本。",
+  },
+  status: { saving: "正在保存…", success: "已创建新的修谱版本。", failed: "无法保存修谱结果。" },
+  empty: { events: "当前版本没有可编辑的音符或休止符。", parts: "当前版本没有可编辑的声部。", measures: "当前版本没有可编辑的小节。" },
+  actions: { remove: "移除", addOrnament: "添加装饰音", addBeam: "添加符杠", addTuplet: "添加连音组", addLyric: "添加歌词行", addFingering: "添加指法" },
+  note: {
+    choose: "选择音符或休止符", eventType: "事件类型", dots: "附点", voice: "声部编号", staff: "谱表", chordTone: "和弦音",
+    graceNote: "倚音", slashedGrace: "斜线倚音", stealPrevious: "占前音（%）", stealFollowing: "占后音（%）", ornaments: "装饰音",
+    type: "类型", placement: "位置", value: "数值", step: "音名", alter: "升降", octave: "八度", duration: "内部时长",
+    durationType: "时值类型", fermata: "延长记号", fermataType: "延长记号方向", fermataShape: "延长记号形状",
+    timeModification: "连音时值比例", actualNotes: "实际音符数", normalNotes: "标准音符数", beams: "符杠", level: "层级",
+    tupletMarkers: "连音组标记", boundary: "起止", number: "编号", bracket: "括号", showNumber: "数字显示", measureRest: "整小节休止",
+    tieStart: "延音线开始", tieStop: "延音线结束", slurStart: "圆滑线开始", slurStop: "圆滑线结束", slurNumber: "圆滑线编号",
+    articulations: "演奏法", lyrics: "歌词", verse: "段落", syllabic: "音节位置", text: "文本", fingerings: "指法", fingering: "指法 {number}",
+    save: "保存修谱版本",
+  },
+  part: {
+    choose: "选择声部", name: "声部名称", abbreviation: "缩写", instrumentPreset: "乐器预设", noPreset: "无预设",
+    suggestInstrument: "按名称推荐", midiProgram: "MIDI 音色编号", midiHelp: "请输入 1–128；留空表示不覆盖音色。", save: "保存声部设置版本",
+  },
+  measure: {
+    choose: "选择小节", divisions: "每拍分割数", keyFifths: "调号五度数", keyMode: "调式", timeBeats: "每小节拍数", timeBeatType: "拍号分母",
+    clefSign: "谱号", clefLine: "谱号线位", clefOctaveChange: "谱号八度偏移", newSystem: "从本小节另起一行", newPage: "从本小节另起一页",
+    measureWidth: "小节宽度（tenths）", staffDistance: "谱表间距（tenths）", automatic: "自动", save: "保存小节属性版本",
+  },
+  harmony: { root: "根音", alter: "升降", kind: "类型", text: "显示文本", save: "保存和弦标记", clear: "清空和弦" },
+  tempo: { event: "速度标记", newEvent: "新建速度标记", bpm: "速度（BPM）", beatUnit: "拍单位", offset: "小节内偏移（divisions）", placement: "位置", save: "保存速度标记", clear: "清空本小节速度标记" },
+  wedge: { type: "渐强／渐弱线", placement: "位置", number: "编号", save: "保存渐强渐弱线", clear: "清空渐强渐弱线" },
+  dynamics: { value: "强弱记号", placement: "位置", save: "保存强弱记号", clear: "清空强弱记号" },
+  barline: { location: "位置", style: "小节线样式", repeat: "反复方向", repeatTimes: "反复次数", save: "保存小节线", clear: "清空小节线" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "音符", rest: "休止符" },
+    durationType: { whole: "全音符", half: "二分音符", quarter: "四分音符", eighth: "八分音符", "16th": "十六分音符", "32nd": "三十二分音符", "64th": "六十四分音符" },
+    syllabic: { single: "单音节", begin: "开始", middle: "中间", end: "结束" },
+    articulation: { accent: "重音", staccato: "断奏", tenuto: "保持音", "breath-mark": "呼吸记号", caesura: "换气停顿" },
+    beamType: { begin: "开始", continue: "继续", end: "结束", "forward-hook": "前钩", "backward-hook": "后钩" },
+    ornamentType: { "trill-mark": "颤音", turn: "回音", "delayed-turn": "延迟回音", "inverted-turn": "逆回音", mordent: "波音", "inverted-mordent": "逆波音", tremolo: "震音" },
+    placement: { above: "上方", below: "下方" }, fermataType: { upright: "正向", inverted: "倒置" },
+    tupletBoundary: { start: "开始", stop: "结束" }, tupletShowNumber: { actual: "实际数", both: "两者", none: "不显示" },
+    keyMode: { major: "大调", minor: "小调" }, clef: { G: "G／高音谱号", F: "F／低音谱号", C: "C／中音-次中音谱号", percussion: "打击乐谱号", TAB: "六线谱" },
+    harmonyKind: { major: "大三和弦", minor: "小三和弦", dominant: "属和弦", "major-seventh": "大七和弦", "minor-seventh": "小七和弦", diminished: "减和弦", augmented: "增和弦", "suspended-fourth": "挂四和弦", "suspended-second": "挂二和弦", none: "无" },
+    tempoBeatUnit: { whole: "全音符", half: "二分音符", quarter: "四分音符", eighth: "八分音符", "16th": "十六分音符", "32nd": "三十二分音符" },
+    wedgeType: { crescendo: "渐强", diminuendo: "渐弱", stop: "结束" }, barlineLocation: { left: "左侧", right: "右侧", middle: "中间" },
+    barlineStyle: { regular: "常规", dotted: "点线", dashed: "虚线", heavy: "粗线", "light-light": "细线-细线", "light-heavy": "细线-粗线", "heavy-light": "粗线-细线", "heavy-heavy": "粗线-粗线", tick: "短刻线", short: "短线", none: "无" },
+    repeatDirection: { none: "无", forward: "向前反复", backward: "向后反复" }, endingType: { start: "开始", stop: "结束", discontinue: "断开" },
+  },
+  previews: {
+    entity: "{part} · 第 {measure} 小节 · {preview}", measureRest: "整小节休止", rest: "休止符", tie: "延音线", fermata: "延长记号", slur: "圆滑线",
+    key: "调号", time: "拍号", clef: "谱号", line: "线位", octave: "八度偏移", program: "{name} {number}", noProgram: "未指定 MIDI 音色", ending: "结尾",
+  },
+  midiPresets: {
+    1: "原声大钢琴", 7: "羽管键琴", 20: "教堂管风琴", 25: "尼龙弦吉他", 33: "原声贝司", 41: "小提琴", 42: "中提琴", 43: "大提琴",
+    44: "低音提琴", 49: "弦乐合奏", 53: "合唱啊声", 54: "合唱呜声", 57: "小号", 58: "长号", 61: "圆号", 66: "中音萨克斯",
+    69: "双簧管", 70: "英国管", 71: "巴松", 72: "单簧管", 74: "长笛", 75: "竖笛", 79: "口哨", 80: "陶笛",
+  },
+};

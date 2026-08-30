@@ -115,7 +115,10 @@
   font-weight: 780;
   letter-spacing: -0.052em;
   line-height: 1.06;
-  white-space: nowrap;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+  white-space: normal;
 }
 
 .heroTitleEnglish {
@@ -144,7 +147,8 @@
 
 .heroIntro span {
   display: block;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .heroPoints {
@@ -722,6 +726,20 @@
   object-fit: cover;
 }
 
+.mediaPlaceholder {
+  display: grid;
+  min-height: 100%;
+  place-content: center;
+  gap: 8px;
+  padding: 28px;
+  background: linear-gradient(145deg, rgba(91, 75, 226, 0.08), rgba(25, 185, 181, 0.08));
+  color: var(--home-ink);
+  text-align: center;
+}
+
+.mediaPlaceholder strong { font-size: 14px; }
+.mediaPlaceholder span { color: var(--home-copy); font-size: 12px; line-height: 1.5; }
+
 .demoProof {
   position: absolute;
   top: 8px;
@@ -1022,7 +1040,7 @@
 .finalCard > div { position: relative; z-index: 1; }
 .finalCard span { color: #c7c0fb; font-size: 12px; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
 .finalCard h2 { max-width: 760px; margin-top: 9px; color: #fff; font-size: clamp(27px, 3vw, 42px); }
-.finalCard > a { position: relative; z-index: 1; display: inline-flex; min-height: 49px; padding: 0 20px; align-items: center; justify-content: center; gap: 8px; border-radius: 13px; background: #fff; color: #252b4b; font-size: 14px; font-weight: 850; text-decoration: none; white-space: nowrap; }
+.finalCard > a { position: relative; z-index: 1; display: inline-flex; min-height: 49px; padding: 10px 20px; align-items: center; justify-content: center; gap: 8px; border-radius: 13px; background: #fff; color: #252b4b; font-size: 14px; font-weight: 850; text-align: center; text-decoration: none; white-space: normal; }
 
 @media (max-width: 1100px) {
   .heroGrid { gap: 24px; }

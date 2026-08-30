@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatMessage } from "@score/i18n";
 import type { ScoreEvent, ScoreJson } from "@score/shared";
 import type { OpenSheetMusicDisplay as OpenSheetMusicDisplayInstance } from "opensheetmusicdisplay";
 import { API_BASE_URL } from "../lib/api";
@@ -26,10 +27,13 @@ export function ScoreMusicXmlPreview({
   emptyLabel,
   loadingLabel,
   errorLabel,
-  retryLabel = "Try rendering again",
-  technicalDetailsLabel = "Technical details",
-  deferredLabel = "This score is large. Load the complete MusicXML preview when you need the OSMD comparison view.",
-  renderLabel = "Load complete preview",
+  retryLabel,
+  technicalDetailsLabel,
+  deferredLabel,
+  renderLabel,
+  eventLabelTemplate,
+  noteLabel,
+  restLabel,
   largeScoreThreshold = 5_000,
   zoom = 1,
 }: {
@@ -42,10 +46,13 @@ export function ScoreMusicXmlPreview({
   emptyLabel: string;
   loadingLabel: string;
   errorLabel: string;
-  retryLabel?: string;
-  technicalDetailsLabel?: string;
-  deferredLabel?: string;
-  renderLabel?: string;
+  retryLabel: string;
+  technicalDetailsLabel: string;
+  deferredLabel: string;
+  renderLabel: string;
+  eventLabelTemplate: string;
+  noteLabel: string;
+  restLabel: string;
   largeScoreThreshold?: number;
   zoom?: number;
 }) {
@@ -133,6 +140,9 @@ export function ScoreMusicXmlPreview({
           container: containerRef.current,
           scoreJson: scoreJson ?? null,
           onEventSelect,
+          eventLabelTemplate,
+          noteLabel,
+          restLabel,
         });
         setBoundEventCount(nextBoundCount);
         setState("rendered");
@@ -151,7 +161,7 @@ export function ScoreMusicXmlPreview({
       if (activeOsmd) activeOsmd.clear();
       if (osmdRef.current === activeOsmd) osmdRef.current = null;
     };
-  }, [deferRendering, errorLabel, fileId, musicXml, onEventSelect, renderAttempt, scoreJson, token]);
+  }, [deferRendering, errorLabel, eventLabelTemplate, fileId, musicXml, noteLabel, onEventSelect, renderAttempt, restLabel, scoreJson, token]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -162,10 +172,13 @@ export function ScoreMusicXmlPreview({
       container: containerRef.current,
       scoreJson: scoreJson ?? null,
       onEventSelect,
+      eventLabelTemplate,
+      noteLabel,
+      restLabel,
     });
     setBoundEventCount(nextBoundCount);
     updateRenderedSelection(containerRef.current, selectedEventId ?? null);
-  }, [onEventSelect, scoreJson, selectedEventId, state, zoom]);
+  }, [eventLabelTemplate, noteLabel, onEventSelect, restLabel, scoreJson, selectedEventId, state, zoom]);
 
   useEffect(() => {
     if (!containerRef.current || state !== "rendered") {
@@ -212,6 +225,9 @@ function bindRenderedScoreEvents(input: {
   container: HTMLElement;
   scoreJson: ScoreJson | null;
   onEventSelect?: (eventId: string) => void;
+  eventLabelTemplate: string;
+  noteLabel: string;
+  restLabel: string;
 }) {
   const events = collectPreviewEvents(input.scoreJson);
   if (events.length === 0) {
@@ -229,7 +245,7 @@ function bindRenderedScoreEvents(input: {
     group.dataset.scorePartId = event.partId;
     group.dataset.scoreEventType = event.type;
     group.classList.add("score-osmd-event");
-    group.setAttribute("aria-label", previewEventLabel(event));
+    group.setAttribute("aria-label", previewEventLabel(event, input));
 
     if (input.onEventSelect) {
       group.classList.add("is-interactive");
@@ -306,8 +322,17 @@ function collectPreviewEvents(scoreJson: ScoreJson | null): PreviewEvent[] {
   );
 }
 
-function previewEventLabel(event: PreviewEvent) {
-  return `${event.partId} m.${event.measureNumber} ${event.type} ${event.eventIndex + 1}`;
+function previewEventLabel(
+  event: PreviewEvent,
+  labels: Pick<Parameters<typeof bindRenderedScoreEvents>[0], "eventLabelTemplate" | "noteLabel" | "restLabel">,
+) {
+  const type = event.type === "note" ? labels.noteLabel : labels.restLabel;
+  return formatMessage(labels.eventLabelTemplate, {
+    part: event.partId,
+    measure: event.measureNumber,
+    type,
+    number: event.eventIndex + 1,
+  });
 }
 
 function cssEscape(value: string) {

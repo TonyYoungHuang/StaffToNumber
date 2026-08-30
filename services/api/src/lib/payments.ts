@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
-import type { CheckoutPlanCode, PaymentProvider } from "@score/shared";
+import { getLocaleConfig, normalizeLocale, type CheckoutPlanCode, type PaymentProvider } from "@score/shared";
 import { config } from "../config.js";
 
 type PaddleTransactionResponse = {
@@ -28,6 +28,52 @@ const stripeClient = config.stripeSecretKey
   : null;
 const paddleApiBase = config.paddleEnvironment === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
 const stripeManagedPaymentsApiVersion = "2026-03-04.preview";
+
+export function buildLocalizedPublicCheckoutUrl(input: {
+  baseUrl: string;
+  pathname: "/checkout/success" | "/checkout/cancel";
+  locale?: string | null;
+  searchParams: Readonly<Record<string, string>>;
+}) {
+  const locale = normalizeLocale(input.locale) ?? "en";
+  const prefix = getLocaleConfig(locale).sitePathPrefix;
+  const target = new URL(`${prefix}${input.pathname}`, `${input.baseUrl.replace(/\/$/u, "")}/`);
+  for (const [key, value] of Object.entries(input.searchParams)) target.searchParams.set(key, value);
+  return target.toString();
+}
+
+export function localizePublicPaddleCheckoutPageUrl(input: {
+  checkoutUrl: string;
+  publicSiteUrl: string;
+  locale?: string | null;
+}) {
+  try {
+    const publicOrigin = new URL(input.publicSiteUrl).origin;
+    const target = new URL(input.checkoutUrl, `${input.publicSiteUrl.replace(/\/$/u, "")}/`);
+    const locale = normalizeLocale(input.locale) ?? "en";
+    const localizedPrefix = getLocaleConfig(locale).sitePathPrefix;
+    const unprefixedPath = target.pathname.replace(/^\/(?:zh-cn|zh-tw|ja|ko|fr|es|de|ru)(?=\/)/iu, "");
+    if (target.origin === publicOrigin && unprefixedPath === "/checkout/paddle") {
+      target.pathname = `${localizedPrefix}/checkout/paddle`;
+      return target.toString();
+    }
+    return input.checkoutUrl;
+  } catch {
+    return input.checkoutUrl;
+  }
+}
+
+export function buildLocalizedAppReturnUrl(input: {
+  baseUrl: string;
+  locale?: string | null;
+  nextPath: string;
+}) {
+  const locale = normalizeLocale(input.locale) ?? "en";
+  const handoff = new URL("/api/locale", `${input.baseUrl.replace(/\/$/u, "")}/`);
+  handoff.searchParams.set("locale", locale);
+  handoff.searchParams.set("next", input.nextPath.startsWith("/") ? input.nextPath : `/${input.nextPath}`);
+  return handoff.toString();
+}
 
 type StripeCheckoutSessionInput = {
   orderId: string;

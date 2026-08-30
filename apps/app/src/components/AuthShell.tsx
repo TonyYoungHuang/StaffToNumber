@@ -4,50 +4,20 @@ import Link from "next/link";
 import React from "react";
 import { APP_ROUTES } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, VaultIcon } from "@score/ui";
+import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { PUBLIC_SITE_URL } from "../lib/support";
-import { useAppLocale } from "./AppLocaleProvider";
 
 export function AuthShell({
   title,
   description,
+  copy,
   children,
 }: {
   title: string;
   description: string;
+  copy: AuthMessageCatalog["shell"];
   children: React.ReactNode;
 }) {
-  const { locale } = useAppLocale();
-  const copy =
-    locale === "zh-CN"
-      ? {
-          eyebrow: "你的在线乐谱工作台",
-          quote: "登录后，你的乐谱、修改记录和导出文件都会保存在同一个账户中。",
-          proofTitle: "真实案例 · 乐谱生成练习音频",
-          proofBody: "从结构化五线谱控制速度、循环与声部，再生成练习素材。",
-          accessTitle: "登录后免费编辑",
-          accessBody: "上传一份完整多页 PDF 或一张乐谱图片，创建一个可校正、播放、转换、分享与导出的终身免费项目。",
-          scopeTitle: "从识别到导出，一处完成",
-          scopeBody: "识别乐谱后，可以继续校对、转简谱、移调、播放练习，并导出常用格式。",
-          draftTitle: "你的原谱不会被覆盖",
-          draftBody: "系统会先生成一份待确认的结果，只有你确认后才保存为正式版本。",
-          back: "返回首页",
-          preview: "免费编辑",
-        }
-      : {
-          eyebrow: "Secure score-workspace access",
-          quote: "Sign in to keep your scores, edits, and exports together in one account.",
-          proofTitle: "Real example · score to practice audio",
-          proofBody: "Control tempo, loops, and parts from a structured score, then create practice media.",
-          accessTitle: "Sign in to edit for free",
-          accessBody: "Upload one complete multi-page PDF or score image and keep a lifetime free project for correction, playback, conversion, sharing, and export.",
-          scopeTitle: "Everything stays in one place",
-          scopeBody: "Correct the recognized score, convert notation, transpose, practice, and export without moving between tools.",
-          draftTitle: "Your original stays safe",
-          draftBody: "Recognition creates a result for your review and never replaces an approved version without confirmation.",
-          back: "Return to studio",
-          preview: "Edit for free",
-        };
-
   return (
     <section className="container page-shell">
       <div className="auth-layout">

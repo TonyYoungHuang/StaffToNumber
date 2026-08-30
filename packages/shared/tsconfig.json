@@ -3,7 +3,15 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "paths": {
+      "@score/i18n": [
+        "packages/i18n/dist/index.d.ts"
+      ],
+      "@score/i18n/*": [
+        "packages/i18n/dist/*"
+      ]
+    }
   },
   "include": [
     "src/**/*.ts"

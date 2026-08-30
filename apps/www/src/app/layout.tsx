@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import React from "react";
+import { SUPPORTED_LOCALES, getAnalyticsConsentMessages, getLocaleConfig } from "@score/i18n";
 import "@score/ui/sonata.css";
 import "./public-site.css";
 import { PublicChrome } from "../components/PublicChrome";
@@ -9,8 +10,10 @@ import { ProductionAnalytics } from "../components/ProductionAnalytics";
 import { readSiteLocale } from "../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates } from "../lib/locale-routing";
 import { getActivePublicAnnouncement } from "../lib/public-content";
+import { getProductMediaPresentation, getWorkspacePreviewProductMedia } from "../lib/product-media";
 import { buildOrganizationSchema } from "../lib/organization-schema";
 import { siteConfig } from "../lib/site";
+import { getSiteLocaleCatalog } from "../lib/site-shell-localization";
 
 const geist = Geist({
   display: "swap",
@@ -20,18 +23,19 @@ const geist = Geist({
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
-  const title = locale === "zh-CN" ? `${siteConfig.siteName} | 五线谱识别、编辑、移调、播放与导出` : siteConfig.title;
-  const description = locale === "zh-CN"
-    ? "在线识别、校正、编辑、移调、播放并导出五线谱与简谱；以 MusicXML 和结构化乐谱工程连接 PDF、图片、MIDI 与音频工作流。"
-    : siteConfig.description;
+  const catalog = getSiteLocaleCatalog(locale).metadata;
+  const title = catalog.title;
+  const description = catalog.description;
   const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale);
+  const media = getWorkspacePreviewProductMedia(locale);
+  const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, title) : null;
 
   return {
     metadataBase: new URL(siteConfig.siteUrl),
     title,
     description,
     applicationName: siteConfig.siteName,
-    keywords: [...siteConfig.keywords],
+    keywords: [...catalog.keywords],
     alternates: getLocalizedAlternates("/", locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,
@@ -56,25 +60,37 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       url: canonicalUrl,
       siteName: siteConfig.siteName,
-      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      locale: catalog.openGraphLocale,
+      alternateLocale: SUPPORTED_LOCALES
+        .filter((item) => item !== locale)
+        .map((item) => getSiteLocaleCatalog(item).metadata.openGraphLocale),
       type: "website",
-      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
+      ...(media && mediaPresentation ? { images: [{ url: media.src, width: media.width, height: media.height, alt: mediaPresentation.alt }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: ["/product/score-preview-output-real.png"],
+      ...(media && mediaPresentation ? { images: [{ url: media.src, alt: mediaPresentation.alt }] } : {}),
     },
   };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await readSiteLocale();
+  const localeConfig = getLocaleConfig(locale);
+  const shellCopy = getSiteLocaleCatalog(locale).shell;
+  const analyticsCopy = getAnalyticsConsentMessages(locale);
   const announcement = getActivePublicAnnouncement(new Date());
 
   return (
-    <html lang={locale} className={geist.variable} suppressHydrationWarning>
+    <html
+      lang={localeConfig.htmlLang}
+      dir={localeConfig.direction}
+      data-font-group={localeConfig.fontGroup}
+      className={geist.variable}
+      suppressHydrationWarning
+    >
       <body>
         <script
           type="application/ld+json"
@@ -83,8 +99,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
         <SiteLocaleProvider locale={locale}>
-          <PublicChrome announcement={announcement}>{children}</PublicChrome>
-          <ProductionAnalytics />
+          <PublicChrome announcement={announcement} copy={shellCopy}>{children}</PublicChrome>
+          <ProductionAnalytics copy={analyticsCopy} />
         </SiteLocaleProvider>
       </body>
     </html>

@@ -11,6 +11,9 @@
       "default": "./dist/index.js"
     }
   },
+  "dependencies": {
+    "@score/i18n": "0.1.0"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"

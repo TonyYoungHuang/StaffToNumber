@@ -1,278 +1,134 @@
-﻿import type { Metadata } from "next";
-import Link from "next/link";
+import { getLocaleConfig } from "@score/i18n";
 import { MetricCard, Panel, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { SupportRequestForm } from "../../components/SupportRequestForm";
 import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
+import { getProductMediaPresentation } from "../../lib/product-media";
+import { getSupportLegalLocalization, getSupportLegalMedia } from "../../lib/support-legal-localization";
 import { getCheckoutUrl, siteConfig } from "../../lib/site";
+
+const canonicalPath = "/support";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
-  const title =
-    locale === "zh-CN"
-      ? `支持 / 联系我们 / 订单核查 | ${siteConfig.siteName}`
-      : `Support, Contact, and Order Review | ${siteConfig.siteName}`;
-  const description =
-    locale === "zh-CN"
-      ? "联系 ScoreTransposer 支持，处理账号、激活码、上传识别、结果下载和隐私请求。"
-      : "Contact ScoreTransposer support for account, activation, score recognition, result delivery, and privacy questions.";
-  const socialImage = "/product/score-preview-output-real.png";
+  const localization = getSupportLegalLocalization(locale);
+  const copy = localization.support;
+  const media = getSupportLegalMedia("support", locale);
+  const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, copy.hero.title) : null;
 
   return {
-    title,
-    description,
-    alternates: getLocalizedAlternates("/support", locale),
+    title: copy.metadata.title,
+    description: copy.metadata.description,
+    keywords: [...copy.metadata.keywords],
+    alternates: getLocalizedAlternates(canonicalPath, locale),
     openGraph: {
-      title,
-      description,
-      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/support", locale),
+      title: copy.metadata.title,
+      description: copy.metadata.description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale),
       siteName: siteConfig.siteName,
-      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      locale: localization.openGraphLocale,
       type: "website",
-      images: [{ url: socialImage, width: 1265, height: 712, alt: "ScoreTransposer rendered score workspace output" }],
+      ...(media && mediaPresentation ? { images: [{ url: media.src, width: media.width, height: media.height, alt: mediaPresentation.alt }] } : {}),
     },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [socialImage],
-    },
+    twitter: { card: "summary_large_image", title: copy.metadata.title, description: copy.metadata.description, ...(media && mediaPresentation ? { images: [{ url: media.src, alt: mediaPresentation.alt }] } : {}) },
   };
 }
 
 export default async function SupportPage() {
   const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
+  const localization = getSupportLegalLocalization(locale);
+  const copy = localization.support;
   const checkoutUrl = getCheckoutUrl(locale);
-
-  const workflows = isChinese
-    ? [
-        {
-          step: "01",
-          title: "支付 / 订单问题",
-          body: "适用于支付成功后账户权益未生效、支付回跳异常、重复扣款疑问，或需要人工核查订单状态。",
-        },
-        {
-          step: "02",
-          title: "激活 / 权限问题",
-          body: "适用于激活码无法兑换、权限未生效、到期时间异常，或需要人工确认授权范围。",
-        },
-        {
-          step: "03",
-          title: "上传 / 结果问题",
-          body: "适用于 PDF 上传失败、任务卡住、结果下载异常，或 final / draft 结果需要人工判断。",
-        },
-      ]
-    : [
-        {
-          step: "01",
-          title: "Payment and order issues",
-          body: "Use this route when checkout succeeds but account access does not appear, when the return path looks incomplete, or when an order needs manual review.",
-        },
-        {
-          step: "02",
-          title: "Activation and entitlement issues",
-          body: "Use this route when redemption fails, access does not activate, entitlement dates look wrong, or support needs to verify account scope.",
-        },
-        {
-          step: "03",
-          title: "Upload and result issues",
-          body: "Use this route when PDF upload fails, jobs stall, downloads break, or a final-vs-draft outcome needs human context.",
-        },
-      ];
-
-  const evidencePoints = isChinese
-    ? [
-        "联系邮箱或账号邮箱",
-        "购买时间、支付渠道、支付截图",
-        "激活码、订单号、任务号、文件名等可核对信息",
-        "报错截图、触发步骤、问题出现的大致时间",
-      ]
-    : [
-        "Contact email or account email",
-        "Purchase time, payment provider, and payment screenshot",
-        "Activation code, order id, job id, or file name when available",
-        "Error screenshot, trigger steps, and approximate time of the issue",
-      ];
+  const pageUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale);
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "ContactPage",
+      name: copy.schemaName,
+      description: copy.metadata.description,
+      url: pageUrl,
+      inLanguage: getLocaleConfig(locale).htmlLang,
+      mainEntity: {
+        "@type": "Organization",
+        name: siteConfig.siteName,
+        email: siteConfig.supportEmail,
+        contactPoint: [{
+          "@type": "ContactPoint",
+          contactType: copy.schemaContactType,
+          email: siteConfig.supportEmail,
+          availableLanguage: ["en", "zh-CN"],
+        }],
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: localization.homeBreadcrumb, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: copy.hero.title, item: pageUrl },
+      ],
+    },
+  ];
 
   return (
     <section className="public-container public-page stack-xl">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "ContactPage",
-            name: `${siteConfig.siteName} Support`,
-            url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/support", locale),
-            mainEntity: {
-              "@type": "Organization",
-              name: siteConfig.siteName,
-              email: siteConfig.supportEmail,
-              contactPoint: [
-                {
-                  "@type": "ContactPoint",
-                  contactType: "customer support",
-                  email: siteConfig.supportEmail,
-                  availableLanguage: ["English", "Chinese"],
-                },
-              ],
-            },
-          }),
-        }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }} />
 
       <Panel variant="surface" className="stack-lg">
-        <SectionIntro
-          eyebrow={isChinese ? "支持 / 联系 / 核查" : "Support / Contact / Review"}
-          title={
-            isChinese
-              ? "需要帮助？请告诉我们遇到了什么问题"
-              : "Need help? Tell us what happened"
-          }
-          body={
-            isChinese
-              ? "你可以在这里提交账号、激活、识谱、下载或隐私相关问题。信息越完整，我们越容易定位并回复。"
-              : "Submit account, activation, recognition, download, or privacy questions here. More complete details help us investigate and reply faster."
-          }
-          titleAs="h1"
-          largeBody
-        />
+        <SectionIntro eyebrow={copy.hero.eyebrow} title={copy.hero.title} body={copy.hero.body} titleAs="h1" largeBody />
         <div className="button-row">
-          <a href="#support-form" className="public-button primary">
-            {isChinese ? "提交支持请求" : "Submit support request"}
-          </a>
-          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">
-            {isChinese ? "查看 FAQ" : "Open FAQ"}
-          </Link>
-          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "查看购买路径" : "View checkout path"}</a> : null}
+          <a href="#support-form" className="public-button primary">{copy.hero.submitAction}</a>
+          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">{copy.hero.faqAction}</Link>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{copy.hero.checkoutAction}</a> : null}
         </div>
       </Panel>
 
-      <SupportRequestForm locale={locale} supportEmail={siteConfig.supportEmail} />
+      <SupportRequestForm locale={locale} supportEmail={siteConfig.supportEmail} copy={copy.form} />
 
       <section className="access-grid">
         <Panel variant="surface" className="stack-lg">
-          <SectionIntro
-            eyebrow={isChinese ? "支持分类" : "Support categories"}
-            title={
-              isChinese ? "先把问题分对类，再进入人工核查" : "Classify the issue first, then move into manual review"
-            }
-          />
+          <SectionIntro eyebrow={copy.workflows.eyebrow} title={copy.workflows.title} />
           <div className="workflow-grid">
-            {workflows.map((item) => (
-              <WorkflowStep key={item.step} step={item.step} title={item.title} body={item.body} />
-            ))}
+            {copy.workflows.items.map(([step, title, body]) => <WorkflowStep key={step} step={step} title={title} body={body} />)}
           </div>
         </Panel>
 
         <Panel variant="glass" className="stack-lg">
-          <SectionIntro
-            eyebrow={isChinese ? "提交建议" : "What to include"}
-            title={
-              isChinese
-                ? "支持请求写得越完整，人工处理通常越快"
-                : "Manual support usually moves faster when the request includes enough detail"
-            }
-          />
+          <SectionIntro eyebrow={copy.evidence.eyebrow} title={copy.evidence.title} />
           <Panel variant="sunken" className="stack-md">
-            <StatusPill tone="cyan">{isChinese ? "建议附带信息" : "Recommended evidence"}</StatusPill>
-            {evidencePoints.map((point) => (
-              <p key={point} className="body-copy">
-                {point}
-              </p>
-            ))}
+            <StatusPill tone="cyan">{copy.evidence.status}</StatusPill>
+            {copy.evidence.points.map((point) => <p key={point} className="body-copy">{point}</p>)}
           </Panel>
         </Panel>
       </section>
 
       <section className="preview-grid">
         <Panel variant="surface" className="stack-lg">
-          <SectionIntro
-            eyebrow={isChinese ? "处理边界" : "Support boundary"}
-            title={
-              isChinese ? "我们可以帮助处理哪些问题" : "What support can help with"
-            }
-            body={
-              isChinese
-                ? "支持范围包括账户访问、激活码、文件上传、识谱任务、结果查看与下载，以及隐私请求。"
-                : "Support covers account access, activation codes, file uploads, recognition jobs, result viewing and downloads, and privacy requests."
-            }
-          />
+          <SectionIntro eyebrow={copy.boundary.eyebrow} title={copy.boundary.title} body={copy.boundary.body} />
           <div className="metric-grid">
-            <MetricCard
-              label={isChinese ? "产品问题" : "Product help"}
-              value={isChinese ? "账号与乐谱" : "Accounts and scores"}
-              body={
-                isChinese
-                  ? "账号、支付、激活码、上传、任务与结果下载问题。"
-                  : "Account, checkout, activation, upload, job, and result-delivery issues."
-              }
-            />
-            <MetricCard
-              label={isChinese ? "识别说明" : "Recognition note"}
-              value={isChinese ? "候选需复核" : "Review required"}
-              body={
-                isChinese
-                  ? "自动识别结果可能需要人工校对；复杂谱面请附上原文件和问题截图。"
-                  : "Automatic recognition may need manual correction. For complex scores, include the source file and a screenshot."
-              }
-            />
-            <MetricCard
-              label={isChinese ? "人工核查" : "Manual review"}
-              value={isChinese ? "可处理" : "Available"}
-              body={
-                isChinese
-                  ? "订单核查、兑换异常、下载异常、删除请求等。"
-                  : "Order review, redemption issues, download anomalies, and deletion requests."
-              }
-            />
+            {copy.boundary.metrics.map(([label, value, body]) => <MetricCard key={label} label={label} value={value} body={body} />)}
           </div>
         </Panel>
 
         <Panel variant="glass" className="stack-lg">
-          <SectionIntro
-            eyebrow={isChinese ? "提交之后" : "After submission"}
-            title={
-              isChinese
-                ? "提交后会发生什么"
-                : "What happens after submission"
-            }
-            body={
-              isChinese
-                ? "提交成功后会生成请求编号。请保存编号；如邮件通知已启用，你也会在联系邮箱收到确认。"
-                : "A successful submission creates a request reference. Keep that reference; when email notifications are available, a confirmation is also sent to your contact address."
-            }
-          />
+          <SectionIntro eyebrow={copy.after.eyebrow} title={copy.after.title} body={copy.after.body} />
           <div className="button-row">
-            <Link href={localizePublicHref("/about", locale)} className="public-button secondary">
-              {isChinese ? "查看 About" : "Open about"}
-            </Link>
-            <Link href={localizePublicHref("/privacy", locale)} className="public-button tertiary">
-              {isChinese ? "隐私政策" : "Privacy"}
-            </Link>
-            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">
-              {isChinese ? "服务条款" : "Terms"}
-            </Link>
+            <Link href={localizePublicHref("/about", locale)} className="public-button secondary">{copy.after.aboutAction}</Link>
+            <Link href={localizePublicHref("/privacy", locale)} className="public-button tertiary">{copy.after.privacyAction}</Link>
+            <Link href={localizePublicHref("/terms", locale)} className="public-button tertiary">{copy.after.termsAction}</Link>
           </div>
         </Panel>
       </section>
 
       <Panel variant="sunken" className="stack-md">
-        <h2 className="card-title">{isChinese ? "现在提交支持请求" : "Submit a support request"}</h2>
-        <p className="body-copy">
-          {isChinese
-            ? "请先选择问题类型，并附上账号邮箱、任务号、文件名、发生时间和相关截图。"
-            : "Choose the issue type and include the account email, job reference, file name, approximate time, and relevant screenshots."}
-        </p>
+        <h2 className="card-title">{copy.final.title}</h2>
+        <p className="body-copy">{copy.final.body}</p>
         <div className="button-row">
-          <a href="#support-form" className="public-button primary">
-            {isChinese ? "填写 Support 表单" : "Open support form"}
-          </a>
-          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">
-            {isChinese ? "常见问题" : "FAQ"}
-          </Link>
-          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{isChinese ? "购买 / 开通" : "Checkout"}</a> : null}
+          <a href="#support-form" className="public-button primary">{copy.final.formAction}</a>
+          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">{copy.final.faqAction}</Link>
+          {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{copy.final.checkoutAction}</a> : null}
         </div>
         <p className="helper-copy">{siteConfig.supportEmail}</p>
       </Panel>

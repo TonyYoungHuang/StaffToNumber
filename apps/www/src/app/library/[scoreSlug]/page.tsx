@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SUPPORTED_LOCALES, formatMessage, getLocaleConfig } from "@score/i18n";
 import { MetricCard, Panel, SectionIntro, StatusPill } from "@score/ui";
-import { findPublicScore, publicScoreLibrary } from "../../../lib/public-score-library";
+import {
+  LIBRARY_OPEN_GRAPH_LOCALES,
+  formatLibraryComposerDates,
+  getLibraryCatalog,
+} from "../../../lib/library-localization";
 import { readSiteLocale } from "../../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../../lib/locale-routing";
+import { findPublicScore, getPublicScoreText, publicScoreLibrary } from "../../../lib/public-score-library";
+import { getProductMediaPresentation, getWorkspacePreviewProductMedia } from "../../../lib/product-media";
 import { getAppScoreProjectsUrl, siteConfig } from "../../../lib/site";
 
 type ScoreParams = { scoreSlug: string };
@@ -13,121 +21,144 @@ export function generateStaticParams(): ScoreParams[] {
 }
 
 export async function generateMetadata({ params }: { params: Promise<ScoreParams> }): Promise<Metadata> {
-  const { scoreSlug } = await params;
+  const [{ scoreSlug }, locale] = await Promise.all([params, readSiteLocale()]);
   const score = findPublicScore(scoreSlug);
   if (!score) return {};
-  const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
-  const localizedDescription = score.description[locale];
-  const descriptiveSuffix = isChinese
-    ? " 查看乐器编制、来源版本、版权状态和 ScoreTransposer 乐谱工作台选项。"
-    : " View instrumentation, source, edition, rights, and workspace options in ScoreTransposer.";
-  const description = localizedDescription.length >= (isChinese ? 55 : 120) ? localizedDescription : `${localizedDescription}${descriptiveSuffix}`;
-  const searchableTitle = isChinese
-    ? `${score.title[locale]} 五线谱 | ${siteConfig.siteName}`
-    : `${score.title.en} sheet music | ${siteConfig.siteName}`;
+
+  const catalog = getLibraryCatalog(locale);
+  const title = getPublicScoreText(score.title, locale);
+  const composer = getPublicScoreText(score.composer, locale);
+  const searchableTitle = formatMessage(catalog.detail.titleTemplate, { title, site: siteConfig.siteName });
+  const metadataTitle = searchableTitle.length <= 60 ? searchableTitle : `${title} | ${siteConfig.siteName}`;
+  const description = formatMessage(catalog.detail.descriptionTemplate, {
+    description: getPublicScoreText(score.description, locale),
+  });
+  const media = getWorkspacePreviewProductMedia(locale);
+  const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, title) : null;
+
   return {
-    title: searchableTitle.length <= 60 ? searchableTitle : `${score.title[locale]} | ${siteConfig.siteName}`,
+    title: metadataTitle,
     description,
-    keywords: isChinese
-      ? [score.title[locale], `${score.title[locale]} 五线谱`, score.composer[locale], `${score.composer[locale]} 乐谱`, "免费公版五线谱"]
-      : [score.title.en, `${score.title.en} sheet music`, score.composer.en, `${score.composer.en} sheet music`, "public domain sheet music"],
+    keywords: [
+      title,
+      formatMessage(catalog.detail.titleKeywordTemplate, { title }),
+      composer,
+      formatMessage(catalog.detail.composerKeywordTemplate, { composer }),
+      catalog.detail.genericKeyword,
+    ],
     alternates: getLocalizedAlternates(`/library/${score.slug}`, locale),
     openGraph: {
       title: searchableTitle,
       description,
       url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
       siteName: siteConfig.siteName,
-      locale: isChinese ? "zh_CN" : "en_US",
-      alternateLocale: isChinese ? ["en_US"] : ["zh_CN"],
+      locale: LIBRARY_OPEN_GRAPH_LOCALES[locale],
+      alternateLocale: SUPPORTED_LOCALES
+        .filter((alternateLocale) => alternateLocale !== locale)
+        .map((alternateLocale) => LIBRARY_OPEN_GRAPH_LOCALES[alternateLocale]),
       type: "website",
-      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: isChinese ? `${score.title[locale]} 五线谱预览` : `${score.title.en} sheet music preview` }],
+      ...(media && mediaPresentation ? { images: [{ url: media.src, width: media.width, height: media.height, alt: mediaPresentation.alt }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: searchableTitle,
       description,
-      images: ["/product/score-preview-output-real.png"],
+      ...(media && mediaPresentation ? { images: [{ url: media.src, alt: mediaPresentation.alt }] } : {}),
     },
   };
 }
 
 export default async function PublicScoreDetailPage({ params }: { params: Promise<ScoreParams> }) {
-  const { scoreSlug } = await params;
+  const [{ scoreSlug }, locale] = await Promise.all([params, readSiteLocale()]);
   const score = findPublicScore(scoreSlug);
   if (!score) notFound();
-  const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
-  const copy = isChinese
-    ? {
-        eyebrow: "曲库作品记录",
-        source: "来源与版本",
-        rights: "权利说明",
-        instruments: "乐器与编制",
-        download: "下载 CC0 MusicXML",
-        openSource: "打开原始资料库",
-        workspace: "进入乐谱工作台",
-        back: "返回曲库",
-        notice: "来源链接条目不会在本站镜像文件。导入任何具体版本前，请核对来源页面上的许可和地区说明。",
-      }
-    : {
-        eyebrow: "Library work record",
-        source: "Source and edition",
-        rights: "Rights statement",
-        instruments: "Instrumentation",
-        download: "Download CC0 MusicXML",
-        openSource: "Open source collection",
-        workspace: "Open score workspace",
-        back: "Back to library",
-        notice: "Source-linked records are not mirrored here. Review the source page's edition license and regional terms before importing any file.",
-      };
+
+  const catalog = getLibraryCatalog(locale);
+  const copy = catalog.detail;
+  const title = getPublicScoreText(score.title, locale);
+  const composer = getPublicScoreText(score.composer, locale);
+  const description = getPublicScoreText(score.description, locale);
+  const composerDates = formatLibraryComposerDates(score.composerDates, locale);
   const sourceIsExternal = score.sourceUrl.startsWith("http");
+  const canonicalPath = `/library/${score.slug}`;
+  const htmlLang = getLocaleConfig(locale).htmlLang;
   const structuredData = [
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
+      inLanguage: htmlLang,
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: isChinese ? "首页" : "Home", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
-        { "@type": "ListItem", position: 2, name: isChinese ? "公版乐谱曲库" : "Public domain sheet music library", item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale) },
-        { "@type": "ListItem", position: 3, name: score.title[locale], item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale) },
+        { "@type": "ListItem", position: 1, name: copy.home, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: copy.libraryName, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale) },
+        { "@type": "ListItem", position: 3, name: title, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale) },
       ],
     },
     {
       "@context": "https://schema.org",
       "@type": "MusicComposition",
-      name: score.title[locale],
-      composer: { "@type": "Person", name: score.composer[locale] },
-      description: score.description[locale],
-      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
+      inLanguage: htmlLang,
+      name: title,
+      composer: { "@type": "Person", name: composer },
+      description,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, canonicalPath, locale),
     },
   ];
 
   return (
     <div className="public-container page-stack">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }}
+      />
+      <nav aria-label={copy.breadcrumb} className="button-row">
+        <Link className="public-button tertiary" href={localizePublicHref("/", locale)}>{copy.home}</Link>
+        <span aria-hidden="true">›</span>
+        <Link className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.libraryName}</Link>
+        <span aria-hidden="true">›</span>
+        <span className="helper-copy" aria-current="page">{title}</span>
+      </nav>
       <section className="page-banner split">
-        <SectionIntro eyebrow={copy.eyebrow} title={score.title[locale]} body={`${score.composer[locale]} · ${score.composerDates}`} titleAs="h1" largeBody />
+        <SectionIntro eyebrow={copy.eyebrow} title={title} body={`${composer} · ${composerDates}`} titleAs="h1" largeBody />
         <Panel variant="glass" className="stack-md">
-          <div className="button-row"><StatusPill tone={score.assetStatus === "downloadable" ? "green" : "cyan"}>{score.assetStatus}</StatusPill><StatusPill tone="amber">{score.workRights}</StatusPill></div>
-          <p className="body-copy">{score.description[locale]}</p>
+          <div className="button-row">
+            <StatusPill tone={score.assetStatus === "downloadable" ? "green" : "cyan"}>{catalog.values.assetStatuses[score.assetStatus]}</StatusPill>
+            <StatusPill tone="amber">{catalog.values.workRights[score.workRights]}</StatusPill>
+          </div>
+          <p className="body-copy">{description}</p>
         </Panel>
       </section>
 
       <section className="metric-grid">
-        <MetricCard label={copy.instruments} value={score.instruments.join(" · ")} body={`${score.ensemble} · ${score.difficulty}`} />
-        <MetricCard label={copy.source} value={score.sourceProvider} body={score.formats.join(" · ")} />
-        <MetricCard label={copy.rights} value={score.workRights} body={score.assetLicense} />
+        <MetricCard
+          label={copy.instruments}
+          value={score.instruments.map((value) => catalog.values.instruments[value]).join(" · ")}
+          body={`${catalog.values.eras[score.era]} · ${catalog.values.ensembles[score.ensemble]} · ${catalog.values.difficulties[score.difficulty]}`}
+        />
+        <MetricCard
+          label={copy.source}
+          value={score.sourceProvider}
+          body={score.formats.map((value) => catalog.values.formats[value]).join(" · ")}
+        />
+        <MetricCard
+          label={copy.rights}
+          value={catalog.values.workRights[score.workRights]}
+          body={catalog.values.assetLicenses[score.assetLicenseKey]}
+        />
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow={copy.rights} title={copy.source} body={score.assetStatus === "source-linked" ? copy.notice : score.assetLicense} />
+        <SectionIntro
+          eyebrow={copy.rights}
+          title={copy.source}
+          body={score.assetStatus === "source-linked" ? copy.notice : catalog.values.assetLicenses[score.assetLicenseKey]}
+        />
         <div className="button-row">
           {score.localMusicXmlUrl ? <a className="public-button primary" href={score.localMusicXmlUrl} download>{copy.download}</a> : null}
           {score.assetStatus === "source-linked" ? (
             <a className="public-button secondary" href={score.sourceUrl} target={sourceIsExternal ? "_blank" : undefined} rel={sourceIsExternal ? "noreferrer" : undefined}>{copy.openSource}</a>
           ) : null}
           <a className="public-button tertiary" href={getAppScoreProjectsUrl(locale)}>{copy.workspace}</a>
-          <a className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.back}</a>
+          <Link className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.back}</Link>
         </div>
       </section>
     </div>

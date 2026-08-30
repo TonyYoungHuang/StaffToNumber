@@ -1,0 +1,2705 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 78392,
+        "sha256": "0f2fdd35ab39a92d3b4b9446e401547350c621399885971fb0bf09a635dbd70a"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 79310,
+        "sha256": "17f18340f2ade0f099522b4b9a9fa4a2f97c65cca09d320a9d1b10a364082820"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 63081,
+        "sha256": "640e6429176eb377cea327d7d57bbf133a51147717d47e997b1d00645398d63f"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 74482,
+        "sha256": "9d60d7dd8b172c9da59e5afc842450e2c189fe6412f078a3e363545db0c04bdc"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 50785,
+        "sha256": "5f93c3f4d0d7eb12b317fbb3cc17beb832b66adbf854fa71f243c33efb14842a"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 81916,
+        "sha256": "d7b9383495510db7701ccbd85e3087be741f47fff85b6d7bec0059171d483dbe"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 82771,
+        "sha256": "2d2d6806f523bba84ae7bf5f7363ca9dbc4f35fe25441c5dbd256a64997b0405"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 84616,
+        "sha256": "dbebd88952528cd24ec7f7b08db4848aacf808fd1e376ae97d9bb576db55579d"
+      }
+    },
+    {
+      "slot": "feature.staff-to-jianpu",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-staff-to-jianpu-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 87438,
+        "sha256": "607e533c7c8f1d751ffa13c3f2138186a4ec77d8b2723fb24f06651160453ed1"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 82818,
+        "sha256": "eca5fb4f14925bdbb98e202129dbe50476e0e4ec1e15d4f150a50e72e33e5337"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 73112,
+        "sha256": "b9ac7e85ddc0c8827414d4c4de937271fb0a63e3459c52a641ff6a2595a3ef3f"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 77066,
+        "sha256": "feeac67bcc8a5b84f919ba5a50675eaa5769210f7e8bcd4eca94b87aa5ceed4d"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 67366,
+        "sha256": "119f7edba3c05119e4e5ec6b22add8d902161db7591e954eb7bbb0c1b8b8b12f"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 90388,
+        "sha256": "123e50de30b806a96b1eded064f94de2b7c2d0076cc5ec709b023d4d2947ce5c"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 89329,
+        "sha256": "a53de828335d2d23afb3438a1d1fe6cbc88d2187c97534d6e11d3fdba6c684ee"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 82804,
+        "sha256": "57dd98bb47849fe981f5db6ae1efade4a53c57d21cb1377a9952b526a35f8b96"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 90236,
+        "sha256": "f91bf92fe0f2cec4677d3607d669f2eb02c0e7b41fb2e99f39bced8448ff31f1"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 132001,
+        "sha256": "ccdb817a5a1708eb03df36a6b9aa3e1b8532f6da65c0a0abce37dac11ef8a9fa"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 95947,
+        "sha256": "732da3d93190b04d740f5d452a6f60c09a8fa794fab1f468b5e068fd0f8b6470"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 128290,
+        "sha256": "243b645d70d78e1276f7c008131764247ba26bfdb77b9634648ef77a75dcce46"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 78343,
+        "sha256": "c83542ba3280baabcb1853a855cdebc01132ade200738c799930b317573c5c57"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 139448,
+        "sha256": "5e0490b1f84653486ea0fcd1b1c2e5880fd1c6cb79774e6a693295e5b203fad4"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 136743,
+        "sha256": "c4f34cf01f800bca928e819cb6eef0e84ca5ce76df05ffb93d6afb52ed4ab14b"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 142837,
+        "sha256": "6e9f18be9f089faa6a05b62937b13ff97c92f3d8ff1cdc40dfa733c8ee8eb127"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 149145,
+        "sha256": "f981e6613b3e2d42eb228b845f4dd1eba1105b9ce443e99a4ee9a0e4a2aac20c"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 107999,
+        "sha256": "b2b4e8c61033b0e47224aa79a288de93e86cda1067bcefd7ddf260d542ff5d6f"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 91180,
+        "sha256": "12b7d916df4fb0e83ad88677131f7b752f1493b78499c422ff712e1c1e563ff7"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 109305,
+        "sha256": "46502be498e33269a17675f8cb14ee3afe18e60bc09e0630bb103092c0c10561"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 75572,
+        "sha256": "4a6046bb0163b8ad09c1bebd3c48f3df047906c9ac0c31789a738593063fc8a9"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 120162,
+        "sha256": "3bfe7c52adc275a8659a104fb138ff416ade27259155e58f45c121b5c766b067"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 117604,
+        "sha256": "53a96f53acece8b1917d102f5e56c2917dbd609bd27ae5126e526cfb9b3d23d7"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 111622,
+        "sha256": "0b0f018cfe8dc7ca9fde6e929b1deedcfad0a76dbe6c51c0fee3d905fc5f3955"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 119987,
+        "sha256": "282bed166b6bfcad5b3684b431d706447afc69500d3bfb8a9723785dcf6dcb51"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 85705,
+        "sha256": "cd3a3c4efe7a56549a0a1862a71d9406bbf75350a0baf0a2ff216c208da0c1ae"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 63246,
+        "sha256": "0d5d23d6f97526a93b532d1495bc491f17dff4e46f6c5cd27f99796532e90823"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 76893,
+        "sha256": "7c715204ac0a21c74ab5e0e6ff70ffb97e21c07d2be290f9afff60c56527d556"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 48680,
+        "sha256": "ce1215602e41db5e3dec7d106fdcdb2fc06dd98b9dff0fe8e6a7081cf6bb3289"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 86679,
+        "sha256": "8c35192f69fbe7b825d17b26347680edafb275b675cb0133b10d2552915e15fe"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 85809,
+        "sha256": "5d913b0e744e1c750b1c1ba96b00848cae01276ca36c485f1ec62ed640e94522"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 90124,
+        "sha256": "a978ce1dc85ab82a3bedc4854d8a5ebdfc2b4c1b50e4c3d19e20e698d02ba79d"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 89120,
+        "sha256": "8bd53e6edecc415d5ec7a91920980b5d6d337d94ad9a49e90316fd92cab265f8"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/en/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 103067,
+        "sha256": "f62280d58ba82d57b0a1e40133743a262796611015be2f777e53c2dab8983a03"
+      },
+      "video": {
+        "src": "/product/localized/en/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 193951,
+        "sha256": "20aaf5da70ed9bdd61a6b356ba5f19c660be0d968c3d9db45dc1089adc28fc7b"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-cn/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 101879,
+        "sha256": "f316f79bbba965332eb407a3720df7289fb3d25a06cb5f8ebea7b4cba25fc608"
+      },
+      "video": {
+        "src": "/product/localized/zh-cn/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 191003,
+        "sha256": "cb57a164db24c135f96a97b6d089c725cac16a7e1fac59c33bf7a18d4a61a19e"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-tw/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 100503,
+        "sha256": "c284178dc6eac1a9ccd0eae7aba422d8a8c83d9dd54a697e1ec014e4b625e026"
+      },
+      "video": {
+        "src": "/product/localized/zh-tw/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 165264,
+        "sha256": "98f7ac3515155b3c97d73ad72b2b6c582a4f2818bde41c6a00357ce2020665a3"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ja/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 104191,
+        "sha256": "a3f118de3485e3cc3181232daa1717582553cddcf2b570546c90b1e8dbc0e99e"
+      },
+      "video": {
+        "src": "/product/localized/ja/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 191108,
+        "sha256": "41add806594084a6db6281571ae53dc26ce617cceb68cd305dc088878cb91a98"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ko/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 103368,
+        "sha256": "4faa65dff1cf51e031453d753bdc147724f43f5a0352c62afaacad3f8dbd2d03"
+      },
+      "video": {
+        "src": "/product/localized/ko/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 199139,
+        "sha256": "cf298bb9999db85fd55fe5d91ad128f3e41cb0ceda9c9cd6a585df4ec49bba2c"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/fr/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 114081,
+        "sha256": "219537a8643ac80b977665a5f997e1c948e885a5d91a13695aabd667e26bc788"
+      },
+      "video": {
+        "src": "/product/localized/fr/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 198384,
+        "sha256": "6e352405b14f6289bc57fe6b76c866752ec986841ec065b85fe5944ff455ab10"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/es/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 106549,
+        "sha256": "d932cabd95549dfee4a0e3e823f3cf2cd71968f113f84714102796a6688d7c78"
+      },
+      "video": {
+        "src": "/product/localized/es/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 137655,
+        "sha256": "1d89e5d62f29a64984a80a463a76db52dd8ae4793e9ed5cf29223b5a9a54ab57"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/de/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 116541,
+        "sha256": "9f52e0945f725e5a4e2a8bc1b3b6384e34d703951d3f471ce66058383a066891"
+      },
+      "video": {
+        "src": "/product/localized/de/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 187701,
+        "sha256": "709e0e2ce9e76c1689a7e67a7d4b26281743848c913e366fe14b49f675d4663c"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-editor",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ru/demo-score-editor-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 117747,
+        "sha256": "e4cc1c73c709a1a71828f160258cd7e81888e9c3ecc7142e893545ccd1071050"
+      },
+      "video": {
+        "src": "/product/localized/ru/demo-score-editor.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 201117,
+        "sha256": "2790a7bf562d3ec69d1c573b963af00879119999f450df49c0208ac72b9ed174"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/en/demo-transpose-score-poster.jpg",
+        "height": 569,
+        "width": 1264,
+        "bytes": 58166,
+        "sha256": "56c18e9ab398bd46ad2674ae50bd587a0aafd88bacd7cdd9960e416e894c2391"
+      },
+      "video": {
+        "src": "/product/localized/en/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 113331,
+        "sha256": "adcc2209028830d0d070247c61b03fe8082fe91656337aa9610a2f8d43baf872"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-cn/demo-transpose-score-poster.jpg",
+        "height": 569,
+        "width": 1264,
+        "bytes": 53482,
+        "sha256": "18c42e94f3cf1c626edf373b7ad456dbf75864e2761cc716717ada974f0100d5"
+      },
+      "video": {
+        "src": "/product/localized/zh-cn/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 104572,
+        "sha256": "9862532ae9b017e8da88171051d30a691faa3ea379f767f99ba80e39f247c12f"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-tw/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 57536,
+        "sha256": "9793484f5749fea5103999821d3c55f091fcd6473a84a3b386d722049701540d"
+      },
+      "video": {
+        "src": "/product/localized/zh-tw/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 240816,
+        "sha256": "6a1e5bdcadfbffeb352afe3ee66f4444894d558926b724b8991d79d26be7fc4e"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ja/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 61208,
+        "sha256": "b888304e5788f768cf7a2698d37b84a0eed61259ea6eb9d51a8cbd5646f633ba"
+      },
+      "video": {
+        "src": "/product/localized/ja/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 107051,
+        "sha256": "9c3974b65164a22a16e85ef4c464b7a643dbaf35ba227679f536b30980ff83fd"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ko/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 59919,
+        "sha256": "5e371adc960329e84b6ddbc629526f49717d490ba7c627884b5049a94973c455"
+      },
+      "video": {
+        "src": "/product/localized/ko/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 104309,
+        "sha256": "ad84869b04350d87863a6c62d4436530bf6d38d332fa197dfb8cad0f144eb4a8"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/fr/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 72465,
+        "sha256": "9a5d4258c11ea45d4792c39347540efec96cefdfffed2529b11326b8d25e3f0f"
+      },
+      "video": {
+        "src": "/product/localized/fr/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 133115,
+        "sha256": "a296cf9d1ffaed5fa71b6983e95adb47827b63e6884914b620e599c993a5eb75"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/es/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 71697,
+        "sha256": "c83cfc7f407915de428272a69d0abe08e8069d78323aefb84eedeef92400845a"
+      },
+      "video": {
+        "src": "/product/localized/es/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 129985,
+        "sha256": "085d9573187f1ce1cc261c57824effb2613167c00ceb63dc05d757005e049e9d"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/de/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 71828,
+        "sha256": "b3f23ecf450be1b79199e81aafe59f9e02d55ca06fd27f51b227ae276292e2d8"
+      },
+      "video": {
+        "src": "/product/localized/de/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 225778,
+        "sha256": "32446bb64464662281bb931e6ec1411936350a74fae7d63fa08601d4708ca437"
+      }
+    },
+    {
+      "slot": "homepage-demo.transpose-score",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ru/demo-transpose-score-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 74643,
+        "sha256": "fe5cb0078fc43d2b5630bfcf5eacbd2aa46725d2f6110c67e4029ac1a45975ad"
+      },
+      "video": {
+        "src": "/product/localized/ru/demo-transpose-score.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 143585,
+        "sha256": "a3ee397ee2e48a224a6d16959fb7ec86467312576d11330cc1c957533029654e"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/en/demo-staff-to-jianpu-poster.jpg",
+        "height": 569,
+        "width": 1264,
+        "bytes": 50139,
+        "sha256": "54021a19cfe285dbf7a1f81813135f91fbb5094ff869e7653e241e398b2b8345"
+      },
+      "video": {
+        "src": "/product/localized/en/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 91043,
+        "sha256": "ad885b166ffc387fef229a5b2f251f20a3f9c6035c1c8254142239edbf83f3cc"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-cn/demo-staff-to-jianpu-poster.jpg",
+        "height": 569,
+        "width": 1264,
+        "bytes": 47489,
+        "sha256": "88120db557879460f1615e3e65eea02ece6f7170b9a9a488ba1a21fdf4731c55"
+      },
+      "video": {
+        "src": "/product/localized/zh-cn/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 85911,
+        "sha256": "d81cf1919ee82ee28473c9d3bbb8aed81ec63e5badcba7df0711edf7d63a25f1"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-tw/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 61183,
+        "sha256": "96316492bc12b51ac6e1562f985a563ed19798100af9e6ee47baa3123df79984"
+      },
+      "video": {
+        "src": "/product/localized/zh-tw/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 220373,
+        "sha256": "fbc35cbd8edb210ca965d86b983d933daf610174fb6ac563ea63c6aca9020b39"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ja/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 57740,
+        "sha256": "7b7d2ad49f68103ce2503ef288e5b5eea478feda7b56ad3894d94a00e8daf3ea"
+      },
+      "video": {
+        "src": "/product/localized/ja/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 213334,
+        "sha256": "a46e0b5fba9df113484490a255ca9c612d0312f876630d40f66a73702e4cf963"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ko/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 61028,
+        "sha256": "3743e129d2fb8d3a63dc3b75f7856cb63c4e6a477895ff7142c27fbd9a447869"
+      },
+      "video": {
+        "src": "/product/localized/ko/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 87422,
+        "sha256": "f92e248ed0c72ccb417114bf77127ccc1c6fea4c40a04407490568bdafcfd805"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/fr/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 61704,
+        "sha256": "630b7a8c2b0f4903449f948dac7f1b3c74ffcbb790ef11195b9b463af32623d2"
+      },
+      "video": {
+        "src": "/product/localized/fr/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 203202,
+        "sha256": "359681b348b2ede3875e810029461ee001f60864b079df7d0a2d749740fe71e1"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/es/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 62735,
+        "sha256": "df45f78770f8b67cdace119f73d66b5fbcade9743dda47eeba1cd56eb8172051"
+      },
+      "video": {
+        "src": "/product/localized/es/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 100071,
+        "sha256": "c9d787464285fae6370b17745d3a0705c914c08e6bda111e0c620dea7f348b35"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/de/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 64011,
+        "sha256": "a64302723f8045584bf526fe9e78fbf85f4dd20e597553e8e2c07afb85488c0e"
+      },
+      "video": {
+        "src": "/product/localized/de/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 104057,
+        "sha256": "9709c904929a02e259285dec5d0687eaf732b0c76375aeac0c78e1fade94e1ef"
+      }
+    },
+    {
+      "slot": "homepage-demo.staff-to-jianpu",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#jianpu-preview",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ru/demo-staff-to-jianpu-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 67889,
+        "sha256": "6bde30963e4a8734b88811c086ec32e41eec9c12b6bbc68c5f7646e7fdef04cb"
+      },
+      "video": {
+        "src": "/product/localized/ru/demo-staff-to-jianpu.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 120190,
+        "sha256": "c786c79b02156f96167f018a283065357df1cb9838ea61b09b5b146fa71faaa3"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/en/demo-score-to-audio-poster.jpg",
+        "height": 569,
+        "width": 1264,
+        "bytes": 59520,
+        "sha256": "330065d407a44b1c92d86d9cd5bec341e6327b2e8e089d07005f8e51e78ec697"
+      },
+      "video": {
+        "src": "/product/localized/en/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 356316,
+        "sha256": "887de8e2685ae407293f9285468b556f62020c57a8ae2062d463cffb5e51df9b"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-cn/demo-score-to-audio-poster.jpg",
+        "height": 569,
+        "width": 1264,
+        "bytes": 54375,
+        "sha256": "b0db9eadcb31008c46bd5f8b709aa92570351aba8c1209141e2dc4cee03ae680"
+      },
+      "video": {
+        "src": "/product/localized/zh-cn/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 220514,
+        "sha256": "12c4fb5bb88329dba41181d82ecad8f3756590c57f9777b761962620487291bd"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/zh-tw/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 63061,
+        "sha256": "c8f64ed7ce6e928b6d44003df5d362f98d2887dabd90473e7f61bb58ea677aac"
+      },
+      "video": {
+        "src": "/product/localized/zh-tw/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 224171,
+        "sha256": "565260f3add80bb0e7ec6374f1fa388955a158721f95ea16ac1be171f9376a75"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ja/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 66883,
+        "sha256": "380c0fcebae3f76c3d1059b00ce8da96833ee327d822d0f2ea30eeded6910f56"
+      },
+      "video": {
+        "src": "/product/localized/ja/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 219604,
+        "sha256": "0be221e390153485d3bb67ded78f1e6a0ff03416669bdac1327125b5390264ac"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ko/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 63351,
+        "sha256": "954dd203a76be6da469574af4c05abd0ae3f0cfd65c924a91c605b5d62425271"
+      },
+      "video": {
+        "src": "/product/localized/ko/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 225264,
+        "sha256": "76713129bb357b67af79a56c2c3a8d87aff7a10def887ca367eecd95d090a0c3"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/fr/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 78035,
+        "sha256": "7115dd9c98a901fbcf79534d1dde4e243d5e2290aef0e2efa107a7ea26978a48"
+      },
+      "video": {
+        "src": "/product/localized/fr/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 227494,
+        "sha256": "8efd380aa9070b118ef89dc1f9f37a19d53b56de609fb3d158c974ebdbc5d64f"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/es/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 76373,
+        "sha256": "421ac5ef9dc4c89f62e4a1715162b1dd94fe9ea6d3335584978d02fc8aecc92f"
+      },
+      "video": {
+        "src": "/product/localized/es/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 236002,
+        "sha256": "f261f05cb45387c0901f71420cd0fe8eec65891e41c7b0323d7bbd9a35373826"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/de/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 72053,
+        "sha256": "831f9aa98234b09c3ac85b85850c4e17582a541063f0b24242590321b0669dd3"
+      },
+      "video": {
+        "src": "/product/localized/de/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 229634,
+        "sha256": "07920b3cdacf8f3b896d83e08954ec0c2c66ab65e744b6ba7c4bcba929121eaf"
+      }
+    },
+    {
+      "slot": "homepage-demo.score-to-audio",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "poster": {
+        "src": "/product/localized/ru/demo-score-to-audio-poster.jpg",
+        "height": 720,
+        "width": 1280,
+        "bytes": 73435,
+        "sha256": "b62f382fbe1db97cac511499b000c051e759879c4f24d4e81d494b20969172b4"
+      },
+      "video": {
+        "src": "/product/localized/ru/demo-score-to-audio.webm",
+        "width": 1264,
+        "height": 570,
+        "bytes": 340956,
+        "sha256": "145a77bfa965d1d736efef9f04a2cfac9b01ab2fffc300f2a7961c2ed1a4b1fb"
+      }
+    },
+    {
+      "slot": "feature.jianpu-to-staff",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison .score-preview-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-jianpu-to-staff-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 76779,
+        "sha256": "4731ba563eaece3cd7c39f62a56807a089e1e651a4eb13a52c87234c5b38e88e"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 66867,
+        "sha256": "35ee123e3bdd6b5b5b119dc3a10172bc47e5713d283cd78f38a9096d2040d4ed"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 69200,
+        "sha256": "e8b6da2a8d6501411793b8ab32ee8f9c757b0f6686ae1a64f41cb3e2bd8fac9a"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 76551,
+        "sha256": "44d40436ec8cabd77fe7cf5ba2a941002fe73fa4eaf7f5f50c8162dc437bd0df"
+      }
+    },
+    {
+      "slot": "feature.score-editor",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#visual-editor",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-score-editor-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 128682,
+        "sha256": "f40b56d369b1cb0288776c928d54e91ad9fa93045024d72ad959a71ae94c71ad"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 65824,
+        "sha256": "47b5296901762b8a7831f3fd0235c98c99996342dd5b2d347289ee05729a7c19"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 62585,
+        "sha256": "db02425d6ab62897f0f771ade450710de9496fd64b5ee51357a7927806fd4514"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 76929,
+        "sha256": "6d29dc3b090423eb747c6ae0050cff43e9a532463ab318e90903d8e2bbbbb8b8"
+      }
+    },
+    {
+      "slot": "feature.pdf-score-scanner",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#omr-comparison",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-pdf-score-scanner-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 103590,
+        "sha256": "ea9059a0f6486ff8e6f501d6d80a6d1e82f3dd97b41b33fa409a6b9b1542eeff"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 78184,
+        "sha256": "36daf54392f3eedcd7126ab808ad78221f6e2dc5cc387ededbf69acc6f0cfee0"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 62454,
+        "sha256": "0bcabf43b9b1622a0c22a15c52b508668d5e17592d0caf92b2e07021d70800ab"
+      }
+    },
+    {
+      "slot": "feature.transpose-score",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#transpose-score",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-transpose-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 81156,
+        "sha256": "20afd45c58652f160a8742896a3469ae60dd4ff8d8250fde6a629c8ebf33cb39"
+      }
+    },
+    {
+      "slot": "feature.teaching",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-teaching-real.png",
+        "width": 1440,
+        "height": 900,
+        "bytes": 90542,
+        "sha256": "45cceed175cecb8a0b26fecebb2c4ecacde266aa6dcbe271a009782e52a6ada0"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 73586,
+        "sha256": "50df28b1e81a8eaaa6507c2efaf00050f000f7125973febe5afb2f299a7b7c85"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 73386,
+        "sha256": "c75c349f84e2ce80353f41252653d59755460dd368de2fdb1cf81fd0bda2ee18"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 80459,
+        "sha256": "b3b925c852ff577955dc8502217b2d0a1a1b0abd0c58b9eebeb9da437385afc7"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 71035,
+        "sha256": "fbbe55cf911da4fc7e064947bc7ff1173cb772f9b49c472923da8de978798077"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 69009,
+        "sha256": "403b272df2813c8ee6ba06c0815dc69cc6eb3a2ab7da3939ff3e7df821bf8ccd"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 79326,
+        "sha256": "1ea428e0a107129d6ad90e9eb4490e16af22bb0ee8e11a2c948bf55841fc656c"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 83576,
+        "sha256": "9db4f6af463039d1b25c3615ba96b064cbd80664255316d53d933a378205a031"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 69980,
+        "sha256": "76207954f9267645cb01a543addef7c58e0c87a027e2c9e634aeac78f86515a5"
+      }
+    },
+    {
+      "slot": "feature.score-to-audio",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-score-to-audio-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 80998,
+        "sha256": "f664fa067df471dcda952889565a2a6730285ecff5b52ce7fe0e6a4037573b5b"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 71428,
+        "sha256": "f1ff77753ad86fcb6dd0b4405b631565bdb5b47b0858ecf7c8b2c18471ac2ebf"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 83493,
+        "sha256": "7a71977aee753af077b97757924211eddfcdc81dc48ab20e29bb797e4e7be729"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 60880,
+        "sha256": "1237e96b518e7207486b89d804269950c04f11ca492a408d63c666ab3015e461"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 83651,
+        "sha256": "8f10ac08c9e244cdd5d0be5ba0e489decb377e170241967883274db27232603b"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "ja",
+      "sourceLocale": "ja",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ja/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 52729,
+        "sha256": "ecbc1be43822281a0e78132111b20212f2cf5ef2e822c3434b7e0b03e4db7ed3"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 69843,
+        "sha256": "70868e45fb85ec6e45420447bce28102964c8aea14db468653ee03bf021aa446"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 80603,
+        "sha256": "e73b2fffafd92058c7a34ad590230e78fae11b01c5c74a0311aeca1b029f6a16"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 80944,
+        "sha256": "1bdd290c9794c16108f847d60e1f0e6e1f7d6c12c1d5db9773b89152ddddbf3a"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 81276,
+        "sha256": "0b6ab2b1ab4f1e1aaaf617cd4824e2a31a84b098b90db9888e1455a95d1253ff"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 72965,
+        "sha256": "26ce1ad11dbe778b3adc7ea6305f34f82a9a84ccb294b4c734bc7fc79931b017"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 83333,
+        "sha256": "3ef896799db943932b8f1855fc059bc25d7fbed5980e6f1d024c83eb2ad51579"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 82142,
+        "sha256": "e005a51147bfde1b1e373c78dc552cb635ba3f6a853865f669d58ab55b34c6f9"
+      }
+    },
+    {
+      "slot": "feature.audio-to-score",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-jobs",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-audio-to-score-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 73087,
+        "sha256": "0beff11ca035d49117c01b15d1914ed8c1ab72dc311948589c5735338c74db07"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 90785,
+        "sha256": "f0607b802b58c9e5304503cd86eb1844ede41a7f1cdbcc3a7b3fa4a756749839"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 91273,
+        "sha256": "e934d3fbefd6ab4409d888221f9eb2f6982e41a6d8b9597ab2cc65dcd0667f2c"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 93996,
+        "sha256": "585bb342edd80b87de4a51181b627748ae658dc8af7d61d5bc61c027d63ed85f"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 83460,
+        "sha256": "c0011e24e8d5f42f1c41cd4bb30fcafc0038204086c3d37ab1540fab38854f2b"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 65644,
+        "sha256": "c73734151afe90778fd7f98dc66bf69992efbc882404575c091c98b40bc56e78"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 92793,
+        "sha256": "5352ea17b62fa73fa1bdafeeb23fdd9bc6f123118171a348cbde985369c81a15"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 94930,
+        "sha256": "85f023764045f13f718ec5102c35e9e7407b51e2c1b4833b0958d4ae17cb3d3d"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 67291,
+        "sha256": "d78876c55843f6ff545d7da3fd36673a63446d4a5fcb62357f845f8cdc5a84fb"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 85789,
+        "sha256": "a0fc00677feb36ccb2316f959bfcaca39fb3b11d90568bfeec3c4cc3115cb553"
+      }
+    },
+    {
+      "slot": "feature.musicxml-midi",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#export-center",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-musicxml-midi-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 93524,
+        "sha256": "9dc25de45404c87e7916728e492779812601350db1d4131fdb837adaf0656a8c"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 99291,
+        "sha256": "aab1c9a9186852ed4de8e32e9dc4ff7975a5d23789f5eeb4c89a9bf36b9c67df"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 63299,
+        "sha256": "323653a01fb7fe5e9ab1c3ed9f040abd3115fcee8ff035761ea7f3e152885221"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 61464,
+        "sha256": "9390a99ade3600d15468f0bb55966bb7110819b49b6539ac0a49e0f2879bc7d5"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 99474,
+        "sha256": "4a60a995f868f774f83da85f95c5ec492d9c1e65421511c344b959f1e91d0931"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 60933,
+        "sha256": "639fb9e981fb7c9e0533ee5f527095a122d39d5ae960f13281772f3812a6c0c3"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 65498,
+        "sha256": "2eb4419b177adff95d6e1835a65f2fdd00965d5e83fc9f56874e373bbfaf5c3d"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "de",
+      "sourceLocale": "de",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/de/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 58109,
+        "sha256": "ddb310307456557be3d958bc63cfb9d107fe9b033012f1b1079dabfd9cde096a"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 61880,
+        "sha256": "410d86999efbeaef2dfea9c768052d15f3dc15e2c4e72bfd0232a4e810f0a226"
+      }
+    },
+    {
+      "slot": "feature.pdf-to-musicxml",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#score-json-model",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-pdf-to-musicxml-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 65183,
+        "sha256": "7e448f13a0f6d48b640fa4ad7557de6b8629552967ce59959e2c00cce9ada025"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "ru",
+      "sourceLocale": "ru",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ru/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 57150,
+        "sha256": "0a0efb2fead1375d587393c41b3cf966b913967d447bc30d12e91470f51570c7"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 81249,
+        "sha256": "e5406b82af56316e7eb202da6b3f6bb79265a414bec5c0a24f4f81d6e9f4824b"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 81013,
+        "sha256": "20ab50864c85691b3a346d3dac5ddfa9c82760d73f833a07c320ba45adf56377"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 98616,
+        "sha256": "7c609d7f148b1d38f9e48c138e14690130eddd00af88fcb38a25278c5f96b8eb"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 75694,
+        "sha256": "23afefdcffa0f92a6ff624631c8c7aa4b855ac7124e4b7591ac54663a457cf32"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 95824,
+        "sha256": "59529fdb06facaed86686e740e92550105051ca7849b2c65a39cd0159e650185"
+      }
+    },
+    {
+      "slot": "feature.pricing",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/billing#.page-shell",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": null,
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/feature-pricing-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 76052,
+        "sha256": "a911853c4a2a974459534033b54c49ee5e9ddcc3b54cd6390877caca41f53b42"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "en",
+      "sourceLocale": "en",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/en/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 52006,
+        "sha256": "918cd202f21e0f16bde011956d72acac12edbbdf09e144d2fb28de7213305bdf"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "ko",
+      "sourceLocale": "ko",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/ko/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 50603,
+        "sha256": "6d0e51b8885cda8e3962957306cbc320c96e49cb23208cd91166dc9f749c9de3"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "zh-CN",
+      "sourceLocale": "zh-CN",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-cn/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 48159,
+        "sha256": "741cb01540ee8341285d369dc2f9c920c0c9f2df4c491d513f8b11610061426f"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "fr",
+      "sourceLocale": "fr",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/fr/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 56372,
+        "sha256": "687cd74917f104fb49fedc646ef299c71b333e8ef434fe0701b02a7272e7a05a"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "es",
+      "sourceLocale": "es",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/es/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 56149,
+        "sha256": "47504540bb541c348d595369c52447e08bd977d72f42d7d776b0f4bf87a21b14"
+      }
+    },
+    {
+      "slot": "workspace.preview",
+      "locale": "zh-TW",
+      "sourceLocale": "zh-TW",
+      "capturedAt": "2026-08-29",
+      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#revision-history",
+      "sourceRevision": "working-tree-fdf39321a24ce281",
+      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "captureMethod": "agent-browser",
+      "image": {
+        "src": "/product/localized/zh-tw/score-preview-output-real.jpg",
+        "height": 900,
+        "width": 1440,
+        "bytes": 48698,
+        "sha256": "0afda889f26d2038b7ddd08791deeebb8e31d92638eaf9fbf64c30306426fdad"
+      }
+    }
+  ]
+}

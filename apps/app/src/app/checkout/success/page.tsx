@@ -1,4 +1,6 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { localizePathname } from "@score/i18n";
+import { readAppLocale } from "../../../lib/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +10,9 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  const locale = await readAppLocale();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://scoretransposer.com";
-  const destination = new URL("/checkout/success", `${siteUrl.replace(/\/$/u, "")}/`);
+  const destination = new URL(localizePathname("/checkout/success", locale), `${siteUrl.replace(/\/$/u, "")}/`);
 
   for (const [key, value] of Object.entries(params)) {
     if (typeof value === "string") destination.searchParams.set(key, value);

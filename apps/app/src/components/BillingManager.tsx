@@ -1,12 +1,24 @@
 "use client";
 
+import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
+import {
+  formatBillingBytes,
+  formatBillingDateTime,
+  formatBillingMoney,
+  mappedBillingStatus,
+  rawApiErrorOrFallback,
+} from "../lib/billing-messages/client";
+import type {
+  BillingInvoiceStatus,
+  BillingManagerCopy,
+  BillingQuotaTier,
+  BillingSubscriptionStatus,
+} from "../lib/billing-messages/types";
 import { accountActivationRoute } from "../lib/release";
-import { userFacingError } from "../lib/user-facing-error";
-import { useAppLocale } from "./AppLocaleProvider";
 
 type Subscription = {
   id: string;
@@ -46,7 +58,7 @@ type Seat = {
 
 type BillingPayload = { subscriptions: Subscription[]; invoices: Invoice[]; seatAssignments: Seat[] };
 type AccessPayload = { user: { entitlement: { status: "inactive" | "active" | "expired" } } };
-type QuotaTier = "free" | "starter" | "converter-pro" | "legacy" | "pro" | "education";
+type QuotaTier = BillingQuotaTier | "legacy" | "pro" | "education";
 type QuotaUsage = {
   tier: QuotaTier;
   periodStart: string;
@@ -55,39 +67,57 @@ type QuotaUsage = {
   storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
 };
 
-export function BillingManager() {
-  const { locale } = useAppLocale();
-  const isChinese = locale === "zh-CN";
+type BillingManagerProps = {
+  locale: SupportedLocale;
+  copy: BillingManagerCopy;
+  freePlanCredits: string;
+};
+
+type ManagerStatus = { message: string; tone: "success" | "error" };
+
+const cancelableStatuses = new Set(["active", "trialing", "past_due", "paused", "unpaid"]);
+
+export function BillingManager({ locale, copy, freePlanCredits }: BillingManagerProps) {
   const [billing, setBilling] = useState<BillingPayload>({ subscriptions: [], invoices: [], seatAssignments: [] });
   const [quota, setQuota] = useState<QuotaUsage | null>(null);
   const [entitlementStatus, setEntitlementStatus] = useState<"checking" | "inactive" | "active" | "expired">("checking");
   const [seatDrafts, setSeatDrafts] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<ManagerStatus | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const token = useMemo(() => getStoredToken(), []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     if (!token) {
-      setStatus(isChinese ? "请先登录后查看账单。" : "Sign in to view billing.");
-      return;
+      setStatus({ message: copy.signIn, tone: "error" });
+      setLoading(false);
+      return false;
     }
+
     const [result, quotaResult, accessResult] = await Promise.all([
       apiRequest<BillingPayload>("/api/payments/billing", { headers: { Authorization: `Bearer ${token}` } }),
       apiRequest<{ usage: QuotaUsage }>("/api/payments/billing/usage", { headers: { Authorization: `Bearer ${token}` } }),
       apiRequest<AccessPayload>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
     ]);
+
     if (!result.ok) {
-      setStatus(userFacingError(result.error, locale));
-      return;
+      setStatus({ message: rawApiErrorOrFallback(result.error, copy.fallbackError), tone: "error" });
+      setLoading(false);
+      return false;
     }
+
     setBilling(result.data);
-    const nextEntitlementStatus = accessResult.ok ? accessResult.data.user.entitlement.status : "inactive";
-    setEntitlementStatus(nextEntitlementStatus);
+    setEntitlementStatus(accessResult.ok ? accessResult.data.user.entitlement.status : "inactive");
     setQuota(quotaResult.ok ? quotaResult.data.usage : null);
     setStatus(null);
-  }, [isChinese, locale, token]);
+    setLoading(false);
+    return true;
+  }, [copy.fallbackError, copy.signIn, token]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh(true);
+  }, [refresh]);
 
   async function openPortal() {
     if (!token) return;
@@ -95,10 +125,13 @@ export function BillingManager() {
     const result = await apiRequest<{ url: string }>("/api/payments/billing/portal", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ provider: "stripe" }),
+      body: JSON.stringify({ provider: "stripe", locale }),
     });
     setBusy(null);
-    if (!result.ok) return setStatus(userFacingError(result.error, locale));
+    if (!result.ok) {
+      setStatus({ message: rawApiErrorOrFallback(result.error, copy.fallbackError), tone: "error" });
+      return;
+    }
     window.location.href = result.data.url;
   }
 
@@ -112,7 +145,10 @@ export function BillingManager() {
       body: JSON.stringify({ email }),
     });
     setBusy(null);
-    if (!result.ok) return setStatus(userFacingError(result.error, locale));
+    if (!result.ok) {
+      setStatus({ message: rawApiErrorOrFallback(result.error, copy.fallbackError), tone: "error" });
+      return;
+    }
     setSeatDrafts((current) => ({ ...current, [subscriptionId]: "" }));
     await refresh();
   }
@@ -125,7 +161,10 @@ export function BillingManager() {
       headers: { Authorization: `Bearer ${token}` },
     });
     setBusy(null);
-    if (!result.ok) return setStatus(userFacingError(result.error, locale));
+    if (!result.ok) {
+      setStatus({ message: rawApiErrorOrFallback(result.error, copy.fallbackError), tone: "error" });
+      return;
+    }
     await refresh();
   }
 
@@ -138,41 +177,63 @@ export function BillingManager() {
       body: JSON.stringify({ atPeriodEnd: true }),
     });
     setBusy(null);
-    if (!result.ok) return setStatus(userFacingError(result.error, locale));
-    setStatus(isChinese ? "订阅将在当前计费周期结束时取消。" : "The subscription will cancel at the end of the current billing period.");
-    await refresh();
+    if (!result.ok) {
+      setStatus({ message: rawApiErrorOrFallback(result.error, copy.fallbackError), tone: "error" });
+      return;
+    }
+    const refreshed = await refresh();
+    if (refreshed) setStatus({ message: copy.cancelSuccess, tone: "success" });
+  }
+
+  if (loading) {
+    return <p className="form-status" role="status">{copy.loading}</p>;
   }
 
   return (
-    <div className="page-stack">
-      {quota ? <section className="surface-panel credit-balance-panel stack-lg">
-        <div className="stack-xs">
-          <p className="eyebrow">{isChinese ? "积分余额" : "Credit balance"}</p>
-          <h2 className="card-title">{`${quotaTierLabel(quota.tier, locale)} · ${isChinese ? "本月可用积分" : "Credits available this month"}`}</h2>
-        </div>
-        <div className="credit-balance-summary">
-          <div className="credit-balance-value">
-            <strong>{quota.jobs.remaining}</strong>
-            <span>{isChinese ? "积分" : "credits"}</span>
+    <div className="page-stack" lang={locale}>
+      {quota ? (
+        <section className="surface-panel credit-balance-panel stack-lg">
+          <div className="stack-xs">
+            <p className="eyebrow">{copy.creditEyebrow}</p>
+            <h2 className="card-title">{`${copy.quotaTiers[normalizeQuotaTier(quota.tier)]} · ${copy.availableCredits}`}</h2>
           </div>
-          <p>{isChinese ? `本月共 ${quota.jobs.limit} 积分，已使用 ${quota.jobs.used} 积分。` : `${quota.jobs.limit} credits this month, ${quota.jobs.used} used.`}</p>
-        </div>
-        <div className="metric-grid">
-          <QuotaMeter label={isChinese ? "本月积分使用" : "Credits used this month"} used={quota.jobs.used} limit={quota.jobs.limit} value={`${quota.jobs.used} / ${quota.jobs.limit}`} />
-          <QuotaMeter label={isChinese ? "文件存储" : "File storage"} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBytes(quota.storage.usedBytes)} / ${formatBytes(quota.storage.limitBytes)}`} />
-        </div>
-        <p className="helper-copy">{isChinese ? "每次符合计费规则的成功操作消耗 1 积分；积分按月重置，未使用积分不滚存。" : "Each eligible successful operation uses one credit. Credits reset monthly and do not roll over."}</p>
-      </section> : null}
+          <div className="credit-balance-summary">
+            <div className="credit-balance-value">
+              <strong>{formatNumber(quota.jobs.remaining, locale)}</strong>
+              <span>{copy.creditUnit}</span>
+            </div>
+            <p>{formatMessage(copy.creditSummaryTemplate, {
+              limit: formatNumber(quota.jobs.limit, locale),
+              used: formatNumber(quota.jobs.used, locale),
+            })}</p>
+          </div>
+          <div className="metric-grid">
+            <QuotaMeter
+              label={copy.creditUsage}
+              used={quota.jobs.used}
+              limit={quota.jobs.limit}
+              value={`${formatNumber(quota.jobs.used, locale)} / ${formatNumber(quota.jobs.limit, locale)}`}
+            />
+            <QuotaMeter
+              label={copy.storage}
+              used={quota.storage.usedBytes}
+              limit={quota.storage.limitBytes}
+              value={`${formatBillingBytes(quota.storage.usedBytes, locale)} / ${formatBillingBytes(quota.storage.limitBytes, locale)}`}
+            />
+          </div>
+          <p className="helper-copy">{copy.quotaNote}</p>
+        </section>
+      ) : null}
 
       {entitlementStatus !== "active" && entitlementStatus !== "checking" ? (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">{isChinese ? "免费使用状态" : "Free access status"}</p>
-            <h2 className="card-title">{isChinese ? "当前没有生效中的付费套餐" : "No paid plan is active"}</h2>
-            <p className="body-copy">{isChinese ? "免费账户可用一份完整多页 PDF 或乐谱图片创建终身项目，并在该项目内校正、播放、移调、转简谱、分享和导出；每月包含 25 积分。" : "Free accounts can create one lifetime project from a complete multi-page PDF or score image and keep using its correction, playback, transposition, Jianpu, sharing, and export tools, with 25 credits each month."}</p>
+            <p className="eyebrow">{copy.freeEyebrow}</p>
+            <h2 className="card-title">{copy.noPaidTitle}</h2>
+            <p className="body-copy">{formatMessage(copy.freeBody, { credits: freePlanCredits })}</p>
           </div>
           <div className="button-row">
-            <Link href={accountActivationRoute} className="button button-primary">{isChinese ? "兑换激活码" : "Unlock full access"}</Link>
+            <Link href={accountActivationRoute} className="button button-primary">{copy.unlock}</Link>
           </div>
         </section>
       ) : null}
@@ -180,43 +241,90 @@ export function BillingManager() {
       <section className="surface-panel stack-lg">
         <div className="section-heading-row">
           <div className="stack-xs">
-            <p className="eyebrow">{isChinese ? "订阅" : "Subscriptions"}</p>
-            <h2 className="card-title">{isChinese ? "访问权限与续费状态" : "Access and renewal status"}</h2>
+            <p className="eyebrow">{copy.subscriptionsEyebrow}</p>
+            <h2 className="card-title">{copy.subscriptionsTitle}</h2>
           </div>
           {billing.subscriptions.some((subscription) => subscription.provider === "stripe") ? (
             <button type="button" className="button button-secondary" disabled={busy === "portal"} onClick={() => void openPortal()}>
-              {isChinese ? "管理 Stripe 付款方式" : "Manage Stripe payment method"}
+              {busy === "portal" ? copy.managingStripe : copy.manageStripe}
             </button>
           ) : null}
         </div>
-        {billing.subscriptions.length === 0 ? <div className="empty-state">{isChinese ? "当前账户还没有订阅。" : "No subscriptions are linked to this account."}</div> : billing.subscriptions.map((subscription) => {
+        {billing.subscriptions.length === 0 ? (
+          <div className="empty-state" role="status">{copy.noSubscriptions}</div>
+        ) : billing.subscriptions.map((subscription) => {
           const seats = billing.seatAssignments.filter((seat) => seat.subscriptionId === subscription.id && seat.status === "active");
+          const cancelBusy = busy === `cancel-${subscription.id}`;
           return (
             <div className="list-item" key={subscription.id}>
               <div className="stack-sm" style={{ width: "100%" }}>
                 <div className="section-heading-row">
                   <div>
-                    <p className="item-title">{subscription.provider.toUpperCase()} <span className={`status-chip ${subscription.status === "active" || subscription.status === "trialing" ? "tone-green" : "tone-amber"}`}>{subscription.status}</span></p>
-                    <p className="item-meta">{subscription.currentPeriodEnd ? `${isChinese ? "当前周期至" : "Current period ends"} ${formatDate(subscription.currentPeriodEnd, locale)}` : isChinese ? "无固定周期结束时间" : "No fixed period end"}</p>
-                    {subscription.lastPaymentFailedAt ? <p className="form-status error">{isChinese ? "最近一次续费失败，请更新付款方式。" : "The latest renewal failed. Update the payment method."}</p> : null}
-                    {subscription.cancelAtPeriodEnd ? <p className="form-status">{isChinese ? "已安排在当前周期结束时取消。" : "Cancellation is scheduled for the end of this period."}</p> : null}
+                    <p className="item-title">
+                      {copy.providers[subscription.provider]}{" "}
+                      <span className={`status-chip ${subscriptionTone(subscription.status)}`}>
+                        {mappedBillingStatus<BillingSubscriptionStatus>(subscription.status, copy.subscriptionStatuses)}
+                      </span>
+                    </p>
+                    <p className="item-meta">
+                      {subscription.currentPeriodEnd
+                        ? formatMessage(copy.currentPeriodEndsTemplate, { date: formatBillingDateTime(subscription.currentPeriodEnd, locale) })
+                        : copy.noFixedEnd}
+                    </p>
+                    {subscription.lastPaymentFailedAt ? <p className="form-status error">{copy.renewalFailed}</p> : null}
+                    {subscription.cancelAtPeriodEnd ? <p className="form-status">{copy.cancellationScheduled}</p> : null}
                   </div>
                   <div className="button-row">
-                    <span className="status-chip tone-cyan">{subscription.seatQuantity} {isChinese ? "席位" : "seats"}</span>
-                    {!subscription.cancelAtPeriodEnd && ["active", "trialing", "past_due", "paused", "unpaid"].includes(subscription.status) ? (
-                      <button type="button" className="button button-tertiary" disabled={busy === `cancel-${subscription.id}`} onClick={() => void cancelSubscription(subscription.id)}>
-                        {busy === `cancel-${subscription.id}` ? (isChinese ? "正在取消..." : "Canceling...") : (isChinese ? "周期结束时取消" : "Cancel at period end")}
+                    <span className="status-chip tone-cyan">
+                      {formatMessage(copy.seatsTemplate, { count: formatNumber(subscription.seatQuantity, locale) })}
+                    </span>
+                    {!subscription.cancelAtPeriodEnd && cancelableStatuses.has(subscription.status) ? (
+                      <button
+                        type="button"
+                        className="button button-tertiary"
+                        disabled={cancelBusy}
+                        onClick={() => void cancelSubscription(subscription.id)}
+                      >
+                        {cancelBusy ? copy.canceling : copy.cancel}
                       </button>
                     ) : null}
                   </div>
                 </div>
                 {subscription.organizationId ? (
                   <div className="stack-sm">
-                    <div className="button-row">
-                      <input className="field-control compact-control" type="email" placeholder={isChinese ? "成员邮箱" : "Member email"} value={seatDrafts[subscription.id] ?? ""} onChange={(event) => setSeatDrafts((current) => ({ ...current, [subscription.id]: event.target.value }))} />
-                      <button type="button" className="button button-secondary" disabled={busy === `seat-${subscription.id}` || !seatDrafts[subscription.id]?.trim()} onClick={() => void assignSeat(subscription.id)}>{isChinese ? "分配席位" : "Assign seat"}</button>
-                    </div>
-                    {seats.map((seat) => <div className="inline-meta" key={seat.id}><span>{seat.assignedEmail}</span><button type="button" className="button button-ghost button-tertiary" disabled={busy === `revoke-${seat.assignedEmail}`} onClick={() => void revokeSeat(subscription.id, seat.assignedEmail)}>{isChinese ? "撤销" : "Revoke"}</button></div>)}
+                    <form className="button-row" onSubmit={(event) => submitSeat(event, subscription.id)}>
+                      <label className="sr-only" htmlFor={`seat-email-${subscription.id}`}>{copy.memberEmail}</label>
+                      <input
+                        id={`seat-email-${subscription.id}`}
+                        className="field-control compact-control"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        placeholder={copy.memberEmailPlaceholder}
+                        value={seatDrafts[subscription.id] ?? ""}
+                        onChange={(event) => setSeatDrafts((current) => ({ ...current, [subscription.id]: event.target.value }))}
+                      />
+                      <button
+                        type="submit"
+                        className="button button-secondary"
+                        disabled={busy === `seat-${subscription.id}` || !seatDrafts[subscription.id]?.trim()}
+                      >
+                        {busy === `seat-${subscription.id}` ? copy.assigningSeat : copy.assignSeat}
+                      </button>
+                    </form>
+                    {seats.map((seat) => (
+                      <div className="inline-meta" key={seat.id}>
+                        <span>{seat.assignedEmail}</span>
+                        <button
+                          type="button"
+                          className="button button-ghost button-tertiary"
+                          disabled={busy === `revoke-${seat.assignedEmail}`}
+                          onClick={() => void revokeSeat(subscription.id, seat.assignedEmail)}
+                        >
+                          {busy === `revoke-${seat.assignedEmail}` ? copy.revoking : copy.revoke}
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -226,44 +334,83 @@ export function BillingManager() {
       </section>
 
       <section className="surface-panel stack-lg">
-        <div className="stack-xs"><p className="eyebrow">{isChinese ? "账单" : "Invoices"}</p><h2 className="card-title">{isChinese ? "付款、退款与失败记录" : "Payments, refunds, and failures"}</h2></div>
-        {billing.invoices.length === 0 ? <div className="empty-state">{isChinese ? "暂无账单记录。" : "No invoices yet."}</div> : billing.invoices.map((invoice) => (
-          <div className="list-item" key={invoice.id}>
-            <div><p className="item-title">{invoice.providerInvoiceId} <span className={`status-chip ${invoice.status === "paid" ? "tone-green" : invoice.status === "refunded" ? "tone-cyan" : "tone-amber"}`}>{invoice.status}</span></p><p className="item-meta">{formatMoney(invoice.amountPaidMinor ?? invoice.amountDueMinor, invoice.currency, locale)}{invoice.amountRefundedMinor > 0 ? ` · ${isChinese ? "已退款" : "refunded"} ${formatMoney(invoice.amountRefundedMinor, invoice.currency, locale)}` : ""}</p></div>
-            {invoice.hostedUrl ? <a className="button button-secondary button-ghost" href={invoice.hostedUrl} target="_blank" rel="noreferrer">{isChinese ? "查看账单" : "View invoice"}</a> : null}
-          </div>
-        ))}
+        <div className="stack-xs">
+          <p className="eyebrow">{copy.invoicesEyebrow}</p>
+          <h2 className="card-title">{copy.invoicesTitle}</h2>
+        </div>
+        {billing.invoices.length === 0 ? (
+          <div className="empty-state" role="status">{copy.noInvoices}</div>
+        ) : billing.invoices.map((invoice) => {
+          const paidOrDue = formatBillingMoney(invoice.amountPaidMinor ?? invoice.amountDueMinor, invoice.currency, locale, copy.amountPending);
+          const refund = invoice.amountRefundedMinor > 0
+            ? formatMessage(copy.refundedTemplate, {
+                amount: formatBillingMoney(invoice.amountRefundedMinor, invoice.currency, locale, copy.amountPending),
+              })
+            : null;
+          const invoiceDate = getInvoiceDateLabel(invoice, locale, copy);
+          return (
+            <div className="list-item" key={invoice.id}>
+              <div>
+                <p className="item-title">
+                  {copy.providers[invoice.provider]} · {invoice.providerInvoiceId}{" "}
+                  <span className={`status-chip ${invoiceTone(invoice.status)}`}>
+                    {mappedBillingStatus<BillingInvoiceStatus>(invoice.status, copy.invoiceStatuses)}
+                  </span>
+                </p>
+                <p className="item-meta">{paidOrDue}{refund ? ` · ${refund}` : ""}</p>
+                {invoiceDate ? <p className="item-meta">{invoiceDate}</p> : null}
+              </div>
+              {invoice.hostedUrl ? (
+                <a className="button button-secondary button-ghost" href={invoice.hostedUrl} target="_blank" rel="noreferrer">
+                  {copy.viewInvoice}
+                </a>
+              ) : null}
+            </div>
+          );
+        })}
       </section>
-      {status ? <p className="form-status error">{status}</p> : null}
+      {status ? (
+        <p className={`form-status ${status.tone}`} role={status.tone === "error" ? "alert" : "status"}>
+          {status.message}
+        </p>
+      ) : null}
     </div>
   );
-}
 
-function quotaTierLabel(tier: QuotaTier, locale: string) {
-  const normalized = tier === "legacy" ? "free" : tier === "pro" ? "starter" : tier === "education" ? "converter-pro" : tier;
-  if (normalized === "free") return "Free";
-  if (normalized === "starter") return "Starter";
-  return locale === "zh-CN" ? "Converter Pro" : "Converter Pro";
-}
-
-function formatDate(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
-}
-
-function formatMoney(value: number | null, currency: string | null, locale: string) {
-  if (value === null || !currency) return locale === "zh-CN" ? "金额待确认" : "Amount pending";
-  try {
-    return new Intl.NumberFormat(locale === "zh-CN" ? "zh-CN" : "en-US", { style: "currency", currency: currency.toUpperCase() }).format(value / 100);
-  } catch {
-    return `${currency.toUpperCase()} ${(value / 100).toFixed(2)}`;
+  function submitSeat(event: FormEvent<HTMLFormElement>, subscriptionId: string) {
+    event.preventDefault();
+    void assignSeat(subscriptionId);
   }
 }
 
-function formatBytes(value: number) {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`;
-  if (value < 1024 ** 3) return `${(value / 1024 ** 2).toFixed(1)} MB`;
-  return `${(value / 1024 ** 3).toFixed(1)} GB`;
+function normalizeQuotaTier(tier: QuotaTier): BillingQuotaTier {
+  if (tier === "legacy") return "free";
+  if (tier === "pro") return "starter";
+  if (tier === "education") return "converter-pro";
+  return tier;
+}
+
+function subscriptionTone(status: string) {
+  return status === "active" || status === "trialing" ? "tone-green" : "tone-amber";
+}
+
+function invoiceTone(status: string) {
+  if (status === "paid") return "tone-green";
+  if (status === "refunded") return "tone-cyan";
+  return "tone-amber";
+}
+
+function getInvoiceDateLabel(invoice: Invoice, locale: SupportedLocale, copy: BillingManagerCopy) {
+  if (invoice.paidAt) {
+    return formatMessage(copy.invoicePaidTemplate, { date: formatBillingDateTime(invoice.paidAt, locale) });
+  }
+  if (invoice.failedAt) {
+    return formatMessage(copy.invoiceFailedTemplate, { date: formatBillingDateTime(invoice.failedAt, locale) });
+  }
+  if (invoice.dueAt) {
+    return formatMessage(copy.invoiceDueTemplate, { date: formatBillingDateTime(invoice.dueAt, locale) });
+  }
+  return null;
 }
 
 function QuotaMeter({ label, used, limit, value }: { label: string; used: number; limit: number; value: string }) {
@@ -271,7 +418,15 @@ function QuotaMeter({ label, used, limit, value }: { label: string; used: number
   return (
     <div className="metric-card stack-sm">
       <div className="section-heading-row"><span className="field-label">{label}</span><strong>{value}</strong></div>
-      <div className="quota-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={limit} aria-valuenow={Math.min(used, limit)}>
+      <div
+        className="quota-track"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={limit}
+        aria-valuenow={Math.min(used, limit)}
+        aria-valuetext={value}
+      >
         <span className="quota-fill" style={{ width: `${percent}%` }} />
       </div>
     </div>

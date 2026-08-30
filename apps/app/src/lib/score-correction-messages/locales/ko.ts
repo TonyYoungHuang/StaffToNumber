@@ -1,0 +1,42 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const koScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "악보 교정 편집기", status: "교정 상태" },
+  intro: { eyebrow: "인식 교정", title: "음표 속성 패널", body: "가장 흔한 OMR 오류부터 수정하세요. 음표나 쉼표를 선택하고 음높이, 임시표, 옥타브와 음가를 조정한 뒤 새 수동 편집 리비전으로 저장합니다." },
+  status: { saving: "저장 중…", success: "교정된 새 리비전을 만들었습니다.", failed: "교정 결과를 저장하지 못했습니다." },
+  empty: { events: "이 리비전에는 편집할 수 있는 음표나 쉼표가 없습니다.", parts: "이 리비전에는 편집할 수 있는 파트가 없습니다.", measures: "이 리비전에는 편집할 수 있는 마디가 없습니다." },
+  actions: { remove: "제거", addOrnament: "꾸밈음 추가", addBeam: "빔 추가", addTuplet: "잇단음표 추가", addLyric: "가사 줄 추가", addFingering: "운지 추가" },
+  note: {
+    choose: "음표 또는 쉼표 선택", eventType: "이벤트 유형", dots: "부점", voice: "성부", staff: "보표", chordTone: "화음 구성음", graceNote: "꾸밈음",
+    slashedGrace: "사선 꾸밈음", stealPrevious: "앞 음에서 가져오기(%)", stealFollowing: "뒤 음에서 가져오기(%)", ornaments: "장식음", type: "유형",
+    placement: "위치", value: "값", step: "음이름", alter: "변화량", octave: "옥타브", duration: "내부 길이", durationType: "음가 유형",
+    fermata: "페르마타", fermataType: "페르마타 방향", fermataShape: "페르마타 모양", timeModification: "잇단음표 비율", actualNotes: "실제 음표 수",
+    normalNotes: "기준 음표 수", beams: "빔", level: "단계", tupletMarkers: "잇단음표 표식", boundary: "시작/끝", number: "번호", bracket: "괄호",
+    showNumber: "숫자 표시", measureRest: "온마디쉼표", tieStart: "타이 시작", tieStop: "타이 끝", slurStart: "슬러 시작", slurStop: "슬러 끝",
+    slurNumber: "슬러 번호", articulations: "아티큘레이션", lyrics: "가사", verse: "절", syllabic: "음절 위치", text: "텍스트",
+    fingerings: "운지", fingering: "운지 {number}", save: "교정 리비전 저장",
+  },
+  part: { choose: "파트 선택", name: "파트 이름", abbreviation: "약어", instrumentPreset: "악기 프리셋", noPreset: "프리셋 없음", suggestInstrument: "이름으로 추천", midiProgram: "MIDI 프로그램", midiHelp: "1–128을 입력하세요. 비워 두면 프로그램을 덮어쓰지 않습니다.", save: "파트 설정 리비전 저장" },
+  measure: { choose: "마디 선택", divisions: "4분음표당 분할 수", keyFifths: "조표 오도 수", keyMode: "조성", timeBeats: "박 수", timeBeatType: "박자표 분모", clefSign: "음자리표", clefLine: "음자리표 선", clefOctaveChange: "음자리표 옥타브", newSystem: "이 마디에서 새 단 시작", newPage: "이 마디에서 새 페이지 시작", measureWidth: "마디 너비(tenths)", staffDistance: "보표 간격(tenths)", automatic: "자동", save: "마디 속성 리비전 저장" },
+  harmony: { root: "근음", alter: "변화량", kind: "종류", text: "표시 텍스트", save: "코드 기호 저장", clear: "코드 지우기" },
+  tempo: { event: "템포 이벤트", newEvent: "새 템포 이벤트", bpm: "템포(BPM)", beatUnit: "박 단위", offset: "마디 내 오프셋(divisions)", placement: "위치", save: "템포 저장", clear: "마디 템포 지우기" },
+  wedge: { type: "헤어핀", placement: "위치", number: "번호", save: "헤어핀 저장", clear: "헤어핀 지우기" },
+  dynamics: { value: "셈여림", placement: "위치", save: "셈여림 저장", clear: "셈여림 지우기" },
+  barline: { location: "위치", style: "세로줄 스타일", repeat: "도돌이", repeatTimes: "반복 횟수", save: "세로줄 저장", clear: "세로줄 지우기" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "음표", rest: "쉼표" }, durationType: { whole: "온음표", half: "2분음표", quarter: "4분음표", eighth: "8분음표", "16th": "16분음표", "32nd": "32분음표", "64th": "64분음표" },
+    syllabic: { single: "단일", begin: "시작", middle: "중간", end: "끝" }, articulation: { accent: "악센트", staccato: "스타카토", tenuto: "테누토", "breath-mark": "숨표", caesura: "카이수라" },
+    beamType: { begin: "시작", continue: "계속", end: "끝", "forward-hook": "앞 갈고리", "backward-hook": "뒤 갈고리" }, ornamentType: { "trill-mark": "트릴", turn: "턴", "delayed-turn": "지연 턴", "inverted-turn": "전회 턴", mordent: "모르덴트", "inverted-mordent": "전회 모르덴트", tremolo: "트레몰로" },
+    placement: { above: "위", below: "아래" }, fermataType: { upright: "정방향", inverted: "반전" }, tupletBoundary: { start: "시작", stop: "끝" }, tupletShowNumber: { actual: "실제 수", both: "둘 다", none: "표시 안 함" },
+    keyMode: { major: "장조", minor: "단조" }, clef: { G: "G/높은음자리표", F: "F/낮은음자리표", C: "C/가온음자리표", percussion: "타악기 음자리표", TAB: "타브" },
+    harmonyKind: { major: "장화음", minor: "단화음", dominant: "딸림화음", "major-seventh": "장7화음", "minor-seventh": "단7화음", diminished: "감화음", augmented: "증화음", "suspended-fourth": "서스포", "suspended-second": "서스투", none: "없음" },
+    tempoBeatUnit: { whole: "온음표", half: "2분음표", quarter: "4분음표", eighth: "8분음표", "16th": "16분음표", "32nd": "32분음표" }, wedgeType: { crescendo: "크레셴도", diminuendo: "디미누엔도", stop: "끝" },
+    barlineLocation: { left: "왼쪽", right: "오른쪽", middle: "가운데" }, barlineStyle: { regular: "일반", dotted: "점선", dashed: "파선", heavy: "굵은선", "light-light": "가는선-가는선", "light-heavy": "가는선-굵은선", "heavy-light": "굵은선-가는선", "heavy-heavy": "굵은선-굵은선", tick: "눈금선", short: "짧은선", none: "없음" },
+    repeatDirection: { none: "없음", forward: "앞으로 반복", backward: "뒤로 반복" }, endingType: { start: "시작", stop: "끝", discontinue: "중단" },
+  },
+  previews: { entity: "{part} · {measure}마디 · {preview}", measureRest: "온마디쉼표", rest: "쉼표", tie: "타이", fermata: "페르마타", slur: "슬러", key: "조표", time: "박자", clef: "음자리표", line: "선", octave: "옥타브", program: "{name} {number}", noProgram: "MIDI 프로그램 없음", ending: "엔딩" },
+  midiPresets: { 1: "어쿠스틱 그랜드 피아노", 7: "하프시코드", 20: "교회 오르간", 25: "나일론 기타", 33: "어쿠스틱 베이스", 41: "바이올린", 42: "비올라", 43: "첼로", 44: "콘트라베이스", 49: "현악 앙상블", 53: "합창 아", 54: "보이스 우", 57: "트럼펫", 58: "트롬본", 61: "프렌치 호른", 66: "알토 색소폰", 69: "오보에", 70: "잉글리시 호른", 71: "바순", 72: "클라리넷", 74: "플루트", 75: "리코더", 79: "휘슬", 80: "오카리나" },
+};

@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
+import { formatDateTime } from "@score/i18n";
 import { CheckSealIcon, ClockPulseIcon, DownloadIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
 import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 import { OperationsPanel } from "./OperationsPanel";
 import { useAppLocale } from "./AppLocaleProvider";
+import type { WorkspaceMessages } from "../lib/workspace-messages/types";
 
 type MePayload = {
   user: {
@@ -26,7 +28,13 @@ type MePayload = {
   };
 };
 
-export function DashboardClient() {
+export function DashboardClient({
+  copy,
+  operationsCopy,
+}: {
+  copy: WorkspaceMessages["dashboard"];
+  operationsCopy: WorkspaceMessages["operations"];
+}) {
   const { locale } = useAppLocale();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,144 +44,6 @@ export function DashboardClient() {
   const [privacyPassword, setPrivacyPassword] = useState("");
   const [deletionConfirmation, setDeletionConfirmation] = useState("");
 
-  const copy =
-    locale === "zh-CN"
-      ? {
-          signInFirst: "请先登录后再查看控制台。",
-          loadingEyebrow: "正在读取账户资料",
-          loadingTitle: "账户详情加载中...",
-          accessEyebrow: "需要登录",
-          accessTitle: "这个工作台区域需要有效登录。",
-          signIn: "登录",
-          createAccount: "创建账户",
-          lookupEyebrow: "账户查询",
-          lookupTitle: "未找到该账户。",
-          metrics: {
-            email: "账户邮箱",
-            emailBody: "当前已登录，可以继续上传文件或创建任务。",
-            entitlement: "授权状态",
-            entitlementBody: "一年期访问权限由激活码统一管理。",
-            route: "乐谱工作台",
-            routeValue: "扫描、编辑、互换与移调",
-            routeBody: "所有流程统一基于 MusicXML 与 Score JSON，并支持播放、练习和多格式导出。",
-          },
-          profile: { eyebrow: "资料", title: "账户概览", email: "邮箱", created: "创建时间" },
-          entitlement: {
-            eyebrow: "授权",
-            title: "访问有效期",
-            starts: "开始时间",
-            ends: "结束时间",
-            inactive: "尚未生效",
-            missing: "暂无授权",
-          },
-          workflow: {
-            eyebrow: "工作流",
-            title: "下一步操作建议",
-            step1Title: "1. 导入或创建乐谱",
-            step1Body: "可从 PDF、图片、MusicXML、MIDI、简谱或音频进入结构化乐谱流程。",
-            step2Title: "2. 校对、编辑与练习",
-            step2Body: "在统一修订历史中完成识别校对、图形编辑、移调、播放和分声部练习。",
-            step3Title: "3. 导出交付版本",
-            step3Body: "按当前正式修订生成 MusicXML、MIDI、PDF、图片或高质量音频。",
-          },
-          actions: {
-            eyebrow: "操作",
-            title: "管理当前工作台",
-            checkout: "在线支付开通",
-            uploads: "打开上传页",
-            jobs: "打开任务页",
-            redeem: "兑换新的激活码",
-            supportAdmin: "打开工单后台",
-            signOut: "退出登录",
-          },
-          privacy: {
-            eyebrow: "隐私与数据",
-            title: "管理你的数据副本和账户生命周期",
-            body: "数据导出不包含密码、会话令牌、重置令牌或分享密钥。账户删除有 14 天宽限期，到期后删除乐谱、课堂和文件，并对必须保留的支付审计记录去标识化。",
-            export: "下载数据副本",
-            exporting: "正在生成数据副本...",
-            password: "当前密码",
-            confirmation: "输入 DELETE 确认",
-            schedule: "申请删除账户",
-            scheduling: "正在提交删除申请...",
-            pending: "账户删除已进入宽限期",
-            pendingBody: "计划删除时间",
-            cancel: "取消账户删除",
-            cancelling: "正在取消...",
-            required: "请输入当前密码，并准确输入 DELETE。",
-            scheduled: "删除申请已提交。当前会话已退出，可在宽限期内重新登录取消。",
-            cancelled: "账户删除申请已取消。",
-            exportReady: "数据副本已下载。",
-          },
-        }
-      : {
-          signInFirst: "Please sign in to view the dashboard.",
-          loadingEyebrow: "Fetching profile",
-          loadingTitle: "Loading account details...",
-          accessEyebrow: "Access required",
-          accessTitle: "This studio section needs a valid sign-in.",
-          signIn: "Sign in",
-          createAccount: "Create account",
-          lookupEyebrow: "Account lookup",
-          lookupTitle: "Account not found.",
-          metrics: {
-            email: "Account email",
-            emailBody: "Signed in and ready for upload or job creation.",
-            entitlement: "Entitlement",
-            entitlementBody: "One-year access is managed through activation codes.",
-            route: "Score studio",
-            routeValue: "Scan, edit, convert, transpose",
-            routeBody: "MusicXML and Score JSON power notation, playback, practice, and multi-format export.",
-          },
-          profile: { eyebrow: "Profile", title: "Account overview", email: "Email", created: "Created" },
-          entitlement: {
-            eyebrow: "Entitlement",
-            title: "Access window",
-            starts: "Starts",
-            ends: "Ends",
-            inactive: "Not active yet",
-            missing: "No entitlement",
-          },
-          workflow: {
-            eyebrow: "Workflow",
-            title: "Next operational steps",
-            step1Title: "1. Import or create a score",
-            step1Body: "Start from PDF, images, MusicXML, MIDI, Jianpu, or audio and enter the structured score workflow.",
-            step2Title: "2. Correct, edit, and practice",
-            step2Body: "Use one revision history for OMR correction, visual editing, transposition, playback, and part practice.",
-            step3Title: "3. Export a delivery version",
-            step3Body: "Render the accepted revision as MusicXML, MIDI, PDF, images, or high-quality audio.",
-          },
-          actions: {
-            eyebrow: "Actions",
-            title: "Manage the studio",
-            checkout: "Pay online",
-            uploads: "Open uploads",
-            jobs: "Open jobs",
-            redeem: "Redeem another code",
-            supportAdmin: "Open support admin",
-            signOut: "Sign out",
-          },
-          privacy: {
-            eyebrow: "Privacy and data",
-            title: "Manage your data copy and account lifecycle",
-            body: "Exports exclude passwords, session tokens, reset tokens, and share secrets. Account deletion has a 14-day grace period, then removes scores, classroom data, and files while de-identifying payment audit records that must be retained.",
-            export: "Download my data",
-            exporting: "Preparing data export...",
-            password: "Current password",
-            confirmation: "Type DELETE to confirm",
-            schedule: "Request account deletion",
-            scheduling: "Scheduling deletion...",
-            pending: "Account deletion is in its grace period",
-            pendingBody: "Scheduled deletion",
-            cancel: "Cancel account deletion",
-            cancelling: "Cancelling...",
-            required: "Enter your current password and type DELETE exactly.",
-            scheduled: "Deletion is scheduled. This session is signed out; sign in again during the grace period to cancel.",
-            cancelled: "Account deletion has been cancelled.",
-            exportReady: "Your data copy has been downloaded.",
-          },
-        };
 
   useEffect(() => {
     const token = getStoredToken();
@@ -211,7 +81,7 @@ export function DashboardClient() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { error?: string } | null;
-        throw new Error(payload?.error ?? "Data export failed.");
+        throw new Error(payload?.error ?? copy.privacy.exportFailed);
       }
       const blob = await response.blob();
       const href = URL.createObjectURL(blob);
@@ -224,7 +94,7 @@ export function DashboardClient() {
       URL.revokeObjectURL(href);
       setPrivacyMessage(copy.privacy.exportReady);
     } catch (error) {
-      setPrivacyMessage(error instanceof Error ? error.message : "Data export failed.");
+      setPrivacyMessage(error instanceof Error ? error.message : copy.privacy.exportFailed);
     } finally {
       setPrivacyBusy(null);
     }
@@ -332,17 +202,17 @@ export function DashboardClient() {
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.email}</p>
           <p className="metric-value">{profile.email}</p>
-          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.emailBody : (locale === "zh-CN" ? "当前已登录，可从一份完整 PDF 或乐谱图片创建终身免费项目。" : "Signed in. You can create one lifetime free project from a complete PDF or score image.")}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.emailBody : copy.metrics.freeEmailBody}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.entitlement}</p>
-          <p className="metric-value">{translateEntitlementStatus(profile.entitlement.status, locale)}</p>
+          <p className="metric-value">{copy.statuses[profile.entitlement.status]}</p>
           <p className="helper-copy">{copy.metrics.entitlementBody}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.route}</p>
-          <p className="metric-value">{profile.entitlement.status === "active" ? copy.metrics.routeValue : (locale === "zh-CN" ? "一个完整免费项目" : "One complete free project")}</p>
-          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : (locale === "zh-CN" ? "免费项目开放现有项目级功能，每月包含 25 积分；升级后可获得更多积分。" : "The free project includes current project-level tools and 25 credits monthly. Upgrade for more credits.")}</p>
+          <p className="metric-value">{profile.entitlement.status === "active" ? copy.metrics.routeValue : copy.metrics.freeRouteValue}</p>
+          <p className="helper-copy">{profile.entitlement.status === "active" ? copy.metrics.routeBody : copy.metrics.freeRouteBody}</p>
         </div>
       </div>
 
@@ -364,7 +234,7 @@ export function DashboardClient() {
             </div>
             <div className="mini-card stack-sm">
               <p className="metric-label">{copy.profile.created}</p>
-              <p className="item-title">{formatLocal(profile.createdAt, locale)}</p>
+              <p className="item-title">{formatDateTime(profile.createdAt, locale)}</p>
             </div>
           </div>
         </div>
@@ -379,15 +249,15 @@ export function DashboardClient() {
               <h2 className="card-title">{copy.entitlement.title}</h2>
             </div>
           </div>
-          <span className={`status-chip ${entitlementTone}`}>{translateEntitlementStatus(profile.entitlement.status, locale)}</span>
+          <span className={`status-chip ${entitlementTone}`}>{copy.statuses[profile.entitlement.status]}</span>
           <div className="list-grid">
             <div className="mini-card stack-sm">
               <p className="metric-label">{copy.entitlement.starts}</p>
-              <p className="item-title">{profile.entitlement.startsAt ? formatLocal(profile.entitlement.startsAt, locale) : copy.entitlement.inactive}</p>
+              <p className="item-title">{profile.entitlement.startsAt ? formatDateTime(profile.entitlement.startsAt, locale) : copy.entitlement.inactive}</p>
             </div>
             <div className="mini-card stack-sm">
               <p className="metric-label">{copy.entitlement.ends}</p>
-              <p className="item-title">{profile.entitlement.endsAt ? formatLocal(profile.entitlement.endsAt, locale) : copy.entitlement.missing}</p>
+              <p className="item-title">{profile.entitlement.endsAt ? formatDateTime(profile.entitlement.endsAt, locale) : copy.entitlement.missing}</p>
             </div>
           </div>
         </div>
@@ -408,19 +278,19 @@ export function DashboardClient() {
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step1Title}</strong>
-                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step1Body : (locale === "zh-CN" ? "上传一份完整多页 PDF 或一张乐谱图片，生成可校正的识别候选。" : "Upload one complete multi-page PDF or score image to create a correctable recognition candidate.")}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step1Body : copy.workflow.step1FreeBody}</p>
               </div>
             </div>
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step2Title}</strong>
-                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step2Body : (locale === "zh-CN" ? "在“我的乐谱”校正候选，并继续播放、移调、转简谱、保留版本、分享和导出。" : "Correct the candidate in My Scores, then continue with playback, transposition, Jianpu, versions, sharing, and export.")}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step2Body : copy.workflow.step2FreeBody}</p>
               </div>
             </div>
             <div className="editorial-point">
               <div>
                 <strong>{copy.workflow.step3Title}</strong>
-                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step3Body : (locale === "zh-CN" ? "需要创建更多乐谱或更高月度任务容量时，再选择 Starter、Converter Pro 或兑换已有激活码。" : "Choose Starter, Converter Pro, or redeem an existing activation code when you need more scores or monthly job capacity.")}</p>
+                <p className="helper-copy">{profile.entitlement.status === "active" ? copy.workflow.step3Body : copy.workflow.step3FreeBody}</p>
               </div>
             </div>
           </div>
@@ -441,14 +311,12 @@ export function DashboardClient() {
               {checkoutAvailable ? copy.actions.checkout : copy.actions.redeem}
             </Link>
             <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-primary">
-              {profile.entitlement.status === "active" ? copy.actions.uploads : (locale === "zh-CN" ? "打开免费编辑" : "Open free editing")}
+              {profile.entitlement.status === "active" ? copy.actions.uploads : copy.actions.freeEditing}
             </Link>
             {profile.entitlement.status === "active" ? <Link href={APP_ROUTES.jobs} className="button button-secondary">{copy.actions.jobs}</Link> : null}
-            {locale === "zh-CN" ? (
-              <Link href={APP_ROUTES.activate} className="button button-tertiary">
-                {copy.actions.redeem}
-              </Link>
-            ) : null}
+            <Link href={APP_ROUTES.activate} className="button button-tertiary">
+              {copy.actions.redeem}
+            </Link>
             <Link href={APP_ROUTES.adminSupport} className="button button-tertiary">
               {copy.actions.supportAdmin}
             </Link>
@@ -489,7 +357,7 @@ export function DashboardClient() {
             <div className="stack-xs">
               <span className="status-chip tone-amber">{copy.privacy.pending}</span>
               <p className="helper-copy">
-                {copy.privacy.pendingBody}: {profile.scheduledDeletionAt ? formatLocal(profile.scheduledDeletionAt, locale) : "-"}
+                {copy.privacy.pendingBody}: {profile.scheduledDeletionAt ? formatDateTime(profile.scheduledDeletionAt, locale) : "-"}
               </p>
             </div>
             <label className="field-group">
@@ -539,36 +407,10 @@ export function DashboardClient() {
             </div>
           </div>
         )}
-        {privacyMessage ? <p className="helper-copy" role="status">{privacyMessage}</p> : null}
+        {privacyMessage ? <p className="helper-copy" role="status" aria-label={copy.privacy.statusAria}>{privacyMessage}</p> : null}
       </div>
 
-      <OperationsPanel email={profile.email} />
+      <OperationsPanel email={profile.email} copy={operationsCopy} />
     </div>
   );
-}
-
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
-}
-
-function translateEntitlementStatus(status: MePayload["user"]["entitlement"]["status"], locale: string) {
-  if (locale === "zh-CN") {
-    switch (status) {
-      case "active":
-        return "有效";
-      case "expired":
-        return "已过期";
-      default:
-        return "未激活";
-    }
-  }
-
-  switch (status) {
-    case "active":
-      return "Active";
-    case "expired":
-      return "Expired";
-    default:
-      return "Inactive";
-  }
 }

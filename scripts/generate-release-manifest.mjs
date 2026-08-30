@@ -38,7 +38,7 @@ function collectFiles(directory, base = directory) {
 }
 
 const rootPackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
-const packagePaths = ["apps/www", "apps/app", "services/api", "services/worker", "services/collaboration", "services/cloudflare-gateway", "packages/shared", "packages/ui"];
+const packagePaths = ["apps/www", "apps/app", "services/api", "services/worker", "services/collaboration", "services/cloudflare-gateway", "packages/i18n", "packages/shared", "packages/ui"];
 const packages = Object.fromEntries(packagePaths.map((directory) => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, directory, "package.json"), "utf8"));
   return [manifest.name, manifest.version];
@@ -50,6 +50,7 @@ const commitEpoch = git("show", "-s", "--format=%ct", commit);
 const sourceEpoch = Number(process.env.SOURCE_DATE_EPOCH || commitEpoch || Math.floor(Date.now() / 1000));
 const status = git("status", "--porcelain=v1", "--untracked-files=all");
 const artifacts = [
+  ...collectFiles(path.join(root, "packages/i18n/dist")),
   ...collectFiles(path.join(root, "packages/shared/dist")),
   ...collectFiles(path.join(root, "packages/ui/dist")),
   ...collectFiles(path.join(root, "services/api/dist")),

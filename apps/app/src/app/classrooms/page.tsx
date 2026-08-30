@@ -1,20 +1,35 @@
+import type { Metadata } from "next";
 import { ClassroomsManager } from "../../components/ClassroomsManager";
 import { EducationOperationsPanel } from "../../components/EducationOperationsPanel";
 import { EducationOrganizationManager } from "../../components/EducationOrganizationManager";
 import { EntitlementGate } from "../../components/EntitlementGate";
+import { getAuthMessages } from "../../lib/auth-messages";
 import { readAppLocale } from "../../lib/locale";
+import { EducationMessagesProvider } from "../../lib/education-messages/client";
+import { getEducationMessages } from "../../lib/education-messages";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await readAppLocale();
+  const copy = getEducationMessages(locale).pages.classrooms;
+  return { title: copy.metadataTitle, description: copy.metadataDescription };
+}
 
 export default async function ClassroomsPage() {
   const locale = await readAppLocale();
+  const messages = getEducationMessages(locale);
+  const copy = messages.pages.classrooms;
+  const entitlementCopy = getAuthMessages(locale).entitlement;
   return (
     <section className="container page-shell">
       <div className="page-banner">
-        <p className="eyebrow">Classroom / School Beta</p>
-        <h1 className="page-title">{locale === "zh-CN" ? "课堂与学校协作 Beta" : "Classroom / School Beta"}</h1>
-        <p className="body-copy large">{locale === "zh-CN" ? "集中管理课堂、学生名册、资源、通知和教学协作。" : "Manage classrooms, rosters, resources, notifications, and teaching collaboration."}</p>
+        <p className="eyebrow">{copy.eyebrow}</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="body-copy large">{copy.body}</p>
       </div>
-      <EntitlementGate deniedMode="panel">
-        <div className="page-stack"><EducationOrganizationManager /><ClassroomsManager /><EducationOperationsPanel /></div>
+      <EntitlementGate deniedMode="panel" copy={entitlementCopy}>
+        <EducationMessagesProvider locale={locale} messages={messages}>
+          <div className="page-stack"><EducationOrganizationManager /><ClassroomsManager /><EducationOperationsPanel /></div>
+        </EducationMessagesProvider>
       </EntitlementGate>
     </section>
   );

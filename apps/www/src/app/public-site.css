@@ -25,6 +25,30 @@
   --public-stage-gutter: clamp(16px, 2vw, 32px);
 }
 
+html[data-font-group="latin"] {
+  --font-ui: var(--font-geist), Inter, "Segoe UI", Arial, sans-serif;
+}
+
+html[data-font-group="cyrillic"] {
+  --font-ui: var(--font-geist), "Segoe UI", Arial, sans-serif;
+}
+
+html[data-font-group="hans"] {
+  --font-ui: var(--font-geist), "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+html[data-font-group="hant"] {
+  --font-ui: var(--font-geist), "PingFang TC", "Microsoft JhengHei", "Noto Sans CJK TC", sans-serif;
+}
+
+html[data-font-group="japanese"] {
+  --font-ui: var(--font-geist), "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+}
+
+html[data-font-group="korean"] {
+  --font-ui: var(--font-geist), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+
 html {
   scroll-behavior: smooth;
   background: var(--public-bg);
@@ -314,6 +338,18 @@ body {
   background: #f1f2f7;
   box-shadow: none;
   backdrop-filter: none;
+}
+
+.public-header .locale-switcher-select,
+.public-footer .locale-switcher-select {
+  min-height: 38px;
+  color: var(--public-ink);
+  font-size: 10px;
+}
+
+.public-header .locale-switcher-caret,
+.public-footer .locale-switcher-caret {
+  color: var(--public-muted);
 }
 
 .public-header .locale-switcher-button,
@@ -2147,6 +2183,25 @@ body {
 
 .home-testimonial-grid figcaption strong { font-size: 11px; }
 .home-testimonial-grid figcaption span { color: var(--public-muted); font-size: 9px; }
+
+.product-media-placeholder {
+  display: grid;
+  min-height: 320px;
+  place-content: center;
+  gap: 10px;
+  padding: 32px;
+  border: 1px dashed var(--public-line-strong);
+  border-radius: var(--public-radius);
+  background: linear-gradient(145deg, rgba(91, 75, 226, 0.07), rgba(25, 185, 181, 0.08));
+  color: var(--public-ink);
+  text-align: center;
+}
+
+.product-media-placeholder span {
+  max-width: 620px;
+  color: var(--public-copy);
+  line-height: 1.6;
+}
 
 .feature-practice-demo {
   padding: 32px;

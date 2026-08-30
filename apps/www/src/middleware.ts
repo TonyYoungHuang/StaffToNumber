@@ -1,7 +1,10 @@
+// Intentionally keep the Edge middleware convention until OpenNext Cloudflare
+// supports Next 16's Node.js-only proxy convention.
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { DEFAULT_LOCALE } from "@score/i18n";
 import { getCanonicalPublicUrl } from "./lib/canonical-host";
-import { localeFromPublicPath, localizePublicPath, ROUTE_LOCALE_HEADER, stripPublicLocalePrefix } from "./lib/locale-routing";
+import { localeFromPublicPath, localizePublicPath, ROUTE_LOCALE_HEADER } from "./lib/locale-routing";
 
 function getCloudflareVisitorProtocol(value: string | null) {
   if (!value) return null;
@@ -31,8 +34,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (/^\/en(?:\/|$)/iu.test(pathname)) {
+    const canonicalEnglishUrl = request.nextUrl.clone();
+    canonicalEnglishUrl.pathname = pathname.slice(3) || "/";
+    return NextResponse.redirect(canonicalEnglishUrl, 308);
+  }
+
   const locale = localeFromPublicPath(pathname);
-  if (locale === "zh-CN") {
+  if (locale !== DEFAULT_LOCALE) {
     const canonicalLocalePath = localizePublicPath(pathname, locale);
     if (pathname !== canonicalLocalePath) {
       const canonicalLocaleUrl = request.nextUrl.clone();
@@ -43,13 +52,6 @@ export function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(ROUTE_LOCALE_HEADER, locale);
-
-  if (locale === "zh-CN") {
-    const rewrittenUrl = request.nextUrl.clone();
-    rewrittenUrl.pathname = stripPublicLocalePrefix(pathname);
-    return NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } });
-  }
-
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 

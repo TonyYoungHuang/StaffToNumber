@@ -1,36 +1,47 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SUPPORTED_LOCALES, formatMessage, formatNumber, getLocaleConfig } from "@score/i18n";
 import { MetricCard, Panel, SectionIntro, StatusPill } from "@score/ui";
-import { filterPublicScores, listPublicScoreFacets, publicScoreLibrary } from "../../lib/public-score-library";
+import {
+  LIBRARY_OPEN_GRAPH_LOCALES,
+  formatLibraryComposerDates,
+  getLibraryCatalog,
+} from "../../lib/library-localization";
 import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
+import { filterPublicScores, getPublicScoreText, listPublicScoreFacets, publicScoreLibrary } from "../../lib/public-score-library";
+import { getProductMediaPresentation, getWorkspacePreviewProductMedia } from "../../lib/product-media";
 import { getAppScoreProjectsUrl, siteConfig } from "../../lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
-  const title = isChinese ? `免费公版五线谱曲库 | ${siteConfig.siteName}` : `Public Domain Sheet Music Library | ${siteConfig.siteName}`;
-  const description = isChinese
-    ? "按乐器、编制和时期浏览经过权利核对的免费公版五线谱，包括古典、钢琴、交响、声乐、合唱与阿卡贝拉乐谱。"
-    : "Browse a rights-aware public domain sheet music library for classical, piano, orchestral, vocal, and a-cappella scores by instrument, ensemble, and era.";
+  const { metadata } = getLibraryCatalog(locale);
+  const media = getWorkspacePreviewProductMedia(locale);
+  const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, metadata.title) : null;
+
   return {
-    title,
-    description,
-    keywords: isChinese
-      ? ["免费五线谱", "公版乐谱", "古典乐谱", "钢琴五线谱", "交响乐总谱", "合唱乐谱", "MusicXML 乐谱"]
-      : ["public domain sheet music", "public domain sheet music library", "free sheet music", "free sheet music PDF", "free classical sheet music PDF", "public domain sheet music PDF", "classical sheet music", "piano sheet music", "orchestral sheet music", "choral sheet music", "MusicXML sheet music"],
+    title: metadata.title,
+    description: metadata.description,
+    keywords: [...metadata.keywords],
     alternates: getLocalizedAlternates("/library", locale),
     openGraph: {
-      title,
-      description,
+      title: metadata.title,
+      description: metadata.description,
       url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale),
       siteName: siteConfig.siteName,
-      locale: isChinese ? "zh_CN" : "en_US",
-      alternateLocale: isChinese ? ["en_US"] : ["zh_CN"],
+      locale: LIBRARY_OPEN_GRAPH_LOCALES[locale],
+      alternateLocale: SUPPORTED_LOCALES
+        .filter((alternateLocale) => alternateLocale !== locale)
+        .map((alternateLocale) => LIBRARY_OPEN_GRAPH_LOCALES[alternateLocale]),
       type: "website",
-      images: [{ url: "/product/score-preview-output-real.png", width: 1265, height: 712, alt: isChinese ? "免费公版五线谱预览" : "Public domain sheet music score preview" }],
+      ...(media && mediaPresentation ? { images: [{ url: media.src, width: media.width, height: media.height, alt: mediaPresentation.alt }] } : {}),
     },
-    twitter: { card: "summary_large_image", title, description, images: ["/product/score-preview-output-real.png"] },
+    twitter: {
+      card: "summary_large_image",
+      title: metadata.title,
+      description: metadata.description,
+      ...(media && mediaPresentation ? { images: [{ url: media.src, alt: mediaPresentation.alt }] } : {}),
+    },
   };
 }
 
@@ -41,116 +52,126 @@ function first(value: string | string[] | undefined) {
 }
 
 export default async function PublicScoreLibraryPage({ searchParams }: { searchParams: Promise<LibrarySearchParams> }) {
-  const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
-  const params = await searchParams;
+  const [locale, params] = await Promise.all([readSiteLocale(), searchParams]);
+  const catalog = getLibraryCatalog(locale);
+  const copy = catalog.index;
   const query = first(params.q);
   const instrument = first(params.instrument);
   const ensemble = first(params.ensemble);
   const era = first(params.era);
   const scores = filterPublicScores({ query, instrument, ensemble, era });
-  const facets = listPublicScoreFacets();
+  const facets = listPublicScoreFacets(locale);
   const workspaceUrl = getAppScoreProjectsUrl(locale);
-  const copy = isChinese
-    ? {
-        eyebrow: "开放乐谱曲库",
-        title: "按乐器、编制和时期查找公版乐谱",
-        body: "第一版收录经过作品层权利核对的古典、交响、钢琴、声乐与阿卡贝拉条目。站内只直接提供明确 CC0 的文件；其他条目跳转到原始资料库核对具体版本许可。",
-        catalog: "精选目录",
-        catalogBody: "搜索标题或作曲家，并按乐器、编制与时期筛选。",
-        query: "标题或作曲家",
-        instrument: "乐器 / 声部",
-        ensemble: "编制",
-        era: "时期",
-        all: "全部",
-        search: "筛选曲库",
-        clear: "清除筛选",
-        results: "个结果",
-        details: "查看乐谱与权利信息",
-        downloadable: "站内可下载",
-        sourceLinked: "来源链接",
-        rights: "作品权利",
-        why: "为什么有些条目不能直接下载？",
-        whyBody: "作曲家的作品可能已经进入公版，但现代校订、编曲、扫描和录入文件仍可能受版权或地区规则限制。ScoreTransposer 分别记录作品、版本和文件权利，未知文件默认不镜像。",
-        start: "进入我的乐谱工作台",
-      }
-    : {
-        eyebrow: "Open score library",
-        title: "Public domain sheet music for classical ensembles and instruments",
-        body: "Search rights-reviewed records for classical, orchestral, piano, vocal, and a-cappella sheet music. Only explicitly CC0 files are hosted here; other records link to the source collection for edition-level review.",
-        catalog: "Curated catalog",
-        catalogBody: "Search by title or composer and filter by instrument, ensemble, or era.",
-        query: "Title or composer",
-        instrument: "Instrument / part",
-        ensemble: "Ensemble",
-        era: "Era",
-        all: "All",
-        search: "Filter library",
-        clear: "Clear filters",
-        results: "results",
-        details: "View score and rights details",
-        downloadable: "Downloadable here",
-        sourceLinked: "Source-linked",
-        rights: "Work rights",
-        why: "How does this library handle free classical sheet music?",
-        whyBody: "A composer's work can be public domain while a modern edition, arrangement, scan, or transcription remains protected or region-restricted. ScoreTransposer tracks work-, edition-, and file-level rights separately and does not mirror unknown files.",
-        start: "Open my score workspace",
-      };
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    name: copy.title,
-    description: copy.body,
-    url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale),
-    mainEntity: scores.map((score) => ({
-      "@type": "MusicComposition",
-      name: score.title[locale],
-      composer: { "@type": "Person", name: score.composer[locale] },
-      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
-    })),
-  };
+  const htmlLang = getLocaleConfig(locale).htmlLang;
+  const resultCount = formatMessage(copy.resultTemplate, { count: formatNumber(scores.length, locale) });
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      inLanguage: htmlLang,
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: catalog.detail.home, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
+        { "@type": "ListItem", position: 2, name: catalog.detail.libraryName, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale) },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      inLanguage: htmlLang,
+      name: copy.title,
+      description: copy.body,
+      url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/library", locale),
+      mainEntity: scores.map((score) => ({
+        "@type": "MusicComposition",
+        inLanguage: htmlLang,
+        name: getPublicScoreText(score.title, locale),
+        composer: { "@type": "Person", name: getPublicScoreText(score.composer, locale) },
+        url: getLocalizedAbsoluteUrl(siteConfig.siteUrl, `/library/${score.slug}`, locale),
+      })),
+    },
+  ];
 
   return (
     <div className="public-container page-stack">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }}
+      />
+      <nav aria-label={catalog.detail.breadcrumb} className="button-row">
+        <Link className="public-button tertiary" href={localizePublicHref("/", locale)}>{catalog.detail.home}</Link>
+        <span aria-hidden="true">›</span>
+        <span className="helper-copy" aria-current="page">{catalog.detail.libraryName}</span>
+      </nav>
       <section className="page-banner split">
         <SectionIntro eyebrow={copy.eyebrow} title={copy.title} body={copy.body} titleAs="h1" largeBody />
         <Panel variant="glass" className="stack-md">
-          <MetricCard label={copy.catalog} value={String(publicScoreLibrary.length)} body={copy.catalogBody} />
+          <MetricCard label={copy.catalog} value={formatNumber(publicScoreLibrary.length, locale)} body={copy.catalogBody} />
           <div className="button-row"><a className="public-button primary" href={workspaceUrl}>{copy.start}</a></div>
         </Panel>
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow={copy.catalog} title={`${scores.length} ${copy.results}`} body={copy.catalogBody} />
-        <form className="form-grid" action={localizePublicHref("/library", locale)} method="get">
-          <label className="field-group wide"><span>{copy.query}</span><input className="field-control" type="search" name="q" defaultValue={query} /></label>
-          <label className="field-group"><span>{copy.instrument}</span><select className="field-control" name="instrument" defaultValue={instrument}><option value="">{copy.all}</option>{facets.instruments.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="field-group"><span>{copy.ensemble}</span><select className="field-control" name="ensemble" defaultValue={ensemble}><option value="">{copy.all}</option>{facets.ensembles.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="field-group"><span>{copy.era}</span><select className="field-control" name="era" defaultValue={era}><option value="">{copy.all}</option>{facets.eras.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <div className="button-row wide"><button className="public-button primary" type="submit">{copy.search}</button><Link className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.clear}</Link></div>
+        <SectionIntro eyebrow={copy.catalog} title={resultCount} body={copy.catalogBody} />
+        <form className="form-grid" action={localizePublicHref("/library", locale)} method="get" aria-label={copy.filtersAria}>
+          <label className="field-group wide">
+            <span>{copy.query}</span>
+            <input className="field-control" type="search" name="q" defaultValue={query} placeholder={copy.queryPlaceholder} />
+          </label>
+          <label className="field-group">
+            <span>{copy.instrument}</span>
+            <select className="field-control" name="instrument" defaultValue={instrument}>
+              <option value="">{copy.all}</option>
+              {facets.instruments.map((value) => <option key={value} value={value}>{catalog.values.instruments[value]}</option>)}
+            </select>
+          </label>
+          <label className="field-group">
+            <span>{copy.ensemble}</span>
+            <select className="field-control" name="ensemble" defaultValue={ensemble}>
+              <option value="">{copy.all}</option>
+              {facets.ensembles.map((value) => <option key={value} value={value}>{catalog.values.ensembles[value]}</option>)}
+            </select>
+          </label>
+          <label className="field-group">
+            <span>{copy.era}</span>
+            <select className="field-control" name="era" defaultValue={era}>
+              <option value="">{copy.all}</option>
+              {facets.eras.map((value) => <option key={value} value={value}>{catalog.values.eras[value]}</option>)}
+            </select>
+          </label>
+          <div className="button-row wide">
+            <button className="public-button primary" type="submit">{copy.search}</button>
+            <Link className="public-button tertiary" href={localizePublicHref("/library", locale)}>{copy.clear}</Link>
+          </div>
         </form>
       </section>
 
-      <section className="list-grid">
-        {scores.map((score) => (
-          <article className="list-item" key={score.slug}>
-            <div className="list-item-content stack-sm">
-              <div className="button-row">
-                <StatusPill tone={score.assetStatus === "downloadable" ? "green" : "cyan"}>{score.assetStatus === "downloadable" ? copy.downloadable : copy.sourceLinked}</StatusPill>
-                <StatusPill tone="amber">{score.workRights}</StatusPill>
+      {scores.length > 0 ? (
+        <section className="list-grid">
+          {scores.map((score) => (
+            <article className="list-item" key={score.slug}>
+              <div className="list-item-content stack-sm">
+                <div className="button-row">
+                  <StatusPill tone={score.assetStatus === "downloadable" ? "green" : "cyan"}>{catalog.values.assetStatuses[score.assetStatus]}</StatusPill>
+                  <StatusPill tone="amber">{catalog.values.workRights[score.workRights]}</StatusPill>
+                </div>
+                <h2 className="item-title">{getPublicScoreText(score.title, locale)}</h2>
+                <p className="item-meta">{getPublicScoreText(score.composer, locale)} · {formatLibraryComposerDates(score.composerDates, locale)}</p>
+                <p className="body-copy">{getPublicScoreText(score.description, locale)}</p>
+                <p className="helper-copy">{catalog.values.eras[score.era]} · {catalog.values.ensembles[score.ensemble]} · {catalog.values.difficulties[score.difficulty]}</p>
+                <p className="helper-copy">{score.instruments.map((value) => catalog.values.instruments[value]).join(" · ")}</p>
+                <Link className="public-button secondary" href={localizePublicHref(`/library/${score.slug}`, locale)}>{copy.details}</Link>
               </div>
-              <h2 className="item-title">{score.title[locale]}</h2>
-              <p className="item-meta">{score.composer[locale]} · {score.composerDates}</p>
-              <p className="body-copy">{score.description[locale]}</p>
-              <p className="helper-copy">{score.era} · {score.ensemble} · {score.difficulty}</p>
-              <p className="helper-copy">{score.instruments.join(" · ")}</p>
-              <Link className="public-button secondary" href={localizePublicHref(`/library/${score.slug}`, locale)}>{copy.details}</Link>
-            </div>
-          </article>
-        ))}
-      </section>
+            </article>
+          ))}
+        </section>
+      ) : (
+        <div role="status">
+          <Panel className="stack-sm">
+            <h2 className="item-title">{copy.emptyTitle}</h2>
+            <p className="body-copy">{copy.emptyBody}</p>
+          </Panel>
+        </div>
+      )}
 
       <section className="surface-panel stack-md">
         <SectionIntro eyebrow={copy.rights} title={copy.why} body={copy.whyBody} />

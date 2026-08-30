@@ -1,0 +1,42 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const ruScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "Редактор исправления партитуры", status: "Состояние исправления" },
+  intro: { eyebrow: "Исправление", title: "Свойства ноты", body: "Начните с типичных ошибок OMR: выберите ноту или паузу, исправьте высоту, альтерацию, октаву и длительность, затем сохраните новую редакцию с ручными правками." },
+  status: { saving: "Сохранение…", success: "Создана новая исправленная редакция.", failed: "Не удалось сохранить исправления." },
+  empty: { events: "В этой редакции нет доступных для изменения нот или пауз.", parts: "В этой редакции нет доступных для изменения партий.", measures: "В этой редакции нет доступных для изменения тактов." },
+  actions: { remove: "Удалить", addOrnament: "Добавить мелизм", addBeam: "Добавить ребро", addTuplet: "Добавить туplet", addLyric: "Добавить строку текста", addFingering: "Добавить аппликатуру" },
+  note: {
+    choose: "Выберите ноту или паузу", eventType: "Тип события", dots: "Точки", voice: "Голос", staff: "Нотоносец", chordTone: "Нота аккорда", graceNote: "Форшлаг",
+    slashedGrace: "Перечёркнутый форшлаг", stealPrevious: "Взять у предыдущей ноты (%)", stealFollowing: "Взять у следующей ноты (%)", ornaments: "Мелизмы",
+    type: "Тип", placement: "Расположение", value: "Значение", step: "Название ноты", alter: "Альтерация", octave: "Октава", duration: "Внутренняя длительность",
+    durationType: "Тип длительности", fermata: "Фермата", fermataType: "Ориентация ферматы", fermataShape: "Форма ферматы", timeModification: "Соотношение туpletа",
+    actualNotes: "Фактическое число нот", normalNotes: "Обычное число нот", beams: "Рёбра", level: "Уровень", tupletMarkers: "Метки туpletа", boundary: "Начало/конец",
+    number: "Номер", bracket: "Скобка", showNumber: "Показывать число", measureRest: "Тактовая пауза", tieStart: "Начало лиги", tieStop: "Конец лиги",
+    slurStart: "Начало фразировочной лиги", slurStop: "Конец фразировочной лиги", slurNumber: "Номер лиги", articulations: "Артикуляция", lyrics: "Текст",
+    verse: "Куплет", syllabic: "Положение слога", text: "Текст", fingerings: "Аппликатура", fingering: "Аппликатура {number}", save: "Сохранить исправленную редакцию",
+  },
+  part: { choose: "Выберите партию", name: "Название партии", abbreviation: "Сокращение", instrumentPreset: "Набор инструмента", noPreset: "Без набора", suggestInstrument: "Предложить по названию", midiProgram: "Программа MIDI", midiHelp: "Введите значение от 1 до 128. Оставьте пустым, чтобы не переопределять программу.", save: "Сохранить редакцию настроек партии" },
+  measure: { choose: "Выберите такт", divisions: "Деления", keyFifths: "Число квинт тональности", keyMode: "Лад", timeBeats: "Долей в такте", timeBeatType: "Знаменатель размера", clefSign: "Ключ", clefLine: "Линия ключа", clefOctaveChange: "Октава ключа", newSystem: "Начать новую систему", newPage: "Начать новую страницу", measureWidth: "Ширина такта (tenths)", staffDistance: "Расстояние между нотоносцами (tenths)", automatic: "Авто", save: "Сохранить редакцию атрибутов такта" },
+  harmony: { root: "Основной тон", alter: "Альтерация", kind: "Тип", text: "Отображаемый текст", save: "Сохранить обозначение аккорда", clear: "Очистить аккорд" },
+  tempo: { event: "Событие темпа", newEvent: "Новое событие темпа", bpm: "Темп (BPM)", beatUnit: "Единица доли", offset: "Смещение в такте (divisions)", placement: "Расположение", save: "Сохранить темп", clear: "Очистить темп такта" },
+  wedge: { type: "Вилка", placement: "Расположение", number: "Номер", save: "Сохранить вилку", clear: "Очистить вилку" },
+  dynamics: { value: "Динамика", placement: "Расположение", save: "Сохранить динамику", clear: "Очистить динамику" },
+  barline: { location: "Положение", style: "Вид тактовой черты", repeat: "Реприза", repeatTimes: "Число повторов", save: "Сохранить тактовую черту", clear: "Очистить тактовую черту" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "Нота", rest: "Пауза" }, durationType: { whole: "Целая", half: "Половинная", quarter: "Четвертная", eighth: "Восьмая", "16th": "Шестнадцатая", "32nd": "Тридцать вторая", "64th": "Шестьдесят четвёртая" },
+    syllabic: { single: "Одиночный", begin: "Начало", middle: "Середина", end: "Конец" }, articulation: { accent: "Акцент", staccato: "Стаккато", tenuto: "Тенуто", "breath-mark": "Знак дыхания", caesura: "Цезура" },
+    beamType: { begin: "Начало", continue: "Продолжение", end: "Конец", "forward-hook": "Крюк вперёд", "backward-hook": "Крюк назад" }, ornamentType: { "trill-mark": "Трель", turn: "Группетто", "delayed-turn": "Отложенное группетто", "inverted-turn": "Обратное группетто", mordent: "Мордент", "inverted-mordent": "Обратный мордент", tremolo: "Тремоло" },
+    placement: { above: "Сверху", below: "Снизу" }, fermataType: { upright: "Прямая", inverted: "Перевёрнутая" }, tupletBoundary: { start: "Начало", stop: "Конец" }, tupletShowNumber: { actual: "Фактическое", both: "Оба", none: "Не показывать" },
+    keyMode: { major: "Мажор", minor: "Минор" }, clef: { G: "Соль / скрипичный", F: "Фа / басовый", C: "До / альтовый-теноровый", percussion: "Ударные", TAB: "Табулатура" },
+    harmonyKind: { major: "Мажор", minor: "Минор", dominant: "Доминантовый", "major-seventh": "Большой септаккорд", "minor-seventh": "Малый септаккорд", diminished: "Уменьшённый", augmented: "Увеличенный", "suspended-fourth": "С задержанной квартой", "suspended-second": "С задержанной секундой", none: "Нет" },
+    tempoBeatUnit: { whole: "Целая", half: "Половинная", quarter: "Четвертная", eighth: "Восьмая", "16th": "Шестнадцатая", "32nd": "Тридцать вторая" }, wedgeType: { crescendo: "Крещендо", diminuendo: "Диминуэндо", stop: "Конец" },
+    barlineLocation: { left: "Слева", right: "Справа", middle: "Посередине" }, barlineStyle: { regular: "Обычная", dotted: "Точечная", dashed: "Штриховая", heavy: "Толстая", "light-light": "Тонкая–тонкая", "light-heavy": "Тонкая–толстая", "heavy-light": "Толстая–тонкая", "heavy-heavy": "Толстая–толстая", tick: "Отметка", short: "Короткая", none: "Нет" },
+    repeatDirection: { none: "Нет", forward: "Вперёд", backward: "Назад" }, endingType: { start: "Начало", stop: "Конец", discontinue: "Прервать" },
+  },
+  previews: { entity: "{part} · такт {measure} · {preview}", measureRest: "тактовая пауза", rest: "пауза", tie: "лига", fermata: "фермата", slur: "фразировочная лига", key: "тональность", time: "размер", clef: "ключ", line: "линия", octave: "октава", program: "{name} {number}", noProgram: "Без программы MIDI", ending: "вольта" },
+  midiPresets: { 1: "Акустический рояль", 7: "Клавесин", 20: "Церковный орган", 25: "Нейлоновая гитара", 33: "Акустический бас", 41: "Скрипка", 42: "Альт", 43: "Виолончель", 44: "Контрабас", 49: "Струнный ансамбль", 53: "Хор «а»", 54: "Голос «у»", 57: "Труба", 58: "Тромбон", 61: "Валторна", 66: "Альт-саксофон", 69: "Гобой", 70: "Английский рожок", 71: "Фагот", 72: "Кларнет", 74: "Флейта", 75: "Блокфлейта", 79: "Свист", 80: "Окарина" },
+};

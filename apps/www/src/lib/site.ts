@@ -1,4 +1,5 @@
 import { APP_ROUTES, type CheckoutPlanCode, type SupportedLocale } from "@score/shared";
+import { localizePathname } from "@score/i18n";
 
 const defaultSiteUrl = "https://scoretransposer.com";
 const defaultAppUrl = "https://app.scoretransposer.com";
@@ -142,8 +143,9 @@ export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanC
   return getAppLoginUrl(checkoutPath, locale);
 }
 
-export function getAppHomeUrl() {
-  return siteConfig.appUrl;
+/** The product root redirects back to the public site, so the score library is the app home. */
+export function getAppHomeUrl(locale?: SupportedLocale) {
+  return getAppScoreProjectsUrl(locale);
 }
 
 function getAppLocaleHandoffUrl(nextPath: string, locale: SupportedLocale) {
@@ -162,24 +164,31 @@ export function getAppLoginUrl(nextPath?: string, locale?: SupportedLocale) {
   return locale ? getAppLocaleHandoffUrl(loginPath, locale) : loginUrl.toString();
 }
 
-export function getSafeAppUrl(source = "site") {
+export function getSafeAppUrl(source = "site", locale?: SupportedLocale) {
   if (siteConfig.release.productAppAvailable) {
-    return siteConfig.appUrl;
+    const scorePath = APP_ROUTES.scores;
+    return locale
+      ? getAppLocaleHandoffUrl(scorePath, locale)
+      : buildUrl(siteConfig.appUrl, scorePath);
   }
 
-  return getSupportUrl("general", `${source}-launch-access`);
+  return getSupportUrl("general", `${source}-launch-access`, locale);
 }
 
-export function getAppRegisterUrl() {
+export function getAppRegisterUrl(locale?: SupportedLocale) {
   if (!siteConfig.release.productAppAvailable) {
-    return getSupportUrl("general", "registration-launch-access");
+    return getSupportUrl("general", "registration-launch-access", locale);
   }
 
-  return buildUrl(siteConfig.appUrl, APP_ROUTES.register);
+  return locale
+    ? getAppLocaleHandoffUrl(APP_ROUTES.register, locale)
+    : buildUrl(siteConfig.appUrl, APP_ROUTES.register);
 }
 
-export function getAppActivateUrl() {
-  return buildUrl(siteConfig.appUrl, APP_ROUTES.activate);
+export function getAppActivateUrl(locale?: SupportedLocale) {
+  return locale
+    ? getAppLocaleHandoffUrl(APP_ROUTES.activate, locale)
+    : buildUrl(siteConfig.appUrl, APP_ROUTES.activate);
 }
 
 export function getAppStartConversionUrl(locale?: SupportedLocale) {
@@ -187,7 +196,7 @@ export function getAppStartConversionUrl(locale?: SupportedLocale) {
     return getAppLoginUrl(`${APP_ROUTES.scores}#free-scan`, locale);
   }
 
-  return getSupportUrl("general", "upload-launch-access");
+  return getSupportUrl("general", "upload-launch-access", locale);
 }
 
 export function getAppScoreProjectsUrl(locale?: SupportedLocale) {
@@ -195,10 +204,19 @@ export function getAppScoreProjectsUrl(locale?: SupportedLocale) {
   return locale ? getAppLocaleHandoffUrl(scorePath, locale) : buildUrl(siteConfig.appUrl, scorePath);
 }
 
-export function getSupportUrl(category: "payment" | "activation" | "job" | "privacy" | "general", source = "site") {
+export function getAppScoreUrl(scoreId: string, locale: SupportedLocale) {
+  return getAppLocaleHandoffUrl(`${APP_ROUTES.scores}/${encodeURIComponent(scoreId)}`, locale);
+}
+
+export function getSupportUrl(
+  category: "payment" | "activation" | "job" | "privacy" | "general",
+  source = "site",
+  locale?: SupportedLocale,
+) {
   const params = new URLSearchParams({
     category,
     source,
   });
-  return `/support?${params.toString()}`;
+  const supportUrl = `/support?${params.toString()}`;
+  return locale ? localizePathname(supportUrl, locale) : supportUrl;
 }

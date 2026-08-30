@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { SupportedLocale } from "@score/shared";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useEffect, useState, useRef } from "react";
 import { ArrowNorthEastIcon, CheckSealIcon } from "@score/ui";
@@ -11,6 +10,7 @@ import {
   serializePracticeDemoState,
   type PracticeDemoState,
 } from "../lib/practice-demo-state";
+import type { FeaturePracticeCopy } from "../lib/feature-localization/types";
 
 const BEAT_SECONDS = 0.8;
 const BASE_TEMPO = 96;
@@ -21,15 +21,16 @@ const LOOP_ENDS = [2, 3, 4];
 const SIGNAL_LEVELS = [38, 68, 48, 82, 56, 74, 42, 88, 52, 70, 46, 78];
 
 export function FeaturePracticeDemo({
-  locale,
+  copy,
+  audioSrc,
   workspaceHref,
   workspaceAvailable,
 }: {
-  locale: SupportedLocale;
+  copy: FeaturePracticeCopy;
+  audioSrc: string;
   workspaceHref: string;
   workspaceAvailable: boolean;
 }) {
-  const isChinese = locale === "zh-CN";
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
@@ -43,72 +44,6 @@ export function FeaturePracticeDemo({
   const [shareStatus, setShareStatus] = useState("");
   const [error, setError] = useState("");
   const currentBeat = Math.min(NOTES.length - 1, Math.max(0, Math.floor(currentTime / BEAT_SECONDS)));
-
-  const copy = isChinese
-    ? {
-        title: "在专门的练习页里控制循环、速度和节拍",
-        body: "这段公开演示使用与首页相同的自制 MusicXML/WAV。完整工作区再提供按小节循环、倒拍、声部 solo/mute 和 Tone.js 节拍器。",
-        play: "播放练习段",
-        pause: "暂停",
-        muted: "默认静音",
-        sound: "声音已开启",
-        tempo: "练习速度",
-        loop: "循环片段",
-        metronome: "可视节拍器",
-        start: "起始拍",
-        end: "结束拍",
-        beat: "当前拍",
-        ready: "真实产品范围",
-        action: workspaceAvailable ? "进入工作区练习" : "查看工作区开放状态",
-        error: "音频没有成功加载，请稍后重试或下载 WAV 检查。",
-        experiment: "实验练习工具",
-        experimentTitle: "把这一组练习设置作为链接带走",
-        experimentBody: "速度、循环区间和节拍器会写入当前 URL；声音始终默认静音，不会写入分享链接。",
-        copyLink: "复制练习链接",
-        copied: "练习链接已复制。",
-        copyFallback: "浏览器阻止了自动复制，设置已写入地址栏。",
-        reset: "恢复默认",
-        resetDone: "已恢复 96 BPM、循环第 2～3 拍和可视节拍器。",
-        shortcuts: "聚焦此练习舞台后可用快捷键",
-        shortcutRegion: "练习舞台。按空格播放或暂停，M 切换节拍器，L 切换循环，加减号调整速度，R 恢复默认。",
-        shortcutPlay: "播放/暂停",
-        shortcutTempo: "调整速度",
-        shortcutLoop: "循环",
-        shortcutMetronome: "节拍器",
-        shortcutReset: "重置",
-      }
-    : {
-        title: "Control loops, tempo, and the metronome on the dedicated practice page",
-        body: "This public demo uses the same self-authored MusicXML/WAV as the homepage. The full workspace adds measure loops, count-in, part solo/mute, and a Tone.js metronome.",
-        play: "Play practice phrase",
-        pause: "Pause",
-        muted: "Muted by default",
-        sound: "Sound enabled",
-        tempo: "Practice tempo",
-        loop: "Loop section",
-        metronome: "Visual metronome",
-        start: "Start beat",
-        end: "End beat",
-        beat: "Current beat",
-        ready: "Real product scope",
-        action: workspaceAvailable ? "Practice in the workspace" : "Check workspace availability",
-        error: "The audio did not load. Try again later or download the WAV to inspect it.",
-        experiment: "Experimental practice lab",
-        experimentTitle: "Take this exact practice setup with you",
-        experimentBody: "Tempo, loop boundaries, and the metronome live in the URL. Sound always stays muted by default and is never shared.",
-        copyLink: "Copy practice link",
-        copied: "Practice link copied.",
-        copyFallback: "The browser blocked automatic copying. The setup is ready in the address bar.",
-        reset: "Reset defaults",
-        resetDone: "Reset to 96 BPM, beats 2–3, and the visual metronome.",
-        shortcuts: "Keyboard controls are available when this practice stage is focused",
-        shortcutRegion: "Practice stage. Press Space to play or pause, M for metronome, L for loop, plus or minus for tempo, and R to reset.",
-        shortcutPlay: "Play/pause",
-        shortcutTempo: "Change tempo",
-        shortcutLoop: "Loop",
-        shortcutMetronome: "Metronome",
-        shortcutReset: "Reset",
-      };
 
   const activeStart = loopEnabled ? loopStart * BEAT_SECONDS : 0;
   const activeEnd = loopEnabled ? loopEnd * BEAT_SECONDS : NOTES.length * BEAT_SECONDS;
@@ -257,7 +192,7 @@ export function FeaturePracticeDemo({
     <section className="feature-practice-demo" aria-labelledby="feature-practice-title">
       <audio
         ref={audioRef}
-        src="/examples/score-to-audio/output?semitones=0"
+        src={audioSrc}
         muted={muted}
         preload="none"
         onLoadedMetadata={(event) => { event.currentTarget.playbackRate = tempo / BASE_TEMPO; }}
@@ -287,11 +222,11 @@ export function FeaturePracticeDemo({
 
       <div className="feature-practice-heading">
         <div>
-          <p className="eyebrow">{isChinese ? "练习控制专项展示" : "Dedicated practice controls"}</p>
+          <p className="eyebrow">{copy.eyebrow}</p>
           <h2 id="feature-practice-title">{copy.title}</h2>
           <p>{copy.body}</p>
         </div>
-        <span><CheckSealIcon width={18} height={18} /><strong>{copy.ready}</strong>Score JSON → playback events</span>
+        <span><CheckSealIcon width={18} height={18} /><strong>{copy.ready}</strong>{copy.readyDetail}</span>
       </div>
 
       <div
@@ -376,7 +311,7 @@ export function FeaturePracticeDemo({
 
         <div className="feature-practice-footer">
           <p aria-live="polite">{copy.beat}: <strong>{currentBeat + 1} · {NOTES[currentBeat]}</strong>{error ? <span role="status">{error}</span> : null}</p>
-          <Link href={workspaceHref} className="public-button tertiary">{copy.action}<ArrowNorthEastIcon width={15} height={15} /></Link>
+          <Link href={workspaceHref} className="public-button tertiary">{workspaceAvailable ? copy.actionAvailable : copy.actionUnavailable}<ArrowNorthEastIcon width={15} height={15} /></Link>
         </div>
       </div>
     </section>

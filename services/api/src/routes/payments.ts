@@ -8,6 +8,9 @@ import {
   cancelPaddleSubscription,
   cancelStripeSubscription,
   buildPaddleCheckoutRedirectUrl,
+  buildLocalizedAppReturnUrl,
+  buildLocalizedPublicCheckoutUrl,
+  localizePublicPaddleCheckoutPageUrl,
   createPaddleTransaction,
   createStripeBillingPortalSession,
   createStripeCheckoutSession,
@@ -312,8 +315,19 @@ export async function paymentRoutes(app: FastifyInstance) {
         });
       }
 
-      const successBase = `${config.publicSiteUrl}/checkout/success?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;
-      const cancelBase = `${config.publicSiteUrl}/checkout/cancel?provider=${body.provider}&order_id=${order.id}&token=${order.public_token}`;
+      const returnParams = { provider: body.provider, order_id: order.id, token: order.public_token };
+      const successBase = buildLocalizedPublicCheckoutUrl({
+        baseUrl: config.publicSiteUrl,
+        pathname: "/checkout/success",
+        locale: body.locale,
+        searchParams: returnParams,
+      });
+      const cancelBase = buildLocalizedPublicCheckoutUrl({
+        baseUrl: config.publicSiteUrl,
+        pathname: "/checkout/cancel",
+        locale: body.locale,
+        searchParams: returnParams,
+      });
 
       try {
         if (body.provider === "stripe") {
@@ -349,7 +363,11 @@ export async function paymentRoutes(app: FastifyInstance) {
           priceId: priceId!,
         });
         const checkoutUrl = buildPaddleCheckoutRedirectUrl({
-          checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
+          checkoutUrl: localizePublicPaddleCheckoutPageUrl({
+            checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
+            publicSiteUrl: config.publicSiteUrl,
+            locale: body.locale,
+          }),
           transactionId: transaction.id,
           orderId: order.id,
           publicToken: order.public_token,
@@ -438,6 +456,20 @@ export async function paymentRoutes(app: FastifyInstance) {
       return reply.code(503).send({ error: "Unable to persist the payment order safely." });
     }
 
+    const returnParams = { provider: body.provider, order_id: order.id, token: order.public_token };
+    const successBase = buildLocalizedPublicCheckoutUrl({
+      baseUrl: config.publicSiteUrl,
+      pathname: "/checkout/success",
+      locale: body.locale,
+      searchParams: returnParams,
+    });
+    const cancelBase = buildLocalizedPublicCheckoutUrl({
+      baseUrl: config.publicSiteUrl,
+      pathname: "/checkout/cancel",
+      locale: body.locale,
+      searchParams: returnParams,
+    });
+
     try {
       if (body.provider === "stripe") {
         const session = await createStripeCheckoutSession({
@@ -446,6 +478,8 @@ export async function paymentRoutes(app: FastifyInstance) {
           customerEmail: account.email,
           userId: account.id,
           priceId,
+          successUrl: `${successBase}&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: cancelBase,
         });
         attachStripeCheckoutSession(order.id, session.id, session.url ?? null);
         await persistLocalPaymentOrder(order.id);
@@ -466,11 +500,15 @@ export async function paymentRoutes(app: FastifyInstance) {
         priceId,
       });
       const checkoutUrl = buildPaddleCheckoutRedirectUrl({
-        checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
+        checkoutUrl: localizePublicPaddleCheckoutPageUrl({
+          checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
+          publicSiteUrl: config.publicSiteUrl,
+          locale: body.locale,
+        }),
         transactionId: transaction.id,
         orderId: order.id,
         publicToken: order.public_token,
-        successUrl: `${config.publicSiteUrl}/checkout/success?provider=paddle&order_id=${order.id}&token=${order.public_token}`,
+        successUrl: successBase,
       });
       attachPaddleTransaction(order.id, transaction.id, checkoutUrl);
       await persistLocalPaymentOrder(order.id);
@@ -596,7 +634,7 @@ export async function paymentRoutes(app: FastifyInstance) {
   });
 
   app.post("/payments/billing/portal", { preHandler: app.requireAuth }, async (request, reply) => {
-    const body = (request.body ?? {}) as { provider?: PaymentProvider };
+    const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string };
     if (body.provider !== "stripe") {
       return reply.code(400).send({ error: "A Stripe subscription is required for this billing portal." });
     }
@@ -606,7 +644,12 @@ export async function paymentRoutes(app: FastifyInstance) {
     `).get(request.authUserId!) as { providerCustomerId: string } | undefined;
     if (!customer) return reply.code(404).send({ error: "Stripe billing customer not found." });
     try {
-      const session = await createStripeBillingPortalSession(customer.providerCustomerId, config.publicSiteUrl);
+      const returnUrl = buildLocalizedAppReturnUrl({
+        baseUrl: config.publicAppUrl,
+        locale: body.locale,
+        nextPath: "/billing",
+      });
+      const session = await createStripeBillingPortalSession(customer.providerCustomerId, returnUrl);
       return reply.send({ url: session.url });
     } catch (error) {
       return reply.code(502).send({ error: error instanceof Error ? error.message : "Unable to open billing portal." });

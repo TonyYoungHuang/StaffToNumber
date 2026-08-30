@@ -1,43 +1,37 @@
 ﻿import Link from "next/link";
 import { Panel, SectionIntro } from "@score/ui";
 import { readSiteLocale } from "../lib/locale";
+import { localizePublicHref } from "../lib/locale-routing";
+import { getPublicNotFoundCopy } from "../lib/public-route-localization";
 import { getCheckoutUrl, getSupportUrl } from "../lib/site";
 
 export default async function NotFound() {
   const locale = await readSiteLocale();
-  const isChinese = locale === "zh-CN";
+  const copy = getPublicNotFoundCopy(locale);
   const checkoutUrl = getCheckoutUrl(locale);
 
   return (
     <section className="public-container public-page stack-xl">
       <Panel variant="surface" className="stack-lg">
         <SectionIntro
-          eyebrow={isChinese ? "页面未找到" : "Page not found"}
-          title={
-            isChinese
-              ? "这个公开页面不存在，先回到可用的站点入口"
-              : "This public page does not exist. Use one of the live entry points instead."
-          }
-          body={
-            isChinese
-              ? "如果你是从搜索结果或旧链接进入的，最稳妥的下一步是回到首页、FAQ、Support 或 Checkout。"
-              : "If you landed here from search or an older link, the safest next step is to return to the homepage, FAQ, support, or checkout."
-          }
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          body={copy.body}
           titleAs="h1"
           largeBody
         />
         <div className="button-row">
-          <Link href="/" className="public-button primary">
-            {isChinese ? "返回首页" : "Back to homepage"}
+          <Link href={localizePublicHref("/", locale)} className="public-button primary">
+            {copy.home}
           </Link>
-          <Link href="/faq" className="public-button secondary">
-            {isChinese ? "常见问题" : "FAQ"}
+          <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">
+            {copy.faq}
           </Link>
-          <Link href={getSupportUrl("general", "not-found")} className="public-button tertiary">
-            {isChinese ? "支持页" : "Support"}
+          <Link href={localizePublicHref(getSupportUrl("general", "not-found"), locale)} className="public-button tertiary">
+            {copy.support}
           </Link>
           <Link href={checkoutUrl} className="public-button tertiary">
-            {isChinese ? "开通路径" : "Access options"}
+            {copy.access}
           </Link>
         </div>
       </Panel>

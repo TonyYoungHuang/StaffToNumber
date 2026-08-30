@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
-import type { SupportedLocale } from "@score/shared";
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  getLocaleFromPathname,
+  localizePathname,
+  stripLocalePrefix,
+  type SupportedLocale,
+} from "@score/i18n";
 
 export const ROUTE_LOCALE_HEADER = "x-score-route-locale";
-export const CHINESE_ROUTE_PREFIX = "/zh-cn";
+
+function splitPublicHref(href: string) {
+  const match = href.match(/^([^?#]*)(.*)$/u);
+  return {
+    pathname: match?.[1] || "/",
+    suffix: match?.[2] || "",
+  };
+}
 
 function normalizePublicPath(pathname: string) {
   const withoutQuery = pathname.split(/[?#]/u, 1)[0] || "/";
@@ -12,32 +26,22 @@ function normalizePublicPath(pathname: string) {
 }
 
 export function stripPublicLocalePrefix(pathname: string) {
-  const normalized = normalizePublicPath(pathname);
-  if (normalized.toLowerCase() === CHINESE_ROUTE_PREFIX) return "/";
-  if (normalized.toLowerCase().startsWith(`${CHINESE_ROUTE_PREFIX}/`)) {
-    return normalized.slice(CHINESE_ROUTE_PREFIX.length) || "/";
-  }
-  return normalized;
+  return normalizePublicPath(stripLocalePrefix(pathname).pathname);
 }
 
 export function localeFromPublicPath(pathname: string): SupportedLocale {
-  const normalized = normalizePublicPath(pathname).toLowerCase();
-  return normalized === CHINESE_ROUTE_PREFIX || normalized.startsWith(`${CHINESE_ROUTE_PREFIX}/`) ? "zh-CN" : "en";
+  return getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
 }
 
 export function localizePublicPath(pathname: string, locale: SupportedLocale) {
-  const basePath = stripPublicLocalePrefix(pathname);
-  if (locale === "en") return basePath;
-  return basePath === "/" ? CHINESE_ROUTE_PREFIX : `${CHINESE_ROUTE_PREFIX}${basePath}`;
+  return localizePathname(normalizePublicPath(pathname), locale);
 }
 
 export function localizePublicHref(href: string, locale: SupportedLocale) {
   if (!href.startsWith("/") || href.startsWith("//")) return href;
 
-  const match = href.match(/^([^?#]*)(.*)$/u);
-  const pathname = match?.[1] || "/";
-  const suffix = match?.[2] || "";
-  if (pathname.startsWith("/api/") || pathname.startsWith("/_next/") || pathname.includes(".")) return href;
+  const { pathname, suffix } = splitPublicHref(href);
+  if (/^\/(?:api|_next)(?:\/|$)/u.test(pathname) || /\/[^/]+\.[^/]+$/u.test(pathname)) return href;
   return `${localizePublicPath(pathname, locale)}${suffix}`;
 }
 
@@ -46,15 +50,15 @@ export function getLocalizedAbsoluteUrl(siteUrl: string, pathname: string, local
 }
 
 export function getLocalizedAlternates(pathname: string, locale: SupportedLocale): NonNullable<Metadata["alternates"]> {
-  const englishPath = localizePublicPath(pathname, "en");
-  const chinesePath = localizePublicPath(pathname, "zh-CN");
+  const languages = Object.fromEntries(
+    SUPPORTED_LOCALES.map((supportedLocale) => [supportedLocale, localizePublicPath(pathname, supportedLocale)]),
+  ) as Record<SupportedLocale, string>;
+
   return {
-    canonical: locale === "zh-CN" ? chinesePath : englishPath,
+    canonical: languages[locale],
     languages: {
-      en: englishPath,
-      "zh-CN": chinesePath,
-      "x-default": englishPath,
+      ...languages,
+      "x-default": languages[DEFAULT_LOCALE],
     },
   };
 }
-

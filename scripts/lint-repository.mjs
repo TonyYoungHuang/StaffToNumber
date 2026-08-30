@@ -37,7 +37,7 @@ function inspect(file) {
 
 walk(root);
 
-for (const packagePath of ["package.json", "apps/www/package.json", "apps/app/package.json", "services/api/package.json", "services/worker/package.json", "services/collaboration/package.json", "services/cloudflare-gateway/package.json", "packages/shared/package.json", "packages/storage/package.json", "packages/ui/package.json"]) {
+for (const packagePath of ["package.json", "apps/www/package.json", "apps/app/package.json", "services/api/package.json", "services/worker/package.json", "services/collaboration/package.json", "services/cloudflare-gateway/package.json", "packages/i18n/package.json", "packages/shared/package.json", "packages/storage/package.json", "packages/ui/package.json"]) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, packagePath), "utf8"));
   if (!manifest.name || !manifest.version) failures.push(`${packagePath} must define name and version`);
 }

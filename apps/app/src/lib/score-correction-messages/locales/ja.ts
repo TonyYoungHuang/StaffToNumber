@@ -1,0 +1,42 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const jaScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "楽譜校正エディター", status: "校正ステータス" },
+  intro: { eyebrow: "認識結果の校正", title: "音符プロパティ", body: "よくある OMR 誤りから修正します。音符または休符を選び、音高・臨時記号・オクターブ・音価を調整して、新しい手動編集リビジョンとして保存します。" },
+  status: { saving: "保存中…", success: "校正済みリビジョンを作成しました。", failed: "校正結果を保存できませんでした。" },
+  empty: { events: "このリビジョンには編集可能な音符または休符がありません。", parts: "このリビジョンには編集可能なパートがありません。", measures: "このリビジョンには編集可能な小節がありません。" },
+  actions: { remove: "削除", addOrnament: "装飾音を追加", addBeam: "連桁を追加", addTuplet: "連符を追加", addLyric: "歌詞行を追加", addFingering: "運指を追加" },
+  note: {
+    choose: "音符または休符を選択", eventType: "イベント種別", dots: "付点", voice: "声部", staff: "譜表", chordTone: "和音構成音", graceNote: "装飾音符",
+    slashedGrace: "斜線付き装飾音符", stealPrevious: "前の音から取る（%）", stealFollowing: "次の音から取る（%）", ornaments: "装飾記号", type: "種類",
+    placement: "配置", value: "値", step: "音名", alter: "変化量", octave: "オクターブ", duration: "内部音長", durationType: "音価の種類",
+    fermata: "フェルマータ", fermataType: "フェルマータの向き", fermataShape: "フェルマータの形", timeModification: "連符比", actualNotes: "実音符数",
+    normalNotes: "基準音符数", beams: "連桁", level: "段", tupletMarkers: "連符マーカー", boundary: "開始／終了", number: "番号", bracket: "括弧",
+    showNumber: "数字表示", measureRest: "全小節休符", tieStart: "タイ開始", tieStop: "タイ終了", slurStart: "スラー開始", slurStop: "スラー終了",
+    slurNumber: "スラー番号", articulations: "アーティキュレーション", lyrics: "歌詞", verse: "番", syllabic: "音節位置", text: "テキスト",
+    fingerings: "運指", fingering: "運指 {number}", save: "校正済みリビジョンを保存",
+  },
+  part: { choose: "パートを選択", name: "パート名", abbreviation: "略称", instrumentPreset: "楽器プリセット", noPreset: "プリセットなし", suggestInstrument: "名前から候補を選ぶ", midiProgram: "MIDI プログラム", midiHelp: "1～128 を入力します。空欄の場合はプログラムを上書きしません。", save: "パート設定リビジョンを保存" },
+  measure: { choose: "小節を選択", divisions: "四分音符あたりの分割数", keyFifths: "調号の五度数", keyMode: "調性", timeBeats: "拍数", timeBeatType: "拍子の分母", clefSign: "音部記号", clefLine: "音部記号の線", clefOctaveChange: "音部記号のオクターブ", newSystem: "この小節から改段", newPage: "この小節から改ページ", measureWidth: "小節幅（tenths）", staffDistance: "譜表間隔（tenths）", automatic: "自動", save: "小節属性リビジョンを保存" },
+  harmony: { root: "根音", alter: "変化量", kind: "種類", text: "表示テキスト", save: "コード記号を保存", clear: "コードを消去" },
+  tempo: { event: "テンポイベント", newEvent: "新しいテンポイベント", bpm: "テンポ（BPM）", beatUnit: "拍単位", offset: "小節内オフセット（divisions）", placement: "配置", save: "テンポを保存", clear: "小節のテンポを消去" },
+  wedge: { type: "ヘアピン", placement: "配置", number: "番号", save: "ヘアピンを保存", clear: "ヘアピンを消去" },
+  dynamics: { value: "強弱記号", placement: "配置", save: "強弱記号を保存", clear: "強弱記号を消去" },
+  barline: { location: "位置", style: "小節線の種類", repeat: "反復", repeatTimes: "反復回数", save: "小節線を保存", clear: "小節線を消去" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "音符", rest: "休符" }, durationType: { whole: "全音符", half: "二分音符", quarter: "四分音符", eighth: "八分音符", "16th": "十六分音符", "32nd": "三十二分音符", "64th": "六十四分音符" },
+    syllabic: { single: "単独", begin: "開始", middle: "中間", end: "終了" }, articulation: { accent: "アクセント", staccato: "スタッカート", tenuto: "テヌート", "breath-mark": "ブレス記号", caesura: "カエスーラ" },
+    beamType: { begin: "開始", continue: "継続", end: "終了", "forward-hook": "前向きフック", "backward-hook": "後ろ向きフック" }, ornamentType: { "trill-mark": "トリル", turn: "ターン", "delayed-turn": "遅延ターン", "inverted-turn": "反転ターン", mordent: "モルデント", "inverted-mordent": "反転モルデント", tremolo: "トレモロ" },
+    placement: { above: "上", below: "下" }, fermataType: { upright: "正向き", inverted: "反転" }, tupletBoundary: { start: "開始", stop: "終了" }, tupletShowNumber: { actual: "実数", both: "両方", none: "非表示" },
+    keyMode: { major: "長調", minor: "短調" }, clef: { G: "G／ト音記号", F: "F／ヘ音記号", C: "C／ハ音記号", percussion: "打楽器記号", TAB: "タブ譜" },
+    harmonyKind: { major: "メジャー", minor: "マイナー", dominant: "ドミナント", "major-seventh": "メジャー・セブンス", "minor-seventh": "マイナー・セブンス", diminished: "ディミニッシュ", augmented: "オーギュメント", "suspended-fourth": "サスフォー", "suspended-second": "サスツー", none: "なし" },
+    tempoBeatUnit: { whole: "全音符", half: "二分音符", quarter: "四分音符", eighth: "八分音符", "16th": "十六分音符", "32nd": "三十二分音符" }, wedgeType: { crescendo: "クレッシェンド", diminuendo: "ディミヌエンド", stop: "終了" },
+    barlineLocation: { left: "左", right: "右", middle: "中央" }, barlineStyle: { regular: "標準", dotted: "点線", dashed: "破線", heavy: "太線", "light-light": "細線－細線", "light-heavy": "細線－太線", "heavy-light": "太線－細線", "heavy-heavy": "太線－太線", tick: "目盛線", short: "短線", none: "なし" },
+    repeatDirection: { none: "なし", forward: "前向き反復", backward: "後ろ向き反復" }, endingType: { start: "開始", stop: "終了", discontinue: "中断" },
+  },
+  previews: { entity: "{part} · 第 {measure} 小節 · {preview}", measureRest: "全小節休符", rest: "休符", tie: "タイ", fermata: "フェルマータ", slur: "スラー", key: "調号", time: "拍子", clef: "音部記号", line: "線", octave: "オクターブ", program: "{name} {number}", noProgram: "MIDI プログラムなし", ending: "括弧" },
+  midiPresets: { 1: "アコースティック・グランドピアノ", 7: "ハープシコード", 20: "チャーチオルガン", 25: "ナイロン弦ギター", 33: "アコースティックベース", 41: "バイオリン", 42: "ビオラ", 43: "チェロ", 44: "コントラバス", 49: "ストリングアンサンブル", 53: "クワイア・アー", 54: "ボイス・ウー", 57: "トランペット", 58: "トロンボーン", 61: "フレンチホルン", 66: "アルトサックス", 69: "オーボエ", 70: "イングリッシュホルン", 71: "ファゴット", 72: "クラリネット", 74: "フルート", 75: "リコーダー", 79: "口笛", 80: "オカリナ" },
+};

@@ -1,10 +1,22 @@
+import type { SupportedLocale } from "@score/i18n";
+
+export {
+  DEFAULT_LOCALE,
+  LOCALE_CONFIGS,
+  LOCALE_COOKIE_NAME,
+  LOCALE_ROUTE_PREFIXES,
+  SUPPORTED_LOCALES,
+  getLocaleConfig,
+  isSupportedLocale,
+  normalizeLocale,
+  resolveLocale,
+  type LocaleConfig,
+  type LocaleDirection,
+  type LocaleFontGroup,
+  type SupportedLocale,
+} from "@score/i18n";
+
 export const PRODUCT_NAME = "MusicXML Sheet Music Workspace";
-
-export const LOCALE_COOKIE_NAME = "score_locale";
-
-export const SUPPORTED_LOCALES = ["en", "zh-CN"] as const;
-
-export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const APP_ROUTES = {
   home: "/",
@@ -938,7 +950,13 @@ export type PricingPlanDisplay = Omit<CheckoutPlanDisplay, "code"> & {
   code: PricingPlanCode;
 };
 
-const CHECKOUT_PLAN_CATALOG: Record<SupportedLocale, readonly CheckoutPlanDisplay[]> = {
+type PricingCatalogLocale = "en" | "zh-CN";
+
+function getPricingCatalogLocale(locale: SupportedLocale): PricingCatalogLocale {
+  return locale === "zh-CN" ? "zh-CN" : "en";
+}
+
+const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanDisplay[]> = {
   "zh-CN": [
     {
       code: "starter-monthly",
@@ -1058,10 +1076,10 @@ const CHECKOUT_PLAN_CATALOG: Record<SupportedLocale, readonly CheckoutPlanDispla
 };
 
 export function getCheckoutPlanCatalog(locale: SupportedLocale): readonly CheckoutPlanDisplay[] {
-  return CHECKOUT_PLAN_CATALOG[locale];
+  return CHECKOUT_PLAN_CATALOG[getPricingCatalogLocale(locale)];
 }
 
-const FREE_PLAN_CATALOG: Record<SupportedLocale, PricingPlanDisplay> = {
+const FREE_PLAN_CATALOG: Record<PricingCatalogLocale, PricingPlanDisplay> = {
   "zh-CN": {
     code: "free",
     badge: "永久免费",
@@ -1093,7 +1111,8 @@ const FREE_PLAN_CATALOG: Record<SupportedLocale, PricingPlanDisplay> = {
 };
 
 export function getPricingPlanCatalog(locale: SupportedLocale): readonly PricingPlanDisplay[] {
-  return [FREE_PLAN_CATALOG[locale], ...CHECKOUT_PLAN_CATALOG[locale]];
+  const catalogLocale = getPricingCatalogLocale(locale);
+  return [FREE_PLAN_CATALOG[catalogLocale], ...CHECKOUT_PLAN_CATALOG[catalogLocale]];
 }
 
 export function isCheckoutPlanCode(value: unknown): value is CheckoutPlanCode {
@@ -1101,10 +1120,6 @@ export function isCheckoutPlanCode(value: unknown): value is CheckoutPlanCode {
 }
 
 export type PaymentOrderStatus = "pending" | "paid" | "cancelled" | "failed";
-
-export function isSupportedLocale(value: string | null | undefined): value is SupportedLocale {
-  return value === "en" || value === "zh-CN";
-}
 export type AudioTranscriptionCleanupProfile = "monophonic" | "polyphonic-balanced";
 
 export type AudioTranscriptionMidiNote = {

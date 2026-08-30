@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import { formatDateTime, formatNumber } from "@score/i18n";
 import type { ScoreJson } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import { useScoreSharingMessages } from "../lib/score-sharing-messages/client";
 
 export type ScoreAnnotation = {
   id: string;
@@ -30,7 +32,6 @@ export function ScoreAnnotationWorkspace({
   selectedEventId,
   onSelectedEventChange,
   onAnnotationsChange,
-  locale,
 }: {
   shareToken: string;
   permission: "comment" | "edit";
@@ -39,53 +40,18 @@ export function ScoreAnnotationWorkspace({
   selectedEventId: string | null;
   onSelectedEventChange: (eventId: string) => void;
   onAnnotationsChange: (annotations: ScoreAnnotation[]) => void;
-  locale: string;
 }) {
-  const isChinese = locale === "zh-CN";
+  const { locale, messages } = useScoreSharingMessages();
+  const copy = messages.annotations;
   const [body, setBody] = useState("");
   const [targetMode, setTargetMode] = useState<"score" | "selection">("score");
   const [posting, setPosting] = useState(false);
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
-  const selectedTarget = useMemo(() => findAnnotationTarget(scoreJson, selectedEventId, isChinese), [isChinese, scoreJson, selectedEventId]);
+  const selectedTarget = useMemo(
+    () => findAnnotationTarget(scoreJson, selectedEventId, copy.measure, locale),
+    [copy.measure, locale, scoreJson, selectedEventId],
+  );
   const canPostToSelection = Boolean(selectedTarget);
-
-  const copy = isChinese
-    ? {
-        eyebrow: "谱面批注",
-        title: permission === "comment" ? "评论者工作区" : "协作批注",
-        body: "点击下方谱面中的音符即可建立精确批注。链接身份由乐谱所有者命名，仅证明当前访问者持有该链接。",
-        score: "整份乐谱",
-        selection: "当前音符",
-        noSelection: "请先在谱面上点选一个音符",
-        placeholder: "写下需要修改、练习或讨论的内容",
-        post: "发布批注",
-        posting: "正在发布...",
-        posted: "批注已发布。",
-        failed: "批注发布失败。",
-        empty: "还没有批注。",
-        account: "账号身份",
-        share: "链接身份",
-        resolved: "已解决",
-        locate: "定位到谱面",
-      }
-    : {
-        eyebrow: "Score annotations",
-        title: permission === "comment" ? "Commenter workspace" : "Collaboration annotations",
-        body: "Select a note in the score below to attach a precise annotation. A link identity is named by the score owner and proves possession of that link, not a verified personal identity.",
-        score: "Whole score",
-        selection: "Selected note",
-        noSelection: "Select a note in the score first",
-        placeholder: "Describe a correction, practice point, or question",
-        post: "Post annotation",
-        posting: "Posting...",
-        posted: "Annotation posted.",
-        failed: "Could not post the annotation.",
-        empty: "No annotations yet.",
-        account: "Account identity",
-        share: "Link identity",
-        resolved: "Resolved",
-        locate: "Locate in score",
-      };
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,7 +69,7 @@ export function ScoreAnnotationWorkspace({
     });
     setPosting(false);
     if (!result.ok) {
-      setMessage({ kind: "error", text: result.error || copy.failed });
+      setMessage({ kind: "error", text: result.error });
       return;
     }
     setBody("");
@@ -115,11 +81,11 @@ export function ScoreAnnotationWorkspace({
     <section className="surface-panel stack-lg" data-testid="shared-annotation-workspace">
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
-        <h2 className="card-title">{copy.title}</h2>
+        <h2 className="card-title">{copy.titles[permission]}</h2>
         <p className="body-copy">{copy.body}</p>
       </div>
       <form className="stack-md" onSubmit={submit}>
-        <div className="segmented-control" role="group" aria-label={copy.eyebrow}>
+        <div className="segmented-control" role="group" aria-label={copy.targetModeAria}>
           <button type="button" className={targetMode === "score" ? "is-active" : ""} onClick={() => setTargetMode("score")}>{copy.score}</button>
           <button type="button" className={targetMode === "selection" ? "is-active" : ""} onClick={() => setTargetMode("selection")} disabled={!canPostToSelection}>{copy.selection}</button>
         </div>
@@ -129,9 +95,9 @@ export function ScoreAnnotationWorkspace({
           {posting ? copy.posting : copy.post}
         </button>
       </form>
-      {message ? <p className={`form-status ${message.kind}`}>{message.text}</p> : null}
+      {message ? <p className={`form-status ${message.kind}`} role="status" aria-label={copy.statusAria}>{message.text}</p> : null}
       {annotations.length === 0 ? <div className="empty-state">{copy.empty}</div> : (
-        <div className="list-grid">
+        <div className="list-grid" aria-label={copy.listAria}>
           {annotations.map((annotation) => {
             const eventId = typeof annotation.target?.eventId === "string" ? annotation.target.eventId : null;
             return (
@@ -140,11 +106,11 @@ export function ScoreAnnotationWorkspace({
                   <div className="button-row">
                     <strong className="item-title">{annotation.author.displayName}</strong>
                     <span className={`status-chip ${annotation.author.verification === "account" ? "tone-green" : "tone-cyan"}`}>
-                      {annotation.author.verification === "account" ? copy.account : copy.share}
+                      {copy.identities[annotation.author.verification]}
                     </span>
                     {annotation.resolvedAt ? <span className="status-chip tone-green">{copy.resolved}</span> : null}
                   </div>
-                  <p className="item-meta">{annotationTargetLabel(annotation.target, copy.score)} · {new Date(annotation.createdAt).toLocaleString(isChinese ? "zh-CN" : "en-US")}</p>
+                  <p className="item-meta">{annotationTargetLabel(annotation.target, copy.score)} · {formatDateTime(annotation.createdAt, locale)}</p>
                   <p className="body-copy">{annotation.body}</p>
                 </div>
                 {eventId ? <button type="button" className="button button-secondary button-ghost" onClick={() => onSelectedEventChange(eventId)}>{copy.locate}</button> : null}
@@ -157,7 +123,7 @@ export function ScoreAnnotationWorkspace({
   );
 }
 
-function findAnnotationTarget(scoreJson: ScoreJson, eventId: string | null, isChinese: boolean) {
+function findAnnotationTarget(scoreJson: ScoreJson, eventId: string | null, measureLabel: string, locale: Parameters<typeof formatNumber>[1]) {
   if (!eventId) return null;
   const partNames = new Map(scoreJson.parts.map((part) => [part.id, part.name]));
   const measure = scoreJson.measures.find((item) => item.events.some((event) => event.id === eventId));
@@ -165,7 +131,9 @@ function findAnnotationTarget(scoreJson: ScoreJson, eventId: string | null, isCh
   if (!measure || !event || event.type !== "note") return null;
   const accidental = event.pitch.alter > 0 ? "#".repeat(event.pitch.alter) : event.pitch.alter < 0 ? "b".repeat(Math.abs(event.pitch.alter)) : "";
   const pitch = `${event.pitch.step}${accidental}${event.pitch.octave}`;
-  const label = `${partNames.get(measure.partId) ?? measure.partId} ${isChinese ? "小节" : "Measure"} ${measure.number} ${pitch}`;
+  const numericMeasure = Number(measure.number);
+  const displayMeasure = Number.isFinite(numericMeasure) ? formatNumber(numericMeasure, locale) : measure.number;
+  const label = `${partNames.get(measure.partId) ?? measure.partId} ${measureLabel} ${displayMeasure} ${pitch}`;
   return { type: "note", label, partId: measure.partId, measureId: measure.id, measureNumber: measure.number, eventId: event.id };
 }
 

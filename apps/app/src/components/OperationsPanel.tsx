@@ -1,10 +1,12 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatDateTime } from "@score/i18n";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
-import { buildSupportTemplates, PUBLIC_SITE_URL, SUPPORT_EMAIL } from "../lib/support";
+import { buildPublicSiteHandoffHref, buildSupportTemplates, SUPPORT_EMAIL } from "../lib/support";
 import { useAppLocale } from "./AppLocaleProvider";
+import type { WorkspaceMessages } from "../lib/workspace-messages/types";
 
 type ServiceStatusItem = {
   key: string;
@@ -21,7 +23,13 @@ type SystemStatusPayload = {
   services: ServiceStatusItem[];
 };
 
-export function OperationsPanel({ email: _email }: { email?: string | null }) {
+export function OperationsPanel({
+  email: _email,
+  copy,
+}: {
+  email?: string | null;
+  copy: WorkspaceMessages["operations"];
+}) {
   const { locale } = useAppLocale();
   const token = useMemo(() => getStoredToken(), []);
   const [statusPayload, setStatusPayload] = useState<SystemStatusPayload | null>(null);
@@ -51,65 +59,37 @@ export function OperationsPanel({ email: _email }: { email?: string | null }) {
   }, [token]);
 
   const supportTemplates = useMemo(() => buildSupportTemplates(locale), [locale]);
-  const copy =
-    locale === "zh-CN"
-      ? {
-          opsEyebrow: "运行状态",
-          opsTitle: "基础健康可视化",
-          opsLoading: "正在检查 API、存储、Worker、支付和邮件配置状态...",
-          opsError: "暂时无法读取当前运行状态。",
-          opsChecked: "最近检查",
-          supportEyebrow: "支持入口",
-          supportTitle: "站内 Support 表单",
-          supportBody:
-            "这些入口会跳到站内 Support 表单，并把问题类别预先选好。提交后 API 会记录请求，并自动发送支持确认邮件。",
-          openForm: "打开表单",
-          supportPage: "公开支持页",
-        }
-      : {
-          opsEyebrow: "Operations",
-          opsTitle: "Basic health visibility",
-          opsLoading: "Checking API, storage, worker, payment, and email status...",
-          opsError: "Could not load the current runtime status.",
-          opsChecked: "Last checked",
-          supportEyebrow: "Support entry",
-          supportTitle: "On-site support form",
-          supportBody:
-            "These links open the on-site support form with the category preselected. Submissions go to the API and automatically trigger a confirmation email.",
-          openForm: "Open form",
-          supportPage: "Public support page",
-        };
 
   return (
     <div className="info-grid">
       <section className="surface-panel stack-lg">
         <div className="stack-sm">
-          <p className="eyebrow">{copy.opsEyebrow}</p>
-          <h2 className="card-title">{copy.opsTitle}</h2>
-          {loading ? <p className="body-copy">{copy.opsLoading}</p> : null}
+          <p className="eyebrow">{copy.operations.eyebrow}</p>
+          <h2 className="card-title">{copy.operations.title}</h2>
+          {loading ? <p className="body-copy" role="status">{copy.operations.loading}</p> : null}
           {error ? (
             <div className="stack-xs">
-              <p className="form-status error">{copy.opsError}</p>
-              <details className="technical-details"><summary>{locale === "zh-CN" ? "技术详情" : "Technical details"}</summary><p className="micro-copy">{error}</p></details>
+              <p className="form-status error">{copy.operations.error}</p>
+              <details className="technical-details"><summary>{copy.operations.technicalDetails}</summary><p className="micro-copy">{error}</p></details>
             </div>
           ) : null}
           {statusPayload ? (
             <p className="micro-copy">
-              {copy.opsChecked}: {formatLocal(statusPayload.checkedAt, locale)}
+              {copy.operations.checked}: {formatDateTime(statusPayload.checkedAt, locale)}
             </p>
           ) : null}
         </div>
 
-        <div className="list-grid">
+        <div className="list-grid" role="list" aria-label={copy.operations.servicesAria}>
           {(statusPayload?.services ?? []).map((service) => (
-            <div key={service.key} className="list-item">
+            <div key={service.key} className="list-item" role="listitem">
               <div className="list-item-content">
-                <p className="item-title">{serviceLabel(service, locale)}</p>
-                <p className="helper-copy">{serviceMessage(service, locale)}</p>
-                {locale === "zh-CN" && service.message ? <details className="technical-details"><summary>技术详情</summary><p className="micro-copy">{service.message}</p></details> : null}
-                {service.checkedAt ? <p className="micro-copy">{formatLocal(service.checkedAt, locale)}</p> : null}
+                <p className="item-title">{serviceLabel(service, copy.serviceLabels)}</p>
+                <p className="helper-copy">{copy.serviceMessages[service.status]}</p>
+                {service.message ? <details className="technical-details"><summary>{copy.operations.technicalDetails}</summary><p className="micro-copy">{service.message}</p></details> : null}
+                {service.checkedAt ? <p className="micro-copy">{formatDateTime(service.checkedAt, locale)}</p> : null}
               </div>
-              <span className={`status-chip ${mapTone(service.status)}`}>{translateStatus(service.status, locale)}</span>
+              <span className={`status-chip ${mapTone(service.status)}`}>{copy.statuses[service.status]}</span>
             </div>
           ))}
         </div>
@@ -117,29 +97,32 @@ export function OperationsPanel({ email: _email }: { email?: string | null }) {
 
       <section className="surface-panel stack-lg">
         <div className="stack-sm">
-          <p className="eyebrow">{copy.supportEyebrow}</p>
-          <h2 className="card-title">{copy.supportTitle}</h2>
-          <p className="body-copy">{copy.supportBody}</p>
+          <p className="eyebrow">{copy.support.eyebrow}</p>
+          <h2 className="card-title">{copy.support.title}</h2>
+          <p className="body-copy">{copy.support.body}</p>
         </div>
 
         <div className="list-grid">
-          {supportTemplates.map((template) => (
+          {supportTemplates.map((template) => {
+            const templateCopy = copy.support.templates[template.key];
+            return (
             <div key={template.key} className="list-item">
               <div className="list-item-content">
-                <p className="item-title">{template.title}</p>
-                <p className="helper-copy">{template.description}</p>
+                <p className="item-title">{templateCopy.title}</p>
+                <p className="helper-copy">{templateCopy.description}</p>
                 <p className="micro-copy">{SUPPORT_EMAIL}</p>
               </div>
               <a href={template.href} className="button button-secondary button-ghost">
-                {copy.openForm}
+                {copy.support.openForm}
               </a>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="button-row">
-          <a href={`${PUBLIC_SITE_URL}/support`} className="button button-tertiary">
-            {copy.supportPage}
+          <a href={buildPublicSiteHandoffHref("/support", locale)} className="button button-tertiary">
+            {copy.support.publicPage}
           </a>
         </div>
       </section>
@@ -160,58 +143,13 @@ function mapTone(status: ServiceStatusItem["status"]) {
   }
 }
 
-function translateStatus(status: ServiceStatusItem["status"], locale: string) {
-  if (locale === "zh-CN") {
-    switch (status) {
-      case "ok":
-        return "正常";
-      case "warning":
-        return "注意";
-      case "error":
-        return "异常";
-      default:
-        return "关闭";
-    }
-  }
-
-  switch (status) {
-    case "ok":
-      return "OK";
-    case "warning":
-      return "Warning";
-    case "error":
-      return "Error";
-    default:
-      return "Disabled";
-  }
-}
-
-function serviceLabel(service: ServiceStatusItem, locale: string) {
-  if (locale !== "zh-CN") return service.label;
+function serviceLabel(service: ServiceStatusItem, copy: WorkspaceMessages["operations"]["serviceLabels"]) {
   const key = `${service.key} ${service.label}`.toLowerCase();
-  if (key.includes("api")) return "应用接口";
-  if (key.includes("database") || key.includes("db")) return "数据库";
-  if (key.includes("storage")) return "文件存储";
-  if (key.includes("worker")) return "识谱处理服务";
-  if (key.includes("payment") || key.includes("stripe") || key.includes("paddle")) return "支付配置";
-  if (key.includes("mail") || key.includes("email")) return "邮件通知";
-  return "系统服务";
-}
-
-function serviceMessage(service: ServiceStatusItem, locale: string) {
-  if (locale !== "zh-CN") return service.message;
-  switch (service.status) {
-    case "ok":
-      return "运行正常。";
-    case "warning":
-      return "当前可用，但有配置或运行状态需要检查。";
-    case "error":
-      return "当前不可用，请稍后重试或联系支持。";
-    default:
-      return "当前未启用。";
-  }
-}
-
-function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
+  if (key.includes("api")) return copy.api;
+  if (key.includes("database") || key.includes("db")) return copy.database;
+  if (key.includes("storage")) return copy.storage;
+  if (key.includes("worker")) return copy.worker;
+  if (key.includes("payment") || key.includes("stripe") || key.includes("paddle")) return copy.payment;
+  if (key.includes("mail") || key.includes("email")) return copy.email;
+  return copy.unknown;
 }

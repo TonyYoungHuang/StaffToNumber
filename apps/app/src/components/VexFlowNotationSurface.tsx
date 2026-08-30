@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import type { ScoreClef, ScoreEvent, ScoreJson, ScoreMeasure } from "@score/shared";
 import { Accidental, Annotation, Articulation, Beam, Dot, Formatter, FretHandFinger, GhostNote, GraceNote, GraceNoteGroup, Modifier, Ornament, Renderer, Stave, StaveConnector, StaveNote, Stem, Tremolo, Tuplet, Voice } from "vexflow/bravura";
 import { buildVexFlowScoreLayout, VEXFLOW_LAYOUT } from "../lib/vexflow-layout";
@@ -14,6 +15,8 @@ import { buildVexFlowMeasureAnnotations } from "../lib/vexflow-measure-annotatio
 import { findVexFlowKeySignature } from "../lib/vexflow-key-signature";
 import { buildVexFlowPageInvalidations } from "../lib/vexflow-page-invalidation";
 import type { VexFlowPageInvalidation, VexFlowSystemInvalidation } from "../lib/vexflow-page-invalidation";
+import { useScoreEditorMessages } from "../lib/score-editor-messages/client";
+import type { ScoreEditorMessages } from "../lib/score-editor-messages/types";
 
 type HitBox = {
   eventId: string;
@@ -63,6 +66,8 @@ export function VexFlowNotationSurface({
   onSelectionChange: (eventIds: string[]) => void;
   onEventDrag: (drag: VexFlowEventDrag) => void;
   }) {
+  const { locale, messages } = useScoreEditorMessages();
+  const copy = messages.vexFlow;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const hitBoxesRef = useRef<HitBox[]>([]);
   const measureBoxesRef = useRef<MeasureBox[]>([]);
@@ -244,6 +249,7 @@ export function VexFlowNotationSurface({
       className="vexflow-score-surface"
       ref={hostRef}
       tabIndex={0}
+      aria-label={copy.surfaceAria}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -256,11 +262,11 @@ export function VexFlowNotationSurface({
         <button
           type="button"
           className="vexflow-rhythm-warning"
-          title="定位节奏时值不一致的和弦音头"
+          title={copy.rhythmWarningTitle}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => onSelectionChange(Array.from(new Set(chordDurationConflicts.flatMap((conflict) => conflict.eventIds))))}
         >
-          异常和弦 {chordDurationConflicts.length}
+          {formatMessage(copy.rhythmWarning, { count: formatNumber(chordDurationConflicts.length, locale) })}
         </button>
       ) : null}
       <div
@@ -274,13 +280,15 @@ export function VexFlowNotationSurface({
             scoreJson={scoreJson}
             selectedEventIds={selectedEventIds}
             invalidation={invalidation}
+            locale={locale}
+            copy={copy}
             virtualizationEnabled={pageInvalidations.length > VIRTUALIZATION_PAGE_THRESHOLD}
             onRendered={publishSystemResult}
             onRemoved={removeSystemResult}
           />
         ))}
       </div>
-      <div className="vexflow-event-hit-layer" aria-label="谱面音符命中区域">
+      <div className="vexflow-event-hit-layer" aria-label={copy.hitLayerAria}>
         {semanticHitBoxes.map((box) => (
           <button
             key={box.eventId}
@@ -292,7 +300,10 @@ export function VexFlowNotationSurface({
             data-part-id={box.partId}
             data-staff={box.staff}
             data-voice={box.voice}
-            aria-label={`小节 ${box.measureId} 音符 ${box.eventIndex + 1}`}
+            aria-label={formatMessage(copy.eventAria, {
+              measure: box.measureId,
+              number: formatNumber(box.eventIndex + 1, locale),
+            })}
             aria-pressed={selectedEventIds.includes(box.eventId)}
             style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
             onClick={(event) => {
@@ -326,6 +337,8 @@ const VexFlowPageSurface = memo(
     scoreJson,
     selectedEventIds,
     invalidation,
+    locale,
+    copy,
     virtualizationEnabled,
     onRendered,
     onRemoved,
@@ -333,6 +346,8 @@ const VexFlowPageSurface = memo(
     scoreJson: ScoreJson;
     selectedEventIds: string[];
     invalidation: VexFlowPageInvalidation;
+    locale: SupportedLocale;
+    copy: ScoreEditorMessages["vexFlow"];
     virtualizationEnabled: boolean;
     onRendered: (systemIndex: number, result: PageRenderResult) => void;
     onRemoved: (systemIndex: number) => void;
@@ -383,17 +398,21 @@ const VexFlowPageSurface = memo(
             scoreJson={scoreJson}
             selectedEventIds={selectedEventIds}
             invalidation={systemInvalidation}
+            locale={locale}
+            copy={copy}
             onRendered={onRendered}
             onRemoved={onRemoved}
           />
         )) : null}
-        <span className="vexflow-page-number" aria-hidden="true">{invalidation.page.index + 1}</span>
+        <span className="vexflow-page-number" aria-hidden="true">{formatNumber(invalidation.page.index + 1, locale)}</span>
       </div>
     );
   },
   (previous, next) =>
     previous.invalidation.contentKey === next.invalidation.contentKey &&
     previous.invalidation.selectionKey === next.invalidation.selectionKey &&
+    previous.locale === next.locale &&
+    previous.copy === next.copy &&
     previous.virtualizationEnabled === next.virtualizationEnabled,
 );
 
@@ -403,6 +422,8 @@ const VexFlowSystemCanvas = memo(
     scoreJson,
     selectedEventIds,
     invalidation,
+    locale,
+    copy,
     onRendered,
     onRemoved,
   }: {
@@ -410,6 +431,8 @@ const VexFlowSystemCanvas = memo(
     scoreJson: ScoreJson;
     selectedEventIds: string[];
     invalidation: VexFlowSystemInvalidation;
+    locale: SupportedLocale;
+    copy: ScoreEditorMessages["vexFlow"];
     onRendered: (systemIndex: number, result: PageRenderResult) => void;
     onRemoved: (systemIndex: number) => void;
   }) {
@@ -418,10 +441,10 @@ const VexFlowSystemCanvas = memo(
     useEffect(() => {
       const host = systemRef.current;
       if (!host) return;
-      const result = renderVexFlowSystem(host, page, invalidation.system, scoreJson, selectedEventIds);
+      const result = renderVexFlowSystem(host, page, invalidation.system, scoreJson, selectedEventIds, locale, copy);
       host.dataset.renderCount = String((Number.parseInt(host.dataset.renderCount ?? "0", 10) || 0) + 1);
       onRendered(invalidation.system.index, result);
-    }, [invalidation.contentKey, invalidation.selectionKey, invalidation.system, onRendered, page, scoreJson, selectedEventIds]);
+    }, [copy, invalidation.contentKey, invalidation.selectionKey, invalidation.system, locale, onRendered, page, scoreJson, selectedEventIds]);
 
     useEffect(
       () => () => onRemoved(invalidation.system.index),
@@ -445,7 +468,9 @@ const VexFlowSystemCanvas = memo(
   },
   (previous, next) =>
     previous.invalidation.contentKey === next.invalidation.contentKey &&
-    previous.invalidation.selectionKey === next.invalidation.selectionKey,
+    previous.invalidation.selectionKey === next.invalidation.selectionKey &&
+    previous.locale === next.locale &&
+    previous.copy === next.copy,
 );
 
 function renderVexFlowSystem(
@@ -454,6 +479,8 @@ function renderVexFlowSystem(
   system: VexFlowSystemLayout,
   scoreJson: ScoreJson,
   selectedEventIds: string[],
+  locale: SupportedLocale,
+  copy: ScoreEditorMessages["vexFlow"],
 ): PageRenderResult {
   canvas.replaceChildren();
   const renderer = new Renderer(canvas, Renderer.Backends.SVG);
@@ -557,7 +584,11 @@ function renderVexFlowSystem(
 
   if (systemSvg) {
     systemSvg.setAttribute("role", "img");
-    systemSvg.setAttribute("aria-label", `${scoreJson.title}, page ${page.index + 1}, system ${system.index + 1}`);
+    systemSvg.setAttribute("aria-label", formatMessage(copy.systemAria, {
+      title: scoreJson.title,
+      page: formatNumber(page.index + 1, locale),
+      system: formatNumber(system.index + 1, locale),
+    }));
   }
   return { hitBoxes, measureBoxes };
 }

@@ -1,0 +1,43 @@
+import { enScoreCorrectionMessages } from "./en";
+import type { ScoreCorrectionMessages } from "../types";
+
+export const esScoreCorrectionMessages: ScoreCorrectionMessages = {
+  ...enScoreCorrectionMessages,
+  aria: { panel: "Editor de corrección de partituras", status: "Estado de la corrección" },
+  intro: { eyebrow: "Corrección", title: "Propiedades de la nota", body: "Empieza por los errores OMR más habituales: elige una nota o silencio, ajusta altura, alteración, octava y duración, y guarda una nueva revisión de edición manual." },
+  status: { saving: "Guardando…", success: "Se creó una nueva revisión corregida.", failed: "No se pudo guardar la corrección." },
+  empty: { events: "Esta revisión no tiene notas ni silencios editables.", parts: "Esta revisión no tiene partes editables.", measures: "Esta revisión no tiene compases editables." },
+  actions: { remove: "Quitar", addOrnament: "Añadir ornamento", addBeam: "Añadir barra", addTuplet: "Añadir grupo irregular", addLyric: "Añadir línea de letra", addFingering: "Añadir digitación" },
+  note: {
+    choose: "Elegir nota o silencio", eventType: "Tipo de evento", dots: "Puntillos", voice: "Voz", staff: "Pentagrama", chordTone: "Nota de acorde", graceNote: "Nota de adorno",
+    slashedGrace: "Nota de adorno tachada", stealPrevious: "Tomar de la nota anterior (%)", stealFollowing: "Tomar de la nota siguiente (%)", ornaments: "Ornamentos",
+    type: "Tipo", placement: "Posición", value: "Valor", step: "Nombre de nota", alter: "Alteración", octave: "Octava", duration: "Duración interna",
+    durationType: "Tipo de duración", fermata: "Calderón", fermataType: "Orientación del calderón", fermataShape: "Forma del calderón",
+    timeModification: "Proporción irregular", actualNotes: "Notas reales", normalNotes: "Notas normales", beams: "Barras", level: "Nivel",
+    tupletMarkers: "Marcas de grupo irregular", boundary: "Inicio/fin", number: "Número", bracket: "Corchete", showNumber: "Mostrar número",
+    measureRest: "Silencio de compás", tieStart: "Inicio de ligadura de prolongación", tieStop: "Fin de ligadura de prolongación", slurStart: "Inicio de ligadura",
+    slurStop: "Fin de ligadura", slurNumber: "Número de ligadura", articulations: "Articulaciones", lyrics: "Letra", verse: "Estrofa",
+    syllabic: "Posición silábica", text: "Texto", fingerings: "Digitaciones", fingering: "Digitación {number}", save: "Guardar revisión corregida",
+  },
+  part: { choose: "Elegir parte", name: "Nombre de la parte", abbreviation: "Abreviatura", instrumentPreset: "Preajuste de instrumento", noPreset: "Sin preajuste", suggestInstrument: "Sugerir por el nombre", midiProgram: "Programa MIDI", midiHelp: "Usa un valor de 1 a 128. Déjalo vacío para no reemplazar el programa.", save: "Guardar revisión de la parte" },
+  measure: { choose: "Elegir compás", divisions: "Divisiones", keyFifths: "Quintas de la armadura", keyMode: "Modo", timeBeats: "Pulsos por compás", timeBeatType: "Unidad de pulso", clefSign: "Clave", clefLine: "Línea de clave", clefOctaveChange: "Octava de la clave", newSystem: "Empezar un sistema nuevo", newPage: "Empezar una página nueva", measureWidth: "Anchura del compás (tenths)", staffDistance: "Distancia entre pentagramas (tenths)", automatic: "Auto", save: "Guardar revisión de atributos" },
+  harmony: { root: "Fundamental", alter: "Alteración", kind: "Tipo", text: "Texto mostrado", save: "Guardar cifrado", clear: "Borrar acorde" },
+  tempo: { event: "Evento de tempo", newEvent: "Nuevo evento de tempo", bpm: "Tempo (BPM)", beatUnit: "Unidad de pulso", offset: "Desplazamiento en el compás (divisions)", placement: "Posición", save: "Guardar tempo", clear: "Borrar tempos del compás" },
+  wedge: { type: "Regulador", placement: "Posición", number: "Número", save: "Guardar regulador", clear: "Borrar regulador" },
+  dynamics: { value: "Dinámica", placement: "Posición", save: "Guardar dinámicas", clear: "Borrar dinámicas" },
+  barline: { location: "Ubicación", style: "Estilo de barra", repeat: "Repetición", repeatTimes: "Número de repeticiones", save: "Guardar barra", clear: "Borrar barra" },
+  enums: {
+    ...enScoreCorrectionMessages.enums,
+    eventType: { note: "Nota", rest: "Silencio" }, durationType: { whole: "Redonda", half: "Blanca", quarter: "Negra", eighth: "Corchea", "16th": "Semicorchea", "32nd": "Fusa", "64th": "Semifusa" },
+    syllabic: { single: "Única", begin: "Inicio", middle: "Medio", end: "Fin" }, articulation: { accent: "Acento", staccato: "Staccato", tenuto: "Tenuto", "breath-mark": "Respiración", caesura: "Cesura" },
+    beamType: { begin: "Inicio", continue: "Continuar", end: "Fin", "forward-hook": "Gancho hacia delante", "backward-hook": "Gancho hacia atrás" }, ornamentType: { "trill-mark": "Trino", turn: "Grupeto", "delayed-turn": "Grupeto retardado", "inverted-turn": "Grupeto invertido", mordent: "Mordente", "inverted-mordent": "Mordente invertido", tremolo: "Trémolo" },
+    placement: { above: "Arriba", below: "Abajo" }, fermataType: { upright: "Normal", inverted: "Invertido" }, tupletBoundary: { start: "Inicio", stop: "Fin" }, tupletShowNumber: { actual: "Real", both: "Ambos", none: "Ninguno" },
+    keyMode: { major: "Mayor", minor: "Menor" }, clef: { G: "Sol / clave de sol", F: "Fa / clave de fa", C: "Do / alto-tenor", percussion: "Percusión", TAB: "Tablatura" },
+    harmonyKind: { major: "Mayor", minor: "Menor", dominant: "Dominante", "major-seventh": "Séptima mayor", "minor-seventh": "Séptima menor", diminished: "Disminuido", augmented: "Aumentado", "suspended-fourth": "Cuarta suspendida", "suspended-second": "Segunda suspendida", none: "Ninguno" },
+    tempoBeatUnit: { whole: "Redonda", half: "Blanca", quarter: "Negra", eighth: "Corchea", "16th": "Semicorchea", "32nd": "Fusa" }, wedgeType: { crescendo: "Crescendo", diminuendo: "Diminuendo", stop: "Fin" },
+    barlineLocation: { left: "Izquierda", right: "Derecha", middle: "Centro" }, barlineStyle: { regular: "Normal", dotted: "Punteada", dashed: "Discontinua", heavy: "Gruesa", "light-light": "Fina–fina", "light-heavy": "Fina–gruesa", "heavy-light": "Gruesa–fina", "heavy-heavy": "Gruesa–gruesa", tick: "Marca", short: "Corta", none: "Ninguna" },
+    repeatDirection: { none: "Ninguna", forward: "Hacia delante", backward: "Hacia atrás" }, endingType: { start: "Inicio", stop: "Fin", discontinue: "Interrumpir" },
+  },
+  previews: { entity: "{part} · compás {measure} · {preview}", measureRest: "silencio de compás", rest: "silencio", tie: "ligadura de prolongación", fermata: "calderón", slur: "ligadura", key: "armadura", time: "compás", clef: "clave", line: "línea", octave: "octava", program: "{name} {number}", noProgram: "Sin programa MIDI", ending: "casilla" },
+  midiPresets: { 1: "Piano de cola acústico", 7: "Clavecín", 20: "Órgano de iglesia", 25: "Guitarra de nailon", 33: "Bajo acústico", 41: "Violín", 42: "Viola", 43: "Violonchelo", 44: "Contrabajo", 49: "Conjunto de cuerdas", 53: "Coro ah", 54: "Voz uh", 57: "Trompeta", 58: "Trombón", 61: "Trompa", 66: "Saxofón alto", 69: "Oboe", 70: "Corno inglés", 71: "Fagot", 72: "Clarinete", 74: "Flauta", 75: "Flauta dulce", 79: "Silbido", 80: "Ocarina" },
+};

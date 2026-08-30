@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatMessage } from "@score/i18n";
 import type { PlaybackDocument, PlaybackMeasureMarker, PlaybackNoteEvent } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import {
+  formatPlaybackNumber,
+  formatPlaybackPercent,
+  rawPlaybackErrorOrFallback,
+} from "../lib/playback-practice-messages/formatters";
+import { usePlaybackPracticeMessages } from "../lib/playback-practice-messages/client";
+import type { PlaybackPanelMessages } from "../lib/playback-practice-messages/types";
 import { buildPlaybackTempoSegments, playbackSecondsAtBeat, playbackTempoAtBeat } from "../lib/playback-timeline";
-import { useAppLocale } from "./AppLocaleProvider";
 
 type PlaybackPayload = {
   playback: PlaybackDocument;
@@ -80,8 +87,11 @@ function partVolume(partVolumes: Record<string, number>, partId: string) {
   return clamp(partVolumes[partId] ?? 1, 0, 1.5);
 }
 
-function markerLabel(marker: PlaybackMeasureMarker) {
-  return marker.occurrence > 1 ? `M${marker.measureNumber} repeat ${marker.occurrence}` : `M${marker.measureNumber}`;
+function markerLabel(marker: PlaybackMeasureMarker, copy: PlaybackPanelMessages, locale: Parameters<typeof formatPlaybackNumber>[1]) {
+  return formatMessage(marker.occurrence > 1 ? copy.repeatedMarkerTemplate : copy.markerTemplate, {
+    measure: marker.measureNumber,
+    occurrence: formatPlaybackNumber(marker.occurrence, locale),
+  });
 }
 
 function isClose(left: number, right: number) {
@@ -113,7 +123,8 @@ export function ScorePlaybackPanel({
   selectedEventId?: string | null;
   onPlaybackEventChange?: (eventId: string | null) => void;
 }) {
-  const { locale } = useAppLocale();
+  const { locale, messages } = usePlaybackPracticeMessages();
+  const copy = messages.playback;
   const [playback, setPlayback] = useState<PlaybackDocument | null>(null);
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -128,74 +139,6 @@ export function ScorePlaybackPanel({
   const metronomeRef = useRef<import("tone").MembraneSynth | null>(null);
   const scheduledIdsRef = useRef<number[]>([]);
   const speedLadderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const copy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            eyebrow: "播放练习",
-            title: "Tone.js 分声部练习播放器",
-            body: "从当前 Score JSON 生成可练习的播放事件，支持变速、片段循环、节拍器、倒拍以及声部 solo/mute。",
-            load: "生成播放事件",
-            play: "播放",
-            stop: "停止",
-            tempo: "速度 BPM",
-            loop: "循环片段",
-            loopStart: "起始拍",
-            loopEnd: "结束拍",
-            metronome: "节拍器",
-            countIn: "一小节倒拍",
-            loading: "正在生成播放事件...",
-            ready: "播放事件已生成。",
-            failed: "播放生成失败。",
-            empty: "先生成播放事件，再开始试听。",
-            noEvents: "当前筛选没有可播放音符。",
-            events: "事件",
-            activeEvents: "当前播放",
-            beats: "总拍数",
-            parts: "声部",
-            solo: "Solo",
-            mute: "Mute",
-            allParts: "全部声部",
-            revision: "版本",
-            speedLadder: "速度阶梯",
-            targetTempo: "目标速度",
-            tempoStep: "每轮加速",
-            ladderComplete: "速度阶梯训练已完成。",
-          }
-        : {
-            eyebrow: "Playback practice",
-            title: "Tone.js part practice player",
-            body: "Generates practice-ready playback events from the current Score JSON with tempo, loop ranges, metronome, count-in, and part solo/mute.",
-            load: "Generate playback events",
-            play: "Play",
-            stop: "Stop",
-            tempo: "Tempo BPM",
-            loop: "Loop section",
-            loopStart: "Start beat",
-            loopEnd: "End beat",
-            metronome: "Metronome",
-            countIn: "One-bar count-in",
-            loading: "Generating playback events...",
-            ready: "Playback events generated.",
-            failed: "Playback generation failed.",
-            empty: "Generate playback events before listening.",
-            noEvents: "The current part filter has no playable notes.",
-            events: "Events",
-            activeEvents: "Active events",
-            beats: "Total beats",
-            parts: "Parts",
-            solo: "Solo",
-            mute: "Mute",
-            allParts: "All parts",
-            revision: "Revision",
-            speedLadder: "Speed ladder",
-            targetTempo: "Target tempo",
-            tempoStep: "Increase per pass",
-            ladderComplete: "Speed ladder completed.",
-          },
-    [locale],
-  );
 
   const activeEvents = useMemo(
     () => (playback ? filterEvents(playback.events, practiceSettings.soloPartIds, practiceSettings.mutedPartIds) : []),
@@ -226,8 +169,6 @@ export function ScorePlaybackPanel({
 
     return measureLoopMarkers.find((marker, index) => isClose(markerEndBeat(measureLoopMarkers, index, playback.totalBeats), practiceSettings.loopEndBeat))?.id ?? "";
   }, [measureLoopMarkers, playback, practiceSettings.loopEndBeat]);
-  const diagnosticsLabel = locale === "zh-CN" ? "播放诊断" : "Playback diagnostics";
-
   useEffect(() => {
     if (!playback || !selectedEventId || playing) return;
     const selectedEvent = playback.events.find((event) => event.sourceEventId === selectedEventId);
@@ -257,7 +198,7 @@ export function ScorePlaybackPanel({
 
     if (!result.ok) {
       setPlayback(null);
-      setStatus(result.error || copy.failed);
+      setStatus(rawPlaybackErrorOrFallback(result.error, copy.failed));
       setStatusKind("error");
       return null;
     }
@@ -478,7 +419,7 @@ export function ScorePlaybackPanel({
   }
 
   return (
-    <section className="surface-panel stack-lg">
+    <section className="surface-panel stack-lg" aria-label={copy.title}>
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 className="card-title">{copy.title}</h2>
@@ -510,7 +451,7 @@ export function ScorePlaybackPanel({
           </label>
 
           <label className="field-group">
-            <span className="field-label">{locale === "zh-CN" ? "播放位置" : "Playhead"}</span>
+            <span className="field-label">{copy.playhead}</span>
             <input
               className="practice-range"
               type="range"
@@ -519,9 +460,12 @@ export function ScorePlaybackPanel({
               step={0.25}
               value={clamp(seekBeat, 0, Math.max(playback?.totalBeats ?? 1, 1))}
               disabled={!playback || playing}
+              aria-label={copy.playhead}
               onChange={(event) => setSeekBeat(Number(event.target.value))}
             />
-            <span className="item-meta">{seekBeat.toFixed(2)} / {(playback?.totalBeats ?? 0).toFixed(2)}</span>
+            <span className="item-meta">
+              {formatPlaybackNumber(seekBeat, locale, { maximumFractionDigits: 2 })} / {formatPlaybackNumber(playback?.totalBeats ?? 0, locale, { maximumFractionDigits: 2 })}
+            </span>
           </label>
 
           <div className="button-row">
@@ -536,8 +480,8 @@ export function ScorePlaybackPanel({
             </button>
           </div>
           {exportActions?.midi || exportActions?.wav || exportActions?.mp3 ? (
-            <div className="button-row">
-              <span className="item-meta">Practice exports</span>
+            <div className="button-row" role="group" aria-label={copy.practiceExports}>
+              <span className="item-meta">{copy.practiceExports}</span>
               {exportActions.midi ? (
                 <button
                   type="button"
@@ -604,33 +548,33 @@ export function ScorePlaybackPanel({
           {measureLoopMarkers.length > 0 ? (
             <>
               <label className="field-group">
-                <span className="field-label">{locale === "zh-CN" ? "起始小节" : "Start measure"}</span>
+                <span className="field-label">{copy.startMeasure}</span>
                 <select
                   className="field-select"
                   value={selectedStartMeasureId}
                   disabled={!practiceSettings.loopEnabled}
                   onChange={(event) => setLoopStartMeasure(event.target.value)}
                 >
-                  <option value="">{locale === "zh-CN" ? "按拍数" : "By beat"}</option>
+                  <option value="">{copy.byBeat}</option>
                   {measureLoopMarkers.map((marker) => (
                     <option key={marker.id} value={marker.id}>
-                      {markerLabel(marker)}
+                      {markerLabel(marker, copy, locale)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="field-group">
-                <span className="field-label">{locale === "zh-CN" ? "结束小节" : "End measure"}</span>
+                <span className="field-label">{copy.endMeasure}</span>
                 <select
                   className="field-select"
                   value={selectedEndMeasureId}
                   disabled={!practiceSettings.loopEnabled}
                   onChange={(event) => setLoopEndMeasure(event.target.value)}
                 >
-                  <option value="">{locale === "zh-CN" ? "按拍数" : "By beat"}</option>
+                  <option value="">{copy.byBeat}</option>
                   {measureLoopMarkers.map((marker) => (
                     <option key={marker.id} value={marker.id}>
-                      {markerLabel(marker)}
+                      {markerLabel(marker, copy, locale)}
                     </option>
                   ))}
                 </select>
@@ -672,9 +616,9 @@ export function ScorePlaybackPanel({
             <p className="metric-label">{copy.allParts}</p>
             <p className="item-meta">
               {practiceSettings.soloPartIds.length > 0
-                ? `${copy.solo}: ${practiceSettings.soloPartIds.length}`
+                ? formatMessage(copy.selectedSoloTemplate, { count: formatPlaybackNumber(practiceSettings.soloPartIds.length, locale) })
                 : practiceSettings.mutedPartIds.length > 0
-                  ? `${copy.mute}: ${practiceSettings.mutedPartIds.length}`
+                  ? formatMessage(copy.selectedMuteTemplate, { count: formatPlaybackNumber(practiceSettings.mutedPartIds.length, locale) })
                   : copy.allParts}
             </p>
           </div>
@@ -689,7 +633,7 @@ export function ScorePlaybackPanel({
                   <p className="item-title">{part.name}</p>
                   <p className="item-meta">{part.id}</p>
                   <label className="field-group">
-                    <span className="field-label">{locale === "zh-CN" ? "声部音量" : "Part volume"}</span>
+                    <span className="field-label">{copy.partVolume}</span>
                     <input
                       className="practice-range"
                       type="range"
@@ -706,13 +650,15 @@ export function ScorePlaybackPanel({
                         })
                       }
                     />
-                    <span className="item-meta">{Math.round(volume * 100)}%</span>
+                    <span className="item-meta">{formatPlaybackPercent(volume, locale)}</span>
                   </label>
                 </div>
                 <div className="button-row">
                   <button
                     type="button"
                     className={`button button-secondary button-ghost toggle-button${isSolo ? " is-active" : ""}`}
+                    aria-pressed={isSolo}
+                    aria-label={formatMessage(copy.soloPartTemplate, { part: part.name })}
                     onClick={() => {
                       updatePracticeSettings({
                         soloPartIds: toggleValue(practiceSettings.soloPartIds, part.id),
@@ -726,6 +672,8 @@ export function ScorePlaybackPanel({
                     type="button"
                     className={`button button-secondary button-ghost toggle-button${isMuted ? " is-active-danger" : ""}`}
                     disabled={isSolo}
+                    aria-pressed={isMuted}
+                    aria-label={formatMessage(copy.mutePartTemplate, { part: part.name })}
                     onClick={() => updatePracticeSettings({ mutedPartIds: toggleValue(practiceSettings.mutedPartIds, part.id) })}
                   >
                     {copy.mute}
@@ -737,10 +685,10 @@ export function ScorePlaybackPanel({
         </div>
       ) : null}
 
-      {status && statusKind ? <p className={`form-status ${statusKind}`}>{status}</p> : null}
+      {status && statusKind ? <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"}>{status}</p> : null}
       {playback && playback.metadata.warnings.length > 0 ? (
         <div className="mini-card stack-xs wide">
-          <p className="metric-label">{diagnosticsLabel}</p>
+          <p className="metric-label">{copy.diagnostics}</p>
           <ul className="stack-xs">
             {playback.metadata.warnings.map((warning, index) => (
               <li className="item-meta" key={`${warning}-${index}`}>
@@ -755,19 +703,21 @@ export function ScorePlaybackPanel({
         return (
           <details key={graph.partId} className="wide">
             <summary className="item-title">
-              {locale === "zh-CN" ? "演奏顺序" : "Playback path"} · {playback.parts.find((part) => part.id === graph.partId)?.name ?? graph.partId} · {graph.jumpCount}{" "}
-              {locale === "zh-CN" ? "次跳转" : "jumps"}
+              {copy.playbackPath} · {playback.parts.find((part) => part.id === graph.partId)?.name ?? graph.partId} · {formatMessage(copy.jumpsTemplate, { count: formatPlaybackNumber(graph.jumpCount, locale) })}
             </summary>
             <div className="stack-xs">
               <p className="item-meta">
-                {locale === "zh-CN" ? "终止" : "Terminated"}: {graph.terminatedBy}
-                {graph.unreachableMeasureIds.length > 0 ? ` · ${locale === "zh-CN" ? "不可达小节" : "Unreachable measures"}: ${graph.unreachableMeasureIds.length}` : ""}
+                {copy.terminated}: {copy.terminationReasons[graph.terminatedBy]}
+                {graph.unreachableMeasureIds.length > 0 ? ` · ${copy.unreachableMeasures}: ${formatPlaybackNumber(graph.unreachableMeasureIds.length, locale)}` : ""}
               </p>
-              {transitions.map((step) => (
-                <p key={`${step.sequence}-${step.action}`} className="item-meta">
-                  M{step.measureNumber} · {step.action}{step.detail ? ` · ${step.detail}` : ""}
-                </p>
-              ))}
+              {transitions.map((step) => {
+                const measureLabel = formatMessage(copy.navigationMeasureTemplate, { measure: step.measureNumber });
+                return (
+                  <p key={`${step.sequence}-${step.action}`} className="item-meta">
+                    {measureLabel} · {copy.navigationActions[step.action]}{step.detail ? ` · ${step.detail}` : ""}
+                  </p>
+                );
+              })}
             </div>
           </details>
         );
@@ -776,19 +726,19 @@ export function ScorePlaybackPanel({
         <div className="score-summary-grid">
           <div className="mini-card stack-xs">
             <p className="metric-label">{copy.events}</p>
-            <p className="metric-value compact">{playback.metadata.eventCount}</p>
+            <p className="metric-value compact">{formatPlaybackNumber(playback.metadata.eventCount, locale)}</p>
           </div>
           <div className="mini-card stack-xs">
             <p className="metric-label">{copy.activeEvents}</p>
-            <p className="metric-value compact">{activeEvents.length}</p>
+            <p className="metric-value compact">{formatPlaybackNumber(activeEvents.length, locale)}</p>
           </div>
           <div className="mini-card stack-xs">
             <p className="metric-label">{copy.beats}</p>
-            <p className="metric-value compact">{playback.totalBeats}</p>
+            <p className="metric-value compact">{formatPlaybackNumber(playback.totalBeats, locale, { maximumFractionDigits: 2 })}</p>
           </div>
           <div className="mini-card stack-xs">
             <p className="metric-label">{copy.parts}</p>
-            <p className="metric-value compact">{playback.parts.length}</p>
+            <p className="metric-value compact">{formatPlaybackNumber(playback.parts.length, locale)}</p>
           </div>
           <div className="mini-card stack-xs wide">
             <p className="metric-label">{copy.revision}</p>
@@ -796,7 +746,7 @@ export function ScorePlaybackPanel({
           </div>
         </div>
       ) : (
-        <div className="empty-state">{copy.empty}</div>
+        <div className="empty-state" role="status">{copy.empty}</div>
       )}
     </section>
   );

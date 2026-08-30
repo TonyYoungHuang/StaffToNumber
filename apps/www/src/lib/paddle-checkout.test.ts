@@ -14,6 +14,11 @@ test("Paddle checkout accepts only a matching ScoreTransposer success URL", () =
     candidate: "https://app.scoretransposer.com/checkout/success?provider=paddle&order_id=order-1&token=public-token",
   }), "https://app.scoretransposer.com/checkout/success?provider=paddle&order_id=order-1&token=public-token");
 
+  assert.equal(resolvePaddleSuccessUrl({
+    ...input,
+    candidate: "https://scoretransposer.com/de/checkout/success?provider=paddle&order_id=order-1&token=public-token",
+  }), "https://scoretransposer.com/de/checkout/success?provider=paddle&order_id=order-1&token=public-token");
+
   for (const candidate of [
     "https://attacker.example/checkout/success?provider=paddle&order_id=order-1&token=public-token",
     "https://scoretransposer.com/checkout/success?provider=stripe&order_id=order-1&token=public-token",

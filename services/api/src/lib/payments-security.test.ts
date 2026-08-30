@@ -3,13 +3,76 @@ import test from "node:test";
 import {
   buildPaddleTransactionEndpoint,
   buildPaddleCheckoutRedirectUrl,
+  buildLocalizedAppReturnUrl,
+  buildLocalizedPublicCheckoutUrl,
   buildStripeCheckoutSessionParams,
   hashPaymentOrderToken,
   normalizeStripeCredential,
   normalizeWebhookSigningSecret,
+  localizePublicPaddleCheckoutPageUrl,
   resolveCheckoutPriceId,
   stripeSessionMatchesPaymentOrder,
 } from "./payments.js";
+
+test("payment providers return to the locale-prefixed public checkout route", () => {
+  const params = { provider: "stripe", order_id: "order-1", token: "public-token" };
+  assert.equal(
+    buildLocalizedPublicCheckoutUrl({
+      baseUrl: "https://scoretransposer.com/",
+      pathname: "/checkout/success",
+      locale: "de",
+      searchParams: params,
+    }),
+    "https://scoretransposer.com/de/checkout/success?provider=stripe&order_id=order-1&token=public-token",
+  );
+  assert.equal(
+    buildLocalizedPublicCheckoutUrl({
+      baseUrl: "https://scoretransposer.com",
+      pathname: "/checkout/cancel",
+      locale: "zh-TW",
+      searchParams: params,
+    }),
+    "https://scoretransposer.com/zh-tw/checkout/cancel?provider=stripe&order_id=order-1&token=public-token",
+  );
+  assert.match(buildLocalizedPublicCheckoutUrl({
+    baseUrl: "https://scoretransposer.com",
+    pathname: "/checkout/success",
+    locale: "unsupported",
+    searchParams: params,
+  }), /^https:\/\/scoretransposer\.com\/checkout\/success\?/u);
+});
+
+test("Stripe billing portal returns through the product locale handoff", () => {
+  assert.equal(
+    buildLocalizedAppReturnUrl({
+      baseUrl: "https://app.scoretransposer.com/",
+      locale: "ja",
+      nextPath: "/billing",
+    }),
+    "https://app.scoretransposer.com/api/locale?locale=ja&next=%2Fbilling",
+  );
+  assert.equal(
+    buildLocalizedAppReturnUrl({
+      baseUrl: "https://app.scoretransposer.com",
+      locale: "unsupported",
+      nextPath: "billing",
+    }),
+    "https://app.scoretransposer.com/api/locale?locale=en&next=%2Fbilling",
+  );
+});
+
+test("the first-party Paddle launcher keeps the selected locale without rewriting provider URLs", () => {
+  assert.equal(localizePublicPaddleCheckoutPageUrl({
+    checkoutUrl: "https://scoretransposer.com/checkout/paddle?_ptxn=txn_1",
+    publicSiteUrl: "https://scoretransposer.com",
+    locale: "fr",
+  }), "https://scoretransposer.com/fr/checkout/paddle?_ptxn=txn_1");
+  assert.equal(localizePublicPaddleCheckoutPageUrl({
+    checkoutUrl: "https://pay.paddle.io/checkout/txn_1",
+    publicSiteUrl: "https://scoretransposer.com",
+    locale: "fr",
+  }), "https://pay.paddle.io/checkout/txn_1");
+});
 
 test("each paid plan resolves only its own provider Price ID and missing IDs fail closed", () => {
   const priceIds = {

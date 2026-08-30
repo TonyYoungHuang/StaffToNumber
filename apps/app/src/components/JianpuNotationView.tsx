@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import type { JianpuDocument, JianpuEvent } from "@score/shared";
+import { usePlaybackPracticeMessages } from "../lib/playback-practice-messages/client";
+import type { JianpuViewMessages } from "../lib/playback-practice-messages/types";
 
 function durationUnderlines(durationType: string | undefined) {
   return durationType === "eighth" ? 1 : durationType === "16th" ? 2 : durationType === "32nd" ? 3 : durationType === "64th" ? 4 : 0;
@@ -32,15 +35,34 @@ function ornamentLabel(event: JianpuEvent) {
   return [tuplet, ornaments].filter(Boolean).join(" ");
 }
 
-function JianpuEventButton({ event, selected, onSelect }: { event: JianpuEvent; selected: boolean; onSelect: (eventId: string) => void }) {
+function JianpuEventButton({
+  event,
+  selected,
+  onSelect,
+  copy,
+  locale,
+}: {
+  event: JianpuEvent;
+  selected: boolean;
+  onSelect: (eventId: string) => void;
+  copy: JianpuViewMessages;
+  locale: SupportedLocale;
+}) {
   const degree = event.type === "note" ? String(event.degree) : "0";
   const octaveShift = event.type === "note" ? event.octaveShift : 0;
   const underlines = durationUnderlines(event.durationType);
   const extensions = durationExtensions(event.durationType);
+  const voice = event.voice ?? "1";
+  const staff = formatNumber(event.staff ?? 1, locale);
   const context = event.voice && (event.voice !== "1" || (event.staff ?? 1) !== 1)
-    ? `V${event.voice}${(event.staff ?? 1) !== 1 ? ` S${event.staff}` : ""}`
+    ? `${copy.voiceShort}${event.voice}${(event.staff ?? 1) !== 1 ? ` ${copy.staffShort}${staff}` : ""}`
     : "";
-  const label = `${event.type === "note" ? "note" : "rest"} ${degree}, voice ${event.voice ?? "1"}, staff ${event.staff ?? 1}`;
+  const label = formatMessage(copy.eventLabelTemplate, {
+    kind: event.type === "note" ? copy.note : copy.rest,
+    degree,
+    voice,
+    staff,
+  });
 
   return (
     <button
@@ -85,8 +107,10 @@ export function JianpuNotationView({
   document: JianpuDocument;
   selectedEventId: string | null;
   onEventSelect: (eventId: string) => void;
-  locale: string;
+  locale: SupportedLocale;
 }) {
+  const { messages } = usePlaybackPracticeMessages();
+  const copy = messages.jianpu;
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!selectedEventId) return;
@@ -96,19 +120,26 @@ export function JianpuNotationView({
   }, [selectedEventId]);
 
   return (
-    <div ref={rootRef} className="jianpu-notation-view" role="region" aria-label={locale === "zh-CN" ? "可交互简谱" : "Interactive Jianpu"}>
+    <div ref={rootRef} className="jianpu-notation-view" role="region" aria-label={copy.regionAria}>
+      {document.parts.length === 0 ? <div className="empty-state" role="status">{copy.empty}</div> : null}
       {document.parts.map((part) => (
         <section className="jianpu-part" key={part.id} aria-label={part.name}>
           {document.parts.length > 1 ? <h3 className="jianpu-part-name">{part.name}</h3> : null}
           <div className="jianpu-measures">
             {part.measures.map((measure) => (
-              <div className="jianpu-measure" key={measure.id} data-implicit={measure.implicit ? "true" : undefined}>
+              <div
+                className="jianpu-measure"
+                key={measure.id}
+                role="group"
+                aria-label={formatMessage(copy.measureAriaTemplate, { measure: measure.number })}
+                data-implicit={measure.implicit ? "true" : undefined}
+              >
                 <span className="jianpu-measure-number">{measure.number}</span>
                 <div className="jianpu-event-line">
                   {eventGroups(measure.events).map((group) => (
                     <span className={`jianpu-event-group${group.length > 1 ? " is-chord" : ""}`} key={group[0].id}>
                       {group.map((event) => (
-                        <JianpuEventButton key={event.id} event={event} selected={selectedEventId === event.id} onSelect={onEventSelect} />
+                        <JianpuEventButton key={event.id} event={event} selected={selectedEventId === event.id} onSelect={onEventSelect} copy={copy} locale={locale} />
                       ))}
                     </span>
                   ))}

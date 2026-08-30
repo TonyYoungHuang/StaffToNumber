@@ -1,21 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSupportedLocale, LOCALE_COOKIE_NAME } from "@score/shared";
+import { buildLocaleCookie, isSupportedLocale, type SupportedLocale } from "@score/i18n";
+
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/u;
+const ABSOLUTE_HTTP_URL_PATTERN = /^https?:\/\//iu;
+
+function fullyDecodeSafeNextSyntax(value: string) {
+  let candidate = value;
+
+  for (let pass = 0; pass < 5; pass += 1) {
+    if (
+      candidate !== candidate.trim()
+      || CONTROL_CHARACTER_PATTERN.test(candidate)
+      || candidate.includes("\\")
+      || candidate.startsWith("//")
+    ) {
+      return null;
+    }
+
+    try {
+      const decoded = decodeURIComponent(candidate);
+      if (decoded === candidate) return candidate;
+      candidate = decoded;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
 
 function cookieDomain(request: NextRequest) {
-  const configured = process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN?.trim().replace(/^\./, "").toLowerCase();
+  const configured = process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN?.trim().replace(/^\./u, "").toLowerCase();
   if (!configured) return undefined;
+
   const hostname = request.nextUrl.hostname.toLowerCase();
   return hostname === configured || hostname.endsWith(`.${configured}`) ? `.${configured}` : undefined;
 }
 
-function localeCookieOptions(request: NextRequest) {
-  return {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax" as const,
-    secure: request.nextUrl.protocol === "https:",
+function setLocaleCookie(response: NextResponse, request: NextRequest, locale: SupportedLocale) {
+  response.headers.append("Set-Cookie", buildLocaleCookie(locale, {
     domain: cookieDomain(request),
-  };
+    secure: request.nextUrl.protocol === "https:",
+  }));
+}
+
+export function safeSameOriginNextUrl(request: NextRequest, requestedNext: string | null): URL {
+  const fallback = new URL("/", request.nextUrl.origin);
+  if (!requestedNext || fullyDecodeSafeNextSyntax(requestedNext) === null) return fallback;
+
+  const isAbsolutePath = requestedNext.startsWith("/") && !requestedNext.startsWith("//");
+  if (!isAbsolutePath && !ABSOLUTE_HTTP_URL_PATTERN.test(requestedNext)) return fallback;
+
+  try {
+    const destination = new URL(requestedNext, request.nextUrl.origin);
+    if (
+      destination.origin !== request.nextUrl.origin
+      || !["http:", "https:"].includes(destination.protocol)
+      || destination.username
+      || destination.password
+    ) {
+      return fallback;
+    }
+
+    const decodedPathname = fullyDecodeSafeNextSyntax(destination.pathname);
+    if (
+      decodedPathname === null
+      || /^\/(?:api|_next)(?:\/|$)/u.test(decodedPathname)
+    ) {
+      return fallback;
+    }
+
+    return destination;
+  } catch {
+    return fallback;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -24,10 +82,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.nextUrl.origin));
   }
 
-  const requestedNext = request.nextUrl.searchParams.get("next");
-  const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/";
-  const response = NextResponse.redirect(new URL(safeNext, request.nextUrl.origin));
-  response.cookies.set(LOCALE_COOKIE_NAME, locale, localeCookieOptions(request));
+  const destination = safeSameOriginNextUrl(request, request.nextUrl.searchParams.get("next"));
+  const response = NextResponse.redirect(destination);
+  setLocaleCookie(response, request, locale);
   return response;
 }
 
@@ -38,6 +95,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ locale: body.locale });
-  response.cookies.set(LOCALE_COOKIE_NAME, body.locale, localeCookieOptions(request));
+  setLocaleCookie(response, request, body.locale);
   return response;
 }

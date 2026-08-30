@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { formatDate, getLocaleConfig, SUPPORTED_LOCALES } from "@score/i18n";
 import { MetricCard, Panel, PreviewStaffGraphic, SectionIntro, StatusPill, WorkflowStep } from "@score/ui";
 import { getFeatureSeoRecord } from "../../lib/feature-seo";
-import { getFeaturePageUi, localizeFeatureEvidence, localizeFeaturePage } from "../../lib/feature-page-localization";
+import {
+  FEATURE_OPEN_GRAPH_LOCALES,
+  getFeaturePageUi,
+  getFeaturePracticeCopy,
+  localizeFeatureEvidence,
+  localizeFeaturePage,
+} from "../../lib/feature-page-localization";
 import { findPlatformFeaturePage, isFeatureAvailable, isFeatureIndexable, platformFeaturePages } from "../../lib/platform-feature-pages";
 import { getAppScoreProjectsUrl, getAppStartConversionUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
 import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
+import type { FeatureProductMediaSlug } from "../../lib/product-media";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 
 type FeatureRouteParams = {
@@ -77,7 +85,8 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
   const locale = await readSiteLocale();
   const page = localizeFeaturePage(sourcePage, locale);
   const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
-  const socialImage = localizePublicHref(`${page.canonical}/opengraph-image`, locale);
+  const socialImage = localizePublicHref(`${page.canonical}/opengraph-image/default`, locale);
+  const socialImageAlt = `${page.title} | ${siteConfig.siteName}`;
 
   return {
     title: `${page.title} | ${siteConfig.siteName}`,
@@ -100,16 +109,18 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
       description: page.description,
       url: canonicalUrl,
       siteName: siteConfig.siteName,
-      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
-      alternateLocale: locale === "zh-CN" ? ["en_US"] : ["zh_CN"],
+      locale: FEATURE_OPEN_GRAPH_LOCALES[locale],
+      alternateLocale: SUPPORTED_LOCALES
+        .filter((alternateLocale) => alternateLocale !== locale)
+        .map((alternateLocale) => FEATURE_OPEN_GRAPH_LOCALES[alternateLocale]),
       type: "website",
-      images: [{ url: socialImage, width: 1200, height: 630, alt: page.title }],
+      images: [{ url: socialImage, width: 1200, height: 630, alt: socialImageAlt }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${page.title} | ${siteConfig.siteName}`,
       description: page.description,
-      images: [socialImage],
+      images: [{ url: socialImage, alt: socialImageAlt }],
     },
   };
 }
@@ -125,14 +136,19 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   const locale = await readSiteLocale();
   const page = localizeFeaturePage(sourcePage, locale);
   const ui = getFeaturePageUi(locale);
+  const practiceCopy = getFeaturePracticeCopy(locale);
   const available = isFeatureAvailable(sourcePage);
   const ctaUrl = actionUrl(sourcePage, locale);
   const sourceSeo = getFeatureSeoRecord(page.slug);
   if (!sourceSeo) {
     notFound();
   }
-  const seo = localizeFeatureEvidence(sourceSeo, locale);
+  const seo = localizeFeatureEvidence(sourceSeo, locale, page.title, page.slug as FeatureProductMediaSlug);
   const canonicalUrl = getLocalizedAbsoluteUrl(siteConfig.siteUrl, page.canonical, locale);
+  const htmlLang = getLocaleConfig(locale).htmlLang;
+  const capturedAt = seo.screenshot
+    ? formatDate(seo.screenshot.capturedAt, locale, { dateStyle: "medium", timeZone: "UTC" })
+    : null;
   const relatedPages = sourceSeo.relatedSlugs
     .map((slug) => findPlatformFeaturePage(slug))
     .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)))
@@ -155,6 +171,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
+      inLanguage: htmlLang,
       itemListElement: [
         { "@type": "ListItem", position: 1, name: ui.home, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
         { "@type": "ListItem", position: 2, name: page.title, item: canonicalUrl },
@@ -165,13 +182,14 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       "@type": "HowTo",
       name: page.title,
       description: page.description,
-      inLanguage: locale,
+      inLanguage: htmlLang,
       keywords: page.keywords.join(", "),
       step: page.workflow.map((item, index) => ({ "@type": "HowToStep", position: index + 1, name: item.title, text: item.body })),
     },
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
+      inLanguage: htmlLang,
       mainEntity: faqItems.map((item) => ({
         "@type": "Question",
         name: item.question,
@@ -183,20 +201,23 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       "@type": "SoftwareApplication",
       name: siteConfig.siteName,
       applicationCategory: "MultimediaApplication",
-      applicationSubCategory: "Music notation software",
-      operatingSystem: "Web browser",
+      applicationSubCategory: ui.softwareSubcategory,
+      operatingSystem: ui.operatingSystem,
       url: canonicalUrl,
       description: page.description,
-      inLanguage: locale,
+      inLanguage: htmlLang,
       keywords: page.keywords.join(", "),
       featureList: page.modules,
-      screenshot: `${siteConfig.siteUrl}${seo.screenshot.src}`,
+      ...(seo.screenshot ? { screenshot: `${siteConfig.siteUrl}${seo.screenshot.src}` } : {}),
     },
   ];
 
   return (
     <div className={`public-container page-stack${page.slug === "teaching" ? " feature-teaching-page" : ""}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }}
+      />
       <section className="page-banner split">
         <SectionIntro eyebrow={page.eyebrow} title={page.title} body={page.description} titleAs="h1" largeBody />
         <Panel variant="glass" className="stack-md">
@@ -207,7 +228,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
             <a href={ctaUrl} className="public-button primary">
               {actionLabel(sourcePage, locale)}
             </a>
-            {siteConfig.release.checkoutAvailable ? <a href={localizePublicHref("/pricing", locale)} className="public-button tertiary">{ui.pricing}</a> : null}
+            {siteConfig.release.checkoutAvailable ? <a href={localizePublicHref("/#pricing", locale)} className="public-button tertiary">{ui.pricing}</a> : null}
           </div>
         </Panel>
       </section>
@@ -222,27 +243,40 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow={ui.exampleEyebrow} title={ui.exampleTitle} body={`${seo.screenshot.evidence} ${ui.captured} ${seo.screenshot.capturedAt}${locale === "zh-CN" ? "。" : "."}`} />
-        <Image
-          className="feature-product-screenshot"
-          src={seo.screenshot.src}
-          width={seo.screenshot.width}
-          height={seo.screenshot.height}
-          alt={seo.screenshot.alt}
-          sizes="(max-width: 760px) calc(100vw - 40px), 1100px"
+        <SectionIntro
+          eyebrow={ui.exampleEyebrow}
+          title={ui.exampleTitle}
+          body={seo.screenshot
+            ? [seo.screenshot.evidence, `${ui.captured}: ${capturedAt}.`, seo.screenshot.interfaceNote].filter(Boolean).join(" ")
+            : seo.pendingMedia?.body}
         />
+        {seo.screenshot ? (
+          <Image
+            className="feature-product-screenshot"
+            src={seo.screenshot.src}
+            width={seo.screenshot.width}
+            height={seo.screenshot.height}
+            alt={seo.screenshot.alt}
+            sizes="(max-width: 760px) calc(100vw - 40px), 1100px"
+          />
+        ) : seo.pendingMedia ? (
+          <div className="product-media-placeholder" role="img" aria-label={seo.pendingMedia.ariaLabel}>
+            <strong>{seo.pendingMedia.title}</strong>
+            <span>{seo.pendingMedia.body}</span>
+          </div>
+        ) : null}
         <div className="split-layout">
           <Panel className="stack-sm">
             <p className="eyebrow">{ui.input}</p>
             <code className="feature-example-code">{seo.example.input}</code>
-            <a className="public-button tertiary" href={`/examples/${page.slug}/input`} download>
+            <a className="public-button tertiary" href={localizePublicHref(`/examples/${page.slug}/input`, locale)} download>
               {ui.downloadInput}
             </a>
           </Panel>
           <Panel className="stack-sm">
             <p className="eyebrow">{ui.output}</p>
             <code className="feature-example-code">{seo.example.output}</code>
-            <a className="public-button tertiary" href={`/examples/${page.slug}/output`} download>
+            <a className="public-button tertiary" href={localizePublicHref(`/examples/${page.slug}/output`, locale)} download>
               {ui.downloadOutput}
             </a>
           </Panel>
@@ -252,7 +286,8 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
 
       {page.slug === "score-to-audio" ? (
         <FeaturePracticeDemo
-          locale={locale}
+          copy={practiceCopy}
+          audioSrc={localizePublicHref("/examples/score-to-audio/output?semitones=0", locale)}
           workspaceHref={ctaUrl}
           workspaceAvailable={available}
         />
@@ -284,7 +319,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow="FAQ" title={ui.faqTitle(page.title)} body={ui.faqBody} />
+        <SectionIntro eyebrow={ui.faqEyebrow} title={ui.faqTitle(page.title)} body={ui.faqBody} />
         <div className="list-grid">
           {faqItems.map((item) => (
             <details key={item.question} className="list-item">

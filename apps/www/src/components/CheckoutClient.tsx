@@ -1,10 +1,12 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { PaymentProvider } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
+import type { CheckoutStartCopy } from "../lib/checkout-localization";
+import { localizePublicHref } from "../lib/locale-routing";
 import { getAppActivateUrl, getSupportUrl } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
@@ -20,86 +22,20 @@ const providers = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS ?? "stripe")
   .map((item) => item.trim())
   .filter((item): item is PaymentProvider => item === "stripe" || item === "paddle");
 
-export function CheckoutClient() {
+export function CheckoutClient({
+  copy,
+  translationNotice,
+}: {
+  copy: CheckoutStartCopy;
+  translationNotice: string;
+}) {
   const { locale } = useSiteLocale();
-  const activateUrl = getAppActivateUrl();
+  const activateUrl = getAppActivateUrl(locale);
   const [email, setEmail] = useState("");
   const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
-
-  const copy = useMemo(
-    () =>
-      locale === "zh-CN"
-        ? {
-            eyebrow: "安全支付",
-            title: "在线订阅并自动开通账户",
-            body: "使用已注册账户的邮箱继续支付。付款成功后，订阅与配额会自动归属到该账户。",
-            email: "已注册账户邮箱",
-            emailPlaceholder: "you@example.com",
-            emailHelp: "必须与 ScoreTransposer 注册邮箱一致，避免订阅无法归属。",
-            provider: "支付渠道",
-            stripeTitle: "Stripe",
-            stripeBody: "适合国际银行卡、Apple Pay、Google Pay，以及标准托管收银台流程。",
-            paddleTitle: "Paddle",
-            paddleBody: "适合需要 Merchant of Record、税务处理和 Paddle 托管支付页的场景。",
-            button: "继续支付",
-            loading: "正在跳转到支付页面...",
-            activate: "我已经有激活码",
-            badge: "托管支付页",
-            accessLabel: "计费周期",
-            accessValue: "月付或年付",
-            accessBody: "订阅按所选月付或年付周期自动续费，可在账单中心管理付款方式或取消。",
-            deliveryLabel: "支付后",
-            deliveryValue: "自动开通",
-            deliveryBody: "支付成功后订阅、席位与使用配额会自动写入已注册账户。",
-            supportLabel: "人工支持",
-            supportValue: "邮件复核",
-            supportBody: "如果支付回跳异常或账户权益没有出现，可以由支持团队人工核对订单链路。",
-            nextTitle: "继续之前请先确认",
-            nextSteps: [
-              "支付成功后，系统会自动确认订单并为注册账户开通订阅。",
-              "同一笔支付即使重复点击或网络重试，也只会创建一个有效订单。",
-              "如果你已经通过其他渠道买过激活码，不需要在这里重复付款。",
-            ],
-            contact: "联系支持",
-          }
-        : {
-            eyebrow: "Secure checkout",
-            title: "Subscribe online and unlock your account",
-            body: "Continue with the email of an existing ScoreTransposer account. Your subscription and quotas are linked automatically after payment.",
-            email: "Registered account email",
-            emailPlaceholder: "you@example.com",
-            emailHelp: "This must match your ScoreTransposer account so the subscription can be attributed safely.",
-            provider: "Payment provider",
-            stripeTitle: "Stripe",
-            stripeBody: "Best for international cards, Apple Pay, Google Pay, and a standard hosted checkout flow.",
-            paddleTitle: "Paddle",
-            paddleBody: "Best when you want Merchant of Record billing, tax handling, and Paddle-hosted checkout.",
-            button: "Continue to payment",
-            loading: "Redirecting to the payment page...",
-            activate: "I already have an activation code",
-            badge: "Hosted payment page",
-            accessLabel: "Billing cycle",
-            accessValue: "Monthly or annual",
-            accessBody: "The subscription renews on the selected monthly or annual interval and can be managed or canceled from Billing.",
-            deliveryLabel: "After payment",
-            deliveryValue: "Automatic access",
-            deliveryBody: "A successful payment links the subscription, seats, and usage quotas to the registered account.",
-            supportLabel: "Human support",
-            supportValue: "Email review",
-            supportBody: "If checkout returns unexpectedly or account access does not appear, support can manually review the order path.",
-            nextTitle: "Know this before you continue",
-            nextSteps: [
-              "After payment succeeds, the system confirms the order and activates the registered account automatically.",
-              "Repeated clicks or network retries reuse the same checkout intent instead of creating duplicate orders.",
-              "If you already purchased an activation code through another channel, you do not need to pay here again.",
-            ],
-            contact: "Contact support",
-          },
-    [locale],
-  );
 
   async function handleCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -115,11 +51,7 @@ export function CheckoutClient() {
     const result = await apiRequest<CheckoutPayload>("/api/payments/checkout", {
       method: "POST",
       headers: { "Idempotency-Key": checkoutIntent.current.key },
-      body: JSON.stringify({
-        provider,
-        email: normalizedEmail,
-        locale,
-      }),
+      body: JSON.stringify({ provider, email: normalizedEmail, locale }),
     });
 
     if (!result.ok) {
@@ -143,6 +75,7 @@ export function CheckoutClient() {
         <p className="eyebrow">{copy.eyebrow}</p>
         <h1 className="page-title">{copy.title}</h1>
         <p className="body-copy large">{copy.body}</p>
+        {translationNotice ? <p className="helper-copy" role="note">{translationNotice}</p> : null}
       </div>
 
       <form className="form-grid" onSubmit={handleCheckout}>
@@ -170,6 +103,7 @@ export function CheckoutClient() {
                 <button
                   key={item}
                   type="button"
+                  aria-pressed={isActive}
                   className={`glass-panel stack-sm ${isActive ? "is-selected" : ""}`}
                   onClick={() => setProvider(item)}
                   style={{ textAlign: "left", border: isActive ? "1px solid rgba(113,236,206,0.6)" : undefined }}
@@ -186,13 +120,11 @@ export function CheckoutClient() {
           <button type="submit" className="public-button primary" disabled={loading}>
             {loading ? copy.loading : copy.button}
           </button>
-          <a href={activateUrl} className="public-button secondary">
-            {copy.activate}
-          </a>
+          <a href={activateUrl} className="public-button secondary">{copy.activate}</a>
         </div>
       </form>
 
-      {status ? <p className="form-status error">{status}</p> : null}
+      {status ? <p className="form-status error" role="alert">{status}</p> : null}
 
       <div className="metric-grid">
         <MetricCard label={copy.accessLabel} value={copy.accessValue} body={copy.accessBody} />
@@ -202,13 +134,9 @@ export function CheckoutClient() {
 
       <Panel variant="sunken" className="stack-md">
         <h2 className="card-title">{copy.nextTitle}</h2>
-        {copy.nextSteps.map((item) => (
-          <p key={item} className="body-copy">
-            {item}
-          </p>
-        ))}
+        {copy.nextSteps.map((item) => <p key={item} className="body-copy">{item}</p>)}
         <div className="button-row">
-          <a href={getSupportUrl("payment", "checkout")} className="public-button tertiary">
+          <a href={localizePublicHref(getSupportUrl("payment", "checkout"), locale)} className="public-button tertiary">
             {copy.contact}
           </a>
         </div>

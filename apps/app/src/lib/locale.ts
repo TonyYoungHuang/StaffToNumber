@@ -1,20 +1,22 @@
-﻿import { cookies } from "next/headers";
-import { isSupportedLocale, LOCALE_COOKIE_NAME, type SupportedLocale } from "@score/shared";
+import { headers } from "next/headers";
+import {
+  DEFAULT_LOCALE,
+  getLocaleConfig,
+  readLocaleCookie,
+  type SupportedLocale,
+} from "@score/i18n";
 
-export const defaultAppLocale: SupportedLocale = "en";
+export const defaultAppLocale: SupportedLocale = DEFAULT_LOCALE;
+
+export function resolveAppLocale(cookieHeader: string | null | undefined): SupportedLocale {
+  return readLocaleCookie(cookieHeader) ?? defaultAppLocale;
+}
 
 export async function readAppLocale() {
-  const cookieStore = await cookies();
-  const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
-
-  if (isSupportedLocale(cookieLocale)) {
-    return cookieLocale;
-  }
-
-  return defaultAppLocale;
+  const requestHeaders = await headers();
+  return resolveAppLocale(requestHeaders.get("cookie"));
 }
 
 export function localeLabel(locale: SupportedLocale) {
-  return locale === "zh-CN" ? "简体中文" : "English";
+  return getLocaleConfig(locale).label;
 }
-

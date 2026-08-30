@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  --font-ui: var(--font-geist), "Noto Sans SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  --font-ui: var(--font-geist), "Segoe UI", Arial, sans-serif;
   --font-headline: var(--font-ui);
   --surface: #f8f9fd;
   --surface-low: #f1f3f9;
@@ -42,6 +42,30 @@
   --border-subtle: var(--outline);
   --border-strong: var(--outline-strong);
   --line-subtle: #dfe3ee;
+}
+
+html[data-font-group="latin"] {
+  --font-ui: var(--font-geist), "Segoe UI", Arial, sans-serif;
+}
+
+html[data-font-group="cyrillic"] {
+  --font-ui: var(--font-geist), "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+
+html[data-font-group="hans"] {
+  --font-ui: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", var(--font-geist), sans-serif;
+}
+
+html[data-font-group="hant"] {
+  --font-ui: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", var(--font-geist), sans-serif;
+}
+
+html[data-font-group="japanese"] {
+  --font-ui: "Noto Sans JP", "Yu Gothic", "Hiragino Kaku Gothic ProN", Meiryo, var(--font-geist), sans-serif;
+}
+
+html[data-font-group="korean"] {
+  --font-ui: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", var(--font-geist), sans-serif;
 }
 
 * {
@@ -311,10 +335,33 @@ img {
   padding: 24px 0 44px;
 }
 
+.locale-switcher-status {
+  position: relative;
+  display: inline-flex;
+}
+
+.locale-switcher-error {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 8px 10px;
+  border: 1px solid #e8b4b4;
+  border-radius: 10px;
+  background: #fff2f2;
+  color: #9b2c2c;
+  box-shadow: var(--shadow-soft);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .locale-switcher {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  position: relative;
   padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
@@ -2165,6 +2212,37 @@ button.student-resource:disabled {
   margin: 0;
   font-size: 1.45rem;
   line-height: 1.35;
+}
+
+.locale-switcher-select {
+  min-width: 0;
+  max-width: 10.5rem;
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 7px 30px 7px 12px;
+  background: transparent;
+  color: var(--ink-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.locale-switcher-select:focus-visible {
+  outline: 3px solid var(--focus-ring, #4f46e5);
+  outline-offset: 2px;
+}
+
+.locale-switcher-select:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.locale-switcher-caret {
+  position: absolute;
+  inset-inline-end: 11px;
+  pointer-events: none;
+  color: var(--ink-muted);
 }
 
 .auth-proof {

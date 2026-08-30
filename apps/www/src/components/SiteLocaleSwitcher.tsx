@@ -1,36 +1,42 @@
 ﻿"use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
-import { type SupportedLocale } from "@score/shared";
-import { localizePublicPath } from "../lib/locale-routing";
+import { useId, type ChangeEvent } from "react";
+import { LOCALE_CONFIGS, type SupportedLocale } from "@score/i18n";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
-const locales: SupportedLocale[] = ["en", "zh-CN"];
+export function SiteLocaleSwitcher({ label }: { label: string }) {
+  const selectId = useId();
+  const { locale, setLocale } = useSiteLocale();
 
-export function SiteLocaleSwitcher() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { locale } = useSiteLocale();
-  const query = searchParams.toString();
+  function switchLocale(event: ChangeEvent<HTMLSelectElement>) {
+    const nextLocale = event.currentTarget.value as SupportedLocale;
+    if (nextLocale === locale) return;
+
+    setLocale(nextLocale);
+    const handoffUrl = new URL("/api/locale", window.location.origin);
+    handoffUrl.searchParams.set("locale", nextLocale);
+    handoffUrl.searchParams.set("next", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+    window.location.assign(`${handoffUrl.pathname}${handoffUrl.search}`);
+  }
 
   return (
-    <nav className="locale-switcher" aria-label={locale === "zh-CN" ? "语言切换" : "Language switcher"}>
-      {locales.map((item) => {
-        const isActive = item === locale;
-        return (
-          <a
-            key={item}
-            href={`${localizePublicPath(pathname, item)}${query ? `?${query}` : ""}`}
-            hrefLang={item}
-            lang={item}
-            className={`locale-switcher-button${isActive ? " is-active" : ""}`}
-            aria-current={isActive ? "page" : undefined}
-          >
-            {item === "zh-CN" ? (locale === "en" ? "ZH" : "简体中文") : "EN"}
-          </a>
-        );
-      })}
-    </nav>
+    <label className="locale-switcher" htmlFor={selectId}>
+      <span className="sr-only">{label}</span>
+      <select
+        id={selectId}
+        className="locale-switcher-select"
+        aria-label={label}
+        value={locale}
+        onChange={switchLocale}
+      >
+        {LOCALE_CONFIGS.map((config) => (
+          <option key={config.code} value={config.code} lang={config.htmlLang}>
+            {config.label}
+          </option>
+        ))}
+      </select>
+      <span className="locale-switcher-caret" aria-hidden="true">⌄</span>
+    </label>
   );
 }
 

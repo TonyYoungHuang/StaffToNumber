@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatMessage, type SupportedLocale } from "@score/i18n";
 import { StatusPill } from "@score/ui";
 import type { PlaybackDocument, PlaybackNoteEvent } from "@score/shared";
 import { apiRequest } from "../lib/api";
+import { usePlaybackPracticeMessages } from "../lib/playback-practice-messages/client";
+import {
+  formatPlaybackDuration,
+  formatPlaybackNumber,
+  formatPlaybackPercent,
+  formatSignedPlaybackNumber,
+  rawPlaybackErrorOrFallback,
+} from "../lib/playback-practice-messages/formatters";
+import type { PlaybackRecorderStatus } from "../lib/playback-practice-messages/types";
 import { analyzePracticePerformance, type PracticePerformanceAnalysis } from "../lib/practice-performance-analysis";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
-
-type RecorderStatus = "idle" | "requesting" | "count_in" | "recording" | "paused" | "ready" | "error";
 
 function recorderFormat() {
   const candidates = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"];
@@ -20,13 +28,8 @@ function recordingExtension(mimeType: string) {
   return "webm";
 }
 
-function formatSeconds(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
 export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSettings, selectedEventId, onEventSelect, onAnalysis, onRecording }: {
-  locale: string;
+  locale: SupportedLocale;
   value: File | null;
   playbackEndpoint?: string | null;
   practiceSettings?: {
@@ -41,7 +44,8 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
   onAnalysis?: (analysis: PracticePerformanceAnalysis | null) => void;
   onRecording: (file: File | null) => void;
 }) {
-  const isChinese = locale === "zh-CN";
+  const { messages } = usePlaybackPracticeMessages();
+  const copy = messages.recorder;
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -51,7 +55,7 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
   const decodedRef = useRef<{ samples: Float32Array; sampleRate: number; playback: PlaybackDocument; events: PlaybackNoteEvent[]; scoreRevisionId: string | null } | null>(null);
   const recordedFileRef = useRef<File | null>(null);
   const discardRef = useRef(false);
-  const [status, setStatus] = useState<RecorderStatus>("idle");
+  const [status, setStatus] = useState<PlaybackRecorderStatus>("idle");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState("");
   const [countInBeats, setCountInBeats] = useState(4);
@@ -64,76 +68,6 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [manualStart, setManualStart] = useState("0");
   const [manualScale, setManualScale] = useState("1");
-
-  const copy = isChinese
-    ? {
-        title: "浏览器录音与练习反馈 Beta",
-        device: "麦克风",
-        defaultDevice: "系统默认麦克风",
-        countIn: "预备拍",
-        beats: "拍",
-        start: "开始录音",
-        requesting: "正在请求麦克风权限...",
-        pause: "暂停",
-        resume: "继续",
-        stop: "停止",
-        cancel: "取消",
-        rerecord: "重录",
-        ready: "录音已挂到本次作业，可试听后提交。",
-        unsupported: "当前浏览器不支持 MediaRecorder 录音。",
-        denied: "无法使用麦克风，请检查浏览器权限和输入设备。",
-        recording: "录音中",
-        paused: "已暂停",
-        countInStatus: "准备",
-        analysis: "逐音练习反馈",
-        analyzing: "正在对齐录音与乐谱...",
-        analysisFailed: "无法分析这段录音，可继续提交并由老师人工批阅。",
-        completeness: "检测完整度",
-        alignment: "时间对齐",
-        startOffset: "录音起点（秒）",
-        timeScale: "时间伸缩",
-        applyAlignment: "应用人工对齐",
-        measure: "小节",
-        detected: "已检测",
-        pitchAttention: "音高需关注",
-        rhythmAttention: "节奏需关注",
-        polyphonic: "复音未评分",
-        jump: "试听此音",
-      }
-    : {
-        title: "Browser Recording & Practice Feedback Beta",
-        device: "Microphone",
-        defaultDevice: "System default microphone",
-        countIn: "Count-in",
-        beats: "beats",
-        start: "Start recording",
-        requesting: "Requesting microphone access...",
-        pause: "Pause",
-        resume: "Resume",
-        stop: "Stop",
-        cancel: "Cancel",
-        rerecord: "Record again",
-        ready: "The recording is attached to this submission. Review it before submitting.",
-        unsupported: "This browser does not support MediaRecorder.",
-        denied: "The microphone is unavailable. Check browser permission and the selected input device.",
-        recording: "Recording",
-        paused: "Paused",
-        countInStatus: "Get ready",
-        analysis: "Per-note practice feedback",
-        analyzing: "Aligning the recording with the score...",
-        analysisFailed: "This recording could not be analyzed. It can still be submitted for teacher review.",
-        completeness: "Detected completeness",
-        alignment: "Timeline alignment",
-        startOffset: "Recording start (seconds)",
-        timeScale: "Time scale",
-        applyAlignment: "Apply manual alignment",
-        measure: "Measure",
-        detected: "Detected",
-        pitchAttention: "Pitch attention",
-        rhythmAttention: "Rhythm attention",
-        polyphonic: "Polyphonic unscored",
-        jump: "Play this note",
-      };
 
   function releaseStream() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -171,7 +105,12 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
         apiRequest<{ playback: PlaybackDocument; revisionId?: string | null }>(playbackEndpoint),
         blob.arrayBuffer(),
       ]);
-      if (!playbackResult.ok) throw new Error(playbackResult.error);
+      if (!playbackResult.ok) {
+        decodedRef.current = null;
+        setAnalysis(null);
+        setAnalysisError(rawPlaybackErrorOrFallback(playbackResult.error, copy.analysisFailed));
+        return;
+      }
       const context = new AudioContext();
       const decoded = await context.decodeAudioData(audioBuffer.slice(0));
       const samples = new Float32Array(decoded.getChannelData(0));
@@ -182,8 +121,8 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
       const result = analyzePracticePerformance({ samples, sampleRate: decoded.sampleRate, playback: playbackResult.data.playback, events, scoreRevisionId });
       setAnalysis(result);
       onAnalysis?.(result);
-      setManualStart(result.alignment.recordingStartSeconds.toFixed(3));
-      setManualScale(result.alignment.timeScale.toFixed(3));
+      setManualStart(String(Math.round(result.alignment.recordingStartSeconds * 1_000) / 1_000));
+      setManualScale(String(Math.round(result.alignment.timeScale * 1_000) / 1_000));
     } catch {
       decodedRef.current = null;
       setAnalysis(null);
@@ -377,11 +316,17 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
   }, []);
 
   return (
-    <div className="list-item stack-md">
+    <div className="list-item stack-md" role="region" aria-label={copy.regionAria}>
       <div className="score-review-toolbar">
         <p className="item-title">{copy.title}</p>
         <StatusPill tone={status === "ready" ? "green" : status === "error" ? "red" : status === "recording" ? "cyan" : "amber"}>
-          {status === "recording" ? `${copy.recording} ${formatSeconds(elapsedSeconds)}` : status === "paused" ? `${copy.paused} ${formatSeconds(elapsedSeconds)}` : status === "count_in" ? `${copy.countInStatus} ${countInRemaining}` : status}
+          {status === "recording"
+            ? formatMessage(copy.recordingStatusTemplate, { duration: formatPlaybackDuration(elapsedSeconds, locale) })
+            : status === "paused"
+              ? formatMessage(copy.pausedStatusTemplate, { duration: formatPlaybackDuration(elapsedSeconds, locale) })
+              : status === "count_in"
+                ? formatMessage(copy.countInStatusTemplate, { count: formatPlaybackNumber(countInRemaining, locale) })
+                : copy.statuses[status]}
         </StatusPill>
       </div>
       <div className="form-grid">
@@ -389,48 +334,70 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
           <span>{copy.device}</span>
           <select className="field-select" value={deviceId} disabled={["requesting", "count_in", "recording", "paused"].includes(status)} onChange={(event) => setDeviceId(event.target.value)}>
             <option value="">{copy.defaultDevice}</option>
-            {devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `${copy.device} ${index + 1}`}</option>)}
+            {devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || formatMessage(copy.deviceTemplate, { index: formatPlaybackNumber(index + 1, locale) })}</option>)}
           </select>
         </label>
         <label className="field-group">
           <span>{copy.countIn}</span>
           <select className="field-select" value={countInBeats} disabled={["requesting", "count_in", "recording", "paused"].includes(status)} onChange={(event) => setCountInBeats(Number(event.target.value))}>
-            {[0, 2, 4].map((beats) => <option key={beats} value={beats}>{beats} {copy.beats}</option>)}
+            {[0, 2, 4].map((beats) => <option key={beats} value={beats}>{formatMessage(copy.beatsTemplate, { count: formatPlaybackNumber(beats, locale) })}</option>)}
           </select>
         </label>
       </div>
-      {error ? <p className="form-status error">{error}</p> : null}
-      {status === "requesting" ? <p className="helper-copy">{copy.requesting}</p> : null}
-      {status === "ready" && previewUrl ? <><AudioWaveformPlayer ref={previewAudioRef} src={previewUrl} locale={locale} markers={analysis?.events.map((event) => event.recordingTimeSeconds) ?? []} /><p className="form-status success">{copy.ready}</p></> : null}
-      {analyzing ? <p className="helper-copy">{copy.analyzing}</p> : null}
-      {analysisError ? <p className="form-status error">{analysisError}</p> : null}
+      {error ? <p className="form-status error" role="alert">{error}</p> : null}
+      {status === "requesting" ? <p className="helper-copy" role="status">{copy.requesting}</p> : null}
+      {status === "ready" && previewUrl ? <><AudioWaveformPlayer ref={previewAudioRef} src={previewUrl} locale={locale} markers={analysis?.events.map((event) => event.recordingTimeSeconds) ?? []} /><p className="form-status success" role="status">{copy.ready}</p></> : null}
+      {analyzing ? <p className="helper-copy" role="status">{copy.analyzing}</p> : null}
+      {analysisError ? <p className="form-status error" role="alert">{analysisError}</p> : null}
       {analysis ? (
-        <div className="stack-md">
+        <div className="stack-md" role="region" aria-label={copy.feedbackAria}>
           <div className="score-review-toolbar">
             <p className="item-title">{copy.analysis}</p>
-            <StatusPill tone={analysis.completeness.ratio >= 0.8 ? "green" : "amber"}>{copy.completeness}: {analysis.completeness.detected}/{analysis.completeness.expected}</StatusPill>
+            <StatusPill tone={analysis.completeness.ratio >= 0.8 ? "green" : "amber"}>
+              {copy.completeness}: {formatMessage(copy.completenessTemplate, {
+                detected: formatPlaybackNumber(analysis.completeness.detected, locale),
+                expected: formatPlaybackNumber(analysis.completeness.expected, locale),
+                percent: formatPlaybackPercent(analysis.completeness.ratio, locale),
+              })}
+            </StatusPill>
           </div>
           <div className="form-grid">
             <label className="field-group"><span>{copy.startOffset}</span><input className="field-control" type="number" min={0} step={0.01} value={manualStart} onChange={(event) => setManualStart(event.target.value)} /></label>
             <label className="field-group"><span>{copy.timeScale}</span><input className="field-control" type="number" min={0.5} max={2} step={0.01} value={manualScale} onChange={(event) => setManualScale(event.target.value)} /></label>
           </div>
-          <div className="button-row"><button type="button" className="button button-secondary" onClick={applyManualAlignment}>{copy.applyAlignment}</button><span className="item-meta">{copy.alignment}: {analysis.alignment.source}</span></div>
+          <div className="button-row"><button type="button" className="button button-secondary" onClick={applyManualAlignment}>{copy.applyAlignment}</button><span className="item-meta">{copy.alignment}: {copy.alignmentSources[analysis.alignment.source]}</span></div>
           {analysis.warnings.map((warning) => <p key={warning} className="helper-copy">{warning}</p>)}
           <div className="metric-grid">
             {analysis.measures.map((measure) => (
               <div className="metric-card" key={measure.measureId}>
-                <p className="metric-label">{copy.measure} {measure.measureNumber}</p>
-                <p className="item-meta">{copy.detected}: {measure.detectedCount}/{measure.eventCount}</p>
-                <p className="item-meta">{copy.pitchAttention}: {measure.pitchAttentionCount} · {copy.rhythmAttention}: {measure.rhythmAttentionCount}</p>
-                {measure.polyphonicUnscoredCount ? <p className="item-meta">{copy.polyphonic}: {measure.polyphonicUnscoredCount}</p> : null}
+                <p className="metric-label">{formatMessage(copy.measureTemplate, { measure: measure.measureNumber })}</p>
+                <p className="item-meta">{formatMessage(copy.detectedTemplate, { detected: formatPlaybackNumber(measure.detectedCount, locale), total: formatPlaybackNumber(measure.eventCount, locale) })}</p>
+                <p className="item-meta">{formatMessage(copy.pitchAttentionTemplate, { count: formatPlaybackNumber(measure.pitchAttentionCount, locale) })} · {formatMessage(copy.rhythmAttentionTemplate, { count: formatPlaybackNumber(measure.rhythmAttentionCount, locale) })}</p>
+                {measure.polyphonicUnscoredCount ? <p className="item-meta">{formatMessage(copy.polyphonicTemplate, { count: formatPlaybackNumber(measure.polyphonicUnscoredCount, locale) })}</p> : null}
               </div>
             ))}
           </div>
           <div className="list-grid">
             {analysis.events.slice(0, 32).map((event) => (
-              <button type="button" className="list-item" key={event.eventId} onClick={() => seekToFeedback(event.sourceEventId)}>
-                <StatusPill tone={event.status === "matched" ? "green" : event.status === "missing" ? "red" : "amber"}>{event.status}</StatusPill>
-                <span className="list-item-content"><span className="item-title">{copy.measure} {event.measureNumber} · {event.noteName}</span><span className="item-meta">{event.pitchCents === null ? "pitch n/a" : `${event.pitchCents > 0 ? "+" : ""}${event.pitchCents} cents`} · {event.onsetDeltaMs === null ? "onset n/a" : `${event.onsetDeltaMs > 0 ? "+" : ""}${event.onsetDeltaMs} ms`} · {copy.jump}</span></span>
+              <button
+                type="button"
+                className="list-item"
+                key={event.eventId}
+                aria-label={formatMessage(copy.feedbackButtonTemplate, {
+                  measure: formatMessage(copy.measureTemplate, { measure: event.measureNumber }),
+                  note: event.noteName,
+                  status: copy.eventStatuses[event.status],
+                  action: copy.jump,
+                })}
+                onClick={() => seekToFeedback(event.sourceEventId)}
+              >
+                <StatusPill tone={event.status === "matched" ? "green" : event.status === "missing" ? "red" : "amber"}>{copy.eventStatuses[event.status]}</StatusPill>
+                <span className="list-item-content">
+                  <span className="item-title">{formatMessage(copy.measureTemplate, { measure: event.measureNumber })} · {event.noteName}</span>
+                  <span className="item-meta">
+                    {event.pitchCents === null ? copy.pitchUnavailable : formatMessage(copy.centsTemplate, { value: formatSignedPlaybackNumber(event.pitchCents, locale) })} · {event.onsetDeltaMs === null ? copy.onsetUnavailable : formatMessage(copy.onsetTemplate, { value: formatSignedPlaybackNumber(event.onsetDeltaMs, locale) })} · {copy.jump}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
