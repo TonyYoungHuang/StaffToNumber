@@ -132,13 +132,21 @@
     justify-self: center;
   }
 
-  .heroTitleWide {
-    font-size: clamp(28px, 2.25vw, 36px) !important;
-    letter-spacing: -0.045em !important;
+  .heroCopy h1.heroTitleWide {
     hyphens: none;
     overflow-wrap: normal;
     text-wrap: nowrap;
     white-space: nowrap;
+  }
+
+  .heroTitleWideCjk {
+    font-size: clamp(32px, 2.8vw, 42px) !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  .heroTitleWideLatin {
+    font-size: clamp(27px, 2.15vw, 35px) !important;
+    letter-spacing: -0.045em !important;
   }
 }
 

@@ -49,6 +49,12 @@ export default async function HomePage() {
   const plans = localizeHomepagePlans(locale, getPricingPlanCatalog("en"));
   const usesCjkLayout = locale === "zh-CN" || locale === "zh-TW" || locale === "ja" || locale === "ko";
   const usesSingleLineDesktopHero = locale === "ja" || locale === "ko" || locale === "fr" || locale === "de";
+  const usesCjkSingleLineDesktopHero = locale === "ja" || locale === "ko";
+  const heroTitleClassName = [
+    usesCjkLayout ? "" : styles.heroTitleEnglish,
+    usesSingleLineDesktopHero ? styles.heroTitleWide : "",
+    usesSingleLineDesktopHero ? (usesCjkSingleLineDesktopHero ? styles.heroTitleWideCjk : styles.heroTitleWideLatin) : "",
+  ].filter(Boolean).join(" ") || undefined;
 
   const softwareSchema = {
     "@context": "https://schema.org",
@@ -76,7 +82,7 @@ export default async function HomePage() {
             <p className={styles.kicker}><SparkIcon width={16} height={16} />{copy.heroKicker}</p>
             <h1
               id="home-title"
-              className={`${usesCjkLayout ? "" : styles.heroTitleEnglish} ${usesSingleLineDesktopHero ? styles.heroTitleWide : ""}`.trim() || undefined}
+              className={heroTitleClassName}
             >
               {copy.heroTitle.map((line) => <span className={styles.heroTitleLine} key={line}>{line}</span>)}
             </h1>
