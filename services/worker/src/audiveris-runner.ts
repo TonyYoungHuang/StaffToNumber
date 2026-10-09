@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { withOmrEngineSlot } from "./omr-engine-gate.js";
 
 export type AudiverisFailureReason = "cancelled" | "timeout" | "spawn" | "exit";
 
@@ -27,6 +28,9 @@ export type RunAudiverisInput = {
 };
 
 type RunAudiverisWithRotationFallbackInput = RunAudiverisInput & {
+  /** Layout-selected regions must retain the orientation used by source mapping. */
+  allowedRotations?: readonly (0 | 90 | 180 | 270)[];
+  onProgress?: (stage: "recognize" | "restore-image") => void;
   imageMagickCommand: string;
   imageMagickCommandArgsPrefix?: string[];
 };
@@ -35,12 +39,21 @@ export type AudiverisRunResult = {
   stdout: string;
   stderr: string;
   appliedRotationDegrees: 0 | 90 | 180 | 270;
+  /** Successful recovery directory; failed attempts must not supply artifacts. */
+  recognitionOutputDir?: string;
+  /** Requested enlargement, still capped by the normal 3000-pixel side limit. */
+  rasterScale?: 2;
 };
 
 const MAX_CAPTURED_OUTPUT = 4 * 1024 * 1024;
 
 export function buildAudiverisEnvironment(maxHeapMb: number | undefined, base = process.env): NodeJS.ProcessEnv {
   const env = { ...base };
+  // Audiveris needs combined legacy + LSTM data; Debian's LSTM-only package
+  // cannot initialize its OCR engine. Use the bundled, pinned combined data.
+  if (!env.TESSDATA_PREFIX && fs.existsSync("/opt/audiveris/tessdata/eng.traineddata")) {
+    env.TESSDATA_PREFIX = "/opt/audiveris/tessdata";
+  }
   if (!Number.isSafeInteger(maxHeapMb) || (maxHeapMb ?? 0) <= 0) return env;
   const existing = (env.JAVA_TOOL_OPTIONS ?? "")
     .replace(/(^|\s)-Xmx\S+/gu, " ")
@@ -57,6 +70,15 @@ function appendOutput(current: string, chunk: unknown) {
 }
 
 export function runAudiverisCommand(input: RunAudiverisInput) {
+  return withOmrEngineSlot({
+    timeoutMs: input.timeoutMs,
+    isCancelled: input.isCancelled,
+    cancelledError: () => new AudiverisProcessError("Audiveris processing was cancelled while waiting for the OMR engine.", "cancelled"),
+    timeoutError: () => new AudiverisProcessError("Audiveris execution budget was exhausted while waiting for the OMR engine.", "timeout"),
+  }, (remaining) => runAudiverisCommandWithSlot({ ...input, timeoutMs: remaining }));
+}
+
+function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     if (!input.command.trim()) {
       reject(new AudiverisProcessError("AUDIVERIS_COMMAND is not configured for the worker.", "spawn"));
@@ -71,6 +93,7 @@ export function runAudiverisCommand(input: RunAudiverisInput) {
     const child = spawn(input.command, args, {
       env: buildAudiverisEnvironment(input.maxHeapMb),
       shell: false,
+      detached: process.platform !== "win32",
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -96,9 +119,15 @@ export function runAudiverisCommand(input: RunAudiverisInput) {
       terminationError = error;
       clearTimeout(timeout);
       clearInterval(cancellationPoll);
-      if (child.exitCode === null) child.kill("SIGTERM");
+      const kill = (signal: NodeJS.Signals) => {
+        try {
+          if (process.platform !== "win32" && child.pid) process.kill(-child.pid, signal);
+          else child.kill(signal);
+        } catch { /* The process may already have exited. */ }
+      };
+      if (child.exitCode === null) kill("SIGTERM");
       forceKillTimer = setTimeout(() => {
-        if (!settled && child.exitCode === null) child.kill("SIGKILL");
+        if (!settled && child.exitCode === null) kill("SIGKILL");
       }, 2_000);
       forceKillTimer.unref();
     };
@@ -133,7 +162,10 @@ export function runAudiverisCommand(input: RunAudiverisInput) {
         resolve({ stdout, stderr });
         return;
       }
-      reject(new AudiverisProcessError(`Audiveris exited with code ${code}. ${stderr || stdout}`.trim(), "exit", code));
+      // JVM startup options are often the only stderr output. Audiveris writes
+      // its actual recognition diagnostics to stdout, so retain both streams.
+      const diagnostics = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n").slice(-12_000);
+      reject(new AudiverisProcessError(`Audiveris exited with code ${code}. ${diagnostics}`.trim(), "exit", code));
     });
   });
 }
@@ -156,7 +188,7 @@ export async function runAudiverisWithRotationFallback(
 
   const deadline = Date.now() + input.timeoutMs;
   let lastError: AudiverisProcessError | undefined;
-  for (const rotation of [0, 90, 180, 270] as const) {
+  for (const rotation of input.allowedRotations ?? [0, 90, 180, 270] as const) {
     if (input.isCancelled?.()) {
       throw new AudiverisProcessError("Audiveris processing was cancelled.", "cancelled");
     }
@@ -183,6 +215,7 @@ export async function runAudiverisWithRotationFallback(
       throw new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout");
     }
     try {
+      input.onProgress?.("recognize");
       const result = await runAudiverisCommand({
         ...input,
         inputPath: normalizedPath,
@@ -193,6 +226,37 @@ export async function runAudiverisWithRotationFallback(
     } catch (error) {
       if (!(error instanceof AudiverisProcessError) || error.reason !== "exit") throw error;
       lastError = error;
+      // Rotation cannot fix a legible image rejected solely for small staff
+      // spacing. Try one bounded enlargement, within the same job and deadline.
+      if (!/too low interline value/iu.test(error.message)) continue;
+      input.onProgress?.("restore-image");
+      const recoveryDir = path.join(attemptDir, "resolution-2");
+      fs.mkdirSync(recoveryDir, { recursive: true });
+      const recoveryPath = path.join(recoveryDir, "normalized.png");
+      const remainingBeforeRecovery = deadline - Date.now();
+      if (remainingBeforeRecovery <= 0) throw new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout");
+      await runImageMagickNormalization({
+        command: input.imageMagickCommand,
+        commandArgsPrefix: input.imageMagickCommandArgsPrefix,
+        inputPath: input.inputPath,
+        outputPath: recoveryPath,
+        rotation,
+        rasterScale: 2,
+        timeoutMs: Math.min(30_000, remainingBeforeRecovery),
+        isCancelled: input.isCancelled,
+        cancellationPollMs: input.cancellationPollMs,
+      });
+      const remainingAfterRecovery = deadline - Date.now();
+      if (remainingAfterRecovery <= 0) throw new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout");
+      try {
+        const result = await runAudiverisCommand({
+          ...input, inputPath: recoveryPath, outputDir: recoveryDir, timeoutMs: remainingAfterRecovery,
+        });
+        return { ...result, appliedRotationDegrees: rotation, recognitionOutputDir: recoveryDir, rasterScale: 2 };
+      } catch (recoveryError) {
+        if (!(recoveryError instanceof AudiverisProcessError) || recoveryError.reason !== "exit") throw recoveryError;
+        lastError = recoveryError;
+      }
     }
   }
   throw new AudiverisProcessError(
@@ -208,6 +272,7 @@ type ImageMagickNormalizationInput = {
   inputPath: string;
   outputPath: string;
   rotation: 0 | 90 | 180 | 270;
+  rasterScale?: 2;
   timeoutMs: number;
   isCancelled?: () => boolean;
   cancellationPollMs?: number;
@@ -218,12 +283,21 @@ function runImageMagickNormalization(input: ImageMagickNormalizationInput) {
     const args = [
       ...(input.commandArgsPrefix ?? []),
       input.inputPath,
+      "-auto-orient",
+      "-resize",
+      "3000x3000>",
+      ...(input.rasterScale ? ["-resize", "200%", "-resize", "3000x3000>"] : []),
+      "-colorspace",
+      "Gray",
+      "-normalize",
       "-background",
       "white",
       "-alpha",
       "remove",
       "-alpha",
       "off",
+      "-deskew",
+      "40%",
       ...(input.rotation ? ["-rotate", String(input.rotation)] : []),
       input.outputPath,
     ];

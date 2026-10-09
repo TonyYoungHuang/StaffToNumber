@@ -2,6 +2,41 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseAudiverisMusicXmlToScoreJson } from "./musicxml-score-parser.js";
 
+test("Audiveris percussion parsing preserves display placement, real MIDI mapping and hidden rests", () => {
+  const musicXml = `<score-partwise><part-list><score-part id="Dr"><part-name>Drums</part-name>
+    <midi-instrument id="snare"><midi-channel>10</midi-channel><midi-unpitched>39</midi-unpitched></midi-instrument>
+    <midi-instrument id="invalid"><midi-channel>10</midi-channel><midi-unpitched>129</midi-unpitched></midi-instrument>
+  </score-part></part-list><part id="Dr"><measure number="1"><attributes><divisions>1</divisions><clef><sign>percussion</sign></clef></attributes>
+    <note id="n1"><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><instrument id="snare"/><notehead>x</notehead></note>
+    <note id="n2"><unpitched/><duration>1</duration><instrument id="invalid"/></note>
+    <note id="r1" print-object="no"><rest/><duration>1</duration></note>
+  </measure></part></score-partwise>`;
+  const score = parseAudiverisMusicXmlToScoreJson({ musicXml, title: "Fixture", sourceFileId: "fixture", sourceOriginalName: "fixture.musicxml", importedAt: "2026-01-01T00:00:00Z" });
+  assert.equal(score.parts[0].midiChannel, 10);
+  assert.equal(score.measures[0].events.length, 3);
+  const [snare, unknown, hidden] = score.measures[0].events;
+  assert.ok(snare.type === "note" && unknown.type === "note" && hidden.type === "rest");
+  assert.deepEqual(snare.unpitched, { displayStep: "C", displayOctave: 5, instrumentId: "snare", midiPitch: 38 });
+  assert.equal(snare.notehead, "x");
+  assert.deepEqual(unknown.pitch, { step: "B", alter: 0, octave: 4 });
+  assert.equal(unknown.unpitched?.midiPitch, undefined);
+  assert.equal(hidden.printObject, false);
+  assert.match(score.metadata.warnings.join(" "), /no MIDI drum mapping/);
+});
+
+test("Audiveris parsing retains octave instrument transpose metadata without altering written pitches", () => {
+  const musicXml = `<score-partwise><part-list><score-part id="Gtr"><part-name>Guitar</part-name></score-part><score-part id="Bass"><part-name>Bass</part-name></score-part></part-list>
+    ${["Gtr", "Bass"].map((id) => `<part id="${id}"><measure number="1"><attributes><transpose><chromatic>0</chromatic><octave-change>-1</octave-change></transpose></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note></measure></part>`).join("")}
+  </score-partwise>`;
+  const score = parseAudiverisMusicXmlToScoreJson({ musicXml, title: "Fixture", sourceFileId: "fixture", sourceOriginalName: "fixture.musicxml", importedAt: "2026-01-01T00:00:00Z" });
+  assert.deepEqual(score.parts.map((part) => part.transposeSemitones), [-12, -12]);
+  for (const measure of score.measures) {
+    const note = measure.events[0];
+    assert.ok(note.type === "note");
+    assert.deepEqual(note.pitch, { step: "C", alter: 0, octave: 4 });
+  }
+});
+
 const fixture = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">
   <work><work-title>Audiveris professional symbols</work-title></work>
@@ -83,4 +118,22 @@ test("Audiveris MusicXML preserves professional notation in Score JSON v2", () =
     { type: "trill-mark", placement: "above", value: undefined },
     { type: "tremolo", placement: undefined, value: "2" },
   ]);
+});
+
+
+test("Audiveris hook beams are retained without unsupported-symbol warnings", () => {
+  const musicXml=fixture.replace('<beam number="1">begin</beam>','<beam number="1">forward hook</beam><beam number="2">backward hook</beam>');
+  const score=parseAudiverisMusicXmlToScoreJson({musicXml,title:"Hooks",sourceFileId:"fixture-hooks",sourceOriginalName:"hooks.musicxml",importedAt:new Date().toISOString()});
+  assert.deepEqual(score.measures[0].events[0].beams?.map(beam=>beam.type),["forward-hook","backward-hook"]);
+  assert.ok(!score.metadata.warnings.some(warning=>warning.includes("beam")));
+});
+
+
+test("repeated printed measure numbers retain distinct editable note identities", () => {
+  const musicXml=`<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Test</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure></part></score-partwise>`;
+  const score=parseAudiverisMusicXmlToScoreJson({musicXml,title:"Repeated bar numbers",sourceFileId:"repeated-bars",sourceOriginalName:"repeated.musicxml",importedAt:new Date().toISOString()});
+  const events=score.measures.flatMap(measure=>measure.events);
+  assert.equal(events.length,2);
+  assert.equal(new Set(events.map(event=>event.id)).size,2);
+  assert.deepEqual(score.measures.map(measure=>measure.number),["1","1"]);
 });

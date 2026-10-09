@@ -56,6 +56,28 @@ test("due announcements create one delivery per opted-in user and claim atomical
   assert.equal((db.prepare("SELECT status FROM score_notification_deliveries WHERE id = ?").get(second.id) as { status: string }).status, "queued");
 });
 
+test("German and Russian notification preferences survive claiming and localize only platform text", async () => {
+  for (const locale of ["de", "ru"] as const) {
+    const db = createDb();
+    try {
+      db.prepare("UPDATE score_notification_preferences SET locale = ?").run(locale);
+      const now = "2026-09-30T00:00:00.000Z";
+      db.prepare("INSERT INTO score_classroom_notifications VALUES ('notice-1', 'class-1', '<Rehearsal>', 'Teacher text & notes', ?, NULL, NULL)").run(now);
+      materializeDueNotificationDeliveries(db, now);
+      const delivery = claimNextNotificationDelivery(db, now, now);
+      assert.ok(delivery); assert.equal(delivery.locale,locale);
+      let payload: {text:string; html:string; subject:string} | undefined;
+      await sendNotificationEmail({delivery,apiKey:"test-only",from:"test@example.test",appUrl:"https://app.example.test",fetchImpl:async (_url,init) => {
+        payload=JSON.parse(String(init?.body)); return new Response('{"id":"test"}',{status:200});
+      }});
+      assert.ok(payload); assert.match(payload.text,/Teacher text & notes/);
+      assert.match(payload.html,/&lt;Rehearsal&gt;/); assert.match(payload.html,new RegExp(`lang="${locale}"`));
+      assert.match(payload.text,new RegExp(`locale=${locale}`));
+      assert.doesNotMatch(payload.text,/You received this|notification preferences/);
+    } finally { db.close(); }
+  }
+});
+
 test("email delivery uses a stable provider idempotency key and escapes announcement HTML", async () => {
   const db = createDb();
   const now = "2026-07-16T12:00:00.000Z";

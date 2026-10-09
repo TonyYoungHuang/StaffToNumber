@@ -12,7 +12,34 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-function newestFile(outputDir: string, pattern: RegExp) {
+export type AudiverisOutputSelection = { rotationDegrees?: 0 | 90 | 180 | 270 };
+export type AudiverisOutputErrorCode = "ROTATION_NOT_SELECTED" | "ROTATION_OUTPUT_MISSING" | "MULTIPLE_MOVEMENTS" | "MULTIPLE_PROJECTS";
+
+export class AudiverisOutputSelectionError extends Error {
+  constructor(message: string, readonly code: AudiverisOutputErrorCode, readonly candidatePaths: string[] = []) {
+    super(message);
+    this.name = "AudiverisOutputSelectionError";
+  }
+}
+
+function selectedOutputDirectory(outputDir: string, selection: AudiverisOutputSelection) {
+  if (!fs.existsSync(outputDir)) return outputDir;
+  const rotationDirectories = fs.readdirSync(outputDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^rotation-\d+$/u.test(entry.name));
+  if (rotationDirectories.length === 0 && (selection.rotationDegrees === undefined || selection.rotationDegrees === 0)) return outputDir;
+  if (selection.rotationDegrees === undefined) {
+    throw new AudiverisOutputSelectionError(
+      "Audiveris rotation output must be selected from the successful recognition attempt.", "ROTATION_NOT_SELECTED",
+    );
+  }
+  const selected = path.join(outputDir, `rotation-${selection.rotationDegrees}`);
+  if (!rotationDirectories.some((entry) => path.join(outputDir, entry.name) === selected)) {
+    throw new AudiverisOutputSelectionError("The successful Audiveris rotation output directory was not found.", "ROTATION_OUTPUT_MISSING");
+  }
+  return selected;
+}
+
+function outputFiles(outputDir: string, pattern: RegExp) {
   const candidates: string[] = [];
 
   function walk(directory: string) {
@@ -24,19 +51,42 @@ function newestFile(outputDir: string, pattern: RegExp) {
   }
 
   if (fs.existsSync(outputDir)) walk(outputDir);
-  return candidates.sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0];
+  return candidates.sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
 }
 
-export function findAudiverisMusicXmlOutput(outputDir: string) {
-  return newestFile(outputDir, /\.(musicxml|mxl|xml)$/iu);
+export function findAudiverisMusicXmlOutput(outputDir: string, selection: AudiverisOutputSelection = {}) {
+  const candidates = outputFiles(selectedOutputDirectory(outputDir, selection), /\.(musicxml|mxl|xml)$/iu)
+    .filter((candidate) => {
+      // XML project metadata can share the output directory with actual scores.
+      if (/\.xml$/iu.test(candidate)) {
+        if (fs.statSync(candidate).size > MAX_SCORE_BYTES) throw new Error("The Audiveris XML output exceeds 20 MB.");
+        const xml = fs.readFileSync(candidate, "utf8");
+        if (/<opus\b/iu.test(xml)) throw new AudiverisOutputSelectionError("Audiveris opus output requires complete movement handling.", "MULTIPLE_MOVEMENTS", [candidate]);
+        return /<score-(?:partwise|timewise)\b/iu.test(xml);
+      }
+      return true;
+    });
+  if (candidates.length > 1) {
+    throw new AudiverisOutputSelectionError(
+      "Audiveris exported multiple score movements; no partial score was selected.", "MULTIPLE_MOVEMENTS", candidates,
+    );
+  }
+  return candidates[0];
 }
 
-export function findAudiverisProjectOutput(outputDir: string) {
-  return newestFile(outputDir, /\.omr$/iu);
+export function findAudiverisProjectOutput(outputDir: string, selection: AudiverisOutputSelection = {}) {
+  const candidates = outputFiles(selectedOutputDirectory(outputDir, selection), /\.omr$/iu);
+  if (candidates.length > 1) {
+    throw new AudiverisOutputSelectionError("Audiveris emitted multiple project files for the selected recognition attempt.", "MULTIPLE_PROJECTS", candidates);
+  }
+  return candidates[0];
 }
 
 function validateMusicXml(musicXml: string) {
   const normalized = musicXml.replace(/^\uFEFF/u, "");
+  if (/<opus\b/iu.test(normalized)) {
+    throw new AudiverisOutputSelectionError("Audiveris opus output requires complete movement handling.", "MULTIPLE_MOVEMENTS");
+  }
   if (!/<score-(?:partwise|timewise)\b/iu.test(normalized)) {
     throw new Error("The Audiveris MusicXML output does not contain a supported score document.");
   }
@@ -80,12 +130,24 @@ export function readAudiverisMusicXml(outputPath: string) {
       .map((entry) => entry.entryName)
       .filter((entryName) => /\.(musicxml|xml)$/iu.test(entryName) && !entryName.toLowerCase().startsWith("meta-inf/")),
   );
-  const scoreEntry = candidatePaths.map((candidate) => archive.getEntry(candidate)).find(Boolean);
-  if (!scoreEntry || scoreEntry.isDirectory) {
+  const scores: Array<{ path: string; musicXml: string }> = [];
+  for (const candidate of new Set(candidatePaths)) {
+    const scoreEntry = archive.getEntry(candidate);
+    if (!scoreEntry || scoreEntry.isDirectory) continue;
+    if (Number(scoreEntry.header.size || 0) > MAX_SCORE_BYTES) {
+      throw new Error("The score XML inside the Audiveris MXL output exceeds 20 MB.");
+    }
+    const musicXml = scoreEntry.getData().toString("utf8");
+    if (/<opus\b/iu.test(musicXml)) {
+      throw new AudiverisOutputSelectionError("Audiveris opus output requires complete movement handling.", "MULTIPLE_MOVEMENTS", [candidate]);
+    }
+    if (/<score-(?:partwise|timewise)\b/iu.test(musicXml)) scores.push({ path: candidate, musicXml });
+  }
+  if (scores.length > 1) {
+    throw new AudiverisOutputSelectionError("The Audiveris MXL archive contains multiple score movements; no partial score was read.", "MULTIPLE_MOVEMENTS", scores.map((score) => score.path));
+  }
+  if (scores.length === 0) {
     throw new Error("The Audiveris MXL output does not contain a score XML file.");
   }
-  if (Number(scoreEntry.header.size || 0) > MAX_SCORE_BYTES) {
-    throw new Error("The score XML inside the Audiveris MXL output exceeds 20 MB.");
-  }
-  return validateMusicXml(scoreEntry.getData().toString("utf8"));
+  return validateMusicXml(scores[0].musicXml);
 }

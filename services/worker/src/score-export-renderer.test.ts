@@ -51,6 +51,22 @@ const playback: PlaybackDocument = {
   metadata: { sourceRevisionParser: "musicxml-basic-v1", generatedAt: new Date(0).toISOString(), eventCount: 2, warnings: [] },
 };
 
+test("percussion MIDI exports use mapped drums on channel 10 and omit unknown instruments", () => {
+  const drums: PlaybackDocument = {
+    ...playback,
+    parts: [{ id: "drums", name: "Drums", midiChannel: 10, midiProgram: 1 }],
+    events: [
+      { ...playback.events[0], partId: "drums", noteName: "B4", unpitched: { displayStep: "B", displayOctave: 4, midiPitch: 38 }, midiChannel: 10 },
+      { ...playback.events[1], partId: "drums", unpitched: { displayStep: "B", displayOctave: 4 } },
+    ],
+  };
+  const result = playbackToMidiBuffer(drums);
+  assert.equal(result.eventCount, 1);
+  assert.ok(result.buffer.includes(Buffer.from([0x99, 38])));
+  assert.equal(result.buffer.includes(Buffer.from([0x99, 71])), false);
+  assert.equal(result.buffer.includes(Buffer.from([0xc9])), false);
+});
+
 test("creates reproducible MIDI snapshots with part filtering and practice count-in", () => {
   const options = { soloPartIds: ["piano"], countIn: true, metronome: true, partPans: { piano: -0.5 } };
   const first = playbackToMidiBuffer(playback, options);

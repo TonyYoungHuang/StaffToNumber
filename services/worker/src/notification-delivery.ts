@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
-import { PRODUCT_NAME } from "@score/shared";
+import { formatMessage, getTransactionalCopy, normalizeLocale, type SupportedLocale } from "@score/i18n";
 
 export type ClaimedNotificationDelivery = {
   id: string;
   notificationId: string;
   destination: string;
   attempts: number;
-  locale: "zh-CN" | "en";
+  locale: SupportedLocale;
   classroomName: string;
   title: string;
   body: string;
@@ -95,7 +95,7 @@ export function claimNextNotificationDelivery(db: RuntimeDatabaseLike, now: stri
       LIMIT 1
     )
     RETURNING id, notification_id AS notificationId, destination, attempts,
-      (SELECT CASE WHEN locale = 'zh-CN' THEN 'zh-CN' ELSE 'en' END FROM score_notification_preferences WHERE user_id = score_notification_deliveries.recipient_user_id) AS locale,
+      (SELECT locale FROM score_notification_preferences WHERE user_id = score_notification_deliveries.recipient_user_id) AS locale,
       (SELECT classrooms.name FROM score_classroom_notifications notifications JOIN score_classrooms classrooms ON classrooms.id = notifications.classroom_id WHERE notifications.id = score_notification_deliveries.notification_id) AS classroomName,
       (SELECT title FROM score_classroom_notifications WHERE id = score_notification_deliveries.notification_id) AS title,
       (SELECT body FROM score_classroom_notifications WHERE id = score_notification_deliveries.notification_id) AS body
@@ -111,12 +111,13 @@ export async function sendNotificationEmail(input: {
   fetchImpl?: typeof fetch;
 }) {
   if (!input.apiKey || !input.from) throw new Error("Email provider is not configured.");
-  const isChinese = input.delivery.locale === "zh-CN";
+  const locale = normalizeLocale(input.delivery.locale) ?? "en";
+  const copy = getTransactionalCopy(locale);
   const subject = `${input.delivery.classroomName}: ${input.delivery.title}`;
-  const settingsUrl = input.appUrl ? `${input.appUrl.replace(/\/$/u, "")}/student` : "";
-  const footer = isChinese
-    ? `此邮件由你在 ${PRODUCT_NAME} 的课堂通知偏好触发。${settingsUrl ? `可在 ${settingsUrl} 修改通知设置。` : ""}`
-    : `You received this because classroom email announcements are enabled in ${PRODUCT_NAME}.${settingsUrl ? ` Manage notification settings at ${settingsUrl}.` : ""}`;
+  const settings = input.appUrl ? new URL("/api/locale", input.appUrl) : null;
+  settings?.searchParams.set("locale", locale);
+  settings?.searchParams.set("next", "/student");
+  const footer = `${copy.notificationFooter}${settings ? ` ${formatMessage(copy.notificationSettings, { url: settings.toString() })}` : ""}`;
   const response = await (input.fetchImpl ?? fetch)("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -129,7 +130,7 @@ export async function sendNotificationEmail(input: {
       to: [input.delivery.destination],
       subject,
       text: `${input.delivery.body}\n\n${footer}`,
-      html: `<h1>${escapeHtml(input.delivery.title)}</h1><p>${escapeHtml(input.delivery.body).replaceAll("\n", "<br>")}</p><hr><p>${escapeHtml(footer)}</p>`,
+      html: `<div lang="${locale}"><h1>${escapeHtml(input.delivery.title)}</h1><p>${escapeHtml(input.delivery.body).replaceAll("\n", "<br>")}</p><hr><p>${escapeHtml(footer)}</p></div>`,
       reply_to: input.replyTo || undefined,
     }),
   });

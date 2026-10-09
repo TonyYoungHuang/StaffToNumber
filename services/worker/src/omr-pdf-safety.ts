@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { evaluatePdfRasterBudget, type PdfRasterBudgetPolicy } from "@score/shared";
+import { pdfVisiblePageSize, planPdfRasterBudget, type PdfRasterBudgetPolicy } from "@score/shared";
 import { PDFDocument } from "pdf-lib";
 
 export class OmrPdfSafetyError extends Error {
@@ -32,20 +32,20 @@ export async function inspectOmrPdfFileIfPresent(filePath: string, policy: PdfRa
   if (pages.length === 0) {
     throw new OmrPdfSafetyError("The OMR source PDF does not contain any pages.", "PDF_INVALID");
   }
-  const inspection = evaluatePdfRasterBudget(
-    pages.map((page) => ({ widthPoints: page.getWidth(), heightPoints: page.getHeight() })),
+  const inspection = planPdfRasterBudget(
+    pages.map(pdfVisiblePageSize),
     policy,
   );
   if (inspection.ok) return inspection;
   if (inspection.reason === "page_pixel_limit") {
     throw new OmrPdfSafetyError(
-      `PDF page ${inspection.page?.pageNumber ?? "unknown"} exceeds the ${policy.maxPagePixels}-pixel OMR safety limit at ${policy.dpi} DPI. Resize or crop the page and retry the job.`,
+      `PDF page ${inspection.page?.pageNumber ?? "unknown"} exceeds the ${policy.maxPagePixels}-pixel OMR safety limit at the minimum useful render resolution. Crop the page or export it at a normal paper size and retry the job.`,
       "PDF_PAGE_PIXEL_LIMIT",
     );
   }
   if (inspection.reason === "total_pixel_limit") {
     throw new OmrPdfSafetyError(
-      `The PDF exceeds the ${policy.maxTotalPixels}-pixel total OMR safety limit at ${policy.dpi} DPI. Split the score into smaller files and retry the job.`,
+      `The PDF exceeds the ${policy.maxTotalPixels}-pixel total OMR safety limit at the minimum useful render resolution. Split the score into smaller files and retry the job.`,
       "PDF_TOTAL_PIXEL_LIMIT",
     );
   }

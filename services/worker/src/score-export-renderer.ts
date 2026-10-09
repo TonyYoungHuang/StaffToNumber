@@ -50,6 +50,16 @@ function channelForPart(index: number) {
   return channel >= 10 ? channel + 1 : channel;
 }
 
+function isPlayableEvent(event: PlaybackNoteEvent) {
+  const midi = event.unpitched?.midiPitch;
+  return !event.unpitched || (Number.isInteger(midi) && midi! >= 0 && midi! <= 127);
+}
+
+function percussionNoteName(event: PlaybackNoteEvent) {
+  const midi = event.unpitched!.midiPitch!;
+  return `${["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][midi % 12]}${Math.floor(midi / 12) - 1}`;
+}
+
 function ticksForBeats(beats: number) {
   return Math.max(1, Math.round(beats * TICKS_PER_BEAT));
 }
@@ -65,7 +75,7 @@ function filteredEvents(playback: PlaybackDocument, options: ScoreExportOptions)
   const endBeat = options.loopEnabled ? Math.max(startBeat + 0.25, options.loopEndBeat ?? playback.totalBeats) : Number.POSITIVE_INFINITY;
   return playback.events.filter((event) => {
     const partVisible = solo.size > 0 ? solo.has(event.partId) : !muted.has(event.partId);
-    return partVisible && event.startBeat >= startBeat && event.startBeat < endBeat;
+    return isPlayableEvent(event) && partVisible && event.startBeat >= startBeat && event.startBeat < endBeat;
   });
 }
 
@@ -92,27 +102,28 @@ export function playbackToMidiBuffer(playback: PlaybackDocument, options: ScoreE
     .filter((part) => events.some((event) => event.partId === part.id))
     .map((part, index) => {
       const track = new MidiWriter.Track();
-      const channel = channelForPart(index);
+      const partEvents = events.filter((candidate) => candidate.partId === part.id);
+      const channel = Number.isInteger(part.midiChannel) && part.midiChannel! >= 1 && part.midiChannel! <= 16 ? part.midiChannel! : partEvents.every((event) => event.unpitched) ? 10 : channelForPart(index);
       track.addTrackName(part.name);
       track.addInstrumentName(part.name);
       if (index === 0) {
         track.setTempo(tempo, 0);
         addTempoChanges(track, playback, options, sectionStartBeat, countInBeats, tempo);
       }
-      if (part.midiProgram !== undefined) {
+      if (part.midiProgram !== undefined && channel !== 10) {
         track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: clamp(Math.round(part.midiProgram) - 1, 0, 127), channel }));
       }
       const pan = clamp(options.partPans?.[part.id] ?? 0, -1, 1);
       track.controllerChange(10, Math.round((pan + 1) * 63.5), channel, 0);
       const volume = clamp(options.partVolumes?.[part.id] ?? 1, 0, 1.5);
       track.controllerChange(7, Math.round(clamp(volume / 1.5, 0, 1) * 127), channel, 0);
-      for (const event of events.filter((candidate) => candidate.partId === part.id)) {
+      for (const event of partEvents) {
         track.addEvent(new MidiWriter.NoteEvent({
-          pitch: [event.noteName],
+          pitch: [event.unpitched ? percussionNoteName(event) : event.noteName],
           duration: `T${ticksForBeats(event.soundDurationBeats ?? event.durationBeats)}`,
           startTick: noteStartTick(event, sectionStartBeat, countInBeats),
           velocity: Math.round(clamp(event.velocity, 0, 1) * 100),
-          channel,
+          channel: event.unpitched ? 10 : channel,
         }));
       }
       return track;

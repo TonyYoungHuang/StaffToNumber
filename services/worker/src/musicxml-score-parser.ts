@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { attachMusicXmlPreservation } from "@score/shared";
 import type {
   ScoreArticulation,
   ScoreBarline,
@@ -15,6 +16,7 @@ import type {
   ScoreMeasure,
   ScoreMeasureAttributes,
   ScoreNavigationMark,
+  ScoreNoteEvent,
   ScoreOrnament,
   ScorePart,
   ScorePitch,
@@ -106,6 +108,39 @@ function parseMidiProgram(scorePart: unknown) {
   return numberFrom(child(midiInstrument, "midi-program"));
 }
 
+function parseMidiChannel(scorePart: unknown) {
+  const channel = numberFrom(child(asArray(child(scorePart, "midi-instrument"))[0], "midi-channel"));
+  return Number.isInteger(channel) && channel! >= 1 && channel! <= 16 ? channel : undefined;
+}
+
+type PercussionInstrument = { id: string; midiPitch?: number };
+
+function parsePercussionInstruments(scorePart: unknown): PercussionInstrument[] {
+  return asArray(child(scorePart, "midi-instrument")).flatMap((instrument) => {
+    const id = text(attr(instrument, "id"));
+    const noteNumber = numberFrom(child(instrument, "midi-unpitched"));
+    return id ? [{ id, ...(Number.isInteger(noteNumber) && noteNumber! >= 1 && noteNumber! <= 128 ? { midiPitch: noteNumber! - 1 } : {}) }] : [];
+  });
+}
+
+function parseUnpitched(note: unknown, instruments: PercussionInstrument[]): ScoreNoteEvent["unpitched"] {
+  const unpitched = child(note, "unpitched");
+  if (unpitched === undefined) return undefined;
+  const step = text(child(unpitched, "display-step"));
+  const octave = numberFrom(child(unpitched, "display-octave"));
+  const instrumentId = text(attr(child(note, "instrument"), "id")) ?? (instruments.length === 1 ? instruments[0].id : undefined);
+  const midiPitch = instruments.find((instrument) => instrument.id === instrumentId)?.midiPitch;
+  return { displayStep: isPitchStep(step) ? step : "B", displayOctave: octave ?? 4, ...(instrumentId ? { instrumentId } : {}), ...(midiPitch !== undefined ? { midiPitch } : {}) };
+}
+
+function parsePartTransposeSemitones(score: XmlObject, partId: string) {
+  const part = asArray(child(score, "part")).find((node) => text(attr(node, "id")) === partId);
+  const transpose = asArray(child(part, "measure")).map((measure) => asArray(child(child(measure, "attributes"), "transpose"))[0]).find((value) => value !== undefined);
+  const chromatic = numberFrom(child(transpose, "chromatic"));
+  const octaveChange = numberFrom(child(transpose, "octave-change"));
+  return chromatic === undefined && octaveChange === undefined ? undefined : (chromatic ?? 0) + 12 * (octaveChange ?? 0);
+}
+
 function parseParts(score: XmlObject, warnings: string[]): ScorePart[] {
   const scoreParts = asArray(child(child(score, "part-list"), "score-part"));
   if (scoreParts.length === 0) {
@@ -119,6 +154,8 @@ function parseParts(score: XmlObject, warnings: string[]): ScorePart[] {
       name: text(child(part, "part-name")) ?? id,
       abbreviation: text(child(part, "part-abbreviation")),
       midiProgram: parseMidiProgram(part),
+      ...(parseMidiChannel(part) !== undefined ? { midiChannel: parseMidiChannel(part) } : {}),
+      ...(parsePartTransposeSemitones(score, id) !== undefined ? { transposeSemitones: parsePartTransposeSemitones(score, id) } : {}),
       measureCount: 0,
     };
   });
@@ -526,12 +563,14 @@ function parseLyrics(note: unknown): ScoreLyric[] {
     .map((lyric) => {
       const lyricText = text(child(lyric, "text"));
 
-      if (!lyricText) {
+      const extendNode = child(lyric, "extend");
+      if (!lyricText && extendNode === undefined) {
         return undefined;
       }
 
       const parsedLyric: ScoreLyric = {
-        text: lyricText,
+        text: lyricText ?? "",
+        ...(extendNode !== undefined ? { extend: { ...(text(attr(extendNode, "type")) ? { type: text(attr(extendNode, "type")) as "start" | "continue" | "stop" } : {}) } } : {}),
       };
       const lyricNumber = text(attr(lyric, "number"));
       const syllabic = text(child(lyric, "syllabic"));
@@ -554,6 +593,21 @@ function parseFingerings(note: unknown): string[] {
     .flatMap((notation) => asArray(child(child(notation, "technical"), "fingering")))
     .map((fingering) => text(fingering)?.trim())
     .filter((fingering): fingering is string => Boolean(fingering));
+}
+
+function parseTechnical(note: unknown): ScoreNoteEvent["technical"] {
+  const technical = asArray(child(note, "notations")).map(notation => child(notation, "technical")).find(Boolean);
+  if (!technical) return undefined;
+  const result: NonNullable<ScoreNoteEvent["technical"]> = {};
+  for (const [field, tag] of [["string", "string"], ["fret", "fret"], ["bend", "bend"]] as const) {
+    const raw = field === "bend" ? child(child(technical, tag), "bend-alter") : child(technical, tag);
+    if (raw !== undefined && Number.isFinite(Number(text(raw)))) result[field] = Number(text(raw));
+  }
+  for (const [field, tag] of [["hammerOn", "hammer-on"], ["pullOff", "pull-off"], ["slide", "slide"]] as const) {
+    const node = child(technical, tag);
+    if (node !== undefined) result[field] = text(attr(node, "type")) ?? "start";
+  }
+  return Object.keys(result).length ? result : undefined;
 }
 
 function parseArticulations(note: unknown): ScoreArticulation[] {
@@ -624,7 +678,7 @@ const ORNAMENT_TYPES = ["trill-mark", "turn", "delayed-turn", "inverted-turn", "
 function parseBeams(note: unknown, eventId: string, warnings: string[]): ScoreBeam[] {
   return asArray(child(note, "beam"))
     .map((beam, index) => {
-      const type = text(beam) as ScoreBeam["type"] | undefined;
+      const type = text(beam)?.trim().replace(/^(forward|backward) hook$/u, "$1-hook") as ScoreBeam["type"] | undefined;
       const number = numberFrom(attr(beam, "number"), 1) ?? 1;
       if (!type || !BEAM_TYPES.has(type) || !Number.isInteger(number) || number < 1 || number > 8) {
         warnings.push(`Unsupported beam at ${eventId}; it was not imported.`);
@@ -698,17 +752,19 @@ function parseOrnaments(note: unknown, eventId: string, warnings: string[]): Sco
   );
 }
 
-function parseEvent(note: unknown, eventId: string, warnings: string[]): ScoreEvent | undefined {
+function parseEvent(note: unknown, eventId: string, warnings: string[], instruments: PercussionInstrument[]): ScoreEvent | undefined {
   const duration = numberFrom(child(note, "duration"), 0) ?? 0;
   const durationType = text(child(note, "type"));
   const voice = text(child(note, "voice"));
   const staff = numberFrom(child(note, "staff"));
   const rest = child(note, "rest");
+  const printObject = text(attr(note, "print-object"));
 
   if (rest !== undefined) {
     const event: ScoreRestEvent = {
       id: eventId,
       type: "rest",
+      ...(printObject === "no" || printObject === "yes" ? { printObject: printObject === "yes" } : {}),
       duration,
       durationType,
       dots: parseDots(note),
@@ -724,16 +780,21 @@ function parseEvent(note: unknown, eventId: string, warnings: string[]): ScoreEv
     return event;
   }
 
-  const pitch = parsePitch(note);
+  const unpitched = parseUnpitched(note, instruments);
+  const pitch = unpitched ? { step: unpitched.displayStep, alter: 0, octave: unpitched.displayOctave } : parsePitch(note);
   if (!pitch) {
     warnings.push(`Skipped Audiveris note without complete pitch at ${eventId}.`);
     return undefined;
   }
+  if (unpitched && unpitched.midiPitch === undefined) warnings.push(`Unpitched note ${eventId} has no MIDI drum mapping and is silent during playback.`);
 
   return {
     id: eventId,
     type: "note",
     pitch,
+    ...(unpitched ? { unpitched } : {}),
+    ...(text(child(note, "notehead")) ? { notehead: text(child(note, "notehead")) } : {}),
+    ...(printObject === "no" || printObject === "yes" ? { printObject: printObject === "yes" } : {}),
     duration,
     durationType,
     dots: parseDots(note),
@@ -747,6 +808,7 @@ function parseEvent(note: unknown, eventId: string, warnings: string[]): ScoreEv
     fermatas: parseFermatas(note),
     lyrics: parseLyrics(note),
     fingerings: parseFingerings(note),
+    technical: parseTechnical(note),
     timeModification: parseTimeModification(note),
     beams: parseBeams(note, eventId, warnings),
     tuplets: parseTuplets(note, eventId, warnings),
@@ -755,7 +817,7 @@ function parseEvent(note: unknown, eventId: string, warnings: string[]): ScoreEv
   };
 }
 
-function parsePartMeasures(partNode: unknown, partId: string, warnings: string[]) {
+function parsePartMeasures(partNode: unknown, partId: string, warnings: string[], instruments: PercussionInstrument[]) {
   return asArray(child(partNode, "measure")).map((measureNode, measureIndex) => {
     const number = text(attr(measureNode, "number")) ?? String(measureIndex + 1);
     const measureId = `${partId}-m${number}-${measureIndex + 1}`;
@@ -763,7 +825,7 @@ function parsePartMeasures(partNode: unknown, partId: string, warnings: string[]
     const events = asArray(child(measureNode, "note"))
       .map((noteNode) => {
         eventIndex += 1;
-        return parseEvent(noteNode, `${partId}-m${number}-e${eventIndex}`, warnings);
+        return parseEvent(noteNode, `${measureId}-e${eventIndex}`, warnings, instruments);
       })
       .filter((event): event is ScoreEvent => Boolean(event));
 
@@ -805,7 +867,8 @@ export function parseAudiverisMusicXmlToScoreJson(input: {
   const measures: ScoreMeasure[] = [];
   for (const partNode of asArray(child(score, "part"))) {
     const partId = text(attr(partNode, "id")) ?? `P${measures.length + 1}`;
-    measures.push(...parsePartMeasures(partNode, partId, warnings));
+    const definition = asArray(child(child(score, "part-list"), "score-part")).find((part) => text(attr(part, "id")) === partId);
+    measures.push(...parsePartMeasures(partNode, partId, warnings, parsePercussionInstruments(definition)));
   }
 
   const partsWithCounts = parts.map((part) => ({
@@ -823,7 +886,7 @@ export function parseAudiverisMusicXmlToScoreJson(input: {
     warnings.push("Audiveris MusicXML did not include measures.");
   }
 
-  return {
+  return attachMusicXmlPreservation({
     schemaVersion: 2,
     title: parseTitle(score, input.title),
     source: {
@@ -845,5 +908,5 @@ export function parseAudiverisMusicXmlToScoreJson(input: {
     parts: partsWithCounts,
     staffGroups: parseStaffGroups(input.musicXml, warnings),
     measures,
-  };
+  }, input.musicXml);
 }

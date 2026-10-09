@@ -1,8 +1,9 @@
+import { runSimplePdfOmr, type SimplePdfResult } from "./simple-pdf-omr.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
-import { assertPostgresRuntimeTables, createRuntimeDatabase } from "@score/runtime-database";
+import { assertAccountStorageQuota, assertPostgresRuntimeTables, createRuntimeDatabase } from "@score/runtime-database";
 import AdmZip from "adm-zip";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { PDFParse } from "pdf-parse";
@@ -17,7 +18,7 @@ import {
   type ScoreJson,
   type StoredFileKind,
 } from "@score/shared";
-import { createStorageObjectKey, ObjectStorage, type StoredObjectRef } from "@score/storage";
+import { assertMinimumFreeSpace, createStorageObjectKey, ObjectStorage, type StoredObjectRef } from "@score/storage";
 import { workerConfig } from "./config.js";
 import { parseMidiToScoreJson } from "./midi-score-parser.js";
 import { parseAudiverisMusicXmlToScoreJson } from "./musicxml-score-parser.js";
@@ -25,6 +26,7 @@ import { applyAudiverisOmrDiagnostics } from "./audiveris-omr-diagnostics.js";
 import { summarizeAudiverisConfidence } from "./omr-confidence.js";
 import { renderScoreExport } from "./score-export-renderer.js";
 import { AudiverisProcessError, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
+import { ComplexOmrFailure, applyComplexCoverage, complexEvidenceEntries, runComplexOmr, type ComplexOmrResult } from "./complex-omr.js";
 import {
   findAudiverisMusicXmlOutput,
   findAudiverisProjectOutput,
@@ -36,6 +38,7 @@ import { consumeBrokerJob } from "./job-broker-consumer.js";
 import { bullMqStartupRetryDelayMs, createBullMqWorkerRedisOptions } from "./job-broker-connection.js";
 import { commitOmrCandidate } from "./omr-candidate-commit.js";
 import { inspectOmrPdfFileIfPresent } from "./omr-pdf-safety.js";
+import { createOmrProgressReporter } from "./omr-job-progress.js";
 import {
   markInterruptedBrokerJobFailed,
   recoverTerminalBrokerJobs,
@@ -221,6 +224,8 @@ const objectStorage = new ObjectStorage({
   secretAccessKey: workerConfig.s3SecretAccessKey,
   keyPrefix: workerConfig.s3KeyPrefix,
   maxAttempts: workerConfig.s3MaxAttempts,
+  checksumMode: workerConfig.s3ChecksumMode,
+  minimumFreeBytes: workerConfig.storageMinFreeBytes,
   serverSideEncryption: workerConfig.s3ServerSideEncryption,
   kmsKeyId: workerConfig.s3KmsKeyId,
   gatewayUrl: workerConfig.objectStorageGatewayUrl,
@@ -404,6 +409,7 @@ async function insertStoredFile(input: {
   mimeType: string;
   fileKind: StoredFileKind;
 }) {
+  assertAccountStorageQuota(db, input.userId, fs.statSync(input.storagePath).size);
   const id = createId();
   const createdAt = nowIso();
   const storedName = path.basename(input.storagePath);
@@ -2996,13 +3002,27 @@ async function processStaffPdfJob(job: ClaimedLegacyJob, inputFile: FileRow) {
 }
 
 async function processScoreOmrJob(job: ScoreJobRow) {
+  const progress = createOmrProgressReporter(update => {
+    const current = db.prepare("SELECT params_json FROM score_jobs WHERE id = ? AND status = 'processing'").get(job.id) as { params_json: string | null } | undefined;
+    if (!current) return;
+    const params = current.params_json ? JSON.parse(current.params_json) : {};
+    db.prepare("UPDATE score_jobs SET params_json = ?, updated_at = ? WHERE id = ? AND status = 'processing'")
+      .run(JSON.stringify({ ...params, processingProgress: update }), update.heartbeatAt, job.id);
+  });
+  try { await processScoreOmrJobWithProgress(job, progress); } finally { progress.stop(); }
+}
+
+async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: ReturnType<typeof createOmrProgressReporter>) {
   if (!job.document_id || !job.input_file_id) {
     markScoreJobFailed(job.id, "OMR job is missing its score document or input file.");
     return;
   }
 
   const jobDir = path.join(workerConfig.storageDir, job.user_id, "scores", "omr-jobs", job.id);
+  const params = job.params_json ? JSON.parse(job.params_json) as { recognitionMode?: "simple" | "complex" } : {};
+  const recognitionMode = params.recognitionMode === "complex" ? "complex" : "simple";
   const storedInputFile = findInputFile(job.input_file_id);
+  progress.report({ stage: "fetch-source" });
   let inputFile: FileRow;
   try {
     if (!storedInputFile) throw new Error("Stored OMR input was not found.");
@@ -3024,7 +3044,8 @@ async function processScoreOmrJob(job: ScoreJobRow) {
   const outputDir = path.join(jobDir, "audiveris-output");
   fs.mkdirSync(outputDir, { recursive: true });
 
-  await inspectOmrPdfFileIfPresent(inputFile.storage_path, {
+  progress.report({ stage: "prepare-pages" });
+  const pdfPlan = await inspectOmrPdfFileIfPresent(inputFile.storage_path, {
     dpi: workerConfig.omrPdfRasterDpi,
     maxPagePixels: workerConfig.omrPdfMaxPagePixels,
     maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
@@ -3059,24 +3080,65 @@ async function processScoreOmrJob(job: ScoreJobRow) {
   });
 
   let audiverisResult: Awaited<ReturnType<typeof runAudiverisWithRotationFallback>>;
+  let complexResult: ComplexOmrResult | undefined;
+  let simplePdfResult: SimplePdfResult | undefined;
   try {
-    audiverisResult = await runAudiverisWithRotationFallback({
+    if (recognitionMode === "complex") {
+      complexResult = await runComplexOmr({
+        inputPath: inputFile.storage_path,
+        outputDir: path.join(jobDir, "complex-output"),
+        pythonCommand: workerConfig.homrPythonCommand,
+        adapterPath: workerConfig.complexOmrAdapterPath,
+        homrSourceDir: workerConfig.homrSourceDir,
+        timeoutMs: workerConfig.complexOmrTimeoutMs,
+        attemptTimeoutMs: workerConfig.complexOmrAttemptTimeoutMs,
+        maxGroupAttempts: workerConfig.complexOmrMaxGroupAttempts,
+        renderPlan: pdfPlan?.pages,
+        imageMagickCommand: workerConfig.audiverisImageMagickCommand,
+        dpi: workerConfig.omrPdfRasterDpi,
+        maxPagePixels: workerConfig.omrPdfMaxPagePixels,
+        maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
+        audiveris: { command: workerConfig.audiverisCommand, maxHeapMb: workerConfig.audiverisMaxHeapMb },
+        isCancelled: () => isScoreJobCancelled(job.id),
+        onProgress: (update) => { if (update.stage) progress.report({ stage: update.stage, page: update.page, totalPages: update.totalPages }); insertOmrDiagnostic({
+          jobId: job.id,
+          documentId: job.document_id!,
+          diagnostics: { status: "processing", engine: "hybrid", recognitionMode, ...update },
+        }); },
+      });
+      audiverisResult = complexResult;
+    } else if (pdfPlan) {
+      simplePdfResult = await runSimplePdfOmr({
+        inputPath: inputFile.storage_path, outputDir: path.join(jobDir, "pdf-output"),
+        pythonCommand: workerConfig.homrPythonCommand, adapterPath: workerConfig.complexOmrAdapterPath, homrSourceDir: workerConfig.homrSourceDir,
+        renderPlan: pdfPlan.pages, dpi: workerConfig.omrPdfRasterDpi, maxPagePixels: workerConfig.omrPdfMaxPagePixels, maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
+        timeoutMs: workerConfig.audiverisTimeoutMs, imageMagickCommand: workerConfig.audiverisImageMagickCommand,
+        audiveris: { command: workerConfig.audiverisCommand, maxHeapMb: workerConfig.audiverisMaxHeapMb },
+        isCancelled: () => isScoreJobCancelled(job.id),
+        onProgress: update => progress.report(update),
+      });
+      audiverisResult = simplePdfResult;
+    } else {
+      audiverisResult = await runAudiverisWithRotationFallback({
       command: workerConfig.audiverisCommand,
       imageMagickCommand: workerConfig.audiverisImageMagickCommand,
       inputPath: inputFile.storage_path,
       outputDir,
       timeoutMs: workerConfig.audiverisTimeoutMs,
       maxHeapMb: workerConfig.audiverisMaxHeapMb,
+      onProgress: stage => progress.report({ stage, totalPages: 1, page: 1 }),
       isCancelled: () => isScoreJobCancelled(job.id),
-    });
+      });
+    }
     insertOmrDiagnostic({
       jobId: job.id,
       documentId: job.document_id,
       diagnostics: {
         status: "processing",
         engine: "audiveris",
+        ...(audiverisResult.rasterScale ? { rasterScale: audiverisResult.rasterScale } : {}),
         message:
-          audiverisResult.appliedRotationDegrees === 0
+          complexResult ? "Each source page orientation was selected independently; the source coordinate transforms are retained in the coverage report." : audiverisResult.appliedRotationDegrees === 0
             ? "Raster input normalization completed without orientation correction."
             : `Raster input orientation was corrected by ${audiverisResult.appliedRotationDegrees} degrees before recognition.`,
       },
@@ -3094,6 +3156,10 @@ async function processScoreOmrJob(job: ScoreJobRow) {
       });
       return;
     }
+    if (error instanceof ComplexOmrFailure) {
+      insertOmrDiagnostic({ jobId: job.id, documentId: job.document_id, sourcePageCount: error.coverage.sourcePageCount,
+        diagnostics: { status: "failed", engine: "hybrid", recognitionMode, message: error.message, coverage: error.coverage } });
+    }
     throw error;
   }
   if (isScoreJobCancelled(job.id)) {
@@ -3108,7 +3174,32 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     });
     return;
   }
-  const musicXmlPath = findAudiverisMusicXmlOutput(outputDir);
+  const recognizedOutputDir = audiverisResult.recognitionOutputDir ?? outputDir;
+  const outputSelection = { rotationDegrees: audiverisResult.recognitionOutputDir ? 0 as const : audiverisResult.appliedRotationDegrees };
+  let musicXmlPath: string | undefined;
+  let omrProjectPath: string | undefined;
+  let musicXml: string;
+  try {
+    musicXmlPath = complexResult?.musicXmlPath ?? simplePdfResult?.musicXmlPath ?? findAudiverisMusicXmlOutput(recognizedOutputDir, outputSelection);
+    omrProjectPath = complexResult || simplePdfResult ? undefined : findAudiverisProjectOutput(recognizedOutputDir, outputSelection);
+    musicXml = complexResult?.musicXml ?? simplePdfResult?.musicXml ?? (musicXmlPath ? readAudiverisMusicXml(musicXmlPath) : "");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Audiveris output could not be selected.";
+    insertOmrDiagnostic({
+      jobId: job.id,
+      documentId: job.document_id,
+      diagnostics: {
+        status: "failed",
+        engine: "audiveris",
+        message,
+        rotationDegrees: audiverisResult.appliedRotationDegrees,
+        stdout: audiverisResult.stdout.slice(-4000),
+        stderr: audiverisResult.stderr.slice(-4000),
+      },
+    });
+    markScoreJobFailed(job.id, message);
+    return;
+  }
   if (!musicXmlPath) {
     const message = "Audiveris finished but no .musicxml, .mxl, or .xml output was found.";
     insertOmrDiagnostic({
@@ -3126,8 +3217,8 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     return;
   }
 
-  const musicXml = readAudiverisMusicXml(musicXmlPath);
-  const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris.musicxml`;
+  const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-${recognitionMode === "complex" ? "ensemble-candidate" : "audiveris"}.musicxml`;
+  progress.report({ stage: "save" });
   const storedMusicXmlPath = path.join(jobDir, originalName);
   fs.writeFileSync(storedMusicXmlPath, musicXml, "utf8");
   const musicXmlFileId = await insertStoredFile({
@@ -3145,10 +3236,33 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     sourceOriginalName: originalName,
     importedAt: nowIso(),
   }));
-  const omrProjectPath = findAudiverisProjectOutput(outputDir);
-  const scoreJson = omrProjectPath ? applyAudiverisOmrDiagnostics(structuralScoreJson, omrProjectPath) : structuralScoreJson;
+  if (simplePdfResult) structuralScoreJson.metadata.warnings.push(...simplePdfResult.issues.map(issue => `[${issue.kind}] ${issue.message}`));
+  const scoreJson = complexResult ? applyComplexCoverage(structuralScoreJson, complexResult) : omrProjectPath ? applyAudiverisOmrDiagnostics(structuralScoreJson, omrProjectPath) : structuralScoreJson;
   let omrBundleFileId: string | null = null;
   const omrPageImageFileIds: string[] = [];
+  if (complexResult || simplePdfResult) {
+    const sourcePagePaths = complexResult?.pageImagePaths ?? simplePdfResult!.pages.map(page => page.imagePath);
+    for (const [index, pageImagePath] of sourcePagePaths.entries()) {
+      const pageImageName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-source-page-${String(index + 1).padStart(3, "0")}.png`;
+      const pageImageFileId = await insertStoredFile({
+        userId: job.user_id,
+        originalName: pageImageName,
+        storagePath: pageImagePath,
+        mimeType: "image/png",
+        fileKind: "omr_page_image",
+      });
+      omrPageImageFileIds.push(pageImageFileId);
+    }
+  }
+  if (complexResult) {
+    const bundle = new AdmZip();
+    for (const entry of complexEvidenceEntries(complexResult)) bundle.addFile(entry.name, entry.content);
+    const bundlePath = path.join(jobDir, "ensemble-evidence.zip");
+    bundle.writeZip(bundlePath);
+    omrBundleFileId = await insertStoredFile({
+      userId: job.user_id, originalName: "ensemble-evidence.zip", storagePath: bundlePath, mimeType: "application/zip", fileKind: "omr_bundle",
+    });
+  }
   if (omrProjectPath) {
     const omrBundleName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris.omr`;
     const storedOmrPath = path.join(jobDir, omrBundleName);
@@ -3214,8 +3328,11 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     documentId: job.document_id,
     diagnostics: {
       status: "completed",
-      engine: "audiveris",
-      message: "Audiveris MusicXML was imported as a candidate revision awaiting explicit review.",
+      engine: complexResult ? "hybrid" : "audiveris",
+      recognitionMode,
+      ...(complexResult ? { coverage: complexResult.coverage } : {}),
+      ...(simplePdfResult ? { pdfRenderPlan: simplePdfResult.pages.map(({ page, renderDpi }) => ({ page, renderDpi })), issues: simplePdfResult.issues } : {}),
+      message: complexResult ? "Layered recognition produced an ensemble candidate; source coverage and musical content require explicit review." : "Audiveris MusicXML was imported as a candidate revision awaiting explicit review.",
       musicXmlFileId,
       omrBundleFileId,
       omrPageImageFileIds,
@@ -3229,7 +3346,7 @@ async function processScoreOmrJob(job: ScoreJobRow) {
       stderr: audiverisResult.stderr.slice(-4000),
     },
     confidence: confidenceSummary.confidence,
-    sourcePageCount: confidenceSummary.sourcePageCount,
+    sourcePageCount: complexResult?.coverage.sourcePageCount ?? simplePdfResult?.pages.length ?? confidenceSummary.sourcePageCount,
   });
   console.log(`[worker] score job ${job.id} completed with Audiveris MusicXML revision ${revisionId}`);
 }
@@ -3690,6 +3807,7 @@ async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
 
   try {
     await new Promise((resolve) => setTimeout(resolve, workerConfig.processingDelayMs));
+    assertMinimumFreeSpace(workerConfig.storageDir, workerConfig.storageMinFreeBytes, 100 * 1024 * 1024);
     await processScoreJob(scoreJob);
   } catch (error) {
     recordWorkerHeartbeat("error", error instanceof Error ? error.message : "Worker failed to process the score job.", {
@@ -3717,6 +3835,14 @@ async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
     }
     markScoreJobFailed(scoreJob.id, error instanceof Error ? error.message : "Worker failed to process the score job.");
   } finally {
+    if (workerConfig.storageBackend === "s3") {
+      const folder = scoreJob.job_type === "omr_import" ? "omr-jobs" : scoreJob.job_type === "audio_transcribe" ? "audio-transcribe" : scoreJob.job_type === "render_export" ? "exports" : null;
+      if (folder) {
+        const root = path.resolve(workerConfig.storageDir);
+        const scratch = path.resolve(root, scoreJob.user_id, "scores", folder, scoreJob.id);
+        if (scratch.startsWith(root + path.sep)) await fs.promises.rm(scratch, { recursive: true, force: true }).catch(error => console.error("[worker] scratch cleanup failed", error));
+      }
+    }
     recordWorkerHeartbeat("idle", "Waiting for queued jobs");
   }
 }

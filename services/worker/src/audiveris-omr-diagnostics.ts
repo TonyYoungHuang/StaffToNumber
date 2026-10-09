@@ -33,64 +33,68 @@ export function applyAudiverisOmrDiagnostics(scoreJson: ScoreJson, omrPath: stri
     const pageNumber = Number(/^sheet#(\d+)\//i.exec(entry.entryName)?.[1] ?? pageIndex + 1);
     const parsed = parser.parse(zip.readAsText(entry)) as XmlRecord;
     const sheet = asRecord(parsed.sheet);
-    const page = asRecord(sheet?.page);
+    const logicalPages = asArray(sheet?.page).map(asRecord).filter(Boolean) as XmlRecord[];
     const picture = asRecord(sheet?.picture);
-    const systems = asArray(page?.system).map(asRecord).filter(Boolean) as XmlRecord[];
     let pageMaxX = 0;
     let pageMaxY = 0;
-    for (const system of systems) {
-      const stacks = asArray(system.stack).map(asRecord).filter(Boolean) as XmlRecord[];
-      const parts = asArray(system.part).map(asRecord).filter(Boolean) as XmlRecord[];
-      const staffToPart = new Map<string, string>();
-      for (const part of parts) {
-        const logicalId = String(part.id ?? parts.indexOf(part) + 1);
-        for (const staff of asArray(part.staff).map(asRecord).filter(Boolean) as XmlRecord[]) {
-          staffToPart.set(String(staff.id), logicalId);
+    for (const [logicalPageIndex, logicalPage] of logicalPages.entries()) {
+      const systems = asArray(logicalPage.system).map(asRecord).filter(Boolean) as XmlRecord[];
+      for (const [systemIndex, system] of systems.entries()) {
+        const stacks = asArray(system.stack).map(asRecord).filter(Boolean) as XmlRecord[];
+        const parts = asArray(system.part).map(asRecord).filter(Boolean) as XmlRecord[];
+        const staffToPart = new Map<string, string>();
+        for (const part of parts) {
+          const logicalId = String(part.id ?? parts.indexOf(part) + 1);
+          for (const staff of asArray(part.staff).map(asRecord).filter(Boolean) as XmlRecord[]) {
+            staffToPart.set(String(staff.id), logicalId);
+          }
         }
-      }
 
-      const interGroups = asRecord(asRecord(system.sig)?.inters) ?? {};
-      for (const [kind, rawGroup] of Object.entries(interGroups)) {
-        for (const inter of asArray(rawGroup).map(asRecord).filter(Boolean) as XmlRecord[]) {
-          const bounds = asRecord(inter.bounds);
-          if (!bounds || inter.id === undefined || (inter.grade === undefined && inter["ctx-grade"] === undefined)) continue;
-          const x = numberValue(bounds.x);
-          const y = numberValue(bounds.y);
-          const width = numberValue(bounds.w);
-          const height = numberValue(bounds.h);
-          if ([x, y, width, height].some((value) => value === null)) continue;
-          const grade = numberValue(inter.grade);
-          const contextualGrade = numberValue(inter["ctx-grade"]);
-          const confidence = contextualGrade ?? grade;
-          pageMaxX = Math.max(pageMaxX, x! + width!);
-          pageMaxY = Math.max(pageMaxY, y! + height!);
-          const staffId = inter.staff === undefined ? null : String(inter.staff);
-          const logicalPartId = staffId ? staffToPart.get(staffId) : undefined;
-          const stackIndex = stacks.findIndex((stack) => x! + width! / 2 >= numberValue(stack.left)! && x! + width! / 2 <= numberValue(stack.right)!);
-          const measureId = logicalPartId && stackIndex >= 0 ? findScoreMeasureId(scoreJson, scorePartByLogicalId.get(logicalPartId), (partOffsets.get(logicalPartId) ?? 0) + stackIndex) : undefined;
-          symbols.push({
-            id: `audiveris-p${pageNumber}-${inter.id}`,
-            engineId: String(inter.id),
-            shape: String(inter.shape ?? kind).toLowerCase().replaceAll("_", "-"),
-            grade,
-            contextualGrade,
-            confidence,
-            page: pageNumber,
-            bbox: { x: x!, y: y!, width: width!, height: height! },
-            measureId,
-            issues: confidence !== null && confidence < 0.75 ? ["Low Audiveris symbol confidence"] : confidence !== null && confidence < 0.9 ? ["Audiveris symbol should be reviewed"] : [],
-          });
+        const interGroups = asRecord(asRecord(system.sig)?.inters) ?? {};
+        for (const [kind, rawGroup] of Object.entries(interGroups)) {
+          for (const [interIndex, inter] of (asArray(rawGroup).map(asRecord).filter(Boolean) as XmlRecord[]).entries()) {
+            const bounds = asRecord(inter.bounds);
+            if (!bounds || inter.id === undefined || (inter.grade === undefined && inter["ctx-grade"] === undefined)) continue;
+            const x = numberValue(bounds.x);
+            const y = numberValue(bounds.y);
+            const width = numberValue(bounds.w);
+            const height = numberValue(bounds.h);
+            if ([x, y, width, height].some((value) => value === null)) continue;
+            const grade = numberValue(inter.grade);
+            const contextualGrade = numberValue(inter["ctx-grade"]);
+            const confidence = contextualGrade ?? grade;
+            pageMaxX = Math.max(pageMaxX, x! + width!);
+            pageMaxY = Math.max(pageMaxY, y! + height!);
+            const staffId = inter.staff === undefined ? null : String(inter.staff);
+            const logicalPartId = staffId ? staffToPart.get(staffId) : undefined;
+            const stackIndex = stacks.findIndex((stack) => x! + width! / 2 >= numberValue(stack.left)! && x! + width! / 2 <= numberValue(stack.right)!);
+            // Multiple logical pages on one image can restart part numbering for
+            // separate movements. Keep all symbols without inventing event links.
+            const measureId = logicalPages.length === 1 && logicalPartId && stackIndex >= 0 ? findScoreMeasureId(scoreJson, scorePartByLogicalId.get(logicalPartId), (partOffsets.get(logicalPartId) ?? 0) + stackIndex) : undefined;
+            symbols.push({
+              id: `audiveris-p${pageNumber}-l${logicalPageIndex + 1}-s${systemIndex + 1}-${kind}-i${interIndex + 1}-${inter.id}`,
+              engineId: String(inter.id),
+              shape: String(inter.shape ?? kind).toLowerCase().replaceAll("_", "-"),
+              grade,
+              contextualGrade,
+              confidence,
+              page: pageNumber,
+              bbox: { x: x!, y: y!, width: width!, height: height! },
+              measureId,
+              issues: confidence !== null && confidence < 0.75 ? ["Low Audiveris symbol confidence"] : confidence !== null && confidence < 0.9 ? ["Audiveris symbol should be reviewed"] : [],
+            });
+          }
         }
-      }
 
-      for (const part of parts) {
-        const logicalId = String(part.id ?? parts.indexOf(part) + 1);
-        partOffsets.set(logicalId, (partOffsets.get(logicalId) ?? 0) + stacks.length);
+        for (const part of parts) {
+          const logicalId = String(part.id ?? parts.indexOf(part) + 1);
+          partOffsets.set(logicalId, (partOffsets.get(logicalId) ?? 0) + stacks.length);
+        }
       }
     }
 
-    const pageWidth = numberValue(picture?.width) ?? numberValue(page?.width) ?? pageMaxX;
-    const pageHeight = numberValue(picture?.height) ?? numberValue(page?.height) ?? pageMaxY;
+    const pageWidth = numberValue(picture?.width) ?? Math.max(pageMaxX, ...logicalPages.map((page) => numberValue(page.width) ?? 0));
+    const pageHeight = numberValue(picture?.height) ?? Math.max(pageMaxY, ...logicalPages.map((page) => numberValue(page.height) ?? 0));
     if (pageWidth > 0 && pageHeight > 0) {
       const imageDimensions = pageImageDimensions.get(pageNumber);
       pages.push({
