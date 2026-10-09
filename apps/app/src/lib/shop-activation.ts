@@ -1,7 +1,4 @@
 export const shopPlanNames: Record<string, string> = {
-  "single-score": "单谱体验 · 1份乐谱 / 最多5页 · 10积分",
-  "credits-50": "日常使用 · 简单谱识别＋编辑＋导出PDF约25份 · 50积分",
-  "credits-200": "高频使用 · 简单谱识别＋编辑＋导出PDF约100份 · 200积分",
   "starter-monthly": "Starter · 1 个月",
   "starter-annual": "Starter · 1 年",
   "converter-pro-monthly": "Converter Pro · 1 个月",
@@ -36,15 +33,13 @@ export function shopError(error: string, status?: number) {
 }
 
 export function shopDeliveryText(item: { code: string; planCode: string | null; entitlementDays: number; expiresAt: string | null }, origin: string) {
-  const prepaid = item.planCode === "credits-50" || item.planCode === "credits-200";
-  const single = item.planCode === "single-score";
   return [
     "五线谱工具使用入口：", `${origin.replace(/\/$/, "")}/cn`,
     `激活码：${item.code}`,
     `套餐：${item.planCode ? shopPlanNames[item.planCode] ?? item.planCode : `${item.entitlementDays} 天使用权限`}`,
     "打开链接 → 输入激活码登录 → 选择功能开始使用，无需邮箱、密码或注册。",
-    prepaid ? "一次性积分包：首次兑换到账，不按月重置，未用积分保留、不设到期日。基础编辑、移调和试听不额外扣分；识别和新建导出按确认页显示的积分消耗，失败或取消会释放预留积分。" : single ? "10积分只用于1份PDF或图片乐谱，最多5页，不能分给多份乐谱；这份乐谱的未用积分不设到期日。" : "首次登录开始计算使用期限；以后换设备仍用同一码登录，乐谱和额度保存在同一账户中，重复登录不会重新计时。不会自动续费或扣款。",
-    "激活码就是登录凭证，请妥善保存、不要分享。再次购买时先用原码登录，再选择“补充积分 / 续期当前账户”兑换新码；以后仍用原码登录。",
+    "首次登录开始计算使用期限；以后换设备仍用同一码登录，乐谱和额度保存在同一账户中，重复登录不会重新计时。不会自动续费或扣款。",
+    "激活码就是登录凭证，请妥善保存、不要分享。续期时先用原码登录，再选择“续期当前账户”兑换新码；以后仍用原码登录。",
     ...(item.expiresAt ? [`请在 ${new Date(item.expiresAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}（北京时间）前兑换。`] : []),
     process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE === "true" ? "扫描件和录音识别后请校对；音频转谱适合清晰单旋律，复杂伴奏、人声混合不保证准确。" : "扫描件识别后请校对。音频转五线谱暂未开放，激活套餐不会提前开启此功能。",
     "遇到问题请在购买店铺提供订单号和报错截图。",

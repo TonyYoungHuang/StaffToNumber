@@ -60,3 +60,33 @@ test("maps a chord beam marker to one tickable without duplicating its notehead"
 
   assert.deepEqual(groups[0]?.eventIds, ["root", "third", "next"]);
 });
+
+test("leaves a malformed OMR quarter-note beam unconnected and preserves the next valid group", () => {
+  const groups = buildVexFlowBeamGroups([
+    note("omr-quarter", 1, "1", "begin", { duration: 4, durationType: "quarter" }),
+    note("omr-eighth", 1, "1", "end"),
+    note("valid-start", 1, "1", "begin", { durationType: "16th" }),
+    note("valid-end", 1, "1", "end", { durationType: "16th" }),
+  ]);
+
+  assert.deepEqual(groups.map((group) => group.eventIds), [["valid-start", "valid-end"]]);
+});
+
+test("does not beam an unknown duration that the renderer treats as a quarter note", () => {
+  const groups = buildVexFlowBeamGroups([
+    note("unknown", 1, "1", "begin", { durationType: undefined }),
+    note("eighth", 1, "1", "end"),
+  ]);
+
+  assert.deepEqual(groups, []);
+});
+
+test("uses the chord root duration for beam eligibility", () => {
+  const groups = buildVexFlowBeamGroups([
+    note("quarter-root", 1, "1", undefined, { durationType: "quarter" }),
+    note("chord-marker", 1, "1", "begin", { chord: true }),
+    note("eighth", 1, "1", "end"),
+  ]);
+
+  assert.deepEqual(groups, []);
+});

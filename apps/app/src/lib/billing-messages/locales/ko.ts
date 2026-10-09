@@ -49,10 +49,6 @@ export const koBillingMessages = {
     manager: {
       loading: "결제 정보 불러오는 중...", fallbackError: "결제 정보를 불러올 수 없습니다. 다시 시도하세요.", signIn: "결제 정보를 보려면 로그인하세요.",
       creditEyebrow: "크레딧 잔액", availableCredits: "이번 달 사용 가능 크레딧", creditUnit: "크레딧", creditSummaryTemplate: "이번 달 {limit}개 중 {used}개를 사용했습니다.", creditUsage: "이번 달 크레딧 사용량", storage: "파일 저장 공간",
-      prepaidTitle: "선불 크레딧",
-      prepaidSummaryTemplate: "선불 크레딧 {limit}개 중 {used}개를 사용했거나 예약했습니다. 월간 초기화나 만료가 없습니다.",
-      prepaidNote: "처리와 내보내기 작업에는 크레딧을 사용합니다. 편집, 조옮김, 재생에는 사용하지 않습니다. 실패하거나 취소하면 예약한 크레딧이 반환됩니다.",
-      additionalPrepaidTemplate: "추가 선불 크레딧: {remaining} / {total}. 월간 크레딧이 부족할 때 사용하며, 미사용 크레딧은 유지됩니다.",
       quotaNote: "작업 생성 시 크레딧이 예약되며, 실패하거나 취소되면 자동으로 반환됩니다. 월간 크레딧은 매달 초기화되며 이월되지 않습니다.",
       freeEyebrow: "무료 이용 상태", noPaidTitle: "활성 유료 요금제가 없습니다", freeBody: "무료 계정은 완전한 여러 페이지 PDF 또는 악보 이미지로 평생 프로젝트 하나를 만들고 교정, 재생, 조옮김, 숫자보, 공유 및 내보내기를 이용할 수 있습니다. 무료 한도는 {credits}입니다.", unlock: "전체 이용 권한 활성화",
       subscriptionsEyebrow: "구독", subscriptionsTitle: "이용 권한 및 갱신 상태", manageStripe: "Stripe 결제 수단 관리", managingStripe: "Stripe 여는 중...", noSubscriptions: "이 계정에 연결된 구독이 없습니다.",

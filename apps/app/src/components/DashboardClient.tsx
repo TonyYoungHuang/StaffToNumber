@@ -1,15 +1,16 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { formatDateTime } from "@score/i18n";
 import { CheckSealIcon, ClockPulseIcon, DownloadIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
-import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 import { OperationsPanel } from "./OperationsPanel";
 import { useAppLocale } from "./AppLocaleProvider";
+import { useAppAuthModal } from "./AppAuthModal";
 import type { WorkspaceMessages } from "../lib/workspace-messages/types";
 
 type MePayload = {
@@ -36,6 +37,8 @@ export function DashboardClient({
   operationsCopy: WorkspaceMessages["operations"];
 }) {
   const { locale } = useAppLocale();
+  const signIn = useAppAuthModal();
+  const sessionToken = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<MePayload["user"] | null>(null);
@@ -46,18 +49,23 @@ export function DashboardClient({
 
 
   useEffect(() => {
-    const token = getStoredToken();
+    const token = sessionToken;
+    let active = true;
+    setError(null);
     if (!token) {
+      setProfile(null);
       setLoading(false);
       setError(copy.signInFirst);
       return;
     }
 
+    setLoading(true);
     apiRequest<MePayload>("/api/auth/me", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     }).then((result) => {
+      if (!active) return;
       setLoading(false);
 
       if (!result.ok) {
@@ -67,7 +75,8 @@ export function DashboardClient({
 
       setProfile(result.data.user);
     });
-  }, [copy.signInFirst]);
+    return () => { active = false; };
+  }, [copy.signInFirst, sessionToken]);
 
   async function downloadDataExport() {
     const token = getStoredToken();
@@ -324,9 +333,11 @@ export function DashboardClient({
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => {
+            onClick={async () => {
+              const result = await apiRequest("/api/auth/logout", { method: "POST" });
+              if (!result.ok) { setPrivacyMessage(result.error); return; }
               clearStoredToken();
-              window.location.href = APP_ROUTES.login;
+              signIn("login");
             }}
           >
             {copy.actions.signOut}

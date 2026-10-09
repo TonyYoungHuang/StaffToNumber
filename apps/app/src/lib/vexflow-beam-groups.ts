@@ -14,6 +14,7 @@ type BeamTickable = {
   voice: string;
   staffNumber: number;
   beams: ScoreBeam[];
+  beamable: boolean;
 };
 
 /** Resolves MusicXML beam markers across every staff in one measure. */
@@ -37,7 +38,9 @@ export function buildVexFlowBeamGroups(events: ScoreEvent[]): VexFlowBeamGroup[]
 
       const group = active.get(key);
       appendUniqueTickable(group, tickable);
-      if (group && group.length >= 2) {
+      // OMR candidates can carry beam markers on quarter notes. VexFlow throws
+      // for these groups, so leave their notes unconnected for manual review.
+      if (group && group.length >= 2 && group.every((item) => item.beamable)) {
         const staffNumbers = Array.from(new Set(group.map((item) => item.staffNumber))).sort((left, right) => left - right);
         completed.push({
           id: `beam-${tickable.voice}-${beam.number}-${completed.length + 1}`,
@@ -72,7 +75,14 @@ function buildBeamTickables(events: ScoreEvent[]) {
       previous.beams.push(...(event.beams ?? []));
       continue;
     }
-    tickables.push({ eventIds: [event.id], voice, staffNumber, beams: [...(event.beams ?? [])] });
+    tickables.push({
+      eventIds: [event.id],
+      voice,
+      staffNumber,
+      beams: [...(event.beams ?? [])],
+      // Keep this aligned with vexDuration: unknown types render as quarters.
+      beamable: event.durationType === "eighth" || event.durationType === "16th" || event.durationType === "32nd" || event.durationType === "64th",
+    });
   }
   return tickables;
 }

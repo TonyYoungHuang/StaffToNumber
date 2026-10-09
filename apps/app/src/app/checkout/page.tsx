@@ -60,8 +60,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
       </header>
 
       <CheckoutPlanSelector
+        returnTo={typeof params.next === "string" ? params.next : undefined}
         plans={plans}
         initialPlanCode={initialPlanCode}
+        initialBillingKind={params.billing === "one_time" ? "one_time" : "subscription"}
         locale={locale}
         copy={copy.checkout}
         authMessages={authMessages}

@@ -1,9 +1,12 @@
 "use client";
 
+import { useScoreActivity } from "./ScoreOperationBoundary";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { formatMessage, formatNumber } from "@score/i18n";
 import type { ScoreJson, ScoreNoteEvent, ScorePitchStep } from "@score/shared";
+import { useFlowMessages } from "../lib/flow-messages/client";
 import { apiRequest } from "../lib/api";
 import { parseScoreEditorClipboard, scoreEditorClipboardKey, serializeScoreEditorClipboard, type ScoreEditorClipboard } from "../lib/score-editor-clipboard";
 import {
@@ -153,6 +156,7 @@ export function ScoreVisualEditorPanel({
 }) {
   const { locale, messages } = useScoreEditorMessages();
   const copy = messages.editor;
+  const flow = useFlowMessages();
   const notes = useMemo(() => collectVisualNotes(scoreJson), [scoreJson]);
   const [selectedNoteId, setSelectedNoteId] = useState(notes[0]?.id ?? "");
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>(notes[0]?.id ? [notes[0].id] : []);
@@ -237,36 +241,44 @@ export function ScoreVisualEditorPanel({
   }, [baseRevisionId, hasOwnerAuth, scoreId, shareToken]);
 
   const draftMidi = midiFromPitch({ step, alter, octave });
-  const selectedMidi = selectedNote ? midiFromPitch(selectedNote.pitch) : draftMidi;
-  const hasUnsavedChanges =
-    Boolean(selectedNote) &&
-    (draftMidi !== selectedMidi ||
-      duration !== selectedNote.duration ||
-      durationType !== (selectedNote.durationType ?? "quarter") ||
-      dots !== selectedNote.dots ||
-      voice !== (selectedNote.voice ?? "1") ||
-      staff !== (selectedNote.staff ?? 1) ||
-      chord !== (selectedNote.chord ?? false));
+  const draftKey = JSON.stringify([selectedNote?.id, step, alter, octave, duration, durationType, dots, voice, staff, chord]);
+  const noteKey = selectedNote ? JSON.stringify([selectedNote.id, selectedNote.pitch.step, selectedNote.pitch.alter, selectedNote.pitch.octave, selectedNote.duration, selectedNote.durationType ?? "quarter", selectedNote.dots, selectedNote.voice ?? "1", selectedNote.staff ?? 1, selectedNote.chord ?? false]) : "";
+  const [draftBaseKey, setDraftBaseKey] = useState(noteKey);
+  const draftRevisionRef = useRef(baseRevisionId);
+  const synchronizedNoteRef = useRef<string | undefined>(selectedNote?.id);
+  const saveLockRef = useRef(false);
+  const lastAutoAttemptRef = useRef("");
+  const saveIntentRef = useRef<{ key: string; operationId: string } | null>(null);
+  const queuedDraftRef = useRef<{ key: string; operationId: string } | null>(null);
+  const latestDraftKeyRef = useRef(draftKey);
+  latestDraftKeyRef.current = draftKey;
+  const deferredSelectionRef = useRef<string[] | null>(null);
+  const hasUnsavedChanges = Boolean(selectedNote) && draftKey !== draftBaseKey;
   const latestOwnHistoryCommand = historyCommands.find((command) => command.isCurrentActor && command.status !== "conflict") ?? null;
   const undoTarget = latestOwnHistoryCommand && latestOwnHistoryCommand.commandType !== "history.undo" ? latestOwnHistoryCommand : null;
   const redoTarget = latestOwnHistoryCommand?.commandType === "history.undo" ? latestOwnHistoryCommand : null;
-  const busy = saving || mutating !== null || historyMutating !== null;
+  const busy = saving || mutating !== null || historyMutating !== null || syncingOfflineQueue || resolvingConflict;
+  useScoreActivity(busy, hasUnsavedChanges || Boolean(pendingConflict) || offlineQueueCount > 0, flow.scoreOperations.saving);
 
   useEffect(() => {
-    if (!selectedEventId || selectedEventId === selectedNoteId) {
+    if (hasUnsavedChanges || busy || !selectedEventId || selectedEventId === selectedNoteId) {
       return;
     }
 
     if (notes.some((note) => note.id === selectedEventId)) {
       setSelectedNoteId(selectedEventId);
     }
-  }, [notes, selectedEventId, selectedNoteId]);
+  }, [notes, selectedEventId, selectedNoteId, hasUnsavedChanges, busy]);
 
   useEffect(() => {
     if (!selectedNote) {
       return;
     }
 
+    if (synchronizedNoteRef.current === selectedNote.id && hasUnsavedChanges) return;
+    synchronizedNoteRef.current = selectedNote.id;
+    draftRevisionRef.current = baseRevisionId;
+    setDraftBaseKey(noteKey);
     setSelectedNoteId(selectedNote.id);
     setStep(selectedNote.pitch.step);
     setAlter(selectedNote.pitch.alter);
@@ -277,17 +289,48 @@ export function ScoreVisualEditorPanel({
     setVoice(selectedNote.voice ?? "1");
     setStaff(selectedNote.staff ?? 1);
     setChord(selectedNote.chord ?? false);
-    setStatus(null);
-    setStatusKind(null);
-  }, [selectedNote?.id]);
+  }, [noteKey, baseRevisionId, hasUnsavedChanges]);
+
+  // A failed or offline draft is not submitted repeatedly; retry stays explicit.
+  useEffect(() => {
+    if (!hasUnsavedChanges || busy || pendingConflict || offlineQueueCount > 0 || synchronizedNoteRef.current !== selectedNote?.id) return;
+    const attempt = `${draftRevisionRef.current}:${draftKey}`;
+    if (lastAutoAttemptRef.current === attempt) return;
+    const timer = window.setTimeout(() => { lastAutoAttemptRef.current = attempt; void saveVisualEdit(); }, 900);
+    return () => window.clearTimeout(timer);
+  }, [draftKey, draftBaseKey, busy, pendingConflict, offlineQueueCount, baseRevisionId]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges && !busy && deferredSelectionRef.current) {
+      const pending = deferredSelectionRef.current;
+      deferredSelectionRef.current = null;
+      selectNotes(pending);
+    }
+  }, [hasUnsavedChanges, busy, noteKey]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges && !saving && !pendingConflict) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const beforeNavigate = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest("a[href], button, select") : null;
+      if (!target || target.closest('[data-score-draft-editor]')) return;
+      event.preventDefault(); event.stopPropagation();
+      setStatus(flow.saveBeforeLeave); setStatusKind("error");
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", beforeNavigate, true);
+    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", beforeNavigate, true); };
+  }, [hasUnsavedChanges, saving, pendingConflict, flow.saveBeforeLeave]);
 
   function selectNote(eventId: string) {
+    if (hasUnsavedChanges || busy) { deferredSelectionRef.current = [eventId]; return; }
     setSelectedNoteId(eventId);
     setSelectedNoteIds([eventId]);
     onSelectedEventChange?.(eventId);
   }
 
   function selectNotes(eventIds: string[]) {
+    if (hasUnsavedChanges || busy) { deferredSelectionRef.current = eventIds; return; }
     setSelectedNoteIds(eventIds);
     const primaryId = eventIds.at(-1);
     if (primaryId) {
@@ -322,10 +365,14 @@ export function ScoreVisualEditorPanel({
   }
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.defaultPrevented || event.nativeEvent.isComposing || event.repeat || busy || pendingConflict || offlineQueueCount > 0) return;
     const target = event.target as HTMLElement;
-    if (target.matches("input, select, textarea")) {
+    if (target.closest('input, select, textarea, [contenteditable="true"], [role="textbox"]')) {
       return;
     }
+    // Native Enter/Space activates the focused note or toolbar button. Let its
+    // click handler run instead of saving a previously selected note on bubbling.
+    if ((event.key === "Enter" || event.key === " ") && target.closest('button, a[href], [role="button"]')) return;
 
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
@@ -447,6 +494,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function postScoreMutation(path: string, body: Record<string, unknown>, successMessage: string, busyKind: "insert" | "delete" | "reorder" | "batch") {
+    if (hasUnsavedChanges || saveLockRef.current || pendingConflict || offlineQueueCount > 0) { setStatus(flow.saveBeforeLeave); setStatusKind("error"); return false; }
     if (!hasOwnerAuth && !shareToken) {
       setStatus(copy.failed);
       setStatusKind("error");
@@ -517,6 +565,10 @@ export function ScoreVisualEditorPanel({
   }
 
   async function saveVisualEdit() {
+    if (saveLockRef.current || busy || pendingConflict || offlineQueueCount > 0 || !hasUnsavedChanges) return;
+    saveLockRef.current = true;
+    try {
+    const requestBaseRevisionId = draftRevisionRef.current;
     if ((!hasOwnerAuth && !shareToken) || !selectedNote) {
       setStatus(copy.failed);
       setStatusKind("error");
@@ -540,7 +592,9 @@ export function ScoreVisualEditorPanel({
       chord,
     };
     const canonicalCommand = canonicalCommandForPath("/edit/note", body);
-    const operationId = baseRevisionId && canonicalCommand ? crypto.randomUUID() : null;
+    const intentKey = `${requestBaseRevisionId}:${draftKey}`;
+    if (saveIntentRef.current?.key !== intentKey) saveIntentRef.current = { key: intentKey, operationId: crypto.randomUUID() };
+    const operationId = requestBaseRevisionId && canonicalCommand ? saveIntentRef.current.operationId : null;
     const collaborationPath = shareToken
       ? `/api/scores/shared/${encodeURIComponent(shareToken)}/collaboration/commands`
       : `/api/scores/${scoreId}/collaboration/commands`;
@@ -550,14 +604,14 @@ export function ScoreVisualEditorPanel({
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(operationId ? { operationId, baseRevisionId, command: canonicalCommand } : body),
+      body: JSON.stringify(operationId ? { operationId, baseRevisionId: requestBaseRevisionId, command: canonicalCommand } : body),
     });
-    setSaving(false);
 
     if (!result.ok) {
-      if (operationId && canonicalCommand && baseRevisionId && result.status === 0) {
-        const count = await queueOfflineCommand({ operationId, baseRevisionId, command: canonicalCommand, targetEventIds: [selectedNote.id] });
+      if (operationId && canonicalCommand && requestBaseRevisionId && result.status === 0) {
+        const count = await queueOfflineCommand({ operationId, baseRevisionId: requestBaseRevisionId, command: canonicalCommand, targetEventIds: [selectedNote.id] });
         if (count !== null) {
+          queuedDraftRef.current = { key: draftKey, operationId };
           setStatus(formatMessage(copy.queuedOffline, { count: formatNumber(count, locale) }));
           setStatusKind("success");
           return;
@@ -574,16 +628,18 @@ export function ScoreVisualEditorPanel({
       return;
     }
 
+    setDraftBaseKey(draftKey);
     setPendingConflict(null);
     setStatus(copy.success);
     setStatusKind("success");
     await onUpdated(result.data, {
       commandType: "note.patch",
       targetEventIds: [selectedNote.id],
-      ...(operationId && baseRevisionId
-        ? { operationId, baseRevisionId, resultRevisionId: result.data.revision?.id, mergeStatus: successfulMergeStatus(result.data.status) }
+      ...(operationId && requestBaseRevisionId
+        ? { operationId, baseRevisionId: requestBaseRevisionId, resultRevisionId: result.data.revision?.id, mergeStatus: successfulMergeStatus(result.data.status) }
         : {}),
     });
+      } finally { saveLockRef.current = false; setSaving(false); }
   }
 
   async function loadLatestAfterConflict() {
@@ -600,6 +656,8 @@ export function ScoreVisualEditorPanel({
       setStaff,
       setChord,
     });
+    synchronizedNoteRef.current = undefined;
+    setDraftBaseKey("");
     await onReload?.(pendingConflict.payload);
     setPendingConflict(null);
     setStatus(copy.latestLoaded);
@@ -619,6 +677,7 @@ export function ScoreVisualEditorPanel({
   }
 
   async function applyCollaborationHistory(action: "undo" | "redo") {
+    if (hasUnsavedChanges || saveLockRef.current || pendingConflict || offlineQueueCount > 0) { setStatus(flow.saveBeforeLeave); setStatusKind("error"); return; }
     const target = action === "undo" ? undoTarget : redoTarget;
     if ((!hasOwnerAuth && !shareToken) || !baseRevisionId || !target) return;
     const operationId = crypto.randomUUID();
@@ -719,6 +778,9 @@ export function ScoreVisualEditorPanel({
           break;
         }
         await removeOfflineScoreCollaborationCommand(item.operationId);
+        if (queuedDraftRef.current?.operationId === item.operationId && queuedDraftRef.current.key === latestDraftKeyRef.current) {
+          setDraftBaseKey(queuedDraftRef.current.key); queuedDraftRef.current = null;
+        }
         synced += 1;
         latestBaseRevisionId = result.data.score.currentRevisionId ?? result.data.revision?.id ?? latestBaseRevisionId;
         await onUpdated(result.data, {
@@ -772,6 +834,7 @@ export function ScoreVisualEditorPanel({
       return;
     }
     const resolved = pendingConflict;
+    setDraftBaseKey(latestDraftKeyRef.current);
     setPendingConflict(null);
     setStatus(copy.conflictResolved);
     setStatusKind("success");
@@ -889,29 +952,29 @@ export function ScoreVisualEditorPanel({
   }
 
   return (
-    <section className="surface-panel stack-lg" aria-label={copy.panelAria} onKeyDown={handleKeyDown}>
+    <section data-score-draft-editor className="surface-panel stack-lg" aria-label={copy.panelAria} onKeyDown={handleKeyDown}>
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 className="card-title">{copy.title}</h2>
         <p className="body-copy">{copy.body}</p>
       </div>
 
+      <p className="helper-copy">{flow.autoSave}</p>
       <div className="visual-editor-toolbar" aria-label={copy.durationToolbarAria}>
         {DURATION_TYPES.map((item) => (
-          <button key={item} type="button" className={`tool-chip${durationType === item ? " is-active" : ""}`} onClick={() => setDurationPreset(item)} disabled={busy}>
+          <button key={item} type="button" className={`tool-chip${durationType === item ? " is-active" : ""}`} onClick={() => setDurationPreset(item)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
             <span aria-hidden="true">{durationGlyph(item)}</span>
             <span>{messages.durations[item]}</span>
           </button>
         ))}
         <span className={`status-chip ${hasUnsavedChanges ? "tone-amber" : "tone-cyan"}`} role="status" aria-label={copy.statusAria}>
-          {hasUnsavedChanges ? copy.unsaved : copy.clean}
+          {saving ? copy.saving : offlineQueueCount > 0 ? copy.unsaved : hasUnsavedChanges ? copy.unsaved : copy.clean}
         </span>
       </div>
 
       <div className="visual-score-editor">
         <div className="visual-score-scroll" aria-label={copy.scoreViewportAria}>
-          <p className="item-meta">{copy.dragHint}</p>
-          <p className="item-meta">{copy.shortcutHint}</p>
+          <details className="editor-help"><summary>{copy.dragHint}</summary><p className="item-meta">{copy.shortcutHint}</p></details>
           <VexFlowNotationSurface
             scoreJson={scoreJson}
             selectedEventIds={selectedNoteIds}
@@ -938,18 +1001,18 @@ export function ScoreVisualEditorPanel({
             </button>
           </div>
           <div className="button-row">
-            <button type="button" className="button button-secondary button-ghost" onClick={() => selectByOffset(-1)} disabled={busy}>
+            <button type="button" className="button button-secondary button-ghost" onClick={() => selectByOffset(-1)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
               {copy.previous}
             </button>
-            <button type="button" className="button button-secondary button-ghost" onClick={() => selectByOffset(1)} disabled={busy}>
+            <button type="button" className="button button-secondary button-ghost" onClick={() => selectByOffset(1)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
               {copy.next}
             </button>
           </div>
           <div className="button-row">
-            <button type="button" className="button button-secondary button-ghost" onClick={() => nudgePitch(-1)} disabled={busy}>
+            <button type="button" className="button button-secondary button-ghost" onClick={() => nudgePitch(-1)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
               {copy.lower}
             </button>
-            <button type="button" className="button button-secondary button-ghost" onClick={() => nudgePitch(1)} disabled={busy}>
+            <button type="button" className="button button-secondary button-ghost" onClick={() => nudgePitch(1)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
               {copy.raise}
             </button>
           </div>
@@ -969,7 +1032,7 @@ export function ScoreVisualEditorPanel({
           <div className="correction-panel">
             <label className="field-group">
               <span>{copy.pitch}</span>
-              <select className="field-select" value={step} onChange={(event) => setStep(event.target.value as ScorePitchStep)} disabled={busy}>
+              <select aria-label={copy.pitch} className="field-select" value={step} onChange={(event) => setStep(event.target.value as ScorePitchStep)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
                 {PITCH_STEPS.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -979,15 +1042,15 @@ export function ScoreVisualEditorPanel({
             </label>
             <label className="field-group">
               <span>{copy.alter}</span>
-              <input className="field-control" type="number" min={-2} max={2} step={1} value={alter} onChange={(event) => setAlter(Number(event.target.value))} disabled={busy} />
+              <input className="field-control" type="number" min={-2} max={2} step={1} value={alter} onChange={(event) => setAlter(Number(event.target.value))} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
             <label className="field-group">
               <span>{copy.octave}</span>
-              <input className="field-control" type="number" min={0} max={9} step={1} value={octave} onChange={(event) => setOctave(Number(event.target.value))} disabled={busy} />
+              <input className="field-control" type="number" min={0} max={9} step={1} value={octave} onChange={(event) => setOctave(Number(event.target.value))} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
             <label className="field-group">
               <span>{copy.duration}</span>
-              <select className="field-select" value={durationType} onChange={(event) => setDurationPreset(event.target.value as keyof typeof DURATION_TO_VALUE)} disabled={busy}>
+              <select className="field-select" value={durationType} onChange={(event) => setDurationPreset(event.target.value as keyof typeof DURATION_TO_VALUE)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
                 {DURATION_TYPES.map((item) => (
                   <option key={item} value={item}>
                     {messages.durations[item]}
@@ -997,23 +1060,23 @@ export function ScoreVisualEditorPanel({
             </label>
             <label className="field-group">
               <span>{copy.rawDuration}</span>
-              <input className="field-control" type="number" min={0.0625} step={0.0625} value={duration} onChange={(event) => setDuration(Number(event.target.value))} disabled={busy} />
+              <input className="field-control" type="number" min={0.0625} step={0.0625} value={duration} onChange={(event) => setDuration(Number(event.target.value))} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
             <label className="field-group">
               <span>{copy.dots}</span>
-              <input className="field-control" type="number" min={0} max={4} step={1} value={dots} onChange={(event) => setDots(Number(event.target.value))} disabled={busy} />
+              <input className="field-control" type="number" min={0} max={4} step={1} value={dots} onChange={(event) => setDots(Number(event.target.value))} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
             <label className="field-group">
               <span>{copy.voice}</span>
-              <input className="field-control" type="text" maxLength={20} value={voice} onChange={(event) => setVoice(event.target.value)} disabled={busy} />
+              <input className="field-control" type="text" maxLength={20} value={voice} onChange={(event) => setVoice(event.target.value)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
             <label className="field-group">
               <span>{copy.staff}</span>
-              <input className="field-control" type="number" min={1} max={8} step={1} value={staff} onChange={(event) => setStaff(Number(event.target.value))} disabled={busy} />
+              <input className="field-control" type="number" min={1} max={8} step={1} value={staff} onChange={(event) => setStaff(Number(event.target.value))} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
             <label className="field-group">
               <span>{copy.chordTone}</span>
-              <input type="checkbox" checked={chord} onChange={(event) => setChord(event.target.checked)} disabled={busy} />
+              <input type="checkbox" checked={chord} onChange={(event) => setChord(event.target.checked)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0} />
             </label>
           </div>
           <div className="button-row">
@@ -1024,7 +1087,7 @@ export function ScoreVisualEditorPanel({
               {mutating === "delete" ? copy.deleting : copy.delete}
             </button>
           </div>
-          <button type="button" className="button button-primary" onClick={() => void saveVisualEdit()} disabled={busy || !selectedNote}>
+          <button type="button" className="button button-primary" onClick={() => void saveVisualEdit()} disabled={busy || !selectedNote || !hasUnsavedChanges || pendingConflict !== null || offlineQueueCount > 0}>
             {saving ? copy.saving : copy.save}
           </button>
           {baseRevisionId ? (

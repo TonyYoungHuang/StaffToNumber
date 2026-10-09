@@ -4,7 +4,7 @@ export const zhTWPlaybackPracticeMessages = {
   playback: {
     eyebrow: "播放練習", title: "Tone.js 分聲部練習播放器", body: "從目前的 Score JSON 產生可練習的播放事件，支援變速、片段循環、節拍器、倒數拍以及聲部 Solo/Mute。",
     load: "產生播放事件", play: "播放", stop: "停止", tempo: "速度 BPM", playhead: "播放位置", loop: "循環片段", loopStart: "起始拍", loopEnd: "結束拍", metronome: "節拍器", countIn: "一小節倒數拍",
-    loading: "正在產生播放事件……", ready: "播放事件已產生。", failed: "無法產生播放事件。", empty: "請先產生播放事件，再開始試聽。", noEvents: "目前聲部篩選下沒有可播放的音符。",
+    loading: "正在產生播放事件……", ready: "播放事件已產生。", failed: "無法產生播放事件。", empty: "點擊「播放」即可試聽，播放資料會自動載入。", noEvents: "目前聲部篩選下沒有可播放的音符。",
     events: "事件", activeEvents: "目前播放事件", beats: "總拍數", parts: "聲部", solo: "Solo", mute: "Mute", allParts: "全部聲部", revision: "版本",
     speedLadder: "速度階梯", targetTempo: "目標速度", tempoStep: "每輪加速", ladderComplete: "速度階梯訓練已完成。", practiceExports: "練習匯出",
     startMeasure: "起始小節", endMeasure: "結束小節", byBeat: "依拍數", partVolume: "聲部音量", diagnostics: "播放診斷", playbackPath: "演奏順序", terminated: "終止原因", unreachableMeasures: "無法到達的小節",

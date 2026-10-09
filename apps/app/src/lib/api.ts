@@ -1,3 +1,5 @@
+import { localizeBrowserApiError } from "@score/i18n";
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
 export type ApiResult<T> =
@@ -15,12 +17,12 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       credentials: "include",
     });
 
-    const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
+    const payload = await response.json().catch(() => null) as (T & { error?: string; code?: string }) | null;
 
     if (!response.ok) {
       return {
         ok: false,
-        error: payload?.error ?? "Request failed.",
+        error: localizeBrowserApiError({ error: payload?.error ?? "Request failed.", code: payload?.code, status: response.status }),
         status: response.status,
         ...(payload ? { data: payload } : {}),
       };
@@ -33,7 +35,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Network request failed.",
+      error: localizeBrowserApiError({ error: error instanceof Error ? error.message : "Network request failed.", status: 0 }),
       status: 0,
     };
   }
@@ -48,11 +50,11 @@ export async function apiMultipartRequest<T>(path: string, formData: FormData, t
       cache: "no-store",
       credentials: "include",
     });
-    const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
-    if (!response.ok) return { ok: false, error: payload?.error ?? "Upload failed.", status: response.status, ...(payload ? { data: payload } : {}) };
+    const payload = await response.json().catch(() => null) as (T & { error?: string; code?: string }) | null;
+    if (!response.ok) return { ok: false, error: localizeBrowserApiError({ error: payload?.error ?? "Upload failed.", code: payload?.code, status: response.status }), status: response.status, ...(payload ? { data: payload } : {}) };
     return { ok: true, data: payload as T };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Network request failed.", status: 0 };
+    return { ok: false, error: localizeBrowserApiError({ error: error instanceof Error ? error.message : "Network request failed.", status: 0 }), status: 0 };
   }
 }
 
@@ -64,8 +66,8 @@ export async function downloadAuthenticatedFile(path: string, token: string, fal
       credentials: "include",
     });
     if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { error?: string } | null;
-      return { ok: false as const, error: payload?.error ?? "Download failed.", status: response.status };
+      const payload = await response.json().catch(() => null) as { error?: string; code?: string } | null;
+      return { ok: false as const, error: localizeBrowserApiError({ error: payload?.error ?? "Download failed.", code: payload?.code, status: response.status }), status: response.status };
     }
     const encodedName = response.headers.get("content-disposition")?.match(/filename\*=UTF-8''([^;]+)/iu)?.[1];
     const fileName = encodedName ? decodeURIComponent(encodedName) : fallbackName;
@@ -77,6 +79,6 @@ export async function downloadAuthenticatedFile(path: string, token: string, fal
     setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
     return { ok: true as const, fileName };
   } catch (error) {
-    return { ok: false as const, error: error instanceof Error ? error.message : "Network request failed.", status: 0 };
+    return { ok: false as const, error: localizeBrowserApiError({ error: error instanceof Error ? error.message : "Network request failed.", status: 0 }), status: 0 };
   }
 }

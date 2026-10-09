@@ -6,6 +6,7 @@ import { APP_ROUTES } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, VaultIcon } from "@score/ui";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { PUBLIC_SITE_URL } from "../lib/support";
+import { useAppLocale } from "./AppLocaleProvider";
 
 export function AuthShell({
   title,
@@ -18,6 +19,7 @@ export function AuthShell({
   copy: AuthMessageCatalog["shell"];
   children: React.ReactNode;
 }) {
+  const { locale } = useAppLocale();
   return (
     <section className="container page-shell">
       <div className="auth-layout">
@@ -29,8 +31,8 @@ export function AuthShell({
           <p className="editorial-quote">{copy.quote}</p>
           <div className="auth-proof">
             <video
-              src={`${PUBLIC_SITE_URL.replace(/\/$/, "")}/product/demo-score-to-audio.mp4`}
-              poster={`${PUBLIC_SITE_URL.replace(/\/$/, "")}/product/feature-score-to-audio-real.png`}
+              src={`${PUBLIC_SITE_URL.replace(/\/$/, "")}/product/localized/${locale.toLowerCase()}/demo-score-to-audio.webm`}
+              poster={`${PUBLIC_SITE_URL.replace(/\/$/, "")}/product/localized/${locale.toLowerCase()}/demo-score-to-audio-poster.jpg`}
               autoPlay
               muted
               loop

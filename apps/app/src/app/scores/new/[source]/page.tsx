@@ -38,7 +38,7 @@ export default async function ScoreSourcePage({ params }: { params: Promise<{ so
         </div>
       </div>
 
-      <EntitlementGate allowFreePreview={view === "scan"} copy={entitlementCopy}>
+      <EntitlementGate allowFreePreview copy={entitlementCopy}>
         <ScoreLibraryManager view={view} copy={messages.library} />
       </EntitlementGate>
     </section>

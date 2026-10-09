@@ -163,7 +163,8 @@ test("education endpoints, payloads, roster, retention, upload, notification, LM
   assert.match(student, /maxLength=\{500\}/u);
 
   const binaryBackendLocale = /locale === "zh-CN" \? "zh-CN" : "en"/gu;
-  assert.equal(student.match(binaryBackendLocale)?.length, 1, "notification backend locale contract must remain binary");
+  assert.equal(student.match(binaryBackendLocale)?.length ?? 0, 0, "notification preferences must preserve the selected language");
+  assert.match(student, /emailClassroomAnnouncements: enabled, locale/u);
   const withoutBackendLocale = student.replace(binaryBackendLocale, "BACKEND_NOTIFICATION_LOCALE");
   assert.doesNotMatch(withoutBackendLocale, /locale\s*[!=]==?\s*["']zh-CN["']/u);
   for (const source of [classrooms, organization, operations]) {

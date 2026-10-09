@@ -58,7 +58,7 @@ export const deScoreEntryMessages = {
     statuses: { imported: "Importiert", candidate: "Korrektur nötig", needs_review: "Prüfung nötig", ready: "Bereit", archived: "Archiviert" },
   },
   trial: {
-    previewDeferred: "Diese Partitur ist umfangreich. Lade die vollständige MusicXML-Vorschau, wenn du die OSMD-Vergleichsansicht benötigst.",
+    previewDeferred: "Diese Partitur ist umfangreich. Laden Sie die vollständige MusicXML-Vorschau, wenn Sie die Vergleichsansicht benötigen.",
     previewRender: "Vollständige Vorschau laden",
     previewEventLabel: "{part} · Takt {measure} · {type} {number}",
     previewNote: "Note",

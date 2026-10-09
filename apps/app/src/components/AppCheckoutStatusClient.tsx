@@ -1,16 +1,24 @@
 "use client";
 
+import { getSingleScorePassCopy } from "@score/shared";
+
 import Link from "next/link";
+import { useAppAuthModal } from "./AppAuthModal";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, type PaymentOrderStatus, type PaymentProvider } from "@score/shared";
+import { formatMessage, type SupportedLocale } from "@score/i18n";
+import { APP_ROUTES, getPurchaseOptionsCopy, type PaymentOrderStatus, type PaymentProvider } from "@score/shared";
+import { getStoredToken, clearStoredToken } from "../lib/auth-storage";
+import { readCheckoutReturn } from "../lib/flow-return";
+import { useFlowMessages } from "../lib/flow-messages/client";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEventOnce } from "../lib/analytics";
-import { rawApiErrorOrFallback } from "../lib/billing-messages/client";
+import { rawApiErrorOrFallback, formatBillingDateTime } from "../lib/billing-messages/client";
 import type { BillingMessageCatalog } from "../lib/billing-messages/types";
 
 type PublicOrder = {
   id: string;
+  userId: string | null;
   provider: PaymentProvider;
   status: PaymentOrderStatus;
   activationCode: string | null;
@@ -19,6 +27,10 @@ type PublicOrder = {
   currency: string | null;
   seatQuantity: number;
   paidAt: string | null;
+  accessStartsAt?: string | null;
+  accessEndsAt?: string | null;
+  planCode?: string | null;
+  purchaseStatus?: string | null;
 };
 
 type OrderPayload = { order: PublicOrder | null };
@@ -39,7 +51,15 @@ export function AppCheckoutStatusClient({
   locale: SupportedLocale;
   copy: CheckoutStatusCopy;
 }) {
+  const router = useRouter();
+  const signIn = useAppAuthModal();
+  const flow = useFlowMessages();
+  const [retryCount, setRetryCount] = useState(0);
+  const [destination, setDestination] = useState({ next: "/scores", retry: "/checkout", createdAt: 0 });
+  const [accessState, setAccessState] = useState<"waiting" | "ready" | "mismatch" | "error">("waiting");
+  useEffect(() => { setDestination(readCheckoutReturn(orderId)); }, [orderId]);
   const [order, setOrder] = useState<PublicOrder | null>(null);
+  const purchaseCopy = getPurchaseOptionsCopy(locale);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,9 +97,40 @@ export function AppCheckoutStatusClient({
       disposed = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [copy.fallbackError, orderId, provider, sessionId, token]);
+  }, [copy.fallbackError, orderId, provider, sessionId, token, retryCount]);
 
   const isPaid = order?.status === "paid";
+  useEffect(() => {
+    if (!isPaid || !order?.userId || order.purchaseStatus === "refunded") return;
+    let disposed = false;
+    let timer: number | undefined;
+    let attempt = 0;
+    const verifyAccess = async () => {
+      const authToken = getStoredToken();
+      const result = await apiRequest<{ user: { id: string; scorePasses?: Array<{ id: string }>; entitlement: { status: string } } }>("/api/auth/me", {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+      });
+      if (disposed) return;
+      if (!result.ok && result.status === 401) {
+        clearStoredToken();
+        signIn("login", () => setRetryCount(n => n + 1));
+        return;
+      }
+      if (result.ok && result.data.user.id !== order.userId) { setAccessState("mismatch"); return; }
+      if (result.ok && (result.data.user.entitlement.status === "active" || (order.planCode === "single-score" && result.data.user.scorePasses?.some(pass => pass.id === orderId)))) {
+        setAccessState("ready");
+        router.replace(readCheckoutReturn(orderId).next);
+        router.refresh();
+        return;
+      }
+      if (++attempt < 20) timer = window.setTimeout(() => void verifyAccess(), 3000);
+      else setAccessState("error");
+    };
+    setAccessState("waiting");
+    void verifyAccess();
+    return () => { disposed = true; if (timer) window.clearTimeout(timer); };
+  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn]);
+
 
   useEffect(() => {
     if (!isPaid || !order) return;
@@ -97,7 +148,7 @@ export function AppCheckoutStatusClient({
   }, [isPaid, order]);
 
   const statusCopy = order?.status === "paid"
-    ? { title: copy.successTitle, body: copy.successBody }
+    ? order?.purchaseStatus === "refunded" ? { title: purchaseCopy.refunded, body: purchaseCopy.refunded } : order?.userId && accessState !== "ready" ? { title: flow.waitingAccess, body: copy.pendingBody } : { title: copy.successTitle, body: copy.successBody }
     : order?.status === "cancelled"
       ? { title: copy.cancelledTitle, body: copy.cancelledBody }
       : order?.status === "failed"
@@ -115,9 +166,20 @@ export function AppCheckoutStatusClient({
             <p className="body-copy large">{statusCopy.body}</p>
           </div>
           <div className="button-row">
-            <Link href={APP_ROUTES.scores} className="button button-primary">{copy.scores}</Link>
-            <Link href={APP_ROUTES.jobs} className="button button-secondary">{copy.jobs}</Link>
+            <Link href={`${APP_ROUTES.billing}#${order?.billingKind === "one_time" ? "one-time-purchases" : "subscriptions"}`} className="button button-secondary">{order?.billingKind === "one_time" ? purchaseCopy.purchases : purchaseCopy.manage}</Link>
+            <Link href={destination.next} className="button button-primary">{flow.resume}</Link>
+            {!isPaid ? <Link href={destination.retry} className="button button-secondary">{flow.retry}</Link> : null}
           </div>
+          {isPaid && order?.userId && order.purchaseStatus !== "refunded" && accessState !== "ready" ? <div className="stack-sm" role="status">
+            <p>{accessState === "mismatch" ? flow.accountMismatch : flow.waitingAccess}</p>
+            {accessState === "mismatch" ? <button className="button button-secondary" onClick={() => { clearStoredToken(); signIn("login", () => setRetryCount(n => n + 1)); }}>{flow.accountMismatch}</button> : null}
+          </div> : null}
+          <button type="button" className="button button-secondary" onClick={() => { setLoading(true); setRetryCount(n => n + 1); }}>{flow.retry}</button>
+          {isPaid && order?.billingKind === "one_time" ? <div className="stack-sm">
+            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "single-score" ? getSingleScorePassCopy(locale).paid : purchaseCopy.oneTimeNote}</p>
+            {order.accessStartsAt ? <p>{formatMessage(purchaseCopy.startsTemplate, { date: formatBillingDateTime(order.accessStartsAt, locale) })}</p> : null}
+            {order.accessEndsAt ? <p>{formatMessage(purchaseCopy.expiresTemplate, { date: formatBillingDateTime(order.accessEndsAt, locale) })}</p> : null}
+          </div> : null}
         </>
       ) : null}
     </div>

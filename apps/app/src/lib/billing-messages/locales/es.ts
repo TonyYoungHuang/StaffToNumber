@@ -49,10 +49,6 @@ export const esBillingMessages = {
     manager: {
       loading: "Cargando datos de facturación...", fallbackError: "No se pudieron cargar los datos de facturación. Inténtalo de nuevo.", signIn: "Inicia sesión para ver la facturación.",
       creditEyebrow: "Saldo de créditos", availableCredits: "Créditos disponibles este mes", creditUnit: "créditos", creditSummaryTemplate: "{limit} créditos este mes; {used} utilizados.", creditUsage: "Créditos usados este mes", storage: "Almacenamiento de archivos",
-      prepaidTitle: "Créditos prepagados",
-      prepaidSummaryTemplate: "{limit} créditos prepagados; {used} usados o reservados. Sin reinicio mensual ni caducidad.",
-      prepaidNote: "El procesamiento y las exportaciones en cola consumen créditos. La edición, la transposición y la reproducción no. Las reservas se liberan si la tarea falla o se cancela.",
-      additionalPrepaidTemplate: "Créditos prepagados adicionales: {remaining} / {total}. Se usan cuando los créditos mensuales no cubren la tarea. Los créditos sin usar se conservan.",
       quotaNote: "Los créditos se reservan al crear una tarea; se devuelven automáticamente si falla o se cancela. Los créditos mensuales se restablecen al comienzo de cada mes natural según UTC y no se acumulan.",
       freeEyebrow: "Estado del acceso gratuito", noPaidTitle: "No hay ningún plan de pago activo", freeBody: "Una cuenta gratuita conserva un proyecto para siempre creado a partir de un PDF multipágina completo o una imagen de partitura, con corrección, reproducción, transporte, Jianpu, uso compartido y exportación; la asignación gratuita es {credits}.", unlock: "Activar acceso completo",
       subscriptionsEyebrow: "Suscripciones", subscriptionsTitle: "Acceso y estado de renovación", manageStripe: "Gestionar método de pago de Stripe", managingStripe: "Abriendo Stripe...", noSubscriptions: "No hay suscripciones vinculadas a esta cuenta.",

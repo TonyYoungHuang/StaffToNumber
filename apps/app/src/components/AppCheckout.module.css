@@ -200,6 +200,38 @@
   scroll-margin-top: 96px;
 }
 
+.purchaseType {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.purchaseType > p { flex: 1 1 320px; margin: 0; }
+.purchaseNotice { color: var(--primary-strong); font-weight: 700; }
+
+.paymentPanel .providerOption {
+  border-width: 2px;
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.paymentPanel .providerOption[aria-pressed="true"] {
+  border-color: var(--primary-strong);
+  background: rgba(91, 76, 229, 0.06);
+  box-shadow: 0 0 0 1px var(--primary-strong);
+}
+
+.paymentPanel .providerOption:focus-visible {
+  outline: 3px solid var(--primary-strong);
+  outline-offset: 4px;
+}
+
 @media (max-width: 820px) {
   .checkoutShell {
     padding: 22px 12px 44px;
@@ -239,3 +271,14 @@
     border-radius: 12px;
   }
 }
+
+/* One selection surface, with optional plan details. */
+.checkoutShell { gap: 18px; align-content: start; }
+.pricingHeader, .plansPanel, .checkoutActionWrap { width: min(100%, 1000px); }
+.pageTitle { font-size: clamp(28px, 3.5vw, 42px); }
+.plansPanel { display: grid; gap: 14px; }
+.purchaseType { margin: 0; }
+.purchaseType > a { display: none; }
+.selectedPlanBar { margin-top: 0; }
+.checkoutActionWrap { margin: 0 auto; }
+.promoPill { display: none; }

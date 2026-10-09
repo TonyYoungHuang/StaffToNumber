@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
+import { useAppAuthModal } from "./AppAuthModal";
 
 export function PasswordResetConfirmForm({ copy }: { copy: AuthMessageCatalog["resetConfirm"] }) {
-  const router = useRouter();
+  const signIn = useAppAuthModal();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [password, setPassword] = useState("");
@@ -72,7 +73,7 @@ export function PasswordResetConfirmForm({ copy }: { copy: AuthMessageCatalog["r
 
     setStatus(copy.success);
     setStatusKind("success");
-    router.push(APP_ROUTES.login);
+    signIn("login");
   }
 
   if (tokenStatus === "loading") {

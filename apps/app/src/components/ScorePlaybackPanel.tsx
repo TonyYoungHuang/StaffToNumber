@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMessage } from "@score/i18n";
 import type { PlaybackDocument, PlaybackMeasureMarker, PlaybackNoteEvent } from "@score/shared";
+import { useFlowMessages } from "../lib/flow-messages/client";
 import { apiRequest } from "../lib/api";
 import {
   formatPlaybackNumber,
@@ -77,10 +78,10 @@ function toggleValue(values: string[], value: string) {
 
 function filterEvents(events: PlaybackNoteEvent[], soloPartIds: string[], mutedPartIds: string[]) {
   if (soloPartIds.length > 0) {
-    return events.filter((event) => soloPartIds.includes(event.partId));
+    return events.filter((event) => !event.unpitched && soloPartIds.includes(event.partId));
   }
 
-  return events.filter((event) => !mutedPartIds.includes(event.partId));
+  return events.filter((event) => !event.unpitched && !mutedPartIds.includes(event.partId));
 }
 
 function partVolume(partVolumes: Record<string, number>, partId: string) {
@@ -125,6 +126,7 @@ export function ScorePlaybackPanel({
 }) {
   const { locale, messages } = usePlaybackPracticeMessages();
   const copy = messages.playback;
+  const flow = useFlowMessages();
   const [playback, setPlayback] = useState<PlaybackDocument | null>(null);
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -139,6 +141,25 @@ export function ScorePlaybackPanel({
   const metronomeRef = useRef<import("tone").MembraneSynth | null>(null);
   const scheduledIdsRef = useRef<number[]>([]);
   const speedLadderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackGenerationRef = useRef(0);
+
+  useEffect(() => {
+    playbackGenerationRef.current += 1;
+    stopPlayback();
+    setPlayback(null);
+    setLoading(false);
+    setSeekBeat(0);
+    setStatus(null);
+    setStatusKind(null);
+    return () => {
+      playbackGenerationRef.current += 1;
+      stopPlayback();
+      synthRef.current?.dispose();
+      metronomeRef.current?.dispose();
+      synthRef.current = null;
+      metronomeRef.current = null;
+    };
+  }, [scoreId, revisionId, playbackEndpoint]);
 
   const activeEvents = useMemo(
     () => (playback ? filterEvents(playback.events, practiceSettings.soloPartIds, practiceSettings.mutedPartIds) : []),
@@ -183,6 +204,7 @@ export function ScorePlaybackPanel({
   }
 
   async function loadPlayback() {
+    const generation = playbackGenerationRef.current;
     const endpoint = playbackEndpoint ?? (scoreId ? `/api/scores/${scoreId}/playback` : null);
     if (!endpoint || (!playbackEndpoint && !token)) {
       setStatus(copy.failed);
@@ -194,6 +216,7 @@ export function ScorePlaybackPanel({
     setStatus(null);
     setStatusKind(null);
     const result = await apiRequest<PlaybackPayload>(endpoint, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+    if (generation !== playbackGenerationRef.current) return null;
     setLoading(false);
 
     if (!result.ok) {
@@ -219,9 +242,11 @@ export function ScorePlaybackPanel({
   }
 
   async function ensureTone() {
+    const generation = playbackGenerationRef.current;
     if (!toneRef.current) {
       toneRef.current = await import("tone");
     }
+    if (generation !== playbackGenerationRef.current) return null;
 
     if (!synthRef.current) {
       synthRef.current = new toneRef.current.PolySynth(toneRef.current.Synth).toDestination();
@@ -256,6 +281,8 @@ export function ScorePlaybackPanel({
       tone.Transport.cancel();
       tone.Transport.loop = false;
     }
+    synthRef.current?.releaseAll();
+    metronomeRef.current?.triggerRelease();
     setPlaying(false);
   }
 
@@ -269,7 +296,19 @@ export function ScorePlaybackPanel({
   }
 
   async function play(tempoOverride?: number) {
+    try {
+      await playCurrentRevision(tempoOverride);
+    } catch (error) {
+      stopPlayback();
+      setStatus(rawPlaybackErrorOrFallback(error instanceof Error ? error.message : "", copy.failed));
+      setStatusKind("error");
+    }
+  }
+
+  async function playCurrentRevision(tempoOverride?: number) {
+    const generation = playbackGenerationRef.current;
     const currentPlayback = playback ?? (await loadPlayback());
+    if (generation !== playbackGenerationRef.current) return;
     if (!currentPlayback || currentPlayback.events.length === 0) {
       setStatus(copy.empty);
       setStatusKind("error");
@@ -294,7 +333,9 @@ export function ScorePlaybackPanel({
 
     stopPlayback();
     const tone = await ensureTone();
+    if (!tone || generation !== playbackGenerationRef.current) return;
     await tone.start();
+    if (generation !== playbackGenerationRef.current) return;
     const effectiveTempo = clamp(tempoOverride ?? practiceSettings.tempoBpm, 40, 220);
     const tempoSegments = buildPlaybackTempoSegments(currentPlayback, effectiveTempo);
     const sectionTempo = playbackTempoAtBeat(tempoSegments, sectionStart);
@@ -469,9 +510,6 @@ export function ScorePlaybackPanel({
           </label>
 
           <div className="button-row">
-            <button type="button" className="button button-secondary" onClick={() => void loadPlayback()} disabled={loading}>
-              {loading ? copy.loading : copy.load}
-            </button>
             <button type="button" className="button button-primary" onClick={() => void play()} disabled={playing || loading}>
               {copy.play}
             </button>
@@ -479,6 +517,10 @@ export function ScorePlaybackPanel({
               {copy.stop}
             </button>
           </div>
+          <details className="flow-details"><summary>{flow.advanced}</summary>            <button type="button" className="button button-secondary" onClick={() => void loadPlayback()} disabled={loading}>
+              {loading ? copy.loading : copy.load}
+            </button>
+</details>
           {exportActions?.midi || exportActions?.wav || exportActions?.mp3 ? (
             <div className="button-row" role="group" aria-label={copy.practiceExports}>
               <span className="item-meta">{copy.practiceExports}</span>

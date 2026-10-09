@@ -1,3 +1,4 @@
+import { workReturnPath } from "../flow-return";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
@@ -187,19 +188,20 @@ test("checkout, activation, seat, portal, cancellation, and idempotency payloads
   assert.match(billing, /rawApiErrorOrFallback\(result\.error, copy\.fallbackError\)/u);
 });
 
-test("payment completion and public handoff keep locale and lead back to scores", () => {
-  const activation = source("../../components/ActivationForm.tsx");
+test("payment completion keeps a safe work destination without a public-app redirect loop", () => {
+  assert.equal(workReturnPath("/scores/score-1#export-center"), "/scores/score-1#export-center");
+  assert.equal(workReturnPath("/scores/new/musicxml"), "/scores/new/musicxml");
+  for (const path of [undefined, "//external.invalid", "https://external.invalid", "/checkout/success?order_id=1", "/activate"]) {
+    assert.equal(workReturnPath(path), "/scores");
+  }
   const status = source("../../components/AppCheckoutStatusClient.tsx");
-  const success = source("../../app/checkout/success/page.tsx");
-  const cancel = source("../../app/checkout/cancel/page.tsx");
-
-  assert.match(activation, /router\.push\(APP_ROUTES\.scores\)/u);
-  assert.match(status, /<Link href=\{APP_ROUTES\.scores\}/u);
-  assert.doesNotMatch(status, /APP_ROUTES\.home|dashboard/u);
-  for (const contents of [success, cancel]) {
-    assert.match(contents, /const locale = await readAppLocale\(\)/u);
-    assert.match(contents, /localizePathname\("\/checkout\/(?:success|cancel)", locale\)/u);
-    assert.match(contents, /destination\.searchParams\.(?:set|append)/u);
+  assert.match(status, /result\.data\.user\.id !== order\.userId/u);
+  assert.match(status, /entitlement\.status === "active"/u);
+  for (const [file, component] of [["success", "AppCheckoutStatusClient"], ["cancel", "AppCheckoutCancelClient"]]) {
+    const contents = source(`../../app/checkout/${file}/page.tsx`);
+    assert.ok(contents.includes(component));
+    assert.ok(contents.includes("readAppLocale()"));
+    assert.doesNotMatch(contents, /redirect\(destination/u);
   }
 });
 

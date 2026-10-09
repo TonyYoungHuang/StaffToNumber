@@ -18,7 +18,7 @@ export const enPlaybackPracticeMessages = {
     loading: "Generating playback events...",
     ready: "Playback events generated.",
     failed: "Playback generation failed.",
-    empty: "Generate playback events before listening.",
+    empty: "Press Play to listen; playback data loads automatically.",
     noEvents: "The current part filter has no playable notes.",
     events: "Events",
     activeEvents: "Active events",

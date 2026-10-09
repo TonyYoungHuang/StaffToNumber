@@ -1,8 +1,11 @@
-﻿"use client";
+"use client";
+
+import { useAdminMessages } from "../lib/admin-messages/client";
+
 
 import { useMemo, useState } from "react";
 import { apiRequest } from "../lib/api";
-import { PUBLIC_SITE_URL } from "../lib/support";
+import { buildPublicSiteHandoffHref } from "../lib/support";
 import { useAppLocale } from "./AppLocaleProvider";
 
 const statusOptions = ["all", "open", "in_review", "resolved", "closed"] as const;
@@ -40,7 +43,73 @@ type UpdatePayload = {
 
 export function AdminSupportRequestsManager() {
   const { locale } = useAppLocale();
-  const publicSupportUrl = `${PUBLIC_SITE_URL.replace(/\/$/, "")}/support`;
+  const { adminText, adminStatus } = useAdminMessages();
+  function translateSupportCategory(category: string, locale: string) {
+    if (locale === "es") return adminStatus(locale, category);
+    if (locale !== "zh-CN") {
+      switch (category) {
+        case "payment":
+          return "Payment / order";
+        case "activation":
+          return "Activation / access";
+        case "job":
+          return "Upload / result";
+        case "privacy":
+          return "Privacy / deletion";
+        default:
+          return "General";
+      }
+    }
+  
+    switch (category) {
+      case "payment":
+        return "支付 / 订单";
+      case "activation":
+        return "激活 / 权限";
+      case "job":
+        return "上传 / 结果";
+      case "privacy":
+        return "隐私 / 删除";
+      default:
+        return "其他";
+    }
+  }
+  
+  function translateSupportStatus(status: StatusFilter | SupportRequestItem["status"], locale: string) {
+    if (locale === "es") return adminStatus(locale, status);
+    if (locale !== "zh-CN") {
+      switch (status) {
+        case "all":
+          return "All statuses";
+        case "in_review":
+          return "In review";
+        case "resolved":
+          return "Resolved";
+        case "closed":
+          return "Closed";
+        default:
+          return "Open";
+      }
+    }
+  
+    switch (status) {
+      case "all":
+        return "全部状态";
+      case "open":
+        return "待处理";
+      case "in_review":
+        return "处理中";
+      case "resolved":
+        return "已解决";
+      case "closed":
+        return "已关闭";
+      default:
+        return status;
+    }
+  }
+  
+
+  const publicSupportUrl = buildPublicSiteHandoffHref("/support", locale);
   const [adminKey, setAdminKey] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [items, setItems] = useState<SupportRequestItem[]>([]);
@@ -77,29 +146,29 @@ export function AdminSupportRequestsManager() {
           statusLabel: "状态",
         }
       : {
-          keyLabel: "Admin API key",
-          keyHint: "Reuse the `ADMIN_API_KEY` configured in services/api. The key stays only in this page's memory.",
-          load: "Load requests",
-          filterLabel: "Status filter",
-          empty: "No support requests yet. Submit one on the public support page first if you want to test the flow.",
-          invalidKey: "Enter the admin API key first.",
-          loaded: (count: number) => `Loaded ${count} support request(s).`,
-          updated: "Support request status updated.",
-          requestsTitle: "Support request list",
-          openSupportPage: "Open public support page",
-          contactName: "Contact name",
-          contactEmail: "Contact email",
-          accountEmail: "Account email",
-          orderReference: "Order reference",
-          jobReference: "Job reference",
-          source: "Source",
-          subject: "Subject",
-          message: "Message",
-          createdAt: "Created",
-          updatedAt: "Updated",
-          locale: "Locale",
-          category: "Category",
-          statusLabel: "Status",
+          keyLabel: adminText(locale, "Admin API key"),
+          keyHint: adminText(locale, "Reuse the `ADMIN_API_KEY` configured in services/api. The key stays only in this page's memory."),
+          load: adminText(locale, "Load requests"),
+          filterLabel: adminText(locale, "Status filter"),
+          empty: adminText(locale, "No support requests yet. Submit one on the public support page first if you want to test the flow."),
+          invalidKey: adminText(locale, "Enter the admin API key first."),
+          loaded: (count: number) => adminText(locale, "Support requests loaded: {count}.", { count }),
+          updated: adminText(locale, "Support request status updated."),
+          requestsTitle: adminText(locale, "Support request list"),
+          openSupportPage: adminText(locale, "Open public support page"),
+          contactName: adminText(locale, "Contact name"),
+          contactEmail: adminText(locale, "Contact email"),
+          accountEmail: adminText(locale, "Account email"),
+          orderReference: adminText(locale, "Order reference"),
+          jobReference: adminText(locale, "Job reference"),
+          source: adminText(locale, "Source"),
+          subject: adminText(locale, "Subject"),
+          message: adminText(locale, "Message"),
+          createdAt: adminText(locale, "Created"),
+          updatedAt: adminText(locale, "Updated"),
+          locale: adminText(locale, "Locale"),
+          category: adminText(locale, "Category"),
+          statusLabel: adminText(locale, "Status"),
         };
 
   const querySuffix = useMemo(() => {
@@ -297,69 +366,7 @@ export function AdminSupportRequestsManager() {
   );
 }
 
-function translateSupportCategory(category: string, locale: string) {
-  if (locale !== "zh-CN") {
-    switch (category) {
-      case "payment":
-        return "Payment / order";
-      case "activation":
-        return "Activation / access";
-      case "job":
-        return "Upload / result";
-      case "privacy":
-        return "Privacy / deletion";
-      default:
-        return "General";
-    }
-  }
-
-  switch (category) {
-    case "payment":
-      return "支付 / 订单";
-    case "activation":
-      return "激活 / 权限";
-    case "job":
-      return "上传 / 结果";
-    case "privacy":
-      return "隐私 / 删除";
-    default:
-      return "其他";
-  }
-}
-
-function translateSupportStatus(status: StatusFilter | SupportRequestItem["status"], locale: string) {
-  if (locale !== "zh-CN") {
-    switch (status) {
-      case "all":
-        return "All statuses";
-      case "in_review":
-        return "In review";
-      case "resolved":
-        return "Resolved";
-      case "closed":
-        return "Closed";
-      default:
-        return "Open";
-    }
-  }
-
-  switch (status) {
-    case "all":
-      return "全部状态";
-    case "open":
-      return "待处理";
-    case "in_review":
-      return "处理中";
-    case "resolved":
-      return "已解决";
-    case "closed":
-      return "已关闭";
-    default:
-      return status;
-  }
-}
-
 function formatLocal(value: string, locale: string) {
-  return new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : "en-US");
+  return new Date(value).toLocaleString(locale);
 }
 

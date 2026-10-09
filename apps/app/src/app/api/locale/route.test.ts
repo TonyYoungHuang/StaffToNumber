@@ -2,9 +2,45 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { NextRequest } from "next/server";
 import { SUPPORTED_LOCALES } from "@score/i18n";
-import { GET, POST, safeSameOriginNextUrl } from "./route.js";
+import { GET, POST } from "./route.js";
+import { safeSameOriginNextUrl } from "../../../lib/locale-return-url.js";
 
 const origin = "https://app.scoretransposer.com";
+
+test("proxied checkout handoff uses the public app origin and preserves the selected plan", async () => {
+  const previousOrigin = process.env.NEXT_PUBLIC_APP_URL;
+  const previousDomain = process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN;
+  process.env.NEXT_PUBLIC_APP_URL = origin;
+  process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN = ".scoretransposer.com";
+  try {
+    const next = "/login?next=%2Fcheckout%3Fplan%3Dstarter-monthly";
+    for (const locale of SUPPORTED_LOCALES) {
+      const response = await GET(new NextRequest(`http://0.0.0.0:3000/api/locale?locale=${locale}&next=${encodeURIComponent(next)}`, {
+        headers: { "x-forwarded-host": "evil.example", "x-forwarded-proto": "http" },
+      }));
+      assert.equal(response.headers.get("location"), `${origin}${next}`);
+      assert.match(response.headers.get("set-cookie") ?? "", /Domain=\.scoretransposer\.com/u);
+      assert.match(response.headers.get("set-cookie") ?? "", /Secure/u);
+      assert.match(response.headers.get("set-cookie") ?? "", /score_locale=; Path=\/; Max-Age=0/u);
+    }
+    for (const next of ["http://0.0.0.0:3000/scores", "https://evil.example/scores"]) {
+      const response = await GET(new NextRequest(`http://0.0.0.0:3000/api/locale?locale=en&next=${encodeURIComponent(next)}`));
+      assert.equal(response.headers.get("location"), `${origin}/`);
+    }
+    const invalid = await GET(new NextRequest("http://0.0.0.0:3000/api/locale?locale=invalid"));
+    assert.equal(invalid.headers.get("location"), `${origin}/`);
+    const response = await POST(new NextRequest("http://0.0.0.0:3000/api/locale", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ locale: "en" }),
+    }));
+    assert.match(response.headers.get("set-cookie") ?? "", /Domain=\.scoretransposer\.com/u);
+    assert.match(response.headers.get("set-cookie") ?? "", /Secure/u);
+  } finally {
+    if (previousOrigin === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = previousOrigin;
+    if (previousDomain === undefined) delete process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN;
+    else process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN = previousDomain;
+  }
+});
 
 test("safe locale return URLs preserve same-origin paths, queries, and fragments", () => {
   const request = new NextRequest(`${origin}/api/locale`);

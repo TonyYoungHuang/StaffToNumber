@@ -4,7 +4,7 @@ export const deScoreSharingMessages = {
   viewer: {
     loading: "Freigegebene Partitur wird geladen ...", missing: "Dieser Freigabelink ist nicht verfügbar oder wurde widerrufen.", back: "Studio öffnen", shared: "Freigegebene Partitur",
     revision: "Aktuelle Revision", preview: "Notenvorschau", previewEmpty: "Diese Freigabe enthält noch kein darstellbares MusicXML.", previewLoading: "Notensatz wird gerendert ...",
-    previewError: "Die Notenvorschau konnte nicht gerendert werden.", previewRetry: "Erneut rendern", previewTechnicalDetails: "Technische Details", previewDeferred: "Diese Partitur ist groß. Lade die vollständige MusicXML-Vorschau, wenn du die OSMD-Vergleichsansicht benötigst.", previewRender: "Vollständige Vorschau laden", previewEventLabel: "{part} · Takt {measure} · {type} {number}", previewNote: "Note", previewRest: "Pause",
+    previewError: "Die Notenvorschau konnte nicht gerendert werden.", previewRetry: "Erneut rendern", previewTechnicalDetails: "Technische Details", previewDeferred: "Diese Partitur ist umfangreich. Laden Sie die vollständige MusicXML-Vorschau, wenn Sie die Vergleichsansicht benötigen.", previewRender: "Vollständige Vorschau laden", previewEventLabel: "{part} · Takt {measure} · {type} {number}", previewNote: "Note", previewRest: "Pause",
     jianpu: "Jianpu-Vorschau", summary: "Strukturierte Zusammenfassung", parts: "Stimmen", measures: "Takte", notes: "Noten", rests: "Pausen",
     musicXmlEyebrow: "MusicXML", jianpuEyebrow: "Jianpu", scoreJsonEyebrow: "Score JSON", assignmentScoreFailed: "Die Partiturversion der Aufgabe konnte nicht geladen werden.",
     assignmentScoreShown: "Partiturversion {version} der Aufgabe wird angezeigt.", loadingAria: "Ladestatus der freigegebenen Partitur",
@@ -12,7 +12,7 @@ export const deScoreSharingMessages = {
   assignments: {
     title: "Übungsaufgaben", statuses: { open: "Offen", archived: "Archiviert" }, dueAt: "Fällig", noDue: "Kein Fälligkeitsdatum", submitterName: "Name", submitterContact: "Kontakt",
     practiceMinutes: "Übungsminuten", recordingUrl: "Link zur Audio-/Videoaufnahme", performanceFile: "Aufnahmedatei hochladen", performanceFileHint: "Audio oder gängige Videoformate, bis zu 100 MB",
-    performanceFileAria: "Audio- oder Videoaufnahme auswählen", note: "Übungsnotiz", namePlaceholder: "Namen eingeben", nameRequired: "Gib vor dem Einreichen deinen Namen ein.",
+    performanceFileAria: "Audio- oder Videoaufnahme auswählen", note: "Übungsnotiz", namePlaceholder: "Namen eingeben", nameRequired: "Geben Sie vor dem Einreichen Ihren Namen ein.",
     contactPlaceholder: "E-Mail, Telefon oder vom Unterricht vorgegebener Kontakt", recordingPlaceholder: "https://...", rubric: "Bewertungsraster", rubricEmpty: "Kein Bewertungsraster festgelegt.",
     notePlaceholder: "Notiere Tempo, schwierige Stellen, geübten Umfang oder eine Frage an die Lehrkraft ...", submit: "Aufgabe einreichen", submitting: "Wird eingereicht ...",
     submitSuccess: "Aufgabe eingereicht. Die Lehrkraft kann sie im Partiturprojekt prüfen.", submitFailed: "Die Aufgabe konnte nicht eingereicht werden.", practicePreset: "Übungsvorgabe", submittedPractice: "Eingereichte Übungseinstellungen",
@@ -26,8 +26,8 @@ export const deScoreSharingMessages = {
   },
   annotations: {
     eyebrow: "Partituranmerkungen", titles: { comment: "Kommentar-Arbeitsbereich", edit: "Gemeinsame Anmerkungen" },
-    body: "Wähle unten eine Note aus, um eine präzise Anmerkung anzuhängen. Eine Link-Identität wird vom Partitureigentümer benannt und belegt nur den Besitz des Links, nicht eine verifizierte persönliche Identität.",
-    score: "Gesamte Partitur", selection: "Ausgewählte Note", noSelection: "Wähle zuerst eine Note in der Partitur aus", placeholder: "Beschreibe eine Korrektur, einen Übungspunkt oder eine Frage", post: "Anmerkung veröffentlichen", posting: "Wird veröffentlicht ...",
+    body: "Wählen Sie unten eine Note aus, um eine präzise Anmerkung anzuhängen. Eine Link-Identität wird vom Partitureigentümer benannt und belegt nur den Besitz des Links, nicht eine verifizierte persönliche Identität.",
+    score: "Gesamte Partitur", selection: "Ausgewählte Note", noSelection: "Wählen Sie zuerst eine Note in der Partitur aus", placeholder: "Beschreibe eine Korrektur, einen Übungspunkt oder eine Frage", post: "Anmerkung veröffentlichen", posting: "Wird veröffentlicht ...",
     posted: "Anmerkung veröffentlicht.", failed: "Die Anmerkung konnte nicht veröffentlicht werden.", empty: "Noch keine Anmerkungen.", identities: { account: "Kontoidentität", share_link: "Link-Identität" }, resolved: "Erledigt", locate: "In Partitur anzeigen",
     measure: "Takt", targetModeAria: "Ziel der Anmerkung", statusAria: "Veröffentlichungsstatus der Anmerkung", listAria: "Partituranmerkungen",
   },

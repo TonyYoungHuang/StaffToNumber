@@ -89,6 +89,7 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
     const solo = new Set(practiceSettings?.soloPartIds ?? []);
     const muted = new Set(practiceSettings?.mutedPartIds ?? []);
     return playback.events.filter((event) => {
+      if (event.unpitched) return false;
       if (solo.size > 0 && !solo.has(event.partId)) return false;
       if (muted.has(event.partId)) return false;
       if (practiceSettings?.loopEnabled && (event.startBeat >= practiceSettings.loopEndBeat || event.startBeat + event.durationBeats <= practiceSettings.loopStartBeat)) return false;

@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminMessages } from "../lib/admin-messages/client";
+
 import { useMemo, useState } from "react";
 import { StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
@@ -39,6 +41,7 @@ function toneFor(event: AuditEvent) {
 
 export function AdminSecurityAuditManager() {
   const { locale } = useAppLocale();
+  const { adminText, adminStatus } = useAdminMessages();
   const isChinese = locale === "zh-CN";
   const [adminKey, setAdminKey] = useState("");
   const [eventType, setEventType] = useState("");
@@ -59,7 +62,7 @@ export function AdminSecurityAuditManager() {
 
   function requireKey() {
     if (adminKey.trim()) return true;
-    setMessage(isChinese ? "请先输入管理员密钥。" : "Enter the admin API key first.");
+    setMessage(isChinese ? "请先输入管理员密钥。" : adminText(locale, "Enter the admin API key first."));
     setMessageKind("error");
     return false;
   }
@@ -75,7 +78,7 @@ export function AdminSecurityAuditManager() {
       return;
     }
     setPayload(result.data);
-    setMessage(isChinese ? "安全审计记录已刷新。" : "Security audit events refreshed.");
+    setMessage(isChinese ? "安全审计记录已刷新。" : adminText(locale, "Security audit events refreshed."));
     setMessageKind("success");
   }
 
@@ -83,7 +86,7 @@ export function AdminSecurityAuditManager() {
     if (!requireKey()) return;
     const confirmed = window.confirm(isChinese
       ? `删除超过 ${payload?.retentionDays ?? 180} 天的安全审计记录？`
-      : `Delete security audit events older than ${payload?.retentionDays ?? 180} days?`);
+      : adminText(locale, "Delete security audit events older than {days} days?", { days: payload?.retentionDays ?? 180 }));
     if (!confirmed) return;
     setLoading(true);
     const result = await apiRequest<{ result: { deleted: number } }>("/api/admin/security/audit/prune", {
@@ -97,7 +100,7 @@ export function AdminSecurityAuditManager() {
       setMessageKind("error");
       return;
     }
-    setMessage(isChinese ? `已清理 ${result.data.result.deleted} 条过期记录。` : `Pruned ${result.data.result.deleted} expired events.`);
+    setMessage(isChinese ? `已清理 ${result.data.result.deleted} 条过期记录。` : adminText(locale, "Expired events removed: {count}.", { count: result.data.result.deleted }));
     setMessageKind("success");
     await load();
   }
@@ -111,49 +114,49 @@ export function AdminSecurityAuditManager() {
       <section className="surface-panel stack-lg">
         <div className="form-grid">
           <label className="field-group">
-            <span className="field-label">{isChinese ? "管理员密钥" : "Admin API key"}</span>
+            <span className="field-label">{isChinese ? "管理员密钥" : adminText(locale, "Admin API key")}</span>
             <input className="field-control" type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} />
           </label>
           <label className="field-group">
-            <span className="field-label">{isChinese ? "事件类型" : "Event type"}</span>
+            <span className="field-label">{isChinese ? "事件类型" : adminText(locale, "Event type")}</span>
             <input className="field-control" value={eventType} onChange={(event) => setEventType(event.target.value)} placeholder="upload.mutation" />
           </label>
           <label className="field-group">
-            <span className="field-label">{isChinese ? "严重程度" : "Severity"}</span>
+            <span className="field-label">{isChinese ? "严重程度" : adminText(locale, "Severity")}</span>
             <select className="field-select" value={severity} onChange={(event) => setSeverity(event.target.value)}>
-              <option value="">{isChinese ? "全部" : "All"}</option>
-              <option value="info">info</option><option value="warning">warning</option><option value="error">error</option>
+              <option value="">{isChinese ? "全部" : adminText(locale, "All")}</option>
+              <option value="info">{adminStatus(locale, "info")}</option><option value="warning">{adminStatus(locale, "warning")}</option><option value="error">{adminStatus(locale, "error")}</option>
             </select>
           </label>
           <label className="field-group">
-            <span className="field-label">{isChinese ? "结果" : "Outcome"}</span>
+            <span className="field-label">{isChinese ? "结果" : adminText(locale, "Outcome")}</span>
             <select className="field-select" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
-              <option value="">{isChinese ? "全部" : "All"}</option>
-              <option value="success">success</option><option value="rejected">rejected</option><option value="denied">denied</option><option value="failed">failed</option>
+              <option value="">{isChinese ? "全部" : adminText(locale, "All")}</option>
+              <option value="success">{adminStatus(locale, "success")}</option><option value="rejected">{adminStatus(locale, "rejected")}</option><option value="denied">{adminStatus(locale, "denied")}</option><option value="failed">{adminStatus(locale, "failed")}</option>
             </select>
           </label>
         </div>
         <div className="button-row">
-          <button type="button" className="button button-primary" disabled={loading} onClick={() => void load()}>{isChinese ? "刷新审计" : "Refresh audit"}</button>
-          <button type="button" className="button button-tertiary" disabled={loading || !payload} onClick={() => void prune()}>{isChinese ? "清理过期记录" : "Prune expired"}</button>
+          <button type="button" className="button button-primary" disabled={loading} onClick={() => void load()}>{isChinese ? "刷新审计" : adminText(locale, "Refresh audit")}</button>
+          <button type="button" className="button button-tertiary" disabled={loading || !payload} onClick={() => void prune()}>{isChinese ? "清理过期记录" : adminText(locale, "Prune expired")}</button>
         </div>
-        <p className="micro-copy">{isChinese ? "管理员密钥仅保留在当前页面内存中。" : "The admin key stays only in this page's memory."}</p>
+        <p className="micro-copy">{isChinese ? "管理员密钥仅保留在当前页面内存中。" : adminText(locale, "The admin key stays only in this page's memory.")}</p>
         {message ? <p className={`form-status ${messageKind}`}>{message}</p> : null}
       </section>
 
       <section className="metric-grid">
-        <div className="metric-card"><p className="metric-label">{isChinese ? "24 小时事件" : "24h events"}</p><p className="metric-value">{payload?.summary.total ?? 0}</p></div>
-        <div className="metric-card"><p className="metric-label">{isChinese ? "错误" : "Errors"}</p><p className="metric-value">{errorCount}</p></div>
-        <div className="metric-card"><p className="metric-label">{isChinese ? "拒绝访问" : "Denied"}</p><p className="metric-value">{deniedCount}</p></div>
-        <div className="metric-card"><p className="metric-label">{isChinese ? "上传事件" : "Uploads"}</p><p className="metric-value">{uploadCount}</p></div>
+        <div className="metric-card"><p className="metric-label">{isChinese ? "24 小时事件" : adminText(locale, "24h events")}</p><p className="metric-value">{payload?.summary.total ?? 0}</p></div>
+        <div className="metric-card"><p className="metric-label">{isChinese ? "错误" : adminText(locale, "Errors")}</p><p className="metric-value">{errorCount}</p></div>
+        <div className="metric-card"><p className="metric-label">{isChinese ? "拒绝访问" : adminText(locale, "Denied")}</p><p className="metric-value">{deniedCount}</p></div>
+        <div className="metric-card"><p className="metric-label">{isChinese ? "上传事件" : adminText(locale, "Uploads")}</p><p className="metric-value">{uploadCount}</p></div>
       </section>
 
       <section className="surface-panel stack-lg">
         <div className="score-review-toolbar">
-          <h2 className="card-title">{isChinese ? "安全事件" : "Security events"}</h2>
+          <h2 className="card-title">{isChinese ? "安全事件" : adminText(locale, "Security events")}</h2>
           {payload ? <StatusPill tone="cyan">{payload.events.length} / {payload.retentionDays}d</StatusPill> : null}
         </div>
-        {!payload || payload.events.length === 0 ? <div className="empty-state">{isChinese ? "当前筛选条件下没有记录。" : "No events match the current filters."}</div> : (
+        {!payload || payload.events.length === 0 ? <div className="empty-state">{isChinese ? "当前筛选条件下没有记录。" : adminText(locale, "No events match the current filters.")}</div> : (
           <div className="list-grid">
             {payload.events.map((event) => (
               <article className="list-item stack-md" key={event.id}>
@@ -162,11 +165,11 @@ export function AdminSecurityAuditManager() {
                     <p className="item-title">{event.eventType}</p>
                     <p className="item-meta">{event.method ?? "-"} {event.routeTemplate ?? "-"} · {new Date(event.createdAt).toLocaleString(locale)}</p>
                   </div>
-                  <StatusPill tone={toneFor(event)}>{event.outcome}</StatusPill>
+                  <StatusPill tone={toneFor(event)}>{adminStatus(locale, event.outcome)}</StatusPill>
                 </div>
                 <p className="item-meta">{event.actorType}{event.actorId ? ` · ${event.actorId}` : ""}</p>
-                <p className="micro-copy">request {event.requestId ?? "-"} · trace {event.traceId ?? "-"}</p>
-                {event.metadata ? <details><summary>{isChinese ? "事件详情" : "Event details"}</summary><pre className="feature-example-code">{JSON.stringify(event.metadata, null, 2)}</pre></details> : null}
+                <p className="micro-copy">{adminText(locale, "Request")} {event.requestId ?? "-"} · {adminText(locale, "Trace")} {event.traceId ?? "-"}</p>
+                {event.metadata ? <details><summary>{isChinese ? "事件详情" : adminText(locale, "Event details")}</summary><pre className="feature-example-code">{JSON.stringify(event.metadata, null, 2)}</pre></details> : null}
               </article>
             ))}
           </div>

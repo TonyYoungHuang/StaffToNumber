@@ -4,7 +4,7 @@ export const jaPlaybackPracticeMessages = {
   playback: {
     eyebrow: "再生練習", title: "Tone.js パート練習プレーヤー", body: "現在の Score JSON から練習用の再生イベントを生成し、テンポ変更、区間ループ、メトロノーム、カウントイン、パートの Solo/Mute に対応します。",
     load: "再生イベントを生成", play: "再生", stop: "停止", tempo: "テンポ BPM", playhead: "再生位置", loop: "区間をループ", loopStart: "開始拍", loopEnd: "終了拍", metronome: "メトロノーム", countIn: "1 小節のカウントイン",
-    loading: "再生イベントを生成しています…", ready: "再生イベントを生成しました。", failed: "再生イベントを生成できませんでした。", empty: "再生する前に再生イベントを生成してください。", noEvents: "現在のパート絞り込みには再生可能な音符がありません。",
+    loading: "再生イベントを生成しています…", ready: "再生イベントを生成しました。", failed: "再生イベントを生成できませんでした。", empty: "再生を押すと、必要なデータを自動で読み込んで再生します。", noEvents: "現在のパート絞り込みには再生可能な音符がありません。",
     events: "イベント", activeEvents: "有効なイベント", beats: "総拍数", parts: "パート", solo: "Solo", mute: "Mute", allParts: "すべてのパート", revision: "リビジョン",
     speedLadder: "テンポ階段練習", targetTempo: "目標テンポ", tempoStep: "1 回ごとの増加", ladderComplete: "テンポ階段練習が完了しました。", practiceExports: "練習用書き出し",
     startMeasure: "開始小節", endMeasure: "終了小節", byBeat: "拍で指定", partVolume: "パート音量", diagnostics: "再生診断", playbackPath: "演奏順序", terminated: "終了理由", unreachableMeasures: "到達不能な小節",

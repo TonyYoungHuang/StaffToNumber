@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { getFlowMessages } from "../../lib/flow-messages";
 import { EntitlementGate } from "../../components/EntitlementGate";
 import { JobsManager } from "../../components/JobsManager";
 import { getAuthMessages } from "../../lib/auth-messages";
@@ -17,9 +19,10 @@ export default async function JobsPage() {
         <h1 className="page-title">{copy.title}</h1>
         <p className="body-copy large">{copy.body}</p>
       </div>
-      <EntitlementGate copy={entitlementCopy}>
-        <JobsManager copy={messages.jobs} />
-      </EntitlementGate>
+      <Link href="/scores" className="button button-primary">{getFlowMessages(locale).resume}</Link>
+      <details className="flow-details"><summary>{getFlowMessages(locale).legacy}</summary>
+        <EntitlementGate allowFreePreview copy={entitlementCopy}><JobsManager copy={messages.jobs} /></EntitlementGate>
+      </details>
     </section>
   );
 }

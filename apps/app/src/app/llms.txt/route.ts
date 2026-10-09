@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from "../../lib/support";
+
 const content = `# ScoreTransposer
 
 > ScoreTransposer is a web application for turning sheet-music PDFs and images into reviewable digital notation, then correcting, converting, transposing, practicing, and exporting the score.
@@ -19,8 +21,8 @@ const content = `# ScoreTransposer
 - The user's approved score version remains the reference; recognition does not silently replace it.
 
 ## Contact
-- Support: support@scoretransposer.com
-- Last updated: 2026-08-25
+- Support: ${SUPPORT_EMAIL}
+- Last updated: 2026-09-29
 `;
 
 export function GET() {

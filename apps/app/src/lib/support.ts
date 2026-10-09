@@ -9,7 +9,7 @@ export type SupportTemplate = {
   href: string;
 };
 
-export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@scoretransposer.com";
+export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "guanqi1137@gmail.com";
 export const PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://scoretransposer.com";
 
 export function buildPublicSiteHandoffHref(nextPath: string, locale: SupportedLocale) {

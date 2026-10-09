@@ -49,10 +49,6 @@ export const zhTWBillingMessages = {
     manager: {
       loading: "正在載入帳單資訊...", fallbackError: "目前無法載入帳單資訊，請重試。", signIn: "請先登入以查看帳單。",
       creditEyebrow: "點數餘額", availableCredits: "本月可用點數", creditUnit: "點數", creditSummaryTemplate: "本月共 {limit} 點，已使用 {used} 點。", creditUsage: "本月點數使用", storage: "檔案儲存空間",
-      prepaidTitle: "一次性點數包 · 可用點數",
-      prepaidSummaryTemplate: "共 {limit} 點，已用或預留 {used}；不按月重設，未用點數保留。",
-      prepaidNote: "識譜與新建匯出使用點數；編輯、移調和試聽不額外扣點。失敗或取消會釋放預留點數；重新處理需再次核對額度。",
-      additionalPrepaidTemplate: "另有一次性點數 {remaining} / {total}，月度額度不足時使用；未用點數保留。",
       quotaNote: "任務建立時預留點數；失敗或取消後自動退回。月度點數按月重設，未使用點數不會累積。",
       freeEyebrow: "免費使用狀態", noPaidTitle: "目前沒有生效中的付費方案", freeBody: "免費帳戶可從一份完整多頁 PDF 或樂譜圖片建立一個永久專案，並使用校正、播放、移調、轉簡譜、分享與匯出；免費額度為 {credits}。", unlock: "開通完整權限",
       subscriptionsEyebrow: "訂閱", subscriptionsTitle: "存取權與續費狀態", manageStripe: "管理 Stripe 付款方式", managingStripe: "正在開啟 Stripe...", noSubscriptions: "目前帳戶尚無訂閱。",

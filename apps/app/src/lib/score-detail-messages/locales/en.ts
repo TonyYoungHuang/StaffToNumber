@@ -113,7 +113,7 @@ export const enScoreDetailMessages = {
     savingPreset: "Saving preset...",
     presetSaved: "Project transpose preset saved.",
     presetFailed: "Could not save project transpose preset.",
-    suggestionTitle: "{value} semitones to {target}",
+    suggestionTitle: "{value} to {target}",
     from: "From",
     score: "Score",
     range: "Range",
@@ -140,7 +140,7 @@ export const enScoreDetailMessages = {
     jianpu: { button: "Export Jianpu", exporting: "Exporting Jianpu...", success: "Jianpu exported.", failed: "Jianpu export failed." },
     scoreJson: { button: "Export Score JSON", exporting: "Exporting Score JSON...", success: "Score JSON snapshot exported.", failed: "Score JSON export failed." },
     wav: { button: "Export WAV", exporting: "Queueing WAV...", success: "WAV exported.", failed: "WAV export failed." },
-    mp3: { button: "Export MP3", exporting: "Queueing MP3...", success: "MP3 exported.", failed: "MP3 export failed. Check FluidSynth, SoundFont, and ffmpeg configuration." },
+    mp3: { button: "Export MP3", exporting: "Queueing MP3...", success: "MP3 exported.", failed: "MP3 export could not be completed. Retry later or contact support with the job reference." },
     musicXml: { button: "Export MusicXML", exporting: "Queueing MusicXML...", success: "MusicXML generated.", failed: "MusicXML export failed." },
     pdf: { button: "Export PDF", exporting: "Queueing PDF...", success: "PDF exported.", failed: "PDF export failed." },
     image: {
@@ -160,7 +160,7 @@ export const enScoreDetailMessages = {
   audioExportOptions: {
     eyebrow: "WAV & MP3 audio export",
     title: "WAV & MP3 audio export settings",
-    body: "WAV and MP3 run through MIDI, FluidSynth, a licensed SoundFont, and ffmpeg loudness/encoding processing.",
+    body: "Create a WAV or MP3 file from the current score. Adjust the available sound and encoding settings before exporting.",
     sampleRate: "Sample rate", channels: "Channels", stereo: "Stereo", mono: "Mono", gain: "SoundFont gain", reverb: "Reverb",
     chorus: "Chorus", normalize: "Loudness normalization", loudness: "Target loudness (LUFS)", bitrate: "MP3 bitrate",
   },
@@ -184,7 +184,7 @@ export const enScoreDetailMessages = {
   },
   jobs: {
     eyebrow: "Score jobs", title: "Recognition, transcription, and export jobs",
-    body: "Audiveris scans, Basic Pitch transcription, MuseScore rendering, and FluidSynth audio exports share this progress, retry, failure, and output queue.",
+    body: "Follow recognition, rendering and export jobs, review their status and download available outputs.",
     loading: "Loading score jobs...", empty: "No background score jobs for this project yet.", failed: "Could not load score jobs.", refresh: "Refresh status",
     diagnostics: "Recognition diagnostics", confidence: "Confidence", pages: "Pages", revision: "Revision", outputs: "Output files",
     running: "A score operation is running; this page will refresh automatically.", actionFailed: "Could not update the job.", attempt: "Attempt", queue: "Queue",
@@ -210,7 +210,7 @@ export const enScoreDetailMessages = {
   },
   assignments: {
     eyebrow: "Teaching", title: "Score assignments",
-    body: "Turn the current score revision, practice instructions, and a read-only student link into an assignment. Shared pages now accept lightweight student submissions; grading and student accounts can build on this later.",
+    body: "Create an assignment from the current score revision and practice instructions. Share a student link, review submissions and recordings, and provide grades and feedback. Classroom and student-account tools are available within the enabled teaching access.",
     titleLabel: "Assignment title", titlePlaceholder: "Example: slow practice from measure 12 to 24", instructions: "Practice instructions",
     instructionsPlaceholder: "Add tempo, loop range, part focus, or submission expectations...", dueAt: "Due date", create: "Create assignment", creating: "Creating...",
     archive: "Archive", archiving: "Archiving...", copy: "Copy student link", copied: "Student link copied.", created: "Assignment created.", failed: "Assignment action failed.",

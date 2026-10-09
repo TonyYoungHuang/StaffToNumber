@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDateTime, formatNumber } from "@score/i18n";
+import { formatDateTime, formatNumber, type SupportedLocale } from "@score/i18n";
 import { apiRequest, downloadAuthenticatedFile } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { useEducationMessages } from "../lib/education-messages/client";
@@ -63,7 +63,7 @@ type StudentClassroom = {
 type StudentHomePayload = { classrooms: StudentClassroom[] };
 type NotificationPreferences = {
   emailClassroomAnnouncements: boolean;
-  locale: "zh-CN" | "en";
+  locale: SupportedLocale;
   updatedAt: string | null;
 };
 
@@ -148,7 +148,7 @@ export function StudentHome() {
     const result = await apiRequest<{ preferences: NotificationPreferences }>("/api/education/notification-preferences", {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ emailClassroomAnnouncements: enabled, locale: locale === "zh-CN" ? "zh-CN" : "en" }),
+      body: JSON.stringify({ emailClassroomAnnouncements: enabled, locale }),
     });
     setSavingPreferences(false);
     if (!result.ok) {

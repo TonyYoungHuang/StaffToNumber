@@ -49,10 +49,6 @@ export const frBillingMessages = {
     manager: {
       loading: "Chargement de la facturation...", fallbackError: "La facturation n’a pas pu être chargée. Réessayez.", signIn: "Connectez-vous pour consulter la facturation.",
       creditEyebrow: "Solde de crédits", availableCredits: "Crédits disponibles ce mois-ci", creditUnit: "crédits", creditSummaryTemplate: "{limit} crédits ce mois-ci, dont {used} utilisés.", creditUsage: "Crédits utilisés ce mois-ci", storage: "Stockage de fichiers",
-      prepaidTitle: "Crédits prépayés",
-      prepaidSummaryTemplate: "{limit} crédits prépayés, dont {used} utilisés ou réservés. Sans remise à zéro mensuelle ni expiration.",
-      prepaidNote: "Le traitement et les exports en file d’attente consomment des crédits. L’édition, la transposition et la lecture n’en consomment pas. Les crédits réservés sont libérés en cas d’échec ou d’annulation.",
-      additionalPrepaidTemplate: "Crédits prépayés supplémentaires : {remaining} / {total}. Utilisés lorsque les crédits mensuels sont insuffisants. Les crédits inutilisés sont conservés.",
       quotaNote: "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation. Les crédits mensuels sont réinitialisés chaque mois et ne sont pas reportés.",
       freeEyebrow: "État de l’accès gratuit", noPaidTitle: "Aucune formule payante active", freeBody: "Un compte gratuit conserve un projet à vie créé à partir d’un PDF multipage complet ou d’une image de partition, avec correction, lecture, transposition, Jianpu, partage et export ; l’allocation gratuite est de {credits}.", unlock: "Activer l’accès complet",
       subscriptionsEyebrow: "Abonnements", subscriptionsTitle: "Accès et état du renouvellement", manageStripe: "Gérer le moyen de paiement Stripe", managingStripe: "Ouverture de Stripe...", noSubscriptions: "Aucun abonnement n’est associé à ce compte.",

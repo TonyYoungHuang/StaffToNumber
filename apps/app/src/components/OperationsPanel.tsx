@@ -110,7 +110,7 @@ export function OperationsPanel({
               <div className="list-item-content">
                 <p className="item-title">{templateCopy.title}</p>
                 <p className="helper-copy">{templateCopy.description}</p>
-                <p className="micro-copy">{SUPPORT_EMAIL}</p>
+                <p className="micro-copy"><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
               </div>
               <a href={template.href} className="button button-secondary button-ghost">
                 {copy.support.openForm}

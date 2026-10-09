@@ -639,7 +639,8 @@ function buildVoices(measure: ScoreMeasure, selectedEventIds: string[], staffNum
       const group = unit.group;
       const primaryEvent = group.events[0];
       if (!primaryEvent) continue;
-      if (unit.kind === "placeholder") {
+      if (unit.kind === "placeholder" || primaryEvent.printObject === false) {
+        if (primaryEvent.type === "note" && primaryEvent.grace) continue;
         const placeholder = new GhostNote({ duration: vexDuration(primaryEvent.durationType, primaryEvent.type === "rest") });
         for (let index = 0; index < primaryEvent.dots; index += 1) Dot.buildAndAttach([placeholder], { all: true });
         rhythmTickables.push(placeholder);
@@ -679,7 +680,7 @@ function buildVoices(measure: ScoreMeasure, selectedEventIds: string[], staffNum
     if (pendingGraceNotes.length > 0 && tickables.length > 0) {
       tickables.at(-1)?.note.addModifier(new GraceNoteGroup(pendingGraceNotes, false), 0);
     }
-    if (tickables.length === 0) return null;
+    if (rhythmTickables.length === 0) return null;
     const voice = new Voice({ numBeats, beatValue }).setMode(Voice.Mode.SOFT);
     voice.addTickables(rhythmTickables);
     return { voiceId, voice, renderedNotes, tickables };
@@ -701,16 +702,24 @@ function applyPolyphonicVoiceLayout(voices: ReturnType<typeof buildVoices>, even
   }
 }
 
+function vexKeyForEvent(event: ScoreEvent) {
+  if (event.type !== "note") return "b/4";
+  const step = event.unpitched?.displayStep ?? event.pitch.step;
+  const octave = event.unpitched?.displayOctave ?? event.pitch.octave;
+  const notehead = event.notehead === "x" ? "/x" : "";
+  return `${step.toLowerCase()}/${octave}${notehead}`;
+}
+
 function staveNoteForEvents(events: ScoreEvent[]) {
   const event = events[0];
   if (!event) throw new Error("A VexFlow event group cannot be empty.");
   const duration = vexDuration(event.durationType, event.type === "rest");
   const keys = event.type === "note"
-    ? events.map((item) => item.type === "note" ? `${item.pitch.step.toLowerCase()}/${item.pitch.octave}` : "b/4")
+    ? events.map(vexKeyForEvent)
     : ["b/4"];
   const note = new StaveNote({ keys, duration });
   for (const [keyIndex, item] of events.entries()) {
-    if (item.type === "note" && item.pitch.alter !== 0) {
+    if (item.type === "note" && !item.unpitched && item.pitch.alter !== 0) {
       note.addModifier(new Accidental(accidentalForAlter(item.pitch.alter)), keyIndex);
     }
   }
@@ -833,12 +842,12 @@ function graceNoteForEvents(events: ScoreEvent[]) {
   const event = events[0];
   if (!event || event.type !== "note") throw new Error("A grace-note group requires a note event.");
   const note = new GraceNote({
-    keys: events.map((item) => item.type === "note" ? `${item.pitch.step.toLowerCase()}/${item.pitch.octave}` : "b/4"),
+    keys: events.map(vexKeyForEvent),
     duration: vexDuration(event.durationType, false),
     slash: event.grace?.slash ?? false,
   });
   for (const [keyIndex, item] of events.entries()) {
-    if (item.type === "note" && item.pitch.alter !== 0) {
+    if (item.type === "note" && !item.unpitched && item.pitch.alter !== 0) {
       note.addModifier(new Accidental(accidentalForAlter(item.pitch.alter)), keyIndex);
     }
   }

@@ -87,7 +87,9 @@ test("client score entry components avoid binary branches and the nine-locale va
   const omr = readFileSync(new URL("../../components/ScoreOmrReviewPanel.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(library, /userFacingError/u);
   assert.match(library, /setStatus\(result\.error\)/u);
-  assert.match(access, /setAccessError\(result\.error\)/u);
+  assert.doesNotMatch(access, /apiRequest/u, "workspace reuses the identity gate instead of checking twice");
+  const gate = readFileSync(new URL("../../components/EntitlementGate.tsx", import.meta.url), "utf8");
+  assert.match(gate, /setError\(result\.error\)/u);
   assert.match(trial, /setError\(scoreResult\.error\)/u);
   assert.match(trial, /\{job\.errorMessage\}/u);
   assert.match(trial, /eventLabelTemplate=\{copy\.previewEventLabel\}/u);

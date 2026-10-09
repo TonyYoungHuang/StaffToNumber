@@ -1,3 +1,7 @@
+import { AppAuthModalProvider } from "../components/AppAuthModal";
+import { getAuthMessages } from "../lib/auth-messages";
+import { getFlowMessages } from "../lib/flow-messages";
+import { FlowMessagesProvider } from "../lib/flow-messages/client";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import React from "react";
@@ -5,6 +9,7 @@ import { getAnalyticsConsentMessages, getLocaleConfig } from "@score/i18n";
 import "@score/ui/sonata.css";
 import "./app-theme.css";
 import { AppChrome } from "../components/AppChrome";
+import { SessionBootstrap } from "../components/SessionBootstrap";
 import { AppLocaleProvider } from "../components/AppLocaleProvider";
 import { ProductAnalytics } from "../components/ProductAnalytics";
 import { getAppMessages } from "../lib/app-messages";
@@ -76,7 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body>
         <AppLocaleProvider locale={locale}>
-          <AppChrome copy={shellCopy}>{children}</AppChrome>
+          <FlowMessagesProvider messages={getFlowMessages(locale)}><SessionBootstrap><AppAuthModalProvider messages={getAuthMessages(locale)}><AppChrome copy={shellCopy}>{children}</AppChrome></AppAuthModalProvider></SessionBootstrap></FlowMessagesProvider>
           <ProductAnalytics copy={analyticsCopy} />
         </AppLocaleProvider>
       </body>

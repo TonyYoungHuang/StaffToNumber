@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { formatMessage } from "@score/i18n";
 import type { ScoreEvent, ScoreJson } from "@score/shared";
 import type { OpenSheetMusicDisplay as OpenSheetMusicDisplayInstance } from "opensheetmusicdisplay";
+import type { VexFlowGraphicalNote } from "opensheetmusicdisplay";
+import { annotateMusicXmlEvents, installOsmdEventBridge, osmdEventIdentity } from "../lib/osmd-event-bridge";
 import { API_BASE_URL } from "../lib/api";
 
 type PreviewState = "idle" | "deferred" | "loading" | "rendered" | "error";
@@ -59,6 +61,7 @@ export function ScoreMusicXmlPreview({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplayInstance | null>(null);
   const zoomRef = useRef(zoom);
+  const selectedEventIdRef = useRef(selectedEventId);
   const [state, setState] = useState<PreviewState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [renderAttempt, setRenderAttempt] = useState(0);
@@ -67,6 +70,7 @@ export function ScoreMusicXmlPreview({
   const scoreEventCount = scoreJson?.metadata.noteCount ?? scoreJson?.measures.reduce((sum, measure) => sum + measure.events.length, 0) ?? 0;
   const deferRendering = scoreEventCount > largeScoreThreshold && !renderRequested;
   zoomRef.current = zoom;
+  selectedEventIdRef.current = selectedEventId;
 
   useEffect(() => {
     setRenderRequested(false);
@@ -75,6 +79,10 @@ export function ScoreMusicXmlPreview({
   useEffect(() => {
     let cancelled = false;
     let activeOsmd: OpenSheetMusicDisplayInstance | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let visibilityObserver: ResizeObserver | null = null;
+    let releaseVisibilityWait: (() => void) | null = null;
+    let resizeFrame: number | null = null;
 
     async function renderMusicXml() {
       if (deferRendering) {
@@ -113,14 +121,30 @@ export function ScoreMusicXmlPreview({
           nextMusicXml = await response.text();
         }
 
-        const { OpenSheetMusicDisplay } = await import("opensheetmusicdisplay");
+        const { OpenSheetMusicDisplay, VoiceGenerator } = await import("opensheetmusicdisplay");
+        installOsmdEventBridge(VoiceGenerator);
+        // Workspace panels retain their state while hidden. Rendering into a
+        // zero-width panel creates invalid stave coordinates in OSMD.
+        if (containerRef.current && containerRef.current.getBoundingClientRect().width < 40) {
+          await new Promise<void>(resolve => {
+            releaseVisibilityWait = resolve;
+            visibilityObserver = new ResizeObserver(() => {
+              if (cancelled || (containerRef.current?.getBoundingClientRect().width ?? 0) >= 40) {
+                visibilityObserver?.disconnect(); resolve();
+              }
+            });
+            visibilityObserver.observe(containerRef.current!);
+          });
+        }
 
         if (cancelled || !containerRef.current) {
           return;
         }
 
         const osmd = new OpenSheetMusicDisplay(containerRef.current, {
-          autoResize: true,
+          // OSMD's automatic redraw discards our event targets. Own width
+          // changes so selection and keyboard targets are rebound afterward.
+          autoResize: false,
           backend: "svg",
           drawTitle: true,
           drawingParameters: "compacttight",
@@ -128,7 +152,7 @@ export function ScoreMusicXmlPreview({
         activeOsmd = osmd;
         osmdRef.current = osmd;
 
-        await osmd.load(nextMusicXml);
+        await osmd.load(annotateMusicXmlEvents(nextMusicXml, scoreJson ?? null));
         if (cancelled) {
           osmd.clear();
           return;
@@ -137,6 +161,7 @@ export function ScoreMusicXmlPreview({
         osmd.Zoom = zoomRef.current;
         osmd.render();
         const nextBoundCount = bindRenderedScoreEvents({
+          osmd,
           container: containerRef.current,
           scoreJson: scoreJson ?? null,
           onEventSelect,
@@ -146,6 +171,41 @@ export function ScoreMusicXmlPreview({
         });
         setBoundEventCount(nextBoundCount);
         setState("rendered");
+
+        const previewShell = containerRef.current.parentElement;
+        if (previewShell) {
+          let previousWidth = previewShell.clientWidth;
+          resizeObserver = new ResizeObserver(() => {
+            const width = previewShell.clientWidth;
+            // Ignore height changes caused by rendering the SVG itself.
+            if (width === previousWidth) return;
+            previousWidth = width;
+            if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+            if (width < 40) { resizeFrame = null; return; }
+            resizeFrame = requestAnimationFrame(() => {
+              resizeFrame = null;
+              if (cancelled || !containerRef.current || containerRef.current.getBoundingClientRect().width < 40) return;
+              try {
+                osmd.Zoom = zoomRef.current;
+                osmd.render();
+                setBoundEventCount(bindRenderedScoreEvents({
+                  osmd,
+                  container: containerRef.current,
+                  scoreJson: scoreJson ?? null,
+                  onEventSelect,
+                  eventLabelTemplate,
+                  noteLabel,
+                  restLabel,
+                }));
+                updateRenderedSelection(containerRef.current, selectedEventIdRef.current ?? null);
+              } catch (error) {
+                setState("error");
+                setMessage(error instanceof Error ? error.message : errorLabel);
+              }
+            });
+          });
+          resizeObserver.observe(previewShell);
+        }
       } catch (error) {
         if (!cancelled) {
           setState("error");
@@ -158,6 +218,10 @@ export function ScoreMusicXmlPreview({
 
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
+      visibilityObserver?.disconnect();
+      releaseVisibilityWait?.();
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       if (activeOsmd) activeOsmd.clear();
       if (osmdRef.current === activeOsmd) osmdRef.current = null;
     };
@@ -165,10 +229,11 @@ export function ScoreMusicXmlPreview({
 
   useEffect(() => {
     const osmd = osmdRef.current;
-    if (!osmd || !containerRef.current || state !== "rendered" || osmd.Zoom === zoom) return;
+    if (!osmd || !containerRef.current || state !== "rendered" || osmd.Zoom === zoom || containerRef.current.getBoundingClientRect().width < 40) return;
     osmd.Zoom = zoom;
     osmd.render();
     const nextBoundCount = bindRenderedScoreEvents({
+      osmd,
       container: containerRef.current,
       scoreJson: scoreJson ?? null,
       onEventSelect,
@@ -222,6 +287,7 @@ export function ScoreMusicXmlPreview({
 }
 
 function bindRenderedScoreEvents(input: {
+  osmd: OpenSheetMusicDisplayInstance;
   container: HTMLElement;
   scoreJson: ScoreJson | null;
   onEventSelect?: (eventId: string) => void;
@@ -234,12 +300,23 @@ function bindRenderedScoreEvents(input: {
     return 0;
   }
 
-  const renderedNotes = Array.from(input.container.querySelectorAll<SVGGElement>("g.vf-stavenote"));
-  const limit = Math.min(events.length, renderedNotes.length);
-
-  for (let index = 0; index < limit; index += 1) {
-    const event = events[index];
-    const group = renderedNotes[index];
+  const eventMap = new Map(events.map(event => [event.id, event]));
+  let count = 0;
+  const bound = new Set<Element>();
+  for (const measure of input.osmd.Sheet.SourceMeasures) for (const vertical of measure.VerticalSourceStaffEntryContainers) for (const staff of vertical.StaffEntries) {
+    if (!staff) continue;
+    for (const voice of staff.VoiceEntries) for (const note of voice.Notes) {
+    const event = eventMap.get(osmdEventIdentity(note) ?? '');
+    if (!event) continue;
+    const graphical = input.osmd.EngravingRules.GNote(note) as VexFlowGraphicalNote | undefined;
+    if (!graphical?.getSVGGElement) continue;
+    // The chord index belongs to OSMD's own VexFlow instance. Bind each head,
+    // not the entire chord group and not the display order of SVG elements.
+    const heads = graphical.getNoteheadSVGs();
+    const headIndex = graphical.vfnote?.[1] ?? graphical.vfnoteIndex;
+    const group = (heads[headIndex] ?? (heads.length <= 1 ? graphical.getSVGGElement() : undefined)) as unknown as SVGGElement | undefined;
+    if (!group || !input.container.contains(group) || bound.has(group)) continue;
+    bound.add(group);
     group.dataset.scoreEventId = event.id;
     group.dataset.scoreMeasureId = event.measureId;
     group.dataset.scorePartId = event.partId;
@@ -252,17 +329,20 @@ function bindRenderedScoreEvents(input: {
       group.setAttribute("role", "button");
       group.setAttribute("tabindex", "0");
       appendHitTarget(group);
-      group.addEventListener("click", () => input.onEventSelect?.(event.id));
-      group.addEventListener("keydown", (keyboardEvent) => {
+      group.onclick = (pointerEvent) => { pointerEvent.stopPropagation(); input.onEventSelect?.(event.id); };
+      group.onkeydown = (keyboardEvent) => {
         if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
           keyboardEvent.preventDefault();
+          keyboardEvent.stopPropagation();
           input.onEventSelect?.(event.id);
         }
-      });
+      };
+    }
+    count += 1;
     }
   }
 
-  return limit;
+  return count;
 }
 
 function appendHitTarget(group: SVGGElement) {
@@ -317,7 +397,7 @@ function collectPreviewEvents(scoreJson: ScoreJson | null): PreviewEvent[] {
             measureNumber: measure.number,
             eventIndex,
           }))
-          .filter((event) => !(event.type === "note" && event.chord)),
+          .filter((event) => event.printObject !== false),
       ),
   );
 }

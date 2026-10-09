@@ -1,5 +1,8 @@
 "use client";
 
+import { useScoreActivity } from "./ScoreOperationBoundary";
+import { useFlowMessages } from "../lib/flow-messages/client";
+
 import { useEffect, useMemo, useState } from "react";
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { MIDI_PROGRAM_PRESETS, suggestMidiProgramPresetForPartName } from "@score/shared";
@@ -160,6 +163,8 @@ export function ScoreCorrectionPanel({
   const [repeatDirection, setRepeatDirection] = useState(selectedMeasure?.barlines?.[0]?.repeatDirection ?? "none");
   const [repeatTimes, setRepeatTimes] = useState(selectedMeasure?.barlines?.[0]?.repeatTimes ?? 2);
   const [saving, setSaving] = useState(false);
+  const operationCopy = useFlowMessages().scoreOperations;
+  useScoreActivity(saving, false, operationCopy.saving);
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
 
