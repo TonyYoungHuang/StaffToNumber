@@ -18,9 +18,11 @@ type AccessPayload = {
 export function ScoreAccessWorkspace({
   accessCopy,
   reviewMessages,
+  ensemble = false,
 }: {
   accessCopy: ScoreEntryMessages["access"];
   reviewMessages: ScoreReviewMessages;
+  ensemble?: boolean;
 }) {
   const [access, setAccess] = useState<"checking" | "paid" | "preview" | "error">("checking");
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function ScoreAccessWorkspace({
   if (access === "paid" || access === "preview") {
     return (
       <ScoreReviewMessagesProvider messages={reviewMessages}>
-        <ScoreDetailClient />
+        <ScoreDetailClient ensemble={ensemble} />
       </ScoreReviewMessagesProvider>
     );
   }

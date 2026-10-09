@@ -69,11 +69,15 @@ test("payment review notices and representative page, validation, status, and AR
 
 test("localized plans keep shared commercial facts and identifiers immutable", () => {
   const sharedPlans = getPricingPlanCatalog("en");
-  const sharedIdentity = sharedPlans.map(({ code, price, featured }) => ({ code, price, featured }));
+  const sharedIdentity = sharedPlans.map(({ code, featured }) => ({ code, featured }));
 
   for (const locale of SUPPORTED_LOCALES) {
     const plans = getLocalizedPricingPlanCatalog(locale);
-    assert.deepEqual(plans.map(({ code, price, featured }) => ({ code, price, featured })), sharedIdentity, `${locale} plan identity`);
+    assert.deepEqual(plans.map(({ code, featured }) => ({ code, featured })), sharedIdentity, `${locale} plan identity`);
+    assert.deepEqual(plans.map(plan => plan.price.replace(/\s/gu, " ")), locale === "fr"
+      ? ["0,00 $US", "7,99 $US", "49,00 $US", "14,99 $US", "99,00 $US"]
+      : locale === "de" || locale === "ru" || locale === "es" ? ["0,00 USD", "7,99 USD", "49,00 USD", "14,99 USD", "99,00 USD"]
+      : sharedPlans.map(plan => plan.price), `${locale} plan amounts and currency`);
     assert.equal(plans.length, 5, `${locale} plan count`);
 
     for (const [index, plan] of plans.entries()) {
@@ -86,7 +90,7 @@ test("localized plans keep shared commercial facts and identifiers immutable", (
       }
 
       const sharedNumbers = JSON.stringify(shared).match(/\d+(?:\.\d+)?/gu) ?? [];
-      const localizedText = JSON.stringify(plan);
+      const localizedText = ["fr", "de", "ru", "es"].includes(locale) ? JSON.stringify(plan).replace(/(\d),(\d)/gu, "$1.$2") : JSON.stringify(plan);
       for (const fact of new Set(sharedNumbers)) {
         assert.ok(localizedText.includes(fact), `${locale} ${plan.code} preserves numeric fact ${fact}`);
       }

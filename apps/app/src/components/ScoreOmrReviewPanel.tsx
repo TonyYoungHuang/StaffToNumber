@@ -13,6 +13,15 @@ type SourceFile = {
   mimeType: string;
 };
 
+export type ScoreSourceRegion = {
+  id: string;
+  label: string;
+  page: number;
+  bbox?: { x: number; y: number; width: number; height: number };
+  pageWidth?: number;
+  pageHeight?: number;
+};
+
 type DiagnosticItem = {
   id: string;
   eventId?: string;
@@ -37,6 +46,7 @@ export function ScoreOmrReviewPanel({
   onEventSelect,
   locale,
   zoom = 1,
+  focusedSourceRegion,
 }: {
   scoreId: string;
   sourceFile: SourceFile | null;
@@ -47,6 +57,7 @@ export function ScoreOmrReviewPanel({
   onEventSelect: (eventId: string) => void;
   locale: SupportedLocale;
   zoom?: number;
+  focusedSourceRegion?: ScoreSourceRegion | null;
 }) {
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -148,13 +159,31 @@ export function ScoreOmrReviewPanel({
     if (pages.size === 0 && sourceFile) pages.add(1);
     return [...pages].sort((left, right) => left - right);
   }, [diagnostics, orderedPageFiles, scoreJson?.recognitionLayer?.pages, sourceFile]);
-  const pageDimensions = scoreJson?.recognitionLayer?.pages?.find((page) => page.page === activePage) ?? null;
+  const pageDimensions = scoreJson?.recognitionLayer?.pages?.find((page) => page.page === activePage) ?? (focusedSourceRegion?.page === activePage && focusedSourceRegion.pageWidth && focusedSourceRegion.pageHeight ? { page: activePage, width: focusedSourceRegion.pageWidth, height: focusedSourceRegion.pageHeight } : null);
   const pageDiagnostics = diagnostics.filter((item) => item.page === activePage);
   const visibleDiagnostics = pageDiagnostics.filter((item) => !issuesOnly || item.issues.length > 0);
   const issueDiagnostics = diagnostics.filter((item) => item.issues.length > 0);
   const problemMeasures = new Set(issueDiagnostics.map((item) => item.measureId).filter(Boolean));
   const overlayDiagnostics = pageDimensions ? pageDiagnostics.filter((item) => item.bbox && item.issues.length > 0).slice(0, 300) : [];
   const imageGeometryMatches = !pageDimensions || !imageDimensions || hasMatchingOmrImageDimensions(pageDimensions, imageDimensions.width, imageDimensions.height);
+  const focusedBbox = focusedSourceRegion?.page === activePage && focusedSourceRegion.bbox && pageDimensions && imageGeometryMatches && (showOverlayPage || !hasOverlayPages)
+    ? projectOmrBbox(pageDimensions, focusedSourceRegion.bbox) : null;
+
+  useEffect(() => {
+    if (!focusedSourceRegion) return;
+    setActivePage(focusedSourceRegion.page);
+    setActiveDiagnosticId(null);
+    if (hasOverlayPages) setSourceMode("overlay");
+  }, [focusedSourceRegion, hasOverlayPages]);
+
+  useEffect(() => {
+    if (!focusedSourceRegion || !sourceUrl) return;
+    const frame = requestAnimationFrame(() => {
+      const target = sourcePreviewRef.current?.querySelector<HTMLElement>("[data-coverage-region-id]") ?? sourcePreviewRef.current;
+      target?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusedSourceRegion, sourceUrl, imageDimensions, zoom]);
 
   useEffect(() => {
     if (!selectedEventId) return;
@@ -229,6 +258,7 @@ export function ScoreOmrReviewPanel({
       ) : null}
 
       <div ref={sourcePreviewRef} className="score-source-preview">
+        {focusedSourceRegion ? <p className="helper-copy" role="status" data-focused-source-page={activePage}>{formatMessage(copy.pageTemplate, { page: formatNumber(activePage, locale) })} · {focusedSourceRegion.label}</p> : null}
         {!displayedFile ? <div className="empty-state">{copy.noSource}</div> : null}
         {sourceError ? <p className="form-status error" role="alert">{sourceError}</p> : null}
         {displayedFile && !sourceUrl && !sourceError ? <div className="empty-state" role="status" aria-live="polite">{copy.loadingSource}</div> : null}
@@ -246,6 +276,7 @@ export function ScoreOmrReviewPanel({
                 alt={formatMessage(copy.scanAltTemplate, { name: displayedFile.originalName })}
                 onLoad={(event) => setImageDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
               />
+              {focusedBbox && focusedSourceRegion ? <div data-coverage-region-id={focusedSourceRegion.id} aria-label={focusedSourceRegion.label} style={{ position: "absolute", pointerEvents: "none", border: "3px solid #d97706", background: "rgba(245,158,11,.12)", left: `${focusedBbox.leftPercent}%`, top: `${focusedBbox.topPercent}%`, width: `${focusedBbox.widthPercent}%`, height: `${focusedBbox.heightPercent}%` }} /> : null}
               {pageDimensions && showOverlayPage ? (
                 <div className="score-source-symbol-layer" aria-label={copy.symbolLayer}>
                   {overlayDiagnostics.map((item) => {

@@ -73,7 +73,7 @@ test("fixed detail enums and profile registries have localized safe mappings", (
   assert.equal(Object.keys(english.profiles.instruments).length, 12);
 });
 
-test("ScoreDetailClient consumes only server-selected copy and preserves raw backend failures", () => {
+test("ScoreDetailClient consumes server-selected copy and localizes German and Russian backend failures", () => {
   const source = readFileSync(new URL("../../components/ScoreDetailClient.tsx", import.meta.url), "utf8");
   const context = readFileSync(new URL("../score-entry-messages/client.tsx", import.meta.url), "utf8");
   const page = readFileSync(new URL("../../app/scores/[id]/page.tsx", import.meta.url), "utf8");
@@ -93,7 +93,7 @@ test("ScoreDetailClient consumes only server-selected copy and preserves raw bac
   assert.match(source, /setTransposeStatus\(result\.error\)/u);
   assert.match(source, /setCandidateActionError\(result\.error\)/u);
   assert.match(source, /typeof payload\?\.error === "string" \? payload\.error/u);
-  assert.match(source, /\{job\.errorMessage\}/u);
+  assert.match(source, /localizeApiError\(\{ error: job\.errorMessage \}, locale\)/u);
   assert.match(source, /\{summary\.message\}/u);
   assert.doesNotMatch(source, /\{revision\.createdFrom\}/u);
   assert.doesNotMatch(source, /suggestion\.directionLabel/u);
@@ -121,7 +121,8 @@ test("detail formatting, endpoint invariants, and source-only imports remain int
     assert.ok(source.includes(endpoint), `missing unchanged endpoint ${endpoint}`);
   }
   assert.match(source, /body: JSON\.stringify\(\{ format, options \}\)/u);
-  assert.match(source, /body: JSON\.stringify\(\{ pendingRevisionId \}\)/u);
+  assert.match(source, /body: JSON\.stringify\(\{ pendingRevisionId, /u);
+  assert.ok(source.includes('coverageReviewed === true ? { coverageReviewed: true } : {}'), 'coverage acknowledgement is explicit and is not sent when absent');
 
   const sourceFiles = [
     ...readdirSync(new URL(".", import.meta.url), { withFileTypes: true })

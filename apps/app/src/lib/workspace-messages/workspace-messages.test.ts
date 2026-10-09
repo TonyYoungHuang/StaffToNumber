@@ -103,7 +103,8 @@ test("changing the UI locale never gates activation-code entry points", () => {
   assert.doesNotMatch(dashboardPage, /showActivationLink/u);
   assert.match(dashboard, /<Link href=\{APP_ROUTES\.activate\} className="button button-tertiary">/u);
   assert.doesNotMatch(dashboard, /showActivationLink/u);
-  assert.match(appChrome, /\{ href: APP_ROUTES\.activate, label: copy\.activate \}/u);
+  assert.match(appChrome, /\{ href: activationHref, label: copy\.activate \}/u);
+  assert.match(appChrome, /const activationHref = loginHref\.startsWith\("\/activate"\) \? "\/activate\?shop=1" : APP_ROUTES\.activate/u);
 
   for (const [name, source] of [["dashboard page", dashboardPage], ["dashboard client", dashboard], ["app chrome", appChrome]] as const) {
     assert.doesNotMatch(source, /locale\s*===\s*["']zh-CN["'][\s\S]{0,120}APP_ROUTES\.activate/u, `${name} gates activation by locale`);

@@ -1,0 +1,12 @@
+.frame { position: relative; display: flex; min-width: 0; margin-top: 15px; }
+.frame > :global(.score-plan-card) { width: 100%; padding-top: 24px; }
+.frame :global(.score-plan-card__top) { justify-content: flex-end; }
+.frame :global(.score-plan-card__badge) { display: none; }
+.ribbon { position: absolute; z-index: 1; top: -12px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 12px); width: max-content; padding: 6px 12px; border: 1px solid #dfdbea; border-radius: 999px; background: #f2effa; color: #514765; font-size: 10px; font-weight: 800; line-height: 1.25; letter-spacing: .035em; text-align: center; }
+.frame[data-plan="starter-monthly"] .ribbon { background: #eef2ff; color: #464bae; border-color: #d7ddfb; }
+.frame[data-plan="starter-annual"] .ribbon { background: #6350e7; color: #fff; border-color: #6350e7; }
+.frame[data-plan="converter-pro-monthly"] .ribbon { background: #def5ed; color: #16634f; border-color: #b9e7d7; }
+.frame[data-plan="converter-pro-annual"] .ribbon { background: #f8e6f3; color: #85316c; border-color: #edc9e2; }
+.frame[data-plan="starter-annual"] > :global(.score-plan-card) { border-color: #b8acf5; }
+.frame[data-plan="starter-annual"] > :global(.score-plan-card--selected) { border-color: #6350e7; }
+@media(max-width:620px) { .frame { margin-top: 19px; } }

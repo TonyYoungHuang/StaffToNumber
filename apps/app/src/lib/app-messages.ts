@@ -31,6 +31,7 @@ export type AppMessageCatalog = {
     brandCaption: string;
     footerDescription: string;
     register: string;
+    login: string;
     activate: string;
     checkout: string;
     about: string;
@@ -78,6 +79,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "PDF and image score scanner",
       footerDescription: "Create one lifetime free score project from a complete PDF or image, then correct, convert, transpose, play, share, and export it.",
       register: "Create account",
+      login: "Log in",
       activate: "Redeem code",
       checkout: "Pay online",
       about: "About",
@@ -121,6 +123,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "PDF / 图片五线谱识别工作台",
       footerDescription: "免费从一份完整多页 PDF 或图片创建一个终身乐谱项目，并继续校正、转简谱、移调、播放、分享与导出。",
       register: "注册账户",
+      login: "登录",
       activate: "兑换激活码",
       checkout: "在线支付",
       about: "关于我们",
@@ -164,6 +167,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "PDF／圖片五線譜辨識工作台",
       footerDescription: "免費從一份完整多頁 PDF 或圖片建立一個永久樂譜專案，並繼續校正、轉簡譜、移調、播放、分享與匯出。",
       register: "建立帳戶",
+      login: "登入",
       activate: "兌換啟用碼",
       checkout: "線上付款",
       about: "關於我們",
@@ -207,6 +211,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "PDF・画像楽譜スキャナー",
       footerDescription: "完全な複数ページ PDF または画像から、生涯無料の楽譜プロジェクトを 1 件作成し、修正、数字譜変換、移調、再生、共有、書き出しまで続けられます。",
       register: "アカウント作成",
+      login: "ログイン",
       activate: "コードを利用",
       checkout: "オンライン決済",
       about: "サービスについて",
@@ -250,6 +255,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "PDF 및 이미지 악보 스캐너",
       footerDescription: "완전한 여러 페이지 PDF 또는 이미지로 평생 무료 악보 프로젝트 하나를 만들고 교정, 숫자보 변환, 조옮김, 재생, 공유 및 내보내기를 계속할 수 있습니다.",
       register: "계정 만들기",
+      login: "로그인",
       activate: "코드 사용",
       checkout: "온라인 결제",
       about: "서비스 소개",
@@ -293,6 +299,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "Scanner de partitions PDF et images",
       footerDescription: "Créez gratuitement un projet de partition à vie à partir d’un PDF multipage complet ou d’une image, puis corrigez, convertissez, transposez, lisez, partagez et exportez la partition.",
       register: "Créer un compte",
+      login: "Se connecter",
       activate: "Utiliser un code",
       checkout: "Payer en ligne",
       about: "À propos",
@@ -336,6 +343,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "Escáner de partituras en PDF e imagen",
       footerDescription: "Crea gratis un proyecto de partitura para siempre a partir de un PDF multipágina completo o una imagen y continúa corrigiendo, convirtiendo, transportando, reproduciendo, compartiendo y exportando.",
       register: "Crear una cuenta",
+      login: "Iniciar sesión",
       activate: "Canjear código",
       checkout: "Pagar en línea",
       about: "Acerca de",
@@ -379,6 +387,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "Notenscanner für PDF und Bilder",
       footerDescription: "Erstellen Sie aus einem vollständigen mehrseitigen PDF oder Bild ein dauerhaft kostenloses Notenprojekt und korrigieren, konvertieren, transponieren, spielen, teilen und exportieren Sie es.",
       register: "Konto erstellen",
+      login: "Anmelden",
       activate: "Code einlösen",
       checkout: "Online bezahlen",
       about: "Über uns",
@@ -422,6 +431,7 @@ export const APP_MESSAGE_CATALOGS = {
       brandCaption: "Сканер нот из PDF и изображений",
       footerDescription: "Бесплатно создайте один бессрочный нотный проект из полного многостраничного PDF или изображения, а затем исправляйте, преобразуйте, транспонируйте, воспроизводите, делитесь и экспортируйте его.",
       register: "Создать аккаунт",
+      login: "Войти",
       activate: "Активировать код",
       checkout: "Оплатить онлайн",
       about: "О сервисе",

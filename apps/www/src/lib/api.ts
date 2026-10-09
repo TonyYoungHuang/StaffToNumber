@@ -1,8 +1,10 @@
+import { localizeBrowserApiError } from "@score/i18n";
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
 export type ApiResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; status: number; code?: string };
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   try {
@@ -16,11 +18,13 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       credentials: "include",
     });
 
-    const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
+    const payload = await response.json().catch(() => null) as (T & { error?: string; code?: string }) | null;
     if (!response.ok) {
       return {
         ok: false,
-        error: payload?.error ?? "Request failed.",
+        status: response.status,
+        code: payload?.code,
+        error: localizeBrowserApiError({ error: payload?.error ?? "Request failed.", code: payload?.code, status: response.status }),
       };
     }
 
@@ -31,7 +35,8 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Network request failed.",
+      status: 0,
+      error: localizeBrowserApiError({ error: error instanceof Error ? error.message : "Network request failed.", status: 0 }),
     };
   }
 }

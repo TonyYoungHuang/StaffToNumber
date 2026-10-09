@@ -17,7 +17,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --import tsx --test src/i18n.test.ts",
+    "test": "node --import tsx --test src/i18n.test.ts src/api-errors.test.ts src/score-preflight-messages.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {

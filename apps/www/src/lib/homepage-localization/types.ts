@@ -90,6 +90,10 @@ export type HomepageWorkbenchCopy = {
   password: string;
   submitting: string;
   authFailed: string;
+  googleLabel: string;
+  googleLoading: string;
+  googleFailed: string;
+  googleDivider: string;
   close: string;
   uploading: string;
   queued: string;

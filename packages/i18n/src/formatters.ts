@@ -39,6 +39,16 @@ export function formatCurrency(
   return formatNumber(value, locale, { ...options, style: "currency", currency });
 }
 
+/** Localize the existing USD display catalog without changing its billing amounts. */
+export function localizeUsdText(value: string, locale: SupportedLocale): string {
+  if (!["es", "fr", "de", "ru"].includes(locale)) return value;
+  return value.replace(/\$(\d+(?:\.\d+)?)/gu, (_, amount: string) => formatCurrency(Number(amount), "USD", locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: Math.max(2, amount.split(".")[1]?.length ?? 0),
+    ...(locale === "es" || locale === "de" || locale === "ru" ? { currencyDisplay: "code" as const } : {}),
+  }));
+}
+
 export type MessageVariableValue = string | number | bigint | boolean | Date | null | undefined;
 export type MessageVariables = Readonly<Record<string, MessageVariableValue>>;
 

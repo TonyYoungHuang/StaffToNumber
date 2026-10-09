@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 
 export type CreditPlanCardData = {
   code: string;
@@ -49,6 +49,8 @@ export function CreditPlanCard({
   control,
   actionHref,
   actionLabel,
+  onActionClick,
+  busy = false,
   headingLevel = 2,
 }: {
   plan: CreditPlanCardData;
@@ -59,6 +61,8 @@ export function CreditPlanCard({
   control?: ReactNode;
   actionHref?: string;
   actionLabel?: string;
+  onActionClick?: MouseEventHandler<HTMLAnchorElement>;
+  busy?: boolean;
   headingLevel?: 2 | 3;
 }) {
   const Wrapper = control ? "label" : "article";
@@ -123,7 +127,7 @@ export function CreditPlanCard({
   );
 
   if (actionHref) {
-    return <a className={className} href={actionHref}>{content}</a>;
+    return <a className={className} href={actionHref} onClick={onActionClick} aria-busy={busy || undefined} aria-disabled={busy || undefined}>{content}</a>;
   }
 
   return <Wrapper className={className}>{content}</Wrapper>;

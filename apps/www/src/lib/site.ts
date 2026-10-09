@@ -138,9 +138,11 @@ export const siteConfig = {
 export const publicContentLastUpdated = "2026-08-25";
 export const legalLastUpdated = "2026-08-25";
 
-export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode) {
-  const checkoutPath = planCode ? `${APP_ROUTES.checkout}?plan=${encodeURIComponent(planCode)}` : APP_ROUTES.checkout;
-  return getAppLoginUrl(checkoutPath, locale);
+export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode, billingKind?: "subscription" | "one_time") {
+  const params = new URLSearchParams();
+  if (planCode) params.set("plan", planCode);
+  if (billingKind) params.set("billing", billingKind);
+  return localizePathname(`/pricing${params.size ? `?${params}` : ""}`, locale);
 }
 
 /** The product root redirects back to the public site, so the score library is the app home. */
