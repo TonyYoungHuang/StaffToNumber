@@ -1,5 +1,8 @@
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { assertCloudflareDeploymentAllowed } from "./assert-cloudflare-active.mjs";
+
+assertCloudflareDeploymentAllowed();
 
 const environmentArgument = process.argv.find((argument) => argument.startsWith("--environment="));
 const environment = environmentArgument?.split("=")[1] ?? "staging";

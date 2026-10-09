@@ -1,9 +1,11 @@
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { assertCloudflareDeploymentAllowed } from "./assert-cloudflare-active.mjs";
 
 const environmentArgument = process.argv.find((argument) => argument.startsWith("--environment="));
 const environment = environmentArgument?.split("=")[1] ?? "staging";
 const buildOnly = process.argv.includes("--build-only");
+if (!buildOnly) assertCloudflareDeploymentAllowed();
 const publicOnly = process.argv.includes("--public-only");
 const appOnly = process.argv.includes("--app-only");
 

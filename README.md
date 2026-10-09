@@ -1,8 +1,12 @@
 # ScoreTransposer
 
+**Live on Hetzner as of 2026-09-27.** Public DNS and HTTPS cutover are complete. A real browser passed membership login, score upload, OMR, transposition and PDF download at [the production workspace](https://app.scoretransposer.com). The existing shared server uses single-concurrency heavy jobs and 50/250/500 MiB account storage quotas. See the [acceptance record](docs/operations/hetzner-cutover-2026-09-27.md) and [deployment runbook](deploy/hetzner/README.md).
+
+**The original Cloudflare deployment remains paused.** Production web domains now point directly to Hetzner; the Cloudflare pause guard, disabled keepalives and zero container capacity remain as recorded in the [pause and recovery record](docs/operations/cloudflare-pause-2026-09-12.md). Retain source backups and review account billing separately from migration status.
+
 ScoreTransposer is a MusicXML-first music notation platform for score scanning, correction, transposition, staff/Jianpu conversion, practice playback, export, teaching, and collaboration.
 
-The repository is under active pre-production development. The target production platform is Cloudflare with an ENAM-first deployment for the US market: Cloudflare ingress, R2, and Containers for the API, collaboration, and native music-engine workers, backed by managed PostgreSQL and Redis in the US East. Core product workflows run locally, but the production runtime, storage, observability, backup, and release operations still require a unified staging deployment before commercial launch.
+The repository is under active development. Production runs on the owner's Hetzner server with isolated PostgreSQL, Redis, S3-compatible storage and containerized applications. The owner chose the membership-tool workflow: customers upload and process their own scores. The old R2 objects and local score library were not imported; historical files may need re-uploading. New uploads and the complete sheet-music workflow have passed acceptance; long-audio and large multi-page workloads still require separate capacity testing.
 
 ## Architecture
 
@@ -114,8 +118,9 @@ The generated, ignored `artifacts/release-manifest.json` records the Git commit/
 - [Executable Cloudflare deployment runbook](deploy/cloudflare/README.md)
 - [Backend deployment topology](deploy/backend/README.md)
 - [Module documentation](docs/modules/)
+- [Two-mode score workspaces production release (2026-10-07)](docs/deployments/score-workspaces-2026-10-07.md)
 - [Change log](CHANGELOG.md)
 
 ## Release Policy
 
-Production deployment is intentionally deferred until the development gates in the commercial plan are complete. Do not label the platform "100% commercial-ready" until the final checklist, clean Git release, CI, production infrastructure, security, recovery, legal, and product-owner acceptance are all complete.
+The Hetzner production service is live; the current two-mode score workspaces release is documented above with its validation and rollback procedure. Do not label the platform "100% commercial-ready" until the final checklist, clean Git release, CI, production infrastructure, security, recovery, legal, and product-owner acceptance are all complete.

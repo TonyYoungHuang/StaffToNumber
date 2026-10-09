@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import * as cheerio from "cheerio";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, getLocaleConfig, getLocaleFromPathname, localizePathname, stripLocalePrefix } from "@score/i18n";
 
 function parseArgs(argv) {
   const args = {};
@@ -129,16 +130,14 @@ async function inspectPage(url, sitemapEntry = null) {
   if (!canonical) issue("error", scope, "Missing or invalid canonical URL.");
   else if (new URL(canonical).pathname !== new URL(response.url).pathname) issue("error", scope, `Canonical points to ${canonical}.`);
   if (sitemapEntry && indexable) {
-    const isChinesePath = scope === "/zh-cn" || scope.startsWith("/zh-cn/");
-    const englishPath = isChinesePath ? scope.slice("/zh-cn".length) || "/" : scope;
-    const chinesePath = englishPath === "/" ? "/zh-cn" : `/zh-cn${englishPath}`;
+    const locale = getLocaleFromPathname(scope) ?? DEFAULT_LOCALE;
+    const englishPath = stripLocalePrefix(scope).pathname;
     const pageOrigin = canonical ? new URL(canonical).origin : new URL(response.url).origin;
     const expectedAlternates = {
-      en: comparableUrl(englishPath, pageOrigin),
-      "zh-CN": comparableUrl(chinesePath, pageOrigin),
+      ...Object.fromEntries(SUPPORTED_LOCALES.map(language => [language, comparableUrl(localizePathname(englishPath, language), pageOrigin)])),
       "x-default": comparableUrl(englishPath, pageOrigin),
     };
-    const expectedLanguage = isChinesePath ? "zh-CN" : "en";
+    const expectedLanguage = getLocaleConfig(locale).htmlLang;
     if (documentLanguage !== expectedLanguage) issue("error", scope, `Expected html lang=${expectedLanguage}, received ${documentLanguage || "none"}.`);
     for (const [language, expectedHref] of Object.entries(expectedAlternates)) {
       const actualHref = comparableUrl(languageAlternates[language] || "", response.url);
@@ -153,7 +152,7 @@ async function inspectPage(url, sitemapEntry = null) {
   }
   if (indexable && !ogImage) issue("error", scope, "Indexable page is missing an Open Graph image.");
   if (indexable && !twitterImage) issue("warning", scope, "Indexable page is missing a Twitter image.");
-  const socialBasePath = scope.startsWith("/zh-cn/") ? scope.slice("/zh-cn".length) : scope;
+  const socialBasePath = stripLocalePrefix(scope).pathname;
   if (socialMetadataPaths.has(socialBasePath)) {
     if (comparableUrl(ogUrl || "", response.url) !== comparableUrl(canonical || "", response.url)) {
       issue("error", scope, `Open Graph URL ${ogUrl || "is missing"}; expected the page canonical ${canonical || "URL"}.`);

@@ -89,9 +89,9 @@ async function main() {
     assert(typeof account.token === "string" && account.token.length > 20, "The temporary E2E account file does not contain a valid token.");
     token = account.token;
 
-    const readiness = await request("/__edge/readiness");
+    const readiness = await request(process.env.CORE_E2E_READINESS_PATH ?? "/__edge/readiness");
     assert(readiness?.ready === true || readiness?.status === "ready", "The deployed edge readiness endpoint is not ready.");
-    stage(report, "deployed readiness", { summary: "API, worker dependencies, and edge gateway are ready" });
+    stage(report, "deployed readiness", { summary: "Configured API readiness endpoint passed; engine execution is verified below" });
 
     const image = await readFile(imageFile);
     assert(image.length > 0, "The E2E source image is empty.");
