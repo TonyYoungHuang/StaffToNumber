@@ -1,9 +1,14 @@
+import { SingleScoreOffer } from "../components/SingleScoreOffer";
 import Image from "next/image";
 import Link from "next/link";
 import { getLocaleConfig } from "@score/i18n";
-import { getPricingPlanCatalog } from "@score/shared";
-import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanCard, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
+import { getPricingPlanCatalog, getPurchaseOptionsCopy } from "@score/shared";
+import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
+import { ProductCommercialBackdrop } from "../components/ProductCommercialBackdrop";
+import { PurchasePlanCard } from "../components/PurchasePlanCard";
+import { homeWorkflowLinks } from "../lib/home-on-page";
+import { getHomePresentationCopy } from "../lib/home-presentation";
 import {
   getHomepageLocalization,
   localizeHomepagePlans,
@@ -16,11 +21,12 @@ import {
   getPendingProductMediaPresentation,
   getProductMediaPresentation,
 } from "../lib/product-media";
+import { productCommercial } from "../lib/product-commercial";
 import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import styles from "./home-page.module.css";
 
 const caseImages = [
-  { slug: "pdf-score-scanner" },
+  { slug: "sheet-music-scanner" },
   { slug: "transpose-score" },
   { slug: "score-to-audio" },
 ] as const;
@@ -42,12 +48,24 @@ const capabilityScoreSamples = [
 
 export default async function HomePage() {
   const locale = await readSiteLocale();
-  const localization = getHomepageLocalization(locale);
+  const purchaseCopy = getPurchaseOptionsCopy(locale);
+  const localization = getHomepageLocalization(locale, siteConfig.release);
   const copy = localization.page;
+  const presentation = getHomePresentationCopy(locale);
   const mediaCopy = localization.media;
   const startUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
   const plans = localizeHomepagePlans(locale, getPricingPlanCatalog("en"));
   const usesCjkLayout = locale === "zh-CN" || locale === "zh-TW" || locale === "ja" || locale === "ko";
+
+  const websiteUrl = new URL("/", siteConfig.siteUrl);
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${websiteUrl.href}#website`,
+    name: siteConfig.siteName,
+    alternateName: websiteUrl.hostname,
+    url: websiteUrl.href,
+  };
 
   const softwareSchema = {
     "@context": "https://schema.org",
@@ -65,17 +83,46 @@ export default async function HomePage() {
     <div className={`${styles.page} ${usesCjkLayout ? "" : styles.pageEnglish}`}>
       <script
         type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema).replaceAll("<", "\\u003c") }}
+      />
+      <script
+        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema).replaceAll("<", "\\u003c") }}
       />
 
-      <section className={`${styles.section} ${styles.hero}`} aria-labelledby="home-title">
+      <section className={`${styles.section} ${styles.hero} ${styles.introduction}`} aria-labelledby="home-title">
         <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
         <div className={`${styles.container} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
             <p className={styles.kicker}><SparkIcon width={16} height={16} />{copy.heroKicker}</p>
             <h1 id="home-title" className={usesCjkLayout ? undefined : styles.heroTitleEnglish}>
-              {copy.heroTitle.map((line) => <span className={styles.heroTitleLine} key={line}>{line}</span>)}
+              {copy.heroTitle.map((line, index) => <span className={styles.heroTitleLine} key={line}>{index > 0 ? " " : ""}{line}</span>)}
             </h1>
+            <p className={styles.heroIntro}>{copy.heroIntro.join(" ")}</p>
+          </div>
+        </div>
+      </section>
+
+      <div id="product-overview" className={`${styles.section} ${styles.overviewSection}`} lang="en">
+        <div className={styles.container}>
+          <ProductCommercialBackdrop
+            key={locale}
+            title={productCommercial.title}
+            description={productCommercial.description}
+            videoSrc={productCommercial.backgroundVideoSrc}
+            posterSrc={productCommercial.backgroundPosterSrc}
+            filmSrc={productCommercial.videoSrc}
+            pricingHref={localizePublicHref("/pricing", locale)}
+          />
+        </div>
+      </div>
+
+      <section className={`${styles.section} ${styles.hero}`} aria-labelledby="workbench-title">
+        <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
+        <div className={`${styles.container} ${styles.heroGrid}`}>
+          <div className={styles.workbenchIntro}>
+            <h2 id="workbench-title">{presentation.title}</h2>
+            <p>{presentation.body}</p>
           </div>
           <HomeHeroWorkbench
             locale={locale}
@@ -137,6 +184,11 @@ export default async function HomePage() {
         <div className={styles.container}>
           <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.stepsKicker}</p><h2 id="workflow-title">{copy.stepsTitle}</h2></header>
           <ol className={styles.stepsGrid}>{copy.steps.map(([title, body], index) => <li key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{body}</p></li>)}</ol>
+          <p className={styles.workflowLinks}>
+            {homeWorkflowLinks[locale].map((part, index) => typeof part === "string"
+              ? <span key={index}>{part}</span>
+              : <Link key={index} href={localizePublicHref(part[1], locale)}>{part[0]}</Link>)}
+          </p>
         </div>
       </section>
 
@@ -206,10 +258,13 @@ export default async function HomePage() {
             <div className={styles.pricingSavings}><span>{copy.pricingPromoLabel}</span><strong>{copy.pricingPromoValue}</strong></div>
           </header>
           <CreditPlanGrid label={copy.creditPlanGridLabel}>
-            {plans.map((plan) => (
-              <CreditPlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} selected={plan.featured} actionHref={plan.code === "free" ? startUrl : getCheckoutUrl(locale, plan.code)} headingLevel={3} />
-            ))}
+            <SingleScoreOffer locale={locale} labels={copy.creditPlanCardLabels} />
+            {plans.filter(plan => plan.code !== "free").map(plan => <PurchasePlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} />)}
           </CreditPlanGrid>
+          <div className={styles.oneTimeOffer}>
+            <div><strong>{purchaseCopy.oneTime}</strong><p>{purchaseCopy.publicNote}</p></div>
+            <a href={getCheckoutUrl(locale, "starter-annual", "one_time")}>{purchaseCopy.oneTime} →</a>
+          </div>
           <div className={styles.creditRules}>
             <div><p className={styles.kicker}>{copy.creditRulesKicker}</p><h3>{copy.creditRulesTitle}</h3><p>{copy.creditRulesBody}</p></div>
             <div>{copy.creditRules.map(([amount, title, body]) => <article key={title}><strong>{amount}</strong><span>{title}</span><p>{body}</p></article>)}</div>

@@ -16,7 +16,8 @@ import {
 import type { PublicAnnouncement } from "../lib/public-content";
 import { localizePublicHref, localizePublicPath } from "../lib/locale-routing";
 import type { SiteShellCopy } from "../lib/site-shell-localization";
-import { getAppLoginUrl, getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
+import { getAppLoginUrl, getAppScoreProjectsUrl, getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
+import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
@@ -36,6 +37,7 @@ export function PublicChrome({
 }) {
   const pathname = usePathname();
   const { locale } = useSiteLocale();
+  const purchaseFlow = usePurchaseFlow();
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const appUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
   const homepageScanUrl = localizePublicHref("/#home-workbench", locale);
@@ -44,7 +46,7 @@ export function PublicChrome({
   const homeSections = {
     workflow: localizePublicHref("/#workflow", locale),
     useCases: localizePublicHref("/#cases", locale),
-    pricing: localizePublicHref("/#pricing", locale),
+    pricing: localizePublicHref("/pricing", locale),
   } as const;
   const primaryActionLabel = siteConfig.release.productAppAvailable ? copy.editForFree : copy.launchStatus;
 
@@ -88,19 +90,20 @@ export function PublicChrome({
   }
 
   const navItems: SiteShellNavItem[] = [
-    { href: localizePublicHref("/pdf-score-scanner", locale), label: copy.scanner },
+    { href: localizePublicHref("/sheet-music-scanner", locale), label: copy.scanner },
     { href: localizePublicHref("/features", locale), label: copy.features },
     { href: localizePublicHref("/library", locale), label: copy.library },
     { href: homeSections.pricing, label: copy.pricing },
     { label: copy.help, children: [{ href: localizePublicHref("/how-to-read-sheet-music", locale), label: copy.guide }, { href: localizePublicHref("/numbered-notation-converter", locale), label: copy.numberedNotation }, { href: localizePublicHref("/support", locale), label: copy.contact }] },
     ...(siteConfig.release.teachingAvailable ? [{ href: localizePublicHref("/teaching", locale), label: copy.education }] : []),
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true }] : []),
-    { href: loginUrl, label: copy.login },
+    { href: purchaseFlow.user ? getAppScoreProjectsUrl(locale) : loginUrl, label: purchaseFlow.user?.email.split("@")[0] ?? copy.login },
   ];
   const actions: SiteShellAction[] = [
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true, desktopOnly: true }] : []),
-    { href: loginUrl, label: copy.login, tone: "secondary", desktopOnly: true },
-    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.upgrade, tone: "tertiary" as const }] : []),
+    { href: purchaseFlow.user ? getAppScoreProjectsUrl(locale) : loginUrl, label: purchaseFlow.user?.email.split("@")[0] ?? copy.login, tone: "secondary", desktopOnly: true,
+      onClick: purchaseFlow.user ? undefined : event => { event.preventDefault(); purchaseFlow.signIn(); } },
+    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.pricing, tone: "tertiary" as const }] : []),
     {
       href: homepageScanUrl,
       label: primaryActionLabel,
@@ -132,7 +135,19 @@ export function PublicChrome({
   const announcementCopy = announcement ? getLocalizedValue(announcement.copy, locale) : undefined;
 
   return (
-    <div className="public-frame">
+    <div className="public-frame" onClickCapture={event => {
+      if (purchaseFlow.user || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!link) return;
+      const target = new URL(link.href, window.location.href);
+      if (target.origin !== new URL(siteConfig.appUrl).origin) return;
+      const path = target.pathname === "/api/locale" ? target.searchParams.get("next") || "" : target.pathname;
+      const registration = /^\/register(?:[?#]|$)/u.test(path);
+      const authentication = registration || /^\/login(?:[?#]|$)/u.test(path);
+      const workspace = /^\/(?:scores|dashboard|jobs|activate)(?:[/?#]|$)/u.test(path);
+      if (!authentication && !workspace) return;
+      event.preventDefault(); event.stopPropagation(); purchaseFlow.signIn(registration ? "register" : "login");
+    }}>
       {announcement && announcementCopy && announcementVisible ? (
         <aside className="public-announcement" role="status" aria-label={copy.eventAnnouncement}>
           <div className="public-container public-announcement-inner">

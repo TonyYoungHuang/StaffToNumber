@@ -36,7 +36,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: metadata.title,
     description: metadata.description,
-    keywords: metadata.keywords,
     alternates: getLocalizedAlternates("/features", locale),
     openGraph: {
       title: metadata.title,

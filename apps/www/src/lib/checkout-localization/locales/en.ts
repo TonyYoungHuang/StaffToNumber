@@ -44,7 +44,7 @@ export const enCheckoutMessages = {
     paidTitle: "Payment successful and activation code issued",
     paidBody: "Your order is confirmed. Save the activation code first, then redeem it inside the app.",
     subscriptionPaidTitle: "Your subscription is active",
-    subscriptionPaidBody: "The payment provider confirmed the first payment. Sign in, or create an account with the payment email, to use your subscription.",
+    subscriptionPaidBody: "The first subscription payment is confirmed. Open the account you used before payment to access your plan.",
     stalledTitle: "This order was not auto-confirmed yet",
     stalledBody: "That does not always mean the charge failed. Sometimes the provider return is incomplete and needs another check or manual review.",
     missingTitle: "We could not find a confirmed order yet",
@@ -68,7 +68,7 @@ export const enCheckoutMessages = {
       "If redemption fails, send the code and order details to support.",
     ],
     subscriptionPaidSteps: [
-      "Sign in or register with the email used at checkout.",
+      "Open the account you used before payment.",
       "Your subscription is linked by email, so no activation code is required.",
       "If access is not visible yet, keep the order details and contact support.",
     ],

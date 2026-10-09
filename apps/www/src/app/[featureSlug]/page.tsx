@@ -17,6 +17,12 @@ import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import type { FeatureProductMediaSlug } from "../../lib/product-media";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
+import { FrenchPricingPage } from "../../components/FrenchPricingPage";
+import { LocalizedPricingPage } from "../../components/LocalizedPricingPage";
+import { PricingOffers } from "../../components/PricingOffers";
+import { teachingFaq } from "../../lib/feature-localization/teaching-faq";
+import { getEnEsFeatureFaq } from "../../lib/feature-localization/en-es-faq";
+import { getFeatureOnPageContent } from "../../lib/feature-on-page";
 
 type FeatureRouteParams = {
   featureSlug: string;
@@ -91,7 +97,6 @@ export async function generateMetadata({ params }: { params: Promise<FeatureRout
   return {
     title: `${page.title} | ${siteConfig.siteName}`,
     description: page.description,
-    keywords: page.keywords,
     alternates: getLocalizedAlternates(page.canonical, locale),
     robots: {
       index: isFeatureIndexable(page),
@@ -134,7 +139,11 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   }
 
   const locale = await readSiteLocale();
+  if (featureSlug === "pricing" && locale === "fr") return <FrenchPricingPage />;
+  if (featureSlug === "pricing" && (locale === "en" || locale === "es" || locale === "de" || locale === "ru")) return <LocalizedPricingPage locale={locale} />;
   const page = localizeFeaturePage(sourcePage, locale);
+  const onPage = getFeatureOnPageContent(page.slug, locale);
+  const heading = onPage?.h1 ?? page.title;
   const ui = getFeaturePageUi(locale);
   const practiceCopy = getFeaturePracticeCopy(locale);
   const available = isFeatureAvailable(sourcePage);
@@ -153,7 +162,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
     .map((slug) => findPlatformFeaturePage(slug))
     .filter((relatedPage): relatedPage is NonNullable<typeof relatedPage> => Boolean(relatedPage && isFeatureAvailable(relatedPage)))
     .map((relatedPage) => localizeFeaturePage(relatedPage, locale));
-  const faqItems = [
+  const faqItems = onPage?.faq ?? (locale === "en" || locale === "es" ? getEnEsFeatureFaq(page, locale, available) : page.slug === "teaching" && (locale === "de" || locale === "ru") ? teachingFaq[locale] : [
     {
       question: ui.faqInput(page.title),
       answer: page.workflow[0]?.body ?? page.description,
@@ -166,7 +175,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       question: ui.faqCheck,
       answer: page.guardrail,
     },
-  ];
+  ]);
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -174,16 +183,15 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       inLanguage: htmlLang,
       itemListElement: [
         { "@type": "ListItem", position: 1, name: ui.home, item: getLocalizedAbsoluteUrl(siteConfig.siteUrl, "/", locale) },
-        { "@type": "ListItem", position: 2, name: page.title, item: canonicalUrl },
+        { "@type": "ListItem", position: 2, name: heading, item: canonicalUrl },
       ],
     },
     {
       "@context": "https://schema.org",
       "@type": "HowTo",
-      name: page.title,
+      name: onPage?.workflowTitle ?? page.title,
       description: page.description,
       inLanguage: htmlLang,
-      keywords: page.keywords.join(", "),
       step: page.workflow.map((item, index) => ({ "@type": "HowToStep", position: index + 1, name: item.title, text: item.body })),
     },
     {
@@ -206,11 +214,17 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       url: canonicalUrl,
       description: page.description,
       inLanguage: htmlLang,
-      keywords: page.keywords.join(", "),
       featureList: page.modules,
       ...(seo.screenshot ? { screenshot: `${siteConfig.siteUrl}${seo.screenshot.src}` } : {}),
     },
   ];
+
+  if (featureSlug === "pricing") return <div className="public-container page-stack french-pricing-page">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData.filter(item => item["@type"] !== "HowTo")).replaceAll("<", "\\u003c") }} />
+    <PricingOffers locale={locale} />
+    <Panel className="stack-md"><p className="body-copy">{page.guardrail}</p>{page.details.map(item => <div key={item.title}><h2 className="section-title">{item.title}</h2><p className="body-copy">{item.body}</p></div>)}</Panel>
+    <section className="surface-panel stack-lg">{faqItems.map(item => <details key={item.question} className="list-item"><summary className="item-title">{item.question}</summary><p className="body-copy">{item.answer}</p></details>)}</section>
+  </div>;
 
   return (
     <div className={`public-container page-stack${page.slug === "teaching" ? " feature-teaching-page" : ""}`}>
@@ -218,8 +232,11 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }}
       />
+      <nav aria-label={locale === "en" ? "Breadcrumb" : ui.home} className="body-copy">
+        <a href={localizePublicHref("/", locale)}>{ui.home}</a> / <span aria-current="page">{heading}</span>
+      </nav>
       <section className="page-banner split">
-        <SectionIntro eyebrow={page.eyebrow} title={page.title} body={page.description} titleAs="h1" largeBody />
+        <SectionIntro eyebrow={page.eyebrow} title={heading} body={onPage?.intro ?? page.description} titleAs="h1" largeBody />
         <Panel variant="glass" className="stack-md">
           <StatusPill tone={available ? statusTone(page.status) : "amber"}>{available ? ui.statuses[page.status] : ui.unavailable}</StatusPill>
           <PreviewStaffGraphic />
@@ -228,16 +245,16 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
             <a href={ctaUrl} className="public-button primary">
               {actionLabel(sourcePage, locale)}
             </a>
-            {siteConfig.release.checkoutAvailable ? <a href={localizePublicHref("/#pricing", locale)} className="public-button tertiary">{ui.pricing}</a> : null}
+            {siteConfig.release.checkoutAvailable ? <a href={localizePublicHref(locale === "fr" ? "/pricing" : "/#pricing", locale)} className="public-button tertiary">{ui.pricing}</a> : null}
           </div>
         </Panel>
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow={ui.moduleEyebrow} title={ui.moduleTitle} body={ui.moduleBody} />
+        <SectionIntro eyebrow={ui.moduleEyebrow} title={onPage?.moduleTitle ?? ui.moduleTitle} body={onPage ? undefined : ui.moduleBody} />
         <div className="metric-grid">
-          {page.modules.map((module) => (
-            <MetricCard key={module} label={ui.moduleLabel} value={module} body={ui.moduleCardBody} />
+          {page.modules.map((module, index) => (
+            <MetricCard key={module} label={ui.moduleLabel} value={module} body={onPage?.moduleDescriptions[index] ?? ui.moduleCardBody} />
           ))}
         </div>
       </section>
@@ -247,7 +264,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
           eyebrow={ui.exampleEyebrow}
           title={ui.exampleTitle}
           body={seo.screenshot
-            ? [seo.screenshot.evidence, `${ui.captured}: ${capturedAt}.`, seo.screenshot.interfaceNote].filter(Boolean).join(" ")
+            ? [seo.screenshot.evidence, `${ui.captured}: ${capturedAt}${capturedAt?.endsWith(".") ? "" : "."}`, seo.screenshot.interfaceNote].filter(Boolean).join(" ")
             : seo.pendingMedia?.body}
         />
         {seo.screenshot ? (
@@ -295,21 +312,28 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
 
       <section className="split-layout">
         <Panel className="stack-lg">
-          <SectionIntro eyebrow={ui.workflowEyebrow} title={ui.workflowTitle} body={ui.workflowBody} />
+          <SectionIntro eyebrow={ui.workflowEyebrow} title={onPage?.workflowTitle ?? ui.workflowTitle} body={onPage ? undefined : ui.workflowBody} />
           <div className="workflow-list">
             {page.workflow.map((item, index) => (
               <WorkflowStep key={item.title} step={String(index + 1).padStart(2, "0")} title={item.title} body={item.body} />
             ))}
           </div>
+          {onPage?.nextSteps ? <p className="body-copy">
+            {onPage.nextSteps.map((part, index) => part.href
+              ? <a key={index} href={localizePublicHref(part.href, locale)}>{part.text}</a>
+              : <span key={index}>{part.text}</span>)}
+          </p> : null}
         </Panel>
 
         <Panel variant="glass" className="stack-lg">
-          <SectionIntro eyebrow={ui.detailEyebrow} title={ui.detailTitle} />
+          {onPage ? <p className="eyebrow">{ui.detailEyebrow}</p> : <SectionIntro eyebrow={ui.detailEyebrow} title={ui.detailTitle} />}
           <div className="list-grid">
             {page.details.map((item) => (
               <div key={item.title} className="list-item">
                 <div className="list-item-content">
-                  <h3 className="item-title">{item.title}</h3>
+                  {onPage && page.slug !== "staff-to-jianpu"
+                    ? <h2 className="item-title">{item.title}</h2>
+                    : <h3 className="item-title">{item.title}</h3>}
                   <p className="item-meta">{item.body}</p>
                 </div>
               </div>
@@ -319,7 +343,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       </section>
 
       <section className="surface-panel stack-lg">
-        <SectionIntro eyebrow={ui.faqEyebrow} title={ui.faqTitle(page.title)} body={ui.faqBody} />
+        <SectionIntro eyebrow={ui.faqEyebrow} title={onPage?.faqTitle ?? ui.faqTitle(heading)} body={ui.faqBody} />
         <div className="list-grid">
           {faqItems.map((item) => (
             <details key={item.question} className="list-item">

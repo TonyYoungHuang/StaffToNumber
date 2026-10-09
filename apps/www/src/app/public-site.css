@@ -60,6 +60,72 @@ body {
   font-family: var(--font-ui);
 }
 
+/* Long translated navigation labels need room before the compact menu takes over. */
+.public-frame .site-shell-header-inner {
+  justify-content: space-between;
+}
+
+@media (min-width: 1761px) {
+  .public-frame .site-shell-header-inner {
+    width: min(1760px, calc(100% - 40px));
+    flex-wrap: wrap;
+  }
+
+  .public-frame .site-shell-nav {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 1760px) {
+  .public-frame .site-shell-menu-toggle {
+    display: grid;
+  }
+
+  .public-frame .site-shell-nav {
+    position: absolute;
+    inset: calc(100% + 1px) 0 auto;
+    display: none;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 10px;
+    border: 1px solid var(--outline);
+    border-radius: 0 0 15px 15px;
+    background: #fff;
+    box-shadow: 0 18px 40px rgb(52 61 91 / 14%);
+  }
+
+  .public-frame .site-shell-nav.is-open {
+    display: grid;
+  }
+
+  .public-frame .site-shell-nav-link {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px;
+  }
+
+  .public-frame .site-shell-nav-menu {
+    position: static;
+    min-width: 0;
+    margin-top: 4px;
+    transform: none;
+    border: 0;
+    border-radius: 8px;
+    background: var(--surface-sunken);
+    box-shadow: none;
+  }
+}
+
+.french-pricing-page {
+  padding-block: 32px 64px;
+  display: grid;
+  gap: 40px;
+}
+
+.french-pricing-page section[id] {
+  scroll-margin-top: 90px;
+}
+
 .public-frame {
   min-height: 100vh;
   overflow: clip;

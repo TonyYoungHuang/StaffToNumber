@@ -85,7 +85,7 @@ export const siteConfig = {
   checkoutUrl: resolvedCheckoutUrl,
   chinaCheckoutUrl: resolvedChinaCheckoutUrl,
   discordInviteUrl: normalizeDiscordInviteUrl(process.env.NEXT_PUBLIC_DISCORD_INVITE_URL),
-  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@scoretransposer.com",
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "guanqi1137@gmail.com",
   operator: {
     legalName: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_LEGAL_NAME),
     registrationIdentifier: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_REGISTRATION_ID, 120),
@@ -95,9 +95,9 @@ export const siteConfig = {
     postalCode: optionalPublicText(process.env.NEXT_PUBLIC_OPERATOR_POSTAL_CODE, 40),
     sameAs: normalizeSameAs(process.env.NEXT_PUBLIC_OPERATOR_SAME_AS),
   },
-  title: "ScoreTransposer | Scan, Edit, Transpose & Export Sheet Music",
+  title: "Sheet Music Scanner & Transposer — Scan PDF to MusicXML Online | ScoreTransposer",
   description:
-    "Convert, correct, transpose, play, and export staff notation and Jianpu in a MusicXML-first online sheet music workspace.",
+    "Scan sheet music from a PDF or photo, fix OMR mistakes in the editor, transpose to any key, and export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
   keywords: [
     "score transposer",
     "sheet music maker",
@@ -206,8 +206,8 @@ export function getAppScoreProjectsUrl(locale?: SupportedLocale) {
   return locale ? getAppLocaleHandoffUrl(scorePath, locale) : buildUrl(siteConfig.appUrl, scorePath);
 }
 
-export function getAppScoreUrl(scoreId: string, locale: SupportedLocale) {
-  return getAppLocaleHandoffUrl(`${APP_ROUTES.scores}/${encodeURIComponent(scoreId)}`, locale);
+export function getAppScoreUrl(scoreId: string, locale: SupportedLocale, workspace: "simple" | "complex" = "simple") {
+  return getAppLocaleHandoffUrl(`${APP_ROUTES.scores}/${encodeURIComponent(scoreId)}${workspace === "complex" ? "/ensemble" : ""}`, locale);
 }
 
 export function getSupportUrl(

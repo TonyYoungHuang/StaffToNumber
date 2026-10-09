@@ -24,7 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: copy.metadata.title,
     description: copy.metadata.description,
-    keywords: [...copy.metadata.keywords],
     alternates: getLocalizedAlternates(canonicalPath, locale),
     openGraph: {
       title: copy.metadata.title,
@@ -115,7 +114,7 @@ export default async function FaqPage() {
             ))}
           </div>
           <div className="button-row">
-            <Link href={localizePublicHref("/pdf-score-scanner", locale)} className="public-button secondary">
+            <Link href={localizePublicHref("/sheet-music-scanner", locale)} className="public-button secondary">
               {copy.workflow.scannerAction}
             </Link>
             <Link href={localizePublicHref("/numbered-notation-converter", locale)} className="public-button tertiary">

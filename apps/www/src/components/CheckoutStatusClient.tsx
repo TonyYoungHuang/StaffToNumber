@@ -1,8 +1,10 @@
 "use client";
 
+import { getSingleScorePassCopy } from "@score/shared";
+
 import { useEffect, useState } from "react";
-import { formatDateTime } from "@score/i18n";
-import type { PaymentProvider, PaymentOrderStatus } from "@score/shared";
+import { formatDateTime, formatMessage } from "@score/i18n";
+import { getPurchaseOptionsCopy, type PaymentProvider, type PaymentOrderStatus } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEventOnce } from "../lib/analytics";
@@ -11,6 +13,7 @@ import { localizePublicHref } from "../lib/locale-routing";
 import {
   getAppActivateUrl,
   getAppRegisterUrl,
+  getAppLoginUrl,
   getAppScoreProjectsUrl,
   getCheckoutUrl,
   getSupportUrl,
@@ -30,6 +33,9 @@ type PublicOrder = {
   currency: string | null;
   seatQuantity: number;
   paidAt: string | null;
+  accessStartsAt?: string | null;
+  accessEndsAt?: string | null;
+  planCode?: string | null;
 };
 
 type OrderPayload = { order: PublicOrder | null };
@@ -50,6 +56,7 @@ export function CheckoutStatusClient({
   translationNotice: string;
 }) {
   const { locale } = useSiteLocale();
+  const purchaseCopy = getPurchaseOptionsCopy(locale);
   const activateUrl = getAppActivateUrl(locale);
   const checkoutUrl = getCheckoutUrl(locale);
   const [order, setOrder] = useState<PublicOrder | null>(null);
@@ -89,6 +96,16 @@ export function CheckoutStatusClient({
   }, [orderId, provider, sessionId, token]);
 
   const isPaid = order?.status === "paid";
+  useEffect(() => {
+    if (!order?.userId) return;
+    const query = new URLSearchParams({ order_id: orderId, token, provider });
+    if (sessionId) query.set("session_id", sessionId);
+    const destination = new URL("/api/locale", `${siteConfig.appUrl}/`);
+    destination.searchParams.set("locale", locale);
+    destination.searchParams.set("next", `/checkout/success?${query}`);
+    window.location.replace(destination.toString());
+  }, [order?.userId, orderId, token, provider, sessionId, locale]);
+
 
   useEffect(() => {
     if (!isPaid || !order) return;
@@ -106,15 +123,19 @@ export function CheckoutStatusClient({
   }, [isPaid, order]);
 
   const isSubscriptionPaid = isPaid && order?.billingKind === "subscription";
+  const isOneTimePaid = isPaid && Boolean(order?.accessEndsAt);
   const isStalled = order?.status === "cancelled" || order?.status === "failed";
   const badge = isPaid ? copy.paidBadge : isStalled ? copy.stalledBadge : copy.pendingBadge;
-  const title = isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
-  const body = isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
-  const steps = isSubscriptionPaid ? copy.subscriptionPaidSteps : isPaid ? copy.paidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
-  const paidActionUrl = isSubscriptionPaid
+  const title = isOneTimePaid ? copy.statuses.paid : isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
+  const body = isOneTimePaid ? purchaseCopy.oneTimeNote : isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
+  const steps = isPaid && order?.planCode === "single-score" ? [getSingleScorePassCopy(locale).paid, ...getSingleScorePassCopy(locale).benefits] : isOneTimePaid ? [
+    formatMessage(purchaseCopy.startsTemplate, { date: safelyFormatDateTime(order!.accessStartsAt!, locale) }),
+    formatMessage(purchaseCopy.expiresTemplate, { date: safelyFormatDateTime(order!.accessEndsAt!, locale) }),
+  ] : isSubscriptionPaid ? copy.subscriptionPaidSteps : isPaid ? copy.paidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
+  const paidActionUrl = isOneTimePaid ? getAppLoginUrl("/billing#one-time-purchases", locale) : isSubscriptionPaid
     ? order?.userId ? getAppScoreProjectsUrl(locale) : getAppRegisterUrl(locale)
     : activateUrl;
-  const paidActionLabel = isSubscriptionPaid
+  const paidActionLabel = isOneTimePaid ? purchaseCopy.purchases : isSubscriptionPaid
     ? order?.userId ? copy.openSubscription : copy.registerSubscription
     : copy.redeem;
 
@@ -141,7 +162,7 @@ export function CheckoutStatusClient({
 
       {!loading && !error && order ? (
         <div className="metric-grid">
-          <MetricCard label={copy.orderStatus} value={copy.statuses[order.status]} body={isPaid ? copy.paidBody : body} />
+          <MetricCard label={copy.orderStatus} value={copy.statuses[order.status]} body={body} />
           <MetricCard
             label={copy.provider}
             value={copy.providers[order.provider]}

@@ -9,7 +9,7 @@ const manifestPath = path.join(buildRoot, "server", "app", "page_client-referenc
 const productRoot = path.join(appRoot, "public", "product");
 const productMediaEvidencePath = path.join(appRoot, "src", "lib", "product-media", "capture-evidence.json");
 const supportedLocales = ["en", "zh-CN", "zh-TW", "ja", "ko", "fr", "es", "de", "ru"];
-const homepageFeatureSlots = new Set(["feature.pdf-score-scanner", "feature.transpose-score", "feature.score-to-audio"]);
+const homepageFeatureSlots = new Set(["feature.sheet-music-scanner", "feature.transpose-score", "feature.score-to-audio"]);
 
 const limits = {
   javascriptGzip: 110 * 1024,
@@ -18,6 +18,7 @@ const limits = {
   productImageLargest: 300 * 1024,
   localizedProductMediaRepositoryTotal: 24 * 1024 * 1024,
   currentLocaleHomepageMedia: 1.5 * 1024 * 1024,
+  visibleBackgroundVideo: 4 * 1024 * 1024,
 };
 
 function formatBytes(bytes) {
@@ -74,7 +75,10 @@ function measureLocalizedProductMedia() {
     const requested = evidence.assets
       .filter((asset) => asset.locale === locale && (homepageFeatureSlots.has(asset.slot) || asset.slot.startsWith("homepage-demo.")))
       .flatMap((asset) => [asset.image, asset.poster, asset.video].filter(Boolean));
-    return [locale, requested.reduce((sum, output) => sum + actualBytes(output), 0)];
+    // The background now appears above the workbench and starts on entry.
+    // Its playback payload has a separate 4 MiB budget; this covers other media.
+    const commercialPoster = { src: "/product/commercial/v4/poster.webp" };
+    return [locale, requested.reduce((sum, output) => sum + actualBytes(output), 0) + actualBytes(commercialPoster)];
   }));
   return {
     repositoryTotal: outputs.reduce((sum, output) => sum + actualBytes(output), 0),
@@ -94,6 +98,7 @@ const checks = [
   ["Product image repository", images.total, limits.productImageRepositoryTotal],
   [`Largest product image (${images.largest.name})`, images.largest.bytes, limits.productImageLargest],
   ["Localized product-media registry", localizedMedia.repositoryTotal, limits.localizedProductMediaRepositoryTotal],
+  ["Background video when visible", fs.statSync(path.join(productRoot, "commercial/v4/score-motion-30s.mp4")).size, limits.visibleBackgroundVideo],
   ...supportedLocales.map((locale) => [
     `Homepage product media requested for ${locale}`,
     localizedMedia.byLocale[locale],

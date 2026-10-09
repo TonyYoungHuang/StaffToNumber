@@ -1,0 +1,272 @@
+.section {
+  display: grid;
+  gap: 28px;
+  width: 100%;
+  min-width: 0;
+  color: var(--public-ink, #20202b);
+}
+
+.heading {
+  display: grid;
+  gap: 14px;
+  max-width: 800px;
+}
+
+.heading h2 {
+  margin: 0;
+  font-size: clamp(28px, 3.2vw, 42px);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.heading p {
+  margin: 0;
+  color: var(--public-copy, #646174);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.player {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--public-line, #e6dff0);
+  border-radius: 24px;
+  background: #171326;
+  box-shadow: 0 16px 50px #38235112;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video:focus-visible {
+  outline: 3px solid #af91ee;
+  outline-offset: -4px;
+}
+
+.playOverlay {
+  position: absolute;
+  inset: 0 0 56px;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.playButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  max-width: 100%;
+  padding: 14px 26px 14px 14px;
+  border: 1px solid #ffffff80;
+  border-radius: 999px;
+  background: #ffffffed;
+  color: #513194;
+  box-shadow: 0 8px 40px #17132635;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.35;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.playButton:hover {
+  background: #fff;
+  transform: translateY(-2px);
+}
+
+.playButton:focus-visible,
+.chapterButton:focus-visible,
+.fallback:focus-visible {
+  outline: 3px solid #8b5ed2;
+  outline-offset: 4px;
+}
+
+.playIcon {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ede5fc;
+}
+
+.playIcon svg {
+  margin-left: -2px;
+}
+
+.chapters {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.chapters h3 {
+  margin: 0;
+  color: var(--public-copy, #646174);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.chapterList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapterList li {
+  min-width: 0;
+}
+
+.chapterButton {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 18px 16px;
+  border: 1px solid var(--public-line, #e6dff0);
+  border-radius: 14px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.chapterButton:hover,
+.chapterButton[aria-current="true"] {
+  border-color: #c1a8e3;
+  background: #f6f0ff;
+}
+
+.timestamp {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #f1eaf9;
+  color: #66409c;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.chapterCopy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+
+.chapterTitle {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.chapterDetail {
+  color: var(--public-copy, #646174);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.chapterArrow {
+  margin-left: auto;
+  color: #7b589f;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.note {
+  max-width: 900px;
+  margin: -8px 0 0;
+  color: var(--public-copy, #646174);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.fallback {
+  justify-self: start;
+  color: #66409c;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .chapterList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .section {
+    gap: 22px;
+  }
+
+  .heading p {
+    font-size: 15px;
+  }
+
+  .player {
+    border-radius: 14px;
+  }
+
+  .playOverlay {
+    bottom: 42px;
+    padding: 10px;
+  }
+
+  .playButton {
+    gap: 10px;
+    padding: 9px 18px 9px 9px;
+    font-size: 14px;
+  }
+
+  .playIcon {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .playIcon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .chapterList {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .chapterButton {
+    padding: 15px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playButton,
+  .chapterButton {
+    transition: none;
+  }
+
+  .playButton:hover {
+    transform: none;
+  }
+}

@@ -26,16 +26,16 @@ export type PlatformFeaturePage = {
 export const platformFeaturePages: PlatformFeaturePage[] = [
   {
     slug: "staff-to-jianpu",
-    title: "Staff notation to Jianpu converter",
+    title: "Convert Staff Notation to Jianpu (Numbered Notation) Online",
     eyebrow: "Five-line staff to numbered notation",
     description:
-      "Use this staff to Jianpu converter to transform structured notation from the same Score JSON model used for editing, playback, transposition, and export.",
+      "Convert staff notation to Jianpu online. Turn an imported or reviewed score into numbered notation, check the key and rhythm, then download Jianpu text.",
     status: "Beta",
     releaseRequirement: "core",
     updatedAt: "2026-08-10",
     primaryAction: "scores",
     canonical: "/staff-to-jianpu",
-    keywords: ["staff to jianpu", "five-line staff to numbered notation", "五线谱转简谱"],
+    keywords: ["staff to jianpu", "five-line staff to numbered notation"],
     modules: ["Score JSON", "Jianpu generator", "MusicXML preview", "Export center"],
     workflow: [
       {
@@ -74,7 +74,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     updatedAt: "2026-08-10",
     primaryAction: "scores",
     canonical: "/jianpu-to-staff",
-    keywords: ["jianpu to staff", "jianpu to staff notation", "numbered notation to staff", "简谱转五线谱"],
+    keywords: ["jianpu to staff", "jianpu to staff notation", "numbered notation to staff"],
     modules: ["Structured Jianpu parser", "Score JSON", "MusicXML exporter", "OSMD preview"],
     workflow: [
       {
@@ -87,7 +87,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       },
       {
         title: "Export staff notation",
-        body: "Generate MusicXML immediately and use rendered PDF/SVG/PNG export when MuseScore CLI is configured.",
+        body: "Download MusicXML or export a printable PDF, SVG, or PNG after reviewing the score.",
       },
     ],
     details: [
@@ -104,21 +104,21 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "transpose-score",
-    title: "Smart Sheet Music Transposer",
+    title: "Transpose Sheet Music Online — Change Key by Semitones",
     eyebrow: "Target key, semitones, and instrument parts",
     description:
-      "Transpose sheet music online by semitones, target key, or instrument profile. Keep the original score, create a new revision, and review range and spelling.",
+      "Transpose sheet music online by semitones, target key, or instrument. Keep the original, check the new notes and range, then export your score for practice.",
     status: "Beta",
     releaseRequirement: "core",
     updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/transpose-score",
-    keywords: ["transpose sheet music", "transpose sheet music online", "change sheet music key", "online score transposition", "乐谱移调"],
-    modules: ["Score JSON transposition", "Target-key mode", "Instrument profiles", "Range diagnostics"],
+    keywords: ["transpose sheet music", "transpose sheet music online", "change sheet music key", "online score transposition"],
+    modules: ["Transpose by semitones", "Choose a target key", "Transposing instruments", "Check the range"],
     workflow: [
       {
-        title: "Open a score project",
-        body: "Use any project with a current Score JSON revision created from MusicXML, OMR, Jianpu, MIDI, or Score JSON import.",
+        title: "Open your sheet music",
+        body: "Import MusicXML, MIDI or Jianpu, or scan a PDF and correct its notes before changing key.",
       },
       {
         title: "Choose the transposition mode",
@@ -126,67 +126,67 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       },
       {
         title: "Check the resulting range",
-        body: "Optional voice and instrument range profiles report low/high notes and write warnings into the new revision.",
+        body: "Check high and low notes against the selected voice or instrument range, then listen to the result before exporting.",
       },
     ],
     details: [
       {
-        title: "Revision-based workflow",
-        body: "Change the sheet music key without overwriting the source: every transposition creates a new version so teachers and arrangers can compare results.",
+        title: "Change key without losing the original",
+        body: "Each transposition saves a new version. Compare it with the original and return to an earlier version if you need to try another key.",
       },
       {
-        title: "Exports regenerate from the model",
-        body: "Jianpu, MusicXML, MIDI, rendered PDF/images, and practice audio can be generated again from the transposed revision.",
+        title: "Export your transposed sheet music",
+        body: "Download MusicXML or MIDI after changing key. Use the available PDF, image and audio exports to prepare printed parts or practice files.",
       },
     ],
-    guardrail: "Transposition uses music21 when configured and keeps a deterministic TypeScript fallback; complex enharmonic spelling and clef comfort still require review.",
+    guardrail: "Review accidentals, clefs and the player's comfortable range after changing key, especially in complex scores.",
   },
   {
     slug: "score-editor",
-    title: "Online Sheet Music Editor",
+    title: "Sheet Music Maker & Online Editor — Create, Fix and Transpose Scores",
     eyebrow: "Create, correct, and collaborate on notation",
     description:
-      "Create, correct, co-edit, and extract parts from sheet music in an online notation editor. Import MusicXML, MIDI, Jianpu, or scans as editable revisions.",
+      "Make sheet music online: write a new score or import MusicXML, MIDI, Jianpu or a scan, fix the notes, extract parts, transpose and export to PDF or MIDI. Free to try in your browser.",
     status: "Beta",
     releaseRequirement: "core",
     updatedAt: "2026-08-24",
     primaryAction: "scores",
     canonical: "/score-editor",
-    keywords: ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation", "五线谱编辑器"],
-    modules: ["OSMD preview", "Score JSON revisions", "Correction panel", "Part Copy Generator Beta", "Version restore", "Real-time collaboration Beta"],
+    keywords: ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "online score editor", "extract parts from score", "split score into parts", "sheet music part splitter", "collaborative music notation software", "collaborative sheet music editor", "online collaborative music notation"],
+    modules: ["See your sheet music", "Save your changes", "Correct notes and rhythm", "Extract instrument parts Beta", "Restore earlier versions", "Collaborate on a score Beta"],
     workflow: [
       {
-        title: "Import a structured score",
-        body: "Start from MusicXML, MIDI, Jianpu, Score JSON, or an OMR candidate promoted into an editable revision.",
+        title: "Start with notation or an imported score",
+        body: "Use the sheet music maker with typed Jianpu, an imported MusicXML or MIDI file, or a reviewed scan. Typed Jianpu needs a key, meter and note durations.",
       },
       {
-        title: "Select a correction target",
-        body: "Edit note/rest properties, measure attributes, harmony, tempo, dynamics, wedges, articulations, ties, slurs, lyrics, and barlines.",
+        title: "Write and correct the notes",
+        body: "Select notes or rests to change pitch and duration. Insert or delete notes, adjust measures, and edit tempo, dynamics, lyrics and musical symbols.",
       },
       {
-        title: "Save a new revision",
-        body: "Corrections are stored as new Score JSON revisions so history can be restored without losing earlier versions.",
+        title: "Listen, save and export",
+        body: "Play the score to check your work, save a new version, then download MusicXML or MIDI. Use PDF export when you need a printable part.",
       },
     ],
     details: [
       {
-        title: "Sheet music editor for OMR cleanup",
-        body: "Scanning is rarely perfect; this online music notation editor repairs recognition mistakes before playback, conversion, or export.",
+        title: "Edit an imported MusicXML or MIDI file",
+        body: "Change notes, rests, rhythms and measure settings after import. MusicXML carries notation details; a MIDI performance may need extra rhythm and voice cleanup.",
       },
       {
-        title: "Structured music score maker",
+        title: "Fix the notes in a scanned score",
         body: "Create or correct notes with rendered-note selection, pitch and duration dragging, insertion, deletion, and property editing. Desktop-grade free-form engraving and full layout control remain in progress.",
       },
       {
-        title: "Collaborative sheet music editor Beta",
-        body: "Invite role-aware collaborators to a shared score with presence, conflict handling, and an offline change queue. Real-time collaboration remains a Beta workflow and should be tested before a large ensemble session.",
+        title: "Work on sheet music together",
+        body: "Invite collaborators with the appropriate editing or viewing permissions. Real-time collaboration is in Beta; try it with a small group before a large ensemble session.",
       },
       {
-        title: "Extract parts from a score Beta",
-        body: "Select one or more parts and split the full score into an independent practice project. Part copies preserve their source reference but do not yet follow later edits to the full score.",
+        title: "Extract parts from a score",
+        body: "Select the violin part, a vocal line or several instruments and create a separate practice score. This Beta feature copies the selected parts; later edits to the full score do not automatically update the copy.",
       },
     ],
-    guardrail: "Editing is built on Score JSON/MusicXML, not on PDF text or image pixels.",
+    guardrail: "Start from typed Jianpu or an imported score. Scanned PDFs need recognition and review before editing; full desktop-style engraving and page-layout control remain in development.",
   },
   {
     slug: "score-to-audio",
@@ -199,7 +199,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/score-to-audio",
-    keywords: ["sheet music to mp3", "sheet music to mp3 converter", "sheet music to mp3 online", "musicxml to mp3", "musicxml to mp3 converter", "musicxml to wav", "sheet music to audio", "sheet music to audio converter", "convert sheet music to mp3", "sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "music practice recording app", "sheet music practice app", "practice sheet music online", "乐谱播放器", "乐谱生成音频"],
+    keywords: ["sheet music to mp3", "sheet music to mp3 converter", "sheet music to mp3 online", "musicxml to mp3", "musicxml to mp3 converter", "musicxml to wav", "sheet music to audio", "sheet music to audio converter", "convert sheet music to mp3", "sheet music player", "scan sheet music and play", "score to audio", "sheet music playback", "music practice recording app", "sheet music practice app", "practice sheet music online"],
     modules: ["Tone.js playback", "Playback timeline", "Browser recording Beta", "Practice feedback Beta", "MIDI export", "WAV/MP3 renderer"],
     workflow: [
       {
@@ -222,7 +222,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
       },
       {
         title: "Convert sheet music to MP3 or WAV",
-        body: "Queued WAV and MP3 export requires FluidSynth, a configured SoundFont, and ffmpeg. The server reports a configuration error instead of substituting lower-quality browser synthesis.",
+        body: "Export WAV or MP3 practice audio from your score. Check the export status and download the file when it is ready.",
       },
       {
         title: "Music practice app with recording feedback Beta",
@@ -272,124 +272,124 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
   },
   {
     slug: "musicxml-midi",
-    title: "MusicXML Editor & MIDI/PDF Converter",
+    title: "MIDI to Sheet Music & Sheet Music to MIDI Converter",
     eyebrow: "Open-format editing, conversion, and print export",
     description:
-      "Edit MusicXML or MIDI online, correct the score, convert MusicXML to MIDI, and export portable MusicXML, PDF, SVG, PNG, or Score JSON files.",
+      "Upload a MIDI file and get editable sheet music in your browser: clean up the notation, transpose it, play it back, and export MusicXML, PDF or a new MIDI. Free to try.",
     status: "Available",
     releaseRequirement: "core",
     updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/musicxml-midi",
     keywords: ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "MusicXML converter", "musicxml to pdf", "export sheet music to pdf", "sheet music svg", "sheet music png"],
-    modules: ["MusicXML import/export", "MIDI import/export", "PDF/SVG/PNG renderer", "Score JSON snapshot", "OSMD preview"],
+    modules: ["MusicXML import and export", "MIDI to sheet music", "Sheet music to MIDI", "Printable PDF and images", "Preview and playback"],
     workflow: [
       {
-        title: "Import MusicXML, MXL, MIDI, or Score JSON",
-        body: "Each entry path creates a reusable score project with revisions, assets, and export history.",
+        title: "Upload your MIDI or MusicXML file",
+        body: "Choose a .mid or .midi file to convert MIDI to sheet music. You can also import MusicXML or MXL, or scan and review a PDF before exporting MIDI.",
       },
       {
-        title: "Normalize into Score JSON",
-        body: "Playback, Jianpu conversion, transposition, correction, and export all operate on the same structured model.",
+        title: "Check the notation and listen",
+        body: "Review note lengths, rests, parts and the time signature. Listen to the score and correct any awkward rhythms before printing or exporting.",
       },
       {
-        title: "Export without lock-in",
-        body: "Download MusicXML, MIDI, Jianpu text, rendered files, audio, or a Score JSON snapshot for backup and migration.",
+        title: "Download sheet music or MIDI",
+        body: "Export MusicXML for another notation editor, PDF for printing, or MIDI for playback and a DAW. Keep a project backup if you want to return to your edits.",
       },
     ],
     details: [
       {
-        title: "Parser provenance",
-        body: "Score JSON metadata records whether a project came from MusicXML, Jianpu, MIDI, or a snapshot import.",
+        title: "Clean up a messy MIDI import",
+        body: "A MIDI performance records timing rather than page layout. Check short rests, overlapping notes, tied rhythms and part assignments in the editor before printing.",
       },
       {
-        title: "MusicXML to MIDI and MIDI to sheet music",
-        body: "Convert MusicXML to MIDI for playback or import MIDI to sheet music as a structural draft. Tracks, tempo, time signatures, program hints, chords, and ties remain editable.",
+        title: "MusicXML to MIDI",
+        body: "Import MusicXML, check the notes and tempo, then export MIDI to use in a sequencer or digital audio workstation. MIDI stores performance events, so it cannot carry every printed notation detail.",
       },
       {
-        title: "MusicXML to PDF, SVG, and PNG export",
-        body: "Render page-aware PDF files and high-resolution SVG or PNG score images from an immutable revision when the MuseScore rendering service is configured.",
+        title: "Convert sheet music to MIDI",
+        body: "Open an existing score or recognize a PDF or photo first. Fix any misread notes, check playback, then export MIDI. You can also download a PDF or score image using the available print exports.",
       },
     ],
     guardrail: "Complex engraving from MIDI still needs human review and correction.",
   },
   {
-    slug: "pdf-score-scanner",
-    title: "Sheet Music Scanner for PDF & Images",
+    slug: "sheet-music-scanner",
+    title: "Sheet Music Scanner for PDF & Images — Free Online OMR",
     eyebrow: "OMR import with correction",
     description:
-      "Use this sheet music scanner to scan sheet music from PDF or image files, create an editable MusicXML candidate, review diagnostics, and correct OMR mistakes online.",
+      "Use this sheet music scanner to turn a PDF or photo into editable notes. Correct scanning mistakes, listen, transpose, and export MusicXML or MIDI. One full project free.",
     status: "Beta",
     releaseRequirement: "omr",
     updatedAt: "2026-08-24",
     primaryAction: "upload",
-    canonical: "/pdf-score-scanner",
-    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "pdf score scanner", "scan sheet music to MusicXML", "乐谱扫描识别"],
-    modules: ["OMR upload", "Audiveris worker", "MusicXML output", "Diagnostics panel"],
+    canonical: "/sheet-music-scanner",
+    keywords: ["sheet music scanner", "scan sheet music", "sheet music scanner online free", "pdf score scanner", "scan sheet music to MusicXML"],
+    modules: ["PDF and photo upload", "Printed music recognition", "Editable MusicXML", "Correct scanning mistakes"],
     workflow: [
       {
         title: "Upload a PDF or image",
-        body: "The app stores the source and creates an OMR import job tied to a score project.",
+        body: "Sign in and select a complete score PDF or a clear PNG, JPG, WebP or TIFF image. Keep all staff lines and notes visible.",
       },
       {
-        title: "Run Audiveris recognition",
-        body: "When configured, the worker calls Audiveris, stores the generated MusicXML, and creates an editable candidate revision.",
+        title: "Scan the sheet music",
+        body: "Optical music recognition reads the printed notes and creates an editable score. Follow the progress in the app while the scan is processed.",
       },
       {
-        title: "Correct the candidate",
-        body: "Review diagnostics, preview the score, fix recognition mistakes, then export or generate practice materials.",
+        title: "Review and correct the notes",
+        body: "Compare the recognized score with your source, fix notes and rhythms, and play it back. Then transpose or export the corrected sheet music.",
       },
     ],
     details: [
       {
-        title: "Candidate-first recognition",
-        body: "OMR results are treated as editable candidates with confidence and diagnostics, not as guaranteed final scores.",
+        title: "Sheet music scanner for phone photos",
+        body: "Photograph the page straight on in even light. Avoid shadows, blur and curved paper; crop the background without cutting off staff lines or notes.",
       },
       {
-        title: "Create one complete score project for free",
-        body: "A free account can scan one complete multi-page PDF or score image and keep using current correction, playback, transposition, Jianpu, sharing, version, and export tools on that project.",
+        title: "How accurate is the music scanner?",
+        body: "Clear printed notation is the best starting point. Faint scans, dense chords and unusual symbols can produce mistakes. Check notes, rhythms and key signatures before using the result in rehearsal.",
       },
     ],
-    guardrail: "Scanning is import plus correction. The site should not promise perfect automatic recognition for all PDFs or photos.",
+    guardrail: "Best for clear printed staff notation. Handwriting and difficult photos are not reliably supported; review every recognized score before using it.",
   },
   {
     slug: "pdf-to-musicxml",
     title: "PDF to MusicXML Converter Online",
     eyebrow: "Editable MusicXML from PDF or score images",
     description:
-      "Convert a PDF or sheet music image to an editable MusicXML candidate, review OMR diagnostics, correct recognition mistakes, and export the accepted score.",
+      "Upload a sheet music PDF or a photo and get an editable MusicXML file: fix the notes it misread, transpose, play it back, and export. Free to try, nothing to install.",
     status: "Beta",
     releaseRequirement: "omr",
     updatedAt: "2026-08-24",
     primaryAction: "upload",
     canonical: "/pdf-to-musicxml",
     keywords: ["pdf to musicxml", "pdf to musicxml converter", "image to musicxml", "pdf to musicxml online", "scan sheet music to MusicXML"],
-    modules: ["PDF and image upload", "Audiveris OMR", "MusicXML candidate", "Score correction"],
+    modules: ["PDF and image upload", "Read printed notes", "Fix recognition mistakes", "Download MusicXML"],
     workflow: [
       {
         title: "Upload a PDF or sheet music image",
         body: "Start with a PDF, PNG, JPG, WebP, or TIFF score that you have permission to process.",
       },
       {
-        title: "Create a MusicXML candidate",
-        body: "The OMR worker recognizes notation, stores diagnostics, and creates a structured MusicXML and Score JSON candidate instead of editing PDF pixels.",
+        title: "Convert PDF to MusicXML",
+        body: "The converter recognizes printed notes and rhythms and turns them into an editable score. You can compare the result with the source before saving your corrections.",
       },
       {
         title: "Review, correct, and export",
-        body: "Check notes, rhythm, key, measures, lyrics, and symbols in the score editor before exporting the accepted MusicXML revision.",
+        body: "Check notes, rhythm, key signatures, measures, lyrics and symbols in the sheet music editor, then download the corrected MusicXML file.",
       },
     ],
     details: [
       {
-        title: "PDF to MusicXML converter with correction",
-        body: "The converter keeps the source, recognition diagnostics, and editable candidate together so uncertain notation can be corrected before export.",
+        title: "Fix the notes OMR got wrong",
+        body: "Compare the recognized notes with the original PDF. Correct pitches, missing rests, note lengths and measure settings, then listen again before exporting.",
       },
       {
         title: "Image to MusicXML uses the same workflow",
-        body: "Score images enter the same OMR pipeline and produce a reviewable candidate; clear, straight, high-resolution sources usually need fewer corrections.",
+        body: "A scanned PDF or a standalone photo can both be recognized. Choose a clear, straight image with readable staff lines and no cropped notes to reduce corrections.",
       },
     ],
-    guardrail: "PDF-to-MusicXML conversion produces an editable candidate. Complex engraving, weak scans, handwriting, and dense scores still require human review.",
+    guardrail: "PDF to MusicXML works best with clear printed staff notation. Complex engraving and weak scans need correction; reliable handwriting recognition is not promised.",
   },
   {
     slug: "teaching",
@@ -402,7 +402,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     updatedAt: "2026-08-25",
     primaryAction: "scores",
     canonical: "/teaching",
-    keywords: ["music notation software for students", "music education software", "music education platform", "music classroom apps", "music teacher software", "music notation software for schools", "music composition assignments", "music performance assessment", "online music assignments", "music teacher management software", "music practice app for teachers", "educational music software", "score sharing", "乐谱教学作业"],
+    keywords: ["music notation software for students", "music education software", "music education platform", "music classroom apps", "music teacher software", "music notation software for schools", "music composition assignments", "music performance assessment", "online music assignments", "music teacher management software", "music practice app for teachers", "educational music software", "score sharing"],
     modules: ["Classes", "Share links", "Assignments", "Student submissions", "Recordings", "Rubrics", "LTI pilot"],
     workflow: [
       {
@@ -441,7 +441,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     updatedAt: "2026-08-10",
     primaryAction: "checkout",
     canonical: "/pricing",
-    keywords: ["score transposer pricing", "music score converter price", "五线谱工具价格"],
+    keywords: ["score transposer pricing", "music score converter price"],
     modules: ["Checkout", "Activation codes", "Entitlements", "Export gating"],
     workflow: [
       {
@@ -467,7 +467,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
         body: "Checkout, activation, upload, job, and export issues route into the support workflow.",
       },
     ],
-    guardrail: "The public catalog is the source of displayed prices. Checkout stays disabled until the selected provider has a matching Price ID for every paid plan.",
+    guardrail: "Choose your plan, access period, and payment type. Confirm the currency, total, and renewal terms at checkout.",
   },
 ];
 

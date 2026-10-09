@@ -3,14 +3,14 @@ import type { CheckoutMessages } from "../types";
 export const frCheckoutMessages = {
   translationNotice: "Ces informations de paiement sont une traduction provisoire en attente de révision professionnelle. Pour les prix, renouvellements, remboursements et autres conditions, référez-vous au paiement et aux conditions en anglais.",
   start: {
-    badge: "Paiement hébergé", eyebrow: "Paiement sécurisé", title: "Abonnez-vous en ligne et activez votre compte",
-    body: "Continuez avec l’adresse e-mail d’un compte ScoreTransposer existant. Votre abonnement et vos quotas lui seront automatiquement associés après le paiement.",
-    email: "E-mail du compte inscrit", emailPlaceholder: "vous@exemple.fr", emailHelp: "Il doit correspondre à votre compte ScoreTransposer afin d’attribuer correctement l’abonnement.",
+    badge: "Paiement hébergé", eyebrow: "Paiement sécurisé", title: "Choisissez votre accès et activez votre compte",
+    body: "Continuez avec l’adresse e-mail d’un compte ScoreTransposer existant. Votre accès et vos quotas lui seront automatiquement associés après le paiement.",
+    email: "E-mail du compte inscrit", emailPlaceholder: "vous@exemple.fr", emailHelp: "Il doit correspondre à votre compte ScoreTransposer afin d’attribuer correctement l’accès acheté.",
     provider: "Prestataire de paiement", stripeTitle: "Stripe", stripeBody: "Adapté aux cartes internationales, à Apple Pay, Google Pay et à un paiement hébergé standard.",
     paddleTitle: "Paddle", paddleBody: "Adapté à la facturation Merchant of Record, au traitement fiscal et au paiement hébergé par Paddle.",
     button: "Continuer vers le paiement", loading: "Redirection vers le paiement…", activate: "J’ai déjà un code d’activation",
-    accessLabel: "Période de facturation", accessValue: "Mensuelle ou annuelle", accessBody: "L’abonnement se renouvelle selon la période choisie et peut être géré ou résilié depuis la facturation.",
-    deliveryLabel: "Après le paiement", deliveryValue: "Accès automatique", deliveryBody: "Un paiement réussi associe l’abonnement, les places et les quotas au compte inscrit.",
+    accessLabel: "Période de facturation", accessValue: "Mensuelle ou annuelle", accessBody: "L’achat unique dure un mois ou un an sans renouvellement automatique. L’abonnement se renouvelle selon la période choisie et peut être résilié depuis Facturation.",
+    deliveryLabel: "Après le paiement", deliveryValue: "Accès automatique", deliveryBody: "Un paiement réussi associe l’accès, les places et les quotas au compte inscrit.",
     supportLabel: "Assistance humaine", supportValue: "Vérification par e-mail", supportBody: "Si le retour du paiement échoue ou si l’accès n’apparaît pas, l’assistance peut vérifier manuellement la commande.",
     nextTitle: "À savoir avant de continuer",
     nextSteps: ["Après le paiement, le système confirme la commande et active automatiquement le compte inscrit.", "Les clics répétés ou nouvelles tentatives réseau réutilisent la même intention de paiement afin d’éviter les doublons.", "Si vous possédez déjà un code acheté par un autre canal, ne payez pas une seconde fois."],
@@ -43,7 +43,7 @@ export const frCheckoutMessages = {
   },
   paddle: {
     title: "Ouverture du paiement Paddle", body: "Si la fenêtre ne s’ouvre pas automatiquement, actualisez cette page ou recommencez depuis le paiement.",
-    missing: "Aucun identifiant de transaction Paddle dans l’URL.", config: "La configuration cliente de Paddle est absente. Renseignez les variables d’environnement du site.", returnUrl: "L’adresse de retour est invalide. Recommencez depuis la page de paiement.",
+    missing: "Aucun identifiant de transaction Paddle dans l’URL.", config: "Le paiement Paddle est momentanément indisponible. Réessayez plus tard ou contactez l’assistance.", returnUrl: "L’adresse de retour est invalide. Recommencez depuis la page de paiement.",
     unavailable: "Paddle.js n’est pas disponible.", openFailed: "Impossible d’ouvrir le paiement Paddle.",
   },
   successPage: {

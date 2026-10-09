@@ -23,7 +23,20 @@ export const publicLocaleRewrites = publicLocalePrefixes.flatMap(([locale, prefi
 });
 
 const nextConfig: NextConfig = {
+  ...(process.env.SCORE_SELF_HOSTED === "true" ? { output: "standalone", experimental: { cpus: 1 } } : {}),
   reactStrictMode: true,
+  outputFileTracingIncludes: {
+    "/*": [
+      "./public/social/**/*.png",
+    ],
+  },
+  async redirects() {
+    // Retain bookmarked pages, examples and social cards in every language.
+    return ["", ...publicLocalePrefixes.map(([, prefix]) => prefix)].flatMap((prefix) => [
+      { source: `${prefix}/pdf-score-scanner/:path*`, destination: `${prefix}/sheet-music-scanner/:path*`, statusCode: 301 },
+      { source: `${prefix}/examples/pdf-score-scanner/:path*`, destination: `${prefix}/examples/sheet-music-scanner/:path*`, statusCode: 301 },
+    ]);
+  },
   async rewrites() {
     return {
       beforeFiles: publicLocaleRewrites,

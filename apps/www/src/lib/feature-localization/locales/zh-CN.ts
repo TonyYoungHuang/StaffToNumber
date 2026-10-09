@@ -64,7 +64,7 @@ export const zhCNFeaturePages = {
     [["保留导入来源", "工程元数据会记录乐谱来自 MusicXML、简谱、MIDI 或快照。"], ["MIDI 导入是结构化草稿", "系统提取轨道、速度、拍号、音色、和弦与跨小节连音，结果仍可校正。"], ["MusicXML 导出 PDF、SVG 与 PNG", "配置 MuseScore 渲染服务后，可以从固定乐谱版本生成分页 PDF 和高分辨率 SVG／PNG。"]],
     "从 MIDI 生成复杂排版仍需要人工检查和校正。",
   ),
-  "pdf-score-scanner": defineFeatureTranslation(
+  "sheet-music-scanner": defineFeatureTranslation(
     "在线乐谱扫描识别", "识谱导入与人工校正",
     "上传 PDF 或乐谱图片，生成 MusicXML 与 Score JSON 候选稿，并在编辑前检查诊断与识别结果。",
     ["乐谱扫描识别", "PDF 识谱", "在线 OMR", "扫描乐谱转 MusicXML"],

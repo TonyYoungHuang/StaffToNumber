@@ -32,6 +32,38 @@ const expectedPrefixes = {
   ru: "/ru",
 } as const satisfies Record<SupportedLocale, string>;
 
+test("proxied locale redirects and cookies use the configured public site instead of the container", async () => {
+  const previousOrigin = process.env.NEXT_PUBLIC_SITE_URL;
+  const previousDomain = process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN;
+  process.env.NEXT_PUBLIC_SITE_URL = "https://scoretransposer.com";
+  process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN = ".scoretransposer.com";
+  try {
+    for (const locale of SUPPORTED_LOCALES) {
+      const response = await localeHandoff(new NextRequest(`http://0.0.0.0:3000/api/locale?locale=${locale}&next=%2Fpricing%3Fplan%3Dstarter-monthly`, {
+        headers: { "x-forwarded-host": "evil.example" },
+      }));
+      assert.equal(response.headers.get("location"), `https://scoretransposer.com${expectedPrefixes[locale]}/pricing?plan=starter-monthly`);
+      assert.match(response.headers.get("set-cookie") ?? "", /Domain=\.scoretransposer\.com/u);
+      assert.match(response.headers.get("set-cookie") ?? "", /Secure/u);
+    }
+    const invalid = await localeHandoff(new NextRequest("http://0.0.0.0:3000/api/locale?locale=invalid"));
+    assert.equal(invalid.headers.get("location"), "https://scoretransposer.com/");
+    for (const next of ["http://0.0.0.0:3000/pricing", "https://evil.example/"]) {
+      const response = await localeHandoff(new NextRequest(`http://0.0.0.0:3000/api/locale?locale=en&next=${encodeURIComponent(next)}`));
+      assert.equal(response.headers.get("location"), "https://scoretransposer.com/");
+    }
+    const response = middleware(new NextRequest("http://0.0.0.0:3000/en/pricing?plan=starter-monthly", {
+      headers: { host: "scoretransposer.com", "x-forwarded-proto": "https" },
+    }));
+    assert.equal(response.headers.get("location"), "https://scoretransposer.com/pricing?plan=starter-monthly");
+  } finally {
+    if (previousOrigin === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+    else process.env.NEXT_PUBLIC_SITE_URL = previousOrigin;
+    if (previousDomain === undefined) delete process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN;
+    else process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN = previousDomain;
+  }
+});
+
 test("public locale paths have one stable form for all nine locales", () => {
   assert.deepEqual(SUPPORTED_LOCALES, Object.keys(expectedPrefixes));
   for (const locale of SUPPORTED_LOCALES) {

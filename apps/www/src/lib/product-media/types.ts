@@ -8,7 +8,7 @@ export const FEATURE_PRODUCT_MEDIA_SLUGS = [
   "score-to-audio",
   "audio-to-score",
   "musicxml-midi",
-  "pdf-score-scanner",
+  "sheet-music-scanner",
   "pdf-to-musicxml",
   "teaching",
   "pricing",

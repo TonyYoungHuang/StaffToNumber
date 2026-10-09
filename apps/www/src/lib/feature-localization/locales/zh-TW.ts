@@ -50,7 +50,7 @@ export const zhTWFeaturePages = {
     [["保留解析來源", "專案中會記錄樂譜來自 MusicXML、簡譜、MIDI 或快照。"], ["MIDI 匯入是結構化草稿", "擷取軌道、速度、拍號、音色、和弦與跨小節連音，結果仍可校正。"], ["MusicXML 匯出 PDF、SVG、PNG", "設定 MuseScore 渲染服務後，可從固定修訂產生分頁 PDF 與高解析 SVG／PNG。"]],
     "從 MIDI 產生複雜排版仍需要人工檢查與校正。",
   ),
-  "pdf-score-scanner": defineFeatureTranslation(
+  "sheet-music-scanner": defineFeatureTranslation(
     "PDF 與圖片樂譜掃描辨識", "OMR 匯入與人工校正", "上傳 PDF 或樂譜圖片，建立可編輯的 MusicXML 候選稿、檢查診斷，並在線校正 OMR 錯誤。",
     ["樂譜掃描辨識", "PDF 樂譜掃描", "線上 OMR", "掃描樂譜轉 MusicXML"], ["OMR 上傳", "Audiveris 工作", "MusicXML 輸出", "診斷面板"],
     [["上傳 PDF 或圖片", "系統儲存來源，並建立與樂譜專案關聯的 OMR 匯入工作。"], ["執行 Audiveris 辨識", "設定完成時，服務產生 MusicXML 並建立可編輯候選修訂。"], ["校正候選稿", "檢查診斷、預覽樂譜、修正辨識錯誤，再匯出或建立練習素材。"]],

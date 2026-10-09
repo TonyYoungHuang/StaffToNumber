@@ -82,17 +82,20 @@ test("homepage media availability never maps a locale to another language", () =
 
 test("localized plan displays preserve checkout and entitlement invariants", () => {
   const basePlans = getPricingPlanCatalog("en");
-  const invariantFields = basePlans.map(({ code, price, featured }) => ({ code, price, featured }));
+  const invariantFields = basePlans.map(({ code, featured }) => ({ code, featured }));
 
   for (const locale of SUPPORTED_LOCALES) {
     const localizedPlans = localizeHomepagePlans(locale, basePlans);
     assert.deepEqual(
-      localizedPlans.map(({ code, price, featured }) => ({ code, price, featured })),
+      localizedPlans.map(({ code, featured }) => ({ code, featured })),
       invariantFields,
       locale,
     );
     assert.deepEqual(localizedPlans.slice(1).map((plan) => plan.name), ["Starter", "Starter", "Converter Pro", "Converter Pro"]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.price), ["$0", "$7.99", "$49", "$14.99", "$99"]);
+    assert.deepEqual(localizedPlans.map((plan) => plan.price.replace(/\s/gu, " ")), locale === "fr"
+      ? ["0,00 $US", "7,99 $US", "49,00 $US", "14,99 $US", "99,00 $US"]
+      : locale === "de" || locale === "ru" || locale === "es" ? ["0,00 USD", "7,99 USD", "49,00 USD", "14,99 USD", "99,00 USD"]
+      : ["$0", "$7.99", "$49", "$14.99", "$99"]);
     assert.deepEqual(localizedPlans.map((plan) => plan.featured), [false, false, true, false, false]);
     assert.deepEqual(localizedPlans.map((plan) => plan.benefits.length), [5, 5, 5, 5, 5]);
     assert.deepEqual(localizedPlans.map((plan) => plan.resources.length), [4, 4, 4, 4, 4]);
@@ -127,8 +130,8 @@ test("homepage renders localized schema, media alternatives, plan labels, and cl
   assert.match(pageSource, /labels=\{copy\.creditPlanCardLabels\}/u);
   assert.match(pageSource, /copy=\{localization\.workbench\}/u);
   assert.match(workbenchSource, /copy: HomepageWorkbenchCopy/u);
-  assert.match(workbenchSource, /getAppScoreUrl\(scoreId, locale\)/u);
-  assert.match(layoutSource, /keywords: \[\.\.\.catalog\.keywords\]/u);
+  assert.match(workbenchSource, /getAppScoreUrl\(scoreId, locale, submittedMode\)/u);
+  assert.doesNotMatch(layoutSource, /\bkeywords\s*:/u);
   assert.doesNotMatch(layoutSource, /\.\.\.siteConfig\.keywords/u);
   assert.doesNotMatch(pageSource, /const copy\s*=\s*(?:locale === "zh-CN"|isChinese)\s*\?/u);
 });

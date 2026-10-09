@@ -131,7 +131,7 @@ test("four pages consume catalogs, localize routes and schemas, and keep release
     "/staff-to-jianpu",
     "/jianpu-to-staff",
     "/score-editor",
-    "/pdf-score-scanner",
+    "/sheet-music-scanner",
     "/score-to-audio",
   ]) {
     assert.match(allSources, new RegExp(route.replaceAll("/", "\\/"), "u"), route);

@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { siteConfig } from "../../../lib/site";
 import type { Metadata } from "next";
 import { Panel } from "@score/ui";
 import { CheckoutCancelClient } from "../../../components/CheckoutCancelClient";
@@ -15,8 +17,16 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function CheckoutCancelPage() {
+export default async function CheckoutCancelPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const locale = await readSiteLocale();
+  const params = await searchParams;
+  if (typeof params.order_id === "string" && typeof params.token === "string") {
+    const query = new URLSearchParams({ order_id: params.order_id, token: params.token, provider: params.provider === "paddle" ? "paddle" : "stripe" });
+    const target = new URL("/api/locale", `${siteConfig.appUrl}/`);
+    target.searchParams.set("locale", locale);
+    target.searchParams.set("next", `/checkout/cancel?${query}`);
+    redirect(target.toString());
+  }
   const messages = getCheckoutMessages(locale);
   const copy = messages.cancelPage;
 

@@ -167,7 +167,7 @@ export function buildFeatureExampleFile(
     "score-to-audio": { input: () => musicXmlFile(), output: () => wavFile(options.semitones ?? 0) },
     "audio-to-score": { input: wavFile, output: midiFile },
     "musicxml-midi": { input: () => musicXmlFile(), output: midiFile },
-    "pdf-score-scanner": { input: scorePngFile, output: () => musicXmlFile() },
+    "sheet-music-scanner": { input: scorePngFile, output: () => musicXmlFile() },
     "pdf-to-musicxml": { input: scorePngFile, output: () => musicXmlFile() },
     teaching: {
       input: () => jsonFile({ scoreRevision: "demo-revision", instructions: "Practice measures 1-4 at 80 BPM.", dueAt: "2026-07-22T12:00:00Z" }),

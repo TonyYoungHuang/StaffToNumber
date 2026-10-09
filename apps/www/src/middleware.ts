@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { DEFAULT_LOCALE } from "@score/i18n";
 import { getCanonicalPublicUrl } from "./lib/canonical-host";
+import { sitePublicOrigin } from "./lib/public-origin";
 import { localeFromPublicPath, localizePublicPath, ROUTE_LOCALE_HEADER } from "./lib/locale-routing";
 
 function getCloudflareVisitorProtocol(value: string | null) {
@@ -35,7 +36,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (/^\/en(?:\/|$)/iu.test(pathname)) {
-    const canonicalEnglishUrl = request.nextUrl.clone();
+    const canonicalEnglishUrl = new URL(`${pathname}${request.nextUrl.search}`, sitePublicOrigin(request));
     canonicalEnglishUrl.pathname = pathname.slice(3) || "/";
     return NextResponse.redirect(canonicalEnglishUrl, 308);
   }
@@ -44,7 +45,7 @@ export function middleware(request: NextRequest) {
   if (locale !== DEFAULT_LOCALE) {
     const canonicalLocalePath = localizePublicPath(pathname, locale);
     if (pathname !== canonicalLocalePath) {
-      const canonicalLocaleUrl = request.nextUrl.clone();
+      const canonicalLocaleUrl = new URL(`${pathname}${request.nextUrl.search}`, sitePublicOrigin(request));
       canonicalLocaleUrl.pathname = canonicalLocalePath;
       return NextResponse.redirect(canonicalLocaleUrl, 308);
     }

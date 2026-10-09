@@ -7,6 +7,7 @@ import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } f
 import { getProductMediaPresentation } from "../../lib/product-media";
 import { getSupportLegalLocalization, getSupportLegalMedia } from "../../lib/support-legal-localization";
 import { getCheckoutUrl, getSupportUrl, legalLastUpdated, siteConfig } from "../../lib/site";
+import { localizedContentLastUpdated } from "../../lib/public-content-dates";
 
 const canonicalPath = "/terms";
 
@@ -20,7 +21,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: copy.metadata.title,
     description: copy.metadata.description,
-    keywords: [...copy.metadata.keywords],
     alternates: getLocalizedAlternates(canonicalPath, locale),
     openGraph: {
       title: copy.metadata.title,
@@ -37,6 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function TermsPage() {
   const locale = await readSiteLocale();
+  const lastUpdated = localizedContentLastUpdated(canonicalPath, locale, legalLastUpdated);
   const localization = getSupportLegalLocalization(locale);
   const copy = localization.terms;
   const checkoutUrl = getCheckoutUrl(locale);
@@ -50,7 +51,7 @@ export default async function TermsPage() {
       description: copy.metadata.description,
       url: pageUrl,
       inLanguage: getLocaleConfig(locale).htmlLang,
-      dateModified: legalLastUpdated,
+      dateModified: lastUpdated,
     },
     {
       "@context": "https://schema.org",
@@ -69,7 +70,7 @@ export default async function TermsPage() {
       <Panel variant="surface" className="stack-lg">
         <SectionIntro eyebrow={copy.hero.eyebrow} title={copy.hero.title} body={copy.hero.body} titleAs="h1" largeBody />
         <div className="button-row">
-          <StatusPill tone="cyan">{copy.hero.updatedPrefix} {legalLastUpdated}</StatusPill>
+          <StatusPill tone="cyan">{copy.hero.updatedPrefix} {lastUpdated}</StatusPill>
           <Link href={localizePublicHref("/privacy", locale)} className="public-button secondary">{copy.hero.privacyAction}</Link>
         </div>
       </Panel>

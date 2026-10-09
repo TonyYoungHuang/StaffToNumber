@@ -40,7 +40,7 @@ export const deLibraryCatalog = {
     openSource: "Quellsammlung öffnen",
     workspace: "Notenarbeitsbereich öffnen",
     back: "Zurück zur Bibliothek",
-    notice: "Einträge mit Quellenlink werden hier nicht gespiegelt. Prüfe vor dem Import einer Datei die Ausgabenlizenz und regionalen Bedingungen auf der Quellseite.",
+    notice: "Einträge mit Quellenlink werden hier nicht gespiegelt. Prüfen Sie vor dem Import einer Datei die Ausgabenlizenz und regionalen Bedingungen auf der Quellseite.",
     home: "Startseite",
     libraryName: "Notenbibliothek mit gemeinfreien Werken",
     breadcrumb: "Brotkrümelnavigation",

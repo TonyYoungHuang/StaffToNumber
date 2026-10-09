@@ -20,7 +20,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: copy.metadata.title,
     description: copy.metadata.description,
-    keywords: [...copy.metadata.keywords],
     alternates: getLocalizedAlternates(canonicalPath, locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,
@@ -146,7 +145,7 @@ export default async function HowToReadSheetMusicPage() {
           <Link className="public-button primary" href={localizePublicHref("/score-editor", locale)}>
             {copy.editAction}
           </Link>
-          <Link className="public-button secondary" href={localizePublicHref("/pdf-score-scanner", locale)}>
+          <Link className="public-button secondary" href={localizePublicHref("/sheet-music-scanner", locale)}>
             {copy.scanAction}
           </Link>
           <Link className="public-button tertiary" href={localizePublicHref("/score-to-audio", locale)}>

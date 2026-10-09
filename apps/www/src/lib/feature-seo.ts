@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { PlatformFeaturePage } from "./platform-feature-pages";
+import { getFeatureOnPageContent } from "./feature-on-page";
 
 export const requiredFeatureSchemas = ["BreadcrumbList", "HowTo", "FAQPage", "SoftwareApplication"] as const;
 
@@ -63,7 +64,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
   "staff-to-jianpu": {
     searchIntent: "Convert an existing staff score into readable numbered notation.",
     keywordCluster: "staff notation to Jianpu conversion",
-    primaryKeyword: "staff to jianpu",
+    primaryKeyword: "staff notation to Jianpu",
     relatedSlugs: ["jianpu-to-staff", "musicxml-midi", "score-editor"],
     schemas: commonSchemas,
     screenshot: {
@@ -126,8 +127,8 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
   "score-editor": {
     searchIntent: "Create, correct, and collaboratively edit structured sheet music in a browser.",
     keywordCluster: "online sheet music maker, notation editor, and collaborative score editor",
-    primaryKeyword: "sheet music editor",
-    relatedSlugs: ["pdf-score-scanner", "pdf-to-musicxml", "transpose-score", "musicxml-midi"],
+    primaryKeyword: "sheet music maker",
+    relatedSlugs: ["sheet-music-scanner", "pdf-to-musicxml", "transpose-score", "musicxml-midi"],
     schemas: commonSchemas,
     screenshot: {
       src: "/product/feature-score-editor-real.png",
@@ -138,9 +139,9 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
       capturedAt: "2026-08-19",
     },
     example: {
-      input: "Selected event: E4 quarter note in measure 2",
-      output: "Corrected event: F-sharp4 eighth note in a new revision",
-      notes: "Selection, insertion, deletion, drag editing and structured properties operate on Score JSON.",
+      input: "Selected note: E4 quarter note in measure 2",
+      output: "Edited note: F-sharp4 eighth note, saved as a new version",
+      notes: "Select, insert, delete or drag notes in the score, then adjust their pitch, duration and other musical properties.",
     },
     review: featureProductOwnerApproval("Checked the existing measure editor capture and structured edit tests; approval is limited to correction, event editing, revisions, and collaboration rather than a MuseScore-scale engraving promise."),
   },
@@ -189,7 +190,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
   "musicxml-midi": {
     searchIntent: "Edit MusicXML and convert portable score formats into MIDI, PDF, SVG, PNG, or project backups.",
     keywordCluster: "online MusicXML editor, MIDI conversion, and notation export",
-    primaryKeyword: "MusicXML editor",
+    primaryKeyword: "MIDI to sheet music",
     relatedSlugs: ["score-editor", "pdf-to-musicxml", "staff-to-jianpu", "score-to-audio"],
     schemas: commonSchemas,
     screenshot: {
@@ -207,7 +208,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
     },
     review: featureProductOwnerApproval("Checked the existing export-center capture, native MusicXML and MIDI examples, and export implementation boundaries; MIDI engraving remains a reviewable structural draft."),
   },
-  "pdf-score-scanner": {
+  "sheet-music-scanner": {
     searchIntent: "Scan a PDF or score image into editable structured notation.",
     keywordCluster: "online sheet music scanner and optical music recognition",
     primaryKeyword: "sheet music scanner",
@@ -232,7 +233,7 @@ export const featureSeoRecords: Record<string, FeatureSeoRecord> = {
     searchIntent: "Convert a PDF or sheet music image into reviewable, editable MusicXML.",
     keywordCluster: "PDF and image to MusicXML conversion",
     primaryKeyword: "pdf to musicxml",
-    relatedSlugs: ["pdf-score-scanner", "score-editor", "musicxml-midi"],
+    relatedSlugs: ["sheet-music-scanner", "score-editor", "musicxml-midi"],
     schemas: commonSchemas,
     screenshot: {
       src: "/product/localized/en/feature-pdf-to-musicxml-real.jpg",
@@ -456,7 +457,8 @@ export function auditFeatureSeo(
   return {
     generatedAt,
     score,
-    publishReady: errors === 0 && warnings === 0,
+    // Snippet lengths are review hints, not search-engine eligibility limits.
+    publishReady: errors === 0 && !issues.some((issue) => issue.severity === "warning" && !["title", "description"].includes(issue.field)),
     issues,
     metrics: {
       pages: pages.length,
@@ -491,6 +493,7 @@ export function buildFeatureSeoManifest(
       if (!record) return [];
       const reviewableContent = {
         page,
+        onPage: getFeatureOnPageContent(page.slug, "en"),
         seo: {
           searchIntent: record.searchIntent,
           keywordCluster: record.keywordCluster,

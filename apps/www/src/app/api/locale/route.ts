@@ -6,11 +6,12 @@ import {
   type SupportedLocale,
 } from "@score/i18n";
 import { localizePublicHref } from "../../../lib/locale-routing";
+import { sitePublicOrigin } from "../../../lib/public-origin";
 
 function cookieDomain(request: NextRequest) {
   const configured = process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN?.trim().replace(/^\./, "").toLowerCase();
   if (!configured) return undefined;
-  const hostname = request.nextUrl.hostname.toLowerCase();
+  const hostname = new URL(sitePublicOrigin(request)).hostname.toLowerCase();
   return hostname === configured || hostname.endsWith(`.${configured}`) ? `.${configured}` : undefined;
 }
 
@@ -19,7 +20,7 @@ function localeCookieOptions(request: NextRequest) {
     path: "/",
     maxAge: LOCALE_COOKIE_MAX_AGE_SECONDS,
     sameSite: "lax" as const,
-    secure: request.nextUrl.protocol === "https:",
+    secure: new URL(sitePublicOrigin(request)).protocol === "https:",
     domain: cookieDomain(request),
   };
 }
@@ -55,13 +56,14 @@ function safeLocalizedNext(request: NextRequest, requestedNext: string | null, l
   }
 
   try {
-    const target = new URL(requestedNext, request.nextUrl.origin);
-    const decodedTarget = new URL(decodedNext, request.nextUrl.origin);
+    const origin = sitePublicOrigin(request);
+    const target = new URL(requestedNext, origin);
+    const decodedTarget = new URL(decodedNext, origin);
     if (
-      target.origin !== request.nextUrl.origin
+      target.origin !== origin
       || target.username
       || target.password
-      || decodedTarget.origin !== request.nextUrl.origin
+      || decodedTarget.origin !== origin
       || /^\/(?:api|_next)(?:\/|$)/u.test(decodedTarget.pathname)
     ) {
       return localizePublicHref("/", locale);
@@ -75,12 +77,12 @@ function safeLocalizedNext(request: NextRequest, requestedNext: string | null, l
 export async function GET(request: NextRequest) {
   const locale = normalizeLocale(request.nextUrl.searchParams.get("locale"));
   if (!locale) {
-    return NextResponse.redirect(new URL("/", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/", sitePublicOrigin(request)));
   }
 
   const requestedNext = request.nextUrl.searchParams.get("next");
   const safeNext = safeLocalizedNext(request, requestedNext, locale);
-  const response = NextResponse.redirect(new URL(safeNext, request.nextUrl.origin));
+  const response = NextResponse.redirect(new URL(safeNext, sitePublicOrigin(request)));
   response.cookies.set(LOCALE_COOKIE_NAME, locale, localeCookieOptions(request));
   return response;
 }

@@ -44,7 +44,7 @@ export const frLibraryCatalog = {
     home: "Accueil",
     libraryName: "Bibliothèque de partitions du domaine public",
     breadcrumb: "Fil d’Ariane",
-    titleTemplate: "Partition de {title} | {site}",
+    titleTemplate: "{title} : partition | {site}",
     descriptionTemplate: "{description} Consultez l’instrumentation, la source, l’édition, les droits et les options de l’espace ScoreTransposer.",
     titleKeywordTemplate: "partition {title}",
     composerKeywordTemplate: "partitions {composer}",

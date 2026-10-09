@@ -95,7 +95,7 @@ test("server pages select one catalog, localize metadata and links, and sanitize
   for (const [page, source] of Object.entries(pageSources)) {
     assert.match(source, /getSupportLegalLocalization\(locale\)/u, page);
     assert.match(source, /getSupportLegalMedia\(/u, page);
-    assert.match(source, /keywords: \[\.\.\.copy\.metadata\.keywords\]/u, page);
+    assert.doesNotMatch(source, /\bkeywords\s*:/u, page);
     assert.match(source, /locale: localization\.openGraphLocale/u, page);
     assert.match(source, /media && mediaPresentation \? \{ images:/u, page);
     assert.match(source, /alt: mediaPresentation\.alt/u, page);

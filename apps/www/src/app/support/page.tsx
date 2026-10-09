@@ -21,7 +21,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: copy.metadata.title,
     description: copy.metadata.description,
-    keywords: [...copy.metadata.keywords],
     alternates: getLocalizedAlternates(canonicalPath, locale),
     openGraph: {
       title: copy.metadata.title,
@@ -80,9 +79,11 @@ export default async function SupportPage() {
         <SectionIntro eyebrow={copy.hero.eyebrow} title={copy.hero.title} body={copy.hero.body} titleAs="h1" largeBody />
         <div className="button-row">
           <a href="#support-form" className="public-button primary">{copy.hero.submitAction}</a>
+          <a href={`mailto:${siteConfig.supportEmail}`} className="public-button secondary">{copy.form.emailAction}</a>
           <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">{copy.hero.faqAction}</Link>
           {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{copy.hero.checkoutAction}</a> : null}
         </div>
+        <p className="helper-copy"><a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a></p>
       </Panel>
 
       <SupportRequestForm locale={locale} supportEmail={siteConfig.supportEmail} copy={copy.form} />
@@ -130,7 +131,7 @@ export default async function SupportPage() {
           <Link href={localizePublicHref("/faq", locale)} className="public-button secondary">{copy.final.faqAction}</Link>
           {siteConfig.release.checkoutAvailable ? <a href={checkoutUrl} className="public-button tertiary">{copy.final.checkoutAction}</a> : null}
         </div>
-        <p className="helper-copy">{siteConfig.supportEmail}</p>
+        <p className="helper-copy"><a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a></p>
       </Panel>
     </section>
   );

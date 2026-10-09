@@ -159,7 +159,7 @@ export function getWorkspacePreviewProductMedia(locale: SupportedLocale): Resolv
 }
 
 export function getHomepageCaseProductMedia(
-  slug: "pdf-score-scanner" | "transpose-score" | "score-to-audio",
+  slug: "sheet-music-scanner" | "transpose-score" | "score-to-audio",
   locale: SupportedLocale,
 ): ResolvedProductImage | null {
   return getFeatureProductMedia(slug, locale);
@@ -200,7 +200,7 @@ export function listPendingProductMediaOutputs() {
 }
 
 export function getHomepageProductMediaRequestSet(locale: SupportedLocale) {
-  const cases = (["pdf-score-scanner", "transpose-score", "score-to-audio"] as const)
+  const cases = (["sheet-music-scanner", "transpose-score", "score-to-audio"] as const)
     .flatMap((slug) => {
       const media = getHomepageCaseProductMedia(slug, locale);
       return media ? [media.src] : [];

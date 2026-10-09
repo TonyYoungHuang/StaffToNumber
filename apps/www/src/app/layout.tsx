@@ -5,6 +5,9 @@ import { SUPPORTED_LOCALES, getAnalyticsConsentMessages, getLocaleConfig } from 
 import "@score/ui/sonata.css";
 import "./public-site.css";
 import { PublicChrome } from "../components/PublicChrome";
+import { PurchaseFlowProvider } from "../components/PurchaseFlowProvider";
+import { getPurchaseFlowCopy } from "../lib/purchase-copy";
+import { getHomepageLocalization } from "../lib/homepage-localization";
 import { SiteLocaleProvider } from "../components/SiteLocaleProvider";
 import { ProductionAnalytics } from "../components/ProductionAnalytics";
 import { readSiteLocale } from "../lib/locale";
@@ -35,7 +38,6 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     applicationName: siteConfig.siteName,
-    keywords: [...catalog.keywords],
     alternates: getLocalizedAlternates("/", locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,
@@ -99,8 +101,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
         <SiteLocaleProvider locale={locale}>
+          <PurchaseFlowProvider locale={locale} auth={getHomepageLocalization(locale).workbench} copy={getPurchaseFlowCopy(locale)}>
           <PublicChrome announcement={announcement} copy={shellCopy}>{children}</PublicChrome>
           <ProductionAnalytics copy={analyticsCopy} />
+          </PurchaseFlowProvider>
         </SiteLocaleProvider>
       </body>
     </html>

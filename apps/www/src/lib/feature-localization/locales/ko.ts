@@ -50,7 +50,7 @@ export const koFeaturePages = {
     [["파서 출처 기록", "프로젝트가 MusicXML, 숫자보, MIDI 또는 스냅샷에서 왔는지 메타데이터에 보존합니다."], ["MIDI는 구조화 초안", "트랙, 템포, 박자표, 프로그램 힌트, 코드와 붙임줄을 가져오며 결과를 계속 교정할 수 있습니다."], ["MusicXML에서 PDF와 이미지로", "MuseScore 서비스 설정 시 고정 리비전에서 페이지 PDF와 고해상도 SVG/PNG를 렌더링합니다."]],
     "MIDI에서 복잡한 조판을 만들 때는 사람의 검토와 교정이 필요합니다.",
   ),
-  "pdf-score-scanner": defineFeatureTranslation(
+  "sheet-music-scanner": defineFeatureTranslation(
     "PDF·이미지 악보 스캐너", "교정을 포함한 OMR 가져오기", "PDF 또는 악보 이미지를 스캔해 편집 가능한 MusicXML 후보를 만들고 진단을 검토한 뒤 OMR 오류를 온라인에서 교정합니다.",
     ["악보 스캐너", "PDF 악보 스캔", "온라인 OMR", "스캔 MusicXML"], ["OMR 업로드", "Audiveris 워커", "MusicXML 출력", "진단 패널"],
     [["PDF 또는 이미지 업로드", "원본을 저장하고 악보 프로젝트에 연결된 OMR 가져오기 작업을 만듭니다."], ["Audiveris 인식 실행", "설정된 경우 MusicXML을 생성하고 편집 가능한 후보 리비전을 만듭니다."], ["후보 교정", "진단과 미리 보기를 확인하고 인식 오류를 고친 뒤 내보내기나 연습 자료 생성을 이어갑니다."]],

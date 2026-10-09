@@ -1,4 +1,5 @@
 import type { SupportedLocale } from "@score/i18n";
+import { homeOnPage } from "./home-on-page";
 
 export type SiteMetadataCopy = {
   title: string;
@@ -51,8 +52,8 @@ export type SiteLocaleCatalog = {
 const catalogs = {
   en: {
     metadata: {
-      title: "ScoreTransposer | Scan, Edit, Transpose & Export Sheet Music",
-      description: "Convert, correct, transpose, play, and export staff notation and Jianpu in a MusicXML-first online sheet music workspace.",
+      title: "Sheet Music Scanner & Transposer — Scan PDF to MusicXML Online | ScoreTransposer",
+      description: "Scan sheet music from a PDF or photo, fix OMR mistakes in the editor, transpose to any key, and export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
       keywords: ["sheet music scanner", "sheet music editor", "transpose sheet music", "PDF to MusicXML", "numbered notation converter"],
       openGraphLocale: "en_US",
       openGraphImageAlt: "ScoreTransposer rendered sheet-music workspace",
@@ -165,8 +166,8 @@ const catalogs = {
   },
   es: {
     metadata: {
-      title: "ScoreTransposer | Escanea, edita, transporta y exporta partituras",
-      description: "Reconoce, corrige, edita, transporta, reproduce y exporta partituras y notación numerada en un espacio de trabajo en línea centrado en MusicXML.",
+      title: "Escáner de partituras y transpositor — Escanea PDF a MusicXML en línea | ScoreTransposer",
+      description: "Escanea partituras desde un PDF o una foto, corrige errores de OMR en el editor, transpón a cualquier tonalidad y exporta MusicXML, MIDI, PDF o Jianpu. Un proyecto completo gratis, sin instalar nada.",
       keywords: ["escáner de partituras", "editor de partituras", "transportar partituras", "PDF a MusicXML", "conversor de notación numerada"],
       openGraphLocale: "es_ES",
       openGraphImageAlt: "Espacio de trabajo de partituras de ScoreTransposer",
@@ -223,5 +224,7 @@ const catalogs = {
 } as const satisfies Record<SupportedLocale, SiteLocaleCatalog>;
 
 export function getSiteLocaleCatalog(locale: SupportedLocale): SiteLocaleCatalog {
-  return catalogs[locale];
+  const catalog = catalogs[locale];
+  const onPage = homeOnPage[locale];
+  return onPage ? { ...catalog, metadata: { ...catalog.metadata, title: onPage.title, description: onPage.description } } : catalog;
 }

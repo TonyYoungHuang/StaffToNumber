@@ -29,7 +29,7 @@ const featureTargets = {
   "score-to-audio": { routeTemplate: scoreRoute, selector: "#playback-practice" },
   "audio-to-score": { routeTemplate: scoreRoute, selector: "#score-jobs" },
   "musicxml-midi": { routeTemplate: scoreRoute, selector: "#export-center" },
-  "pdf-score-scanner": { routeTemplate: scoreRoute, selector: "#omr-comparison" },
+  "sheet-music-scanner": { routeTemplate: scoreRoute, selector: "#omr-comparison" },
   "pdf-to-musicxml": { routeTemplate: scoreRoute, selector: "#score-json-model" },
   teaching: { routeTemplate: scoreRoute, selector: "#teaching-workflow" },
   pricing: { routeTemplate: "/billing", selector: ".page-shell" },

@@ -20,7 +20,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: copy.metadata.title,
     description: copy.metadata.description,
-    keywords: [...copy.metadata.keywords],
     alternates: getLocalizedAlternates(canonicalPath, locale),
     robots: {
       index: siteConfig.release.publicLaunchReady,

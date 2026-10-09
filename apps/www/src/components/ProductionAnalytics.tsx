@@ -22,7 +22,7 @@ const seoLandingPaths = new Set([
   "/score-editor",
   "/score-to-audio",
   "/musicxml-midi",
-  "/pdf-score-scanner",
+  "/sheet-music-scanner",
   "/pdf-to-musicxml",
   "/how-to-read-sheet-music",
   "/numbered-notation-converter",

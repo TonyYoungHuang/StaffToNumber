@@ -427,7 +427,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "zh-CN",
       "sourceLocale": "zh-CN",
       "capturedAt": "2026-08-29",
@@ -444,7 +444,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "zh-TW",
       "sourceLocale": "zh-TW",
       "capturedAt": "2026-08-29",
@@ -461,7 +461,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "ja",
       "sourceLocale": "ja",
       "capturedAt": "2026-08-29",
@@ -478,7 +478,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "ko",
       "sourceLocale": "ko",
       "capturedAt": "2026-08-29",
@@ -495,7 +495,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "fr",
       "sourceLocale": "fr",
       "capturedAt": "2026-08-29",
@@ -512,7 +512,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "es",
       "sourceLocale": "es",
       "capturedAt": "2026-08-29",
@@ -529,7 +529,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "de",
       "sourceLocale": "de",
       "capturedAt": "2026-08-29",
@@ -546,7 +546,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "ru",
       "sourceLocale": "ru",
       "capturedAt": "2026-08-29",
@@ -651,51 +651,51 @@
       "slot": "feature.teaching",
       "locale": "es",
       "sourceLocale": "es",
-      "capturedAt": "2026-08-29",
-      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
-      "sourceRevision": "working-tree-fdf39321a24ce281",
-      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "capturedAt": "2026-09-30",
+      "sourceRoute": "/scores/31a85d4f-efb0-406f-a400-614d73610495#teaching-workflow",
+      "sourceRevision": "enes-4d1ff73c390775fd",
+      "fixtureId": "31a85d4f-efb0-406f-a400-614d73610495",
       "captureMethod": "agent-browser",
       "image": {
         "src": "/product/localized/es/feature-teaching-real.png",
         "width": 1440,
         "height": 900,
-        "bytes": 85809,
-        "sha256": "5d913b0e744e1c750b1c1ba96b00848cae01276ca36c485f1ec62ed640e94522"
+        "bytes": 96094,
+        "sha256": "54237d1b90fba4e03a677c1eb297410e2e889f5c54a2c843ca982ddfa37a5697"
       }
     },
     {
       "slot": "feature.teaching",
       "locale": "de",
       "sourceLocale": "de",
-      "capturedAt": "2026-08-29",
-      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
-      "sourceRevision": "working-tree-fdf39321a24ce281",
-      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "capturedAt": "2026-09-30",
+      "sourceRoute": "/scores/31a85d4f-efb0-406f-a400-614d73610495#teaching-workflow",
+      "sourceRevision": "deru-4838374284033544",
+      "fixtureId": "31a85d4f-efb0-406f-a400-614d73610495",
       "captureMethod": "agent-browser",
       "image": {
         "src": "/product/localized/de/feature-teaching-real.png",
         "width": 1440,
         "height": 900,
-        "bytes": 90124,
-        "sha256": "a978ce1dc85ab82a3bedc4854d8a5ebdfc2b4c1b50e4c3d19e20e698d02ba79d"
+        "bytes": 98845,
+        "sha256": "21df3607887a5e5c529834f4197bbb43abc6ca4c1d0316df9cab6a92f1a4a7f3"
       }
     },
     {
       "slot": "feature.teaching",
       "locale": "ru",
       "sourceLocale": "ru",
-      "capturedAt": "2026-08-29",
-      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
-      "sourceRevision": "working-tree-fdf39321a24ce281",
-      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "capturedAt": "2026-09-30",
+      "sourceRoute": "/scores/31a85d4f-efb0-406f-a400-614d73610495#teaching-workflow",
+      "sourceRevision": "deru-4838374284033544",
+      "fixtureId": "31a85d4f-efb0-406f-a400-614d73610495",
       "captureMethod": "agent-browser",
       "image": {
         "src": "/product/localized/ru/feature-teaching-real.png",
         "width": 1440,
         "height": 900,
-        "bytes": 89120,
-        "sha256": "8bd53e6edecc415d5ec7a91920980b5d6d337d94ad9a49e90316fd92cab265f8"
+        "bytes": 98791,
+        "sha256": "9eee73fadda959fb6c7a671f602415ebfea6e17571a2e6c6aa367eb9783123a2"
       }
     },
     {
@@ -1518,48 +1518,48 @@
       "slot": "homepage-demo.score-to-audio",
       "locale": "de",
       "sourceLocale": "de",
-      "capturedAt": "2026-08-29",
-      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
-      "sourceRevision": "working-tree-fdf39321a24ce281",
-      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "capturedAt": "2026-09-30",
+      "sourceRoute": "/scores/31a85d4f-efb0-406f-a400-614d73610495#playback-practice",
+      "sourceRevision": "deru-4838374284033544",
+      "fixtureId": "31a85d4f-efb0-406f-a400-614d73610495",
       "captureMethod": "agent-browser",
       "poster": {
         "src": "/product/localized/de/demo-score-to-audio-poster.jpg",
         "height": 720,
         "width": 1280,
-        "bytes": 72053,
-        "sha256": "831f9aa98234b09c3ac85b85850c4e17582a541063f0b24242590321b0669dd3"
+        "bytes": 66391,
+        "sha256": "55eb11939bd837e43780e0c7738bc7be0acffc3b09e89e47ea0f027013543ba0"
       },
       "video": {
         "src": "/product/localized/de/demo-score-to-audio.webm",
-        "width": 1264,
-        "height": 570,
-        "bytes": 229634,
-        "sha256": "07920b3cdacf8f3b896d83e08954ec0c2c66ab65e744b6ba7c4bcba929121eaf"
+        "width": 1280,
+        "height": 720,
+        "bytes": 166662,
+        "sha256": "24458ef504c0b23a71b8dff2f5cd903ada7a282b6a163cc488759c6b03671788"
       }
     },
     {
       "slot": "homepage-demo.score-to-audio",
       "locale": "ru",
       "sourceLocale": "ru",
-      "capturedAt": "2026-08-29",
-      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#playback-practice",
-      "sourceRevision": "working-tree-fdf39321a24ce281",
-      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "capturedAt": "2026-09-30",
+      "sourceRoute": "/scores/31a85d4f-efb0-406f-a400-614d73610495#playback-practice",
+      "sourceRevision": "deru-4838374284033544",
+      "fixtureId": "31a85d4f-efb0-406f-a400-614d73610495",
       "captureMethod": "agent-browser",
       "poster": {
         "src": "/product/localized/ru/demo-score-to-audio-poster.jpg",
         "height": 720,
         "width": 1280,
-        "bytes": 73435,
-        "sha256": "b62f382fbe1db97cac511499b000c051e759879c4f24d4e81d494b20969172b4"
+        "bytes": 68356,
+        "sha256": "546ea07fb2b11b1a061ccd357a58998be6e512192dd4672d0984de24effb05cd"
       },
       "video": {
         "src": "/product/localized/ru/demo-score-to-audio.webm",
-        "width": 1264,
-        "height": 570,
-        "bytes": 340956,
-        "sha256": "145a77bfa965d1d736efef9f04a2cfac9b01ab2fffc300f2a7961c2ed1a4b1fb"
+        "width": 1280,
+        "height": 720,
+        "bytes": 136772,
+        "sha256": "7538a85a97ceca6932bdc2f796296ddbb4af920900b0c20d8e01a270708a6ab1"
       }
     },
     {
@@ -1699,7 +1699,7 @@
       }
     },
     {
-      "slot": "feature.pdf-score-scanner",
+      "slot": "feature.sheet-music-scanner",
       "locale": "en",
       "sourceLocale": "en",
       "capturedAt": "2026-08-29",
@@ -1770,17 +1770,17 @@
       "slot": "feature.teaching",
       "locale": "en",
       "sourceLocale": "en",
-      "capturedAt": "2026-08-29",
-      "sourceRoute": "/scores/95fae243-e9b9-4a6c-afb8-0e06cc88136a#teaching-workflow",
-      "sourceRevision": "working-tree-fdf39321a24ce281",
-      "fixtureId": "95fae243-e9b9-4a6c-afb8-0e06cc88136a",
+      "capturedAt": "2026-09-30",
+      "sourceRoute": "/scores/31a85d4f-efb0-406f-a400-614d73610495#teaching-workflow",
+      "sourceRevision": "enes-4d1ff73c390775fd",
+      "fixtureId": "31a85d4f-efb0-406f-a400-614d73610495",
       "captureMethod": "agent-browser",
       "image": {
         "src": "/product/localized/en/feature-teaching-real.png",
         "width": 1440,
         "height": 900,
-        "bytes": 90542,
-        "sha256": "45cceed175cecb8a0b26fecebb2c4ecacde266aa6dcbe271a009782e52a6ada0"
+        "bytes": 101393,
+        "sha256": "f46b54f727c675198cf5996fbf458e36f01863e2ea00c6917545a8ba9c3debb7"
       }
     },
     {

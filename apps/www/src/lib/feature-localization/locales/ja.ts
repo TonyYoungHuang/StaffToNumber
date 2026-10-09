@@ -50,7 +50,7 @@ export const jaFeaturePages = {
     [["パーサー由来を記録", "プロジェクトが MusicXML、数字譜、MIDI、スナップショットのどれから来たかを保存します。"], ["MIDI は構造化草稿", "トラック、テンポ、拍子、音色、コード、タイを取り込み、結果を編集できます。"], ["MusicXML から PDF・画像へ", "MuseScore サービス設定時、固定リビジョンからページ対応 PDF と高解像度 SVG／PNG を生成します。"]],
     "MIDI から複雑な浄書を作る場合は、人による確認と修正が必要です。",
   ),
-  "pdf-score-scanner": defineFeatureTranslation(
+  "sheet-music-scanner": defineFeatureTranslation(
     "PDF・画像対応の楽譜スキャナー", "修正を前提とした OMR 取り込み", "PDF または楽譜画像をスキャンして編集可能な MusicXML 候補を作り、診断を確認して OMR の誤りをオンラインで修正します。",
     ["楽譜スキャナー", "PDF 楽譜スキャン", "オンライン OMR", "スキャン MusicXML"], ["OMR アップロード", "Audiveris ワーカー", "MusicXML 出力", "診断パネル"],
     [["PDF または画像をアップロード", "ソースを保存し、楽譜プロジェクトに結び付いた OMR ジョブを作ります。"], ["Audiveris 認識を実行", "設定済みの場合、MusicXML を生成して編集可能な候補リビジョンを作ります。"], ["候補を修正", "診断とプレビューを確認し、認識ミスを直してから書き出しや練習素材作成へ進みます。"]],

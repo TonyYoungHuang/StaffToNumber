@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SUPPORTED_LOCALES, formatMessage, formatNumber, getLocaleConfig } from "@score/i18n";
+import { SUPPORTED_LOCALES, formatPlural, formatMessage, formatNumber, getLocaleConfig } from "@score/i18n";
 import { MetricCard, Panel, SectionIntro, StatusPill } from "@score/ui";
 import {
   LIBRARY_OPEN_GRAPH_LOCALES,
@@ -22,7 +22,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: metadata.title,
     description: metadata.description,
-    keywords: [...metadata.keywords],
     alternates: getLocalizedAlternates("/library", locale),
     openGraph: {
       title: metadata.title,
@@ -63,7 +62,9 @@ export default async function PublicScoreLibraryPage({ searchParams }: { searchP
   const facets = listPublicScoreFacets(locale);
   const workspaceUrl = getAppScoreProjectsUrl(locale);
   const htmlLang = getLocaleConfig(locale).htmlLang;
-  const resultCount = formatMessage(copy.resultTemplate, { count: formatNumber(scores.length, locale) });
+  const resultCount = locale === "en" || locale === "es"
+    ? formatPlural(locale, scores.length, locale === "en" ? { one: "{count} result", other: "{count} results" } : { one: "{count} resultado", other: "{count} resultados" })
+    : formatMessage(copy.resultTemplate, { count: formatNumber(scores.length, locale) });
   const structuredData = [
     {
       "@context": "https://schema.org",

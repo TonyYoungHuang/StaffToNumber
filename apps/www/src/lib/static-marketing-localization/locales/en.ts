@@ -45,7 +45,7 @@ export const enStaticMarketing = {
       steps: [
         ["A", "Before-purchase and payment questions", "Use support for access-path questions, activation-code clarification, payment-return issues, or scope confirmation before buying."],
         ["B", "After-purchase and file questions", "Use support for redemption issues, order verification, unexpected upload outcomes, or manual deletion requests."],
-        ["C", "What to include when you contact support", "An email address, activation code, payment screenshot, purchase time, or file name will make manual review faster."],
+        ["C", "What to include when you contact support", "Include your account email, order reference, purchase time and file name if relevant. Redact sensitive details in screenshots. Do not send passwords or complete activation codes."],
       ],
       operatorAriaLabel: "Public operator information",
       serviceBrandLabel: "Service brand",
@@ -64,7 +64,7 @@ export const enStaticMarketing = {
       pendingTitle: "Checkout opens after production transaction verification",
       availableStatus: "International checkout",
       pendingStatus: "Pending verification",
-      availableBody: "International visitors can use hosted checkout; after successful payment, the subscription is linked directly to the registered account.",
+      availableBody: "After payment is confirmed, the selected access is linked to the account you used before payment. One-time purchases do not renew automatically; subscriptions renew at the chosen interval until canceled. No activation code is needed for an online purchase.",
       pendingBody: "No payment is collected now. The entry point stays disabled until success, failure, refund, and entitlement paths are verified.",
       mainlandStatus: "Mainland-China codes",
       mainlandAvailableBody: "Mainland-China customers can use a verified distribution channel and redeem an activation code inside the app.",
@@ -134,7 +134,7 @@ export const enStaticMarketing = {
           },
           {
             question: "What do I receive after payment?",
-            availableAnswer: "After a successful payment, the system links the subscription directly to the registered account. No activation-code step is required.",
+            availableAnswer: "After payment is confirmed, the selected access is linked to the account you used before payment. One-time purchases do not renew automatically; subscriptions renew at the chosen interval until canceled. No activation code is needed for an online purchase.",
             pendingAnswer: "No payment is collected right now. Once checkout opens, order confirmation and account entitlement delivery will run automatically through the verified production flow.",
           },
         ],

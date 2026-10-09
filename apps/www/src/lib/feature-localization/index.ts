@@ -1,4 +1,5 @@
 import type { SupportedLocale } from "@score/i18n";
+import { getFeatureOnPageContent } from "../feature-on-page";
 import type { FeatureSeoRecord } from "../feature-seo";
 import type { PlatformFeaturePage } from "../platform-feature-pages";
 import {
@@ -10,6 +11,11 @@ import type { FeatureProductMediaSlug } from "../product-media";
 import { deFeaturePages } from "./locales/de";
 import { esFeaturePages } from "./locales/es";
 import { frFeaturePages } from "./locales/fr";
+import { frenchFeatureExamples } from "./french-examples";
+import { spanishFeatureExamples } from "./spanish-examples";
+import { enEsPricingCopy } from "../en-es-pricing";
+import { siteConfig } from "../site";
+import { deRuFeatureExamples } from "./de-ru-examples";
 import { jaFeaturePages } from "./locales/ja";
 import { koFeaturePages } from "./locales/ko";
 import { ruFeaturePages } from "./locales/ru";
@@ -44,7 +50,16 @@ export function getFeaturePageTranslationCatalog(locale: SupportedLocale): Featu
 export function localizeFeaturePage(page: PlatformFeaturePage, locale: SupportedLocale): PlatformFeaturePage {
   const catalog = getFeaturePageTranslationCatalog(locale);
   const translation = catalog?.[page.slug as FeatureTranslationSlug];
-  return translation ? { ...page, ...translation } : page;
+  const localized = { ...page, ...translation, ...getFeatureOnPageContent(page.slug, locale)?.page };
+  if (locale === "en" || locale === "es") {
+    if (page.slug === "pricing") return { ...localized, title: enEsPricingCopy[locale].title, description: enEsPricingCopy[locale].description };
+    if (!siteConfig.release.audioTranscriptionAvailable) {
+      const unavailable = locale === "en" ? "Audio and video import is not currently open to the public. Playback and audio export from structured scores remain available." : "La importación de audio y vídeo aún no está abierta al público. La reproducción y la exportación de audio desde partituras estructuradas siguen disponibles.";
+      if (page.slug === "audio-to-score") return { ...localized, description: unavailable, guardrail: unavailable };
+      if (page.slug === "score-to-audio") return { ...localized, guardrail: unavailable };
+    }
+  }
+  return localized;
 }
 
 export function localizeFeatureEvidence(
@@ -75,6 +90,9 @@ export function localizeFeatureEvidence(
     pendingMedia,
     example: {
       ...record.example,
+      ...(locale === "fr" ? frenchFeatureExamples[featureSlug as FeatureTranslationSlug] : {}),
+      ...(locale === "es" ? spanishFeatureExamples[featureSlug as FeatureTranslationSlug] : {}),
+      ...(locale === "de" || locale === "ru" ? deRuFeatureExamples[locale][featureSlug as FeatureTranslationSlug] : {}),
       notes: locale === "en" ? record.example.notes : ui.exampleNotes,
     },
   };

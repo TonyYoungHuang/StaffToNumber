@@ -92,7 +92,7 @@ test("suggestions preserve the page intent and related workflow links", () => {
 test("commercial keyword clusters have one intentional feature-page owner", () => {
   const expectedKeywords: Record<string, string[]> = {
     "score-editor": ["sheet music maker", "sheet music editor", "music score maker", "online music notation editor", "extract parts from score", "split score into parts", "collaborative sheet music editor", "collaborative music notation software"],
-    "pdf-score-scanner": ["sheet music scanner", "scan sheet music", "sheet music scanner online free"],
+    "sheet-music-scanner": ["sheet music scanner", "scan sheet music", "sheet music scanner online free"],
     "pdf-to-musicxml": ["pdf to musicxml", "pdf to musicxml converter", "image to musicxml"],
     "transpose-score": ["transpose sheet music", "transpose sheet music online", "change sheet music key"],
     "musicxml-midi": ["musicxml editor", "musicxml editor online", "edit musicxml", "sheet music to midi", "musicxml to midi", "midi to sheet music", "musicxml to pdf", "export sheet music to pdf", "sheet music svg", "sheet music png"],
@@ -205,7 +205,11 @@ test("feature-page catalogs cover the exact approved inventory in every translat
 
 test("every feature page has complete nine-locale content without changing route or product truth", () => {
   for (const page of platformFeaturePages) {
-    assert.strictEqual(localizeFeaturePage(page, "en"), page);
+    const english = localizeFeaturePage(page, "en");
+    assert.equal(english.slug, page.slug);
+    assert.equal(english.canonical, page.canonical);
+    assert.equal(english.releaseRequirement, page.releaseRequirement);
+    assert.ok(english.title.trim() && english.description.trim() && english.guardrail.trim());
 
     for (const locale of SUPPORTED_LOCALES.filter((item) => item !== "en")) {
       const localized = localizeFeaturePage(page, locale);
@@ -220,7 +224,8 @@ test("every feature page has complete nine-locale content without changing route
       assert.equal(localized.updatedAt, page.updatedAt);
       assert.equal(localized.modules.length, page.modules.length);
       assert.equal(localized.workflow.length, page.workflow.length);
-      assert.equal(localized.details.length, page.details.length);
+      // Editorial sections vary with the language and search intent; routes and capabilities remain invariant.
+      assert.ok(localized.details.length > 0, `${locale}/${page.slug} must explain its workflow and limits`);
       assert.ok(localized.modules.every((module) => module.trim().length > 0));
       assert.ok(localized.workflow.every((step) => step.title.trim() && step.body.trim()));
       assert.ok(localized.details.every((detail) => detail.title.trim() && detail.body.trim()));
@@ -280,21 +285,26 @@ test("localized feature evidence renders exact-locale media or an explicit pendi
         assert.ok(localized.pendingMedia?.body.trim());
         assert.ok(localized.pendingMedia?.ariaLabel.trim());
       }
-      assert.equal(localized.example.input, source.example.input);
-      assert.equal(localized.example.output, source.example.output);
+      if (locale === "fr" || locale === "de" || locale === "ru" || locale === "es") {
+        assert.notEqual(localized.example.input, source.example.input, `${slug} French example input`);
+        assert.notEqual(localized.example.output, source.example.output, `${slug} French example output`);
+        assert.doesNotMatch(`${localized.example.input} ${localized.example.output}`, /F-sharp|quarter note|Selected event|Classroom/u);
+      } else {
+        assert.equal(localized.example.input, source.example.input);
+        assert.equal(localized.example.output, source.example.output);
+      }
       if (locale !== "en") assert.notEqual(localized.example.notes, source.example.notes);
     }
   }
 });
 
-test("feature pages use the localized homepage pricing anchor and escape localized JSON-LD", () => {
+test("feature pages use the French pricing page or localized homepage anchor and escape localized JSON-LD", () => {
   const detailSource = fs.readFileSync(path.join(process.cwd(), "src", "app", "[featureSlug]", "page.tsx"), "utf8");
   const indexSource = fs.readFileSync(path.join(process.cwd(), "src", "app", "features", "page.tsx"), "utf8");
   const openGraphSource = fs.readFileSync(path.join(process.cwd(), "src", "app", "[featureSlug]", "opengraph-image.tsx"), "utf8");
   const escapedJsonLd = 'JSON.stringify(structuredData).replaceAll("<", "\\\\u003c")';
 
-  assert.ok(detailSource.includes('localizePublicHref("/#pricing", locale)'), "pricing CTA must use the real homepage section");
-  assert.equal(detailSource.includes('localizePublicHref("/pricing", locale)'), false, "pricing CTA must not target a missing route");
+  assert.ok(detailSource.includes('localizePublicHref(locale === "fr" ? "/pricing" : "/#pricing", locale)'), "French pricing CTA must reach the plan comparison");
   assert.ok(detailSource.includes('/opengraph-image/default'), "feature metadata must target the generated Open Graph image id");
   assert.ok(openGraphSource.includes('export const dynamic = "force-dynamic"'), "localized Open Graph images must be able to read the route locale header");
   assert.ok(detailSource.includes(escapedJsonLd), "feature detail JSON-LD must neutralize a translated < character");

@@ -4,6 +4,7 @@ import { isFeatureIndexable, platformFeaturePages } from "../lib/platform-featur
 import { getLocalizedAbsoluteUrl } from "../lib/locale-routing";
 import { publicContentLastUpdated, siteConfig } from "../lib/site";
 import { publicScoreLibrary } from "../lib/public-score-library";
+import { localizedContentLastUpdated } from "../lib/public-content-dates";
 
 function addLocalizedEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
   return entries.flatMap((entry) => {
@@ -18,7 +19,9 @@ function addLocalizedEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Site
       },
     };
 
-    return SUPPORTED_LOCALES.map((locale) => ({ ...entry, url: localizedUrls[locale], alternates }));
+    return SUPPORTED_LOCALES.map((locale) => ({ ...entry, url: localizedUrls[locale], alternates,
+      lastModified: localizedContentLastUpdated(pathname, locale, entry.lastModified),
+    }));
   });
 }
 

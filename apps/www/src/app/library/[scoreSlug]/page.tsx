@@ -27,7 +27,6 @@ export async function generateMetadata({ params }: { params: Promise<ScoreParams
 
   const catalog = getLibraryCatalog(locale);
   const title = getPublicScoreText(score.title, locale);
-  const composer = getPublicScoreText(score.composer, locale);
   const searchableTitle = formatMessage(catalog.detail.titleTemplate, { title, site: siteConfig.siteName });
   const metadataTitle = searchableTitle.length <= 60 ? searchableTitle : `${title} | ${siteConfig.siteName}`;
   const description = formatMessage(catalog.detail.descriptionTemplate, {
@@ -39,13 +38,6 @@ export async function generateMetadata({ params }: { params: Promise<ScoreParams
   return {
     title: metadataTitle,
     description,
-    keywords: [
-      title,
-      formatMessage(catalog.detail.titleKeywordTemplate, { title }),
-      composer,
-      formatMessage(catalog.detail.composerKeywordTemplate, { composer }),
-      catalog.detail.genericKeyword,
-    ],
     alternates: getLocalizedAlternates(`/library/${score.slug}`, locale),
     openGraph: {
       title: searchableTitle,

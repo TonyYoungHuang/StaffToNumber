@@ -1,0 +1,132 @@
+import type { FeatureOnPageContent } from "./feature-on-page";
+
+export const spanishFeatureOnPage: Record<string, FeatureOnPageContent> = {
+  "sheet-music-scanner": {
+    h1: "Escáner de partituras PDF e imágenes",
+    moduleTitle: "Escáner de partituras impresas",
+    workflowTitle: "Cómo escanear una partitura en PDF",
+    moduleDescriptions: [
+      "Sube un PDF completo o una foto en PNG, JPG, WebP o TIFF.",
+      "Reconoce las notas y el ritmo de la partitura impresa para poder editarlos.",
+      "Guarda un archivo MusicXML editable para otro programa de notación.",
+      "Compara el resultado con el original y corrige los errores antes de exportar.",
+    ],
+    faq: [
+      { question: "¿El escáner de partituras es gratis?", answer: "Una cuenta gratuita incluye un proyecto completo, que puede partir de un PDF de varias páginas o una imagen, y 25 créditos al mes. Puedes seguir editando, transponiendo y reproduciendo esa partitura. Las tareas del servidor sujetas a consumo utilizan créditos; para más proyectos o capacidad necesitas un plan de pago." },
+      { question: "¿Puede escanear partituras manuscritas?", answer: "El escáner está pensado para notación impresa. No admite de forma fiable la escritura a mano. Para una partitura manuscrita, introduce las notas como Jianpu estructurado o prepara un archivo MusicXML en un editor de notación." },
+      { question: "¿Funciona con fotos del móvil?", answer: "Sí, puedes subir imágenes en los formatos admitidos. Fotografía la página completa con luz uniforme, sin desenfoque y con la cámara paralela al papel. Revisa las notas reconocidas antes de utilizarlas." },
+      { question: "¿Cuánto tarda en escanear una página?", answer: "No hay un tiempo fijo por página. Depende de la calidad de la imagen, la complejidad musical, el número de páginas y la cola de tareas. Consulta el estado en la aplicación y espera a que termine antes de repetir el mismo escaneo." },
+      { question: "¿Puedo corregir errores después del escaneo?", answer: "Sí. Abre la partitura reconocida en el editor, compárala con el original y corrige alturas, duraciones, silencios y compases. Escucha el resultado antes de descargarlo." },
+    ],
+    nextSteps: [
+      { text: "Después del escaneo, usa el " }, { text: "editor de partituras", href: "/score-editor" },
+      { text: " para corregir notas, " }, { text: "transpón la partitura", href: "/transpose-score" },
+      { text: " para tu instrumento o " }, { text: "convierte la partitura a MIDI", href: "/musicxml-midi" },
+      { text: ". Para guardar notación editable, consulta la conversión de " }, { text: "PDF a MusicXML", href: "/pdf-to-musicxml" }, { text: "." },
+    ],
+  },
+  "pdf-to-musicxml": {
+    h1: "Conversor de PDF a MusicXML",
+    intro: "Usa el conversor de PDF a MusicXML para transformar una partitura PDF o una foto en notas editables. Corrige errores, transpón, escucha y exporta MusicXML. Pruébalo gratis, sin instalar nada.",
+    moduleTitle: "PDF a MusicXML con notas editables",
+    workflowTitle: "Cómo convertir un PDF a MusicXML",
+    moduleDescriptions: [
+      "Empieza con un PDF musical o una imagen nítida, incluidas páginas escaneadas.",
+      "Reconoce alturas y ritmos de la notación impresa.",
+      "Comprueba el original y corrige las notas y los compases.",
+      "Exporta la notación corregida a MusicXML para seguir editándola en otro programa.",
+    ],
+    faq: [
+      { question: "¿El conversor de PDF a MusicXML reconoce manuscritos?", answer: "No admite de forma fiable la escritura a mano. Usa partituras impresas y legibles. Si la fuente es manuscrita, introduce primero las notas en un editor o como Jianpu estructurado." },
+      { question: "¿Qué precisión tiene la importación de PDF?", answer: "Depende de la fuente. Las notas impresas y nítidas son más fáciles de reconocer que los escaneos tenues, los acordes densos o los símbolos poco habituales. No hay un porcentaje garantizado: comprueba alturas, ritmos y compases frente al PDF antes de exportar." },
+      { question: "¿Sirve un PDF creado con imágenes escaneadas?", answer: "Sí. El reconocimiento óptico de música puede procesar páginas escaneadas aunque no tengan texto seleccionable. También puedes subir PNG, JPG, WebP o TIFF directamente. Las líneas del pentagrama y las cabezas de las notas deben verse con claridad." },
+      { question: "¿Puedo abrir el MusicXML en otro editor?", answer: "Sí, descarga el archivo e impórtalo en un editor compatible con MusicXML. Revisa la maquetación y los símbolos poco habituales, ya que cada programa puede interpretarlos de manera diferente." },
+    ],
+    nextSteps: [
+      { text: "Tras el reconocimiento, corrige notas en el " }, { text: "editor de partituras", href: "/score-editor" },
+      { text: ", " }, { text: "cambia la tonalidad", href: "/transpose-score" },
+      { text: " y " }, { text: "exporta la partitura a MIDI", href: "/musicxml-midi" },
+      { text: ". Para preparar una foto, consulta el " }, { text: "escáner de partituras", href: "/sheet-music-scanner" }, { text: "." },
+    ],
+  },
+  "score-editor": {
+    h1: "Creador de partituras y editor de notación en línea",
+    intro: "Usa este creador de partituras para escribir notas con Jianpu estructurado o editar MusicXML, MIDI y escaneos. Corrige notas, extrae partes, transpón y exporta PDF o MIDI. Pruébalo gratis en tu navegador.",
+    moduleTitle: "Creador de partituras: herramientas de escritura y edición",
+    workflowTitle: "Cómo crear partituras en línea",
+    moduleDescriptions: [
+      "Comprueba alturas y ritmos en la vista de pentagrama.",
+      "Conserva los cambios guardados como versiones que puedes recuperar.",
+      "Selecciona, inserta o elimina notas y ajusta alturas, duraciones y compases.",
+      "Copia instrumentos existentes a una partitura de práctica independiente; función en Beta.",
+      "Vuelve a una versión anterior si un cambio no te convence.",
+      "Invita a otras personas con permiso de lectura o edición; colaboración en tiempo real en Beta.",
+    ],
+    faq: [
+      { question: "¿Necesito saber teoría musical para usarlo?", answer: "Puedes empezar en el creador de partituras importando una partitura y comparándola con el original. Conocer alturas, ritmos, armaduras y compases ayuda a escribir y corregir notas. Puedes escuchar los cambios, pero el editor no decide si tus elecciones musicales son correctas." },
+      { question: "¿Puedo editar un archivo MIDI importado?", answer: "Sí. Importa el MIDI, revisa la notación y cambia notas, silencios, duraciones y compases. El ritmo expresivo y las pistas superpuestas pueden producir una primera partitura difícil de leer; revísala antes de imprimir." },
+      { question: "¿Cómo extraigo solo la parte de violín?", answer: "Abre una partitura que tenga una parte de violín separada, selecciónala en la herramienta de copia de partes y crea una partitura independiente. La extracción está en Beta: copia partes existentes y no separa automáticamente instrumentos mezclados en una sola parte." },
+      { question: "¿Puedo crear una partitura sin subir un archivo?", answer: "Puedes escribir o pegar Jianpu estructurado con tonalidad, compás y duraciones, convertirlo a pentagrama y editar las notas. El flujo actual parte de notación escrita o de una partitura importada; el grabado libre completo y el control de maquetación siguen en desarrollo." },
+    ],
+    nextSteps: [
+      { text: "Si partes del papel, empieza con el " }, { text: "escáner de partituras", href: "/sheet-music-scanner" },
+      { text: " o el " }, { text: "conversor de PDF a MusicXML", href: "/pdf-to-musicxml" },
+      { text: ". Después de editar, " }, { text: "transpón la partitura", href: "/transpose-score" },
+      { text: " o " }, { text: "conviértela a MIDI", href: "/musicxml-midi" }, { text: " para el ensayo." },
+    ],
+  },
+  "musicxml-midi": {
+    h1: "Conversor de MIDI a partitura y de partitura a MIDI",
+    intro: "Convierte MIDI a partitura editable, corrige las notas, transpón y escucha el resultado antes de exportar PDF, MusicXML o MIDI. También puedes convertir una partitura a MIDI. Pruébalo gratis en tu navegador.",
+    moduleTitle: "MIDI a partitura y conversión de vuelta a MIDI",
+    workflowTitle: "Cómo convertir MIDI a partitura",
+    moduleDescriptions: [
+      "Importa MusicXML o MXL comprimido y guarda notación editable.",
+      "Convierte un archivo .mid o .midi en notas que puedes revisar y corregir.",
+      "Exporta las notas y su temporización desde la partitura editada a MIDI.",
+      "Crea un PDF para imprimir o una imagen SVG o PNG con las exportaciones disponibles.",
+      "Lee y escucha la partitura antes de elegir un formato de salida.",
+    ],
+    faq: [
+      { question: "¿La conversión de MIDI a partitura conserva tempo y dinámica?", answer: "La importación lee los datos de tiempo, tempo e interpretación compatibles, pero MIDI no representa todas las indicaciones impresas. Revisa tempo, ritmo, partes y dinámica: no todas las marcas se conservan sin cambios." },
+      { question: "¿El MIDI sonará igual que el original?", answer: "MIDI guarda eventos musicales, no sonido grabado. El instrumento o la biblioteca de sonidos que lo reproduce determina el timbre, por lo que no conserva el sonido exacto de una grabación. Revisa duraciones, tempo e instrumentos." },
+      { question: "¿Por qué aparecen demasiados silencios o ligaduras?", answer: "Una interpretación en directo suele tener pequeñas diferencias de tiempo y notas superpuestas. Al convertir esos eventos en notación pueden aparecer silencios o ligaduras poco prácticos. Revisa ritmos, voces y compases antes de exportar." },
+      { question: "¿Puedo convertir una partitura PDF a MIDI?", answer: "Sí. Escanea primero el PDF o la foto y corrige las notas reconocidas. Después exporta la partitura como MIDI. El PDF contiene la imagen o disposición de la página, por lo que necesita reconocimiento antes de convertirse en eventos MIDI." },
+      { question: "¿Puedo descargar la partitura en PDF?", answer: "Después de importar el MIDI y corregir la notación, elige PDF entre las exportaciones disponibles. Guarda también MusicXML si quieres seguir editando en otro programa de notación." },
+    ],
+    nextSteps: [
+      { text: "Para una partitura en papel, empieza por " }, { text: "PDF a MusicXML", href: "/pdf-to-musicxml" },
+      { text: ". Corrige la notación en el " }, { text: "editor de partituras", href: "/score-editor" },
+      { text: ", " }, { text: "cambia la tonalidad", href: "/transpose-score" },
+      { text: " o " }, { text: "convierte la partitura a audio", href: "/score-to-audio" }, { text: " para practicar." },
+    ],
+  },
+  "transpose-score": {
+    h1: "Transponer partituras en línea",
+    moduleTitle: "Transponer partituras por tonalidad, semitonos o instrumento",
+    workflowTitle: "Cómo transponer partituras en línea",
+    moduleDescriptions: [
+      "Sube o baja las notas el número de semitonos que necesites.",
+      "Elige la tonalidad adecuada para tu voz o conjunto.",
+      "Prepara partes escritas para instrumentos compatibles en si bemol, la, mi bemol o fa.",
+      "Comprueba las notas que quedan fuera del registro elegido.",
+    ],
+    faq: [
+      { question: "¿Puedo transponer partituras en PDF?", answer: "Sí. Escanea primero el PDF y corrige los errores de reconocimiento. Después elige una tonalidad o un cambio por semitonos. Las notas deben ser editables para poder cambiar su altura." },
+      { question: "¿Cómo paso una canción de do mayor a re mayor?", answer: "Abre la partitura editable y elige re mayor como tonalidad de destino, o súbela dos semitonos. Comprueba las alteraciones y el registro resultante y escucha antes de exportar." },
+      { question: "¿Puedo preparar una parte para un instrumento transpositor?", answer: "Hay perfiles para instrumentos compatibles en si bemol, la, mi bemol y fa. Antes de elegir uno, comprueba si la fuente está en tono de concierto o ya está transpuesta. Revisa después el registro escrito." },
+      { question: "¿La transposición sustituye la partitura original?", answer: "No. Se guarda como una versión nueva para poder comparar el resultado con el original y volver a una versión anterior." },
+    ],
+    nextSteps: [
+      { text: "Si partes de un PDF, usa primero el " }, { text: "escáner de partituras", href: "/sheet-music-scanner" },
+      { text: ". Corrige la notación en el " }, { text: "editor de partituras", href: "/score-editor" },
+      { text: " y " }, { text: "exporta la partitura transpuesta a MIDI", href: "/musicxml-midi" }, { text: " para escucharla en tu programa musical." },
+    ],
+  },
+  "staff-to-jianpu": {
+    h1: "Convertir pentagrama a Jianpu en línea",
+    moduleTitle: "Conversión de pentagrama a Jianpu",
+    workflowTitle: "Cómo convertir un pentagrama a Jianpu",
+    moduleDescriptions: ["Usa las notas de una partitura importada o corregida.", "Genera grados con marcas de octava y duración.", "Compara la notación numerada con el pentagrama.", "Descarga el texto Jianpu o sigue editando la partitura."],
+  },
+};
