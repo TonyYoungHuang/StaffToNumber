@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, type CheckoutPlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
+import { APP_ROUTES, getPurchaseOptionsCopy, type CheckoutBillingKind, type CheckoutPlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
 import { CreditPlanCard, CreditPlanGrid } from "@score/ui";
 import { trackFunnelEvent } from "../lib/analytics";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import type { BillingMessageCatalog } from "../lib/billing-messages/types";
 import { AppCheckoutClient } from "./AppCheckoutClient";
+import { useFlowMessages } from "../lib/flow-messages/client";
+import { workReturnPath } from "../lib/flow-return";
 import styles from "./AppCheckout.module.css";
 
 type CheckoutCopy = BillingMessageCatalog["checkout"];
@@ -18,17 +20,35 @@ export function CheckoutPlanSelector({
   locale,
   copy,
   initialPlanCode,
+  initialBillingKind = "subscription",
   authMessages,
+  returnTo = "/scores",
 }: {
+  returnTo?: string;
   plans: readonly PricingPlanDisplay[];
   locale: SupportedLocale;
   copy: CheckoutCopy;
   initialPlanCode?: CheckoutPlanCode;
+  initialBillingKind?: CheckoutBillingKind;
   authMessages: AuthMessageCatalog["form"];
 }) {
-  const defaultPlanCode = initialPlanCode ?? plans.find((plan) => plan.featured)?.code ?? plans[0]?.code;
+  // Prefer the plan from the URL; otherwise lowest-commitment paid plan (starter-monthly), never featured annual.
+  const defaultPlanCode = initialPlanCode
+    ?? plans.find((plan) => plan.code === "starter-monthly")?.code
+    ?? plans.find((plan) => plan.code !== "free")?.code
+    ?? plans[0]?.code;
   const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | undefined>(defaultPlanCode);
-  const selectedPlan = plans.find((plan) => plan.code === selectedPlanCode) ?? plans[0];
+  const [billingKind, setBillingKind] = useState<CheckoutBillingKind>(initialBillingKind);
+  const flow = useFlowMessages();
+  const purchaseCopy = getPurchaseOptionsCopy(locale);
+  const displayPlans = billingKind === "subscription" ? plans : plans.map(plan => {
+    if (plan.code === "free") return plan;
+    const duration = plan.code.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month;
+    return { ...plan, cycle: duration, badge: purchaseCopy.oneTime,
+      cta: formatMessage(purchaseCopy.buyTemplate, { name: plan.name, duration }),
+      resources: [...plan.resources.slice(0, 3), purchaseCopy.oneTimeNote] };
+  });
+  const selectedPlan = displayPlans.find((plan) => plan.code === selectedPlanCode) ?? displayPlans[0];
   const planListTracked = useRef(false);
 
   useEffect(() => {
@@ -45,14 +65,6 @@ export function CheckoutPlanSelector({
     });
   }, [plans]);
 
-  useEffect(() => {
-    if (!initialPlanCode) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById("checkout-action")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [initialPlanCode]);
-
   function selectPlan(plan: PricingPlanDisplay) {
     setSelectedPlanCode(plan.code);
     trackFunnelEvent("select_item", {
@@ -66,52 +78,50 @@ export function CheckoutPlanSelector({
     });
   }
 
-  function continueWithPlan(plan: PricingPlanDisplay) {
+  function choosePlan(code: string) {
+    const plan = displayPlans.find(item => item.code === code);
+    if (!plan) return;
+    selectPlan(plan);
     const url = new URL(window.location.href);
     url.searchParams.set("plan", plan.code);
+    url.searchParams.set("billing", billingKind);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    window.requestAnimationFrame(() => {
-      document.getElementById("checkout-action")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }
 
   if (!selectedPlan) return null;
 
   return (
     <>
+      <Link className="button button-secondary flow-return" href={workReturnPath(returnTo)}>{flow.resume}</Link>
       <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
-        <CreditPlanGrid selectable label={copy.selector.plansAria}>
-          {plans.map((plan) => {
-            const isSelected = plan.code === selectedPlan.code;
-            const actionLabel = isSelected && plan.code !== "free"
-              ? formatMessage(copy.selector.continueTemplate, { name: plan.name, cycle: plan.cycle })
-              : plan.cta;
-            return (
-              <CreditPlanCard
-                key={plan.code}
-                plan={plan}
-                labels={{
-                  creditUsage: copy.selector.creditUsage,
-                  includedCapabilities: copy.selector.includedCapabilities,
-                  benefitsAndResources: copy.selector.benefitsAndResources,
-                }}
-                selected={isSelected}
-                actionLabel={actionLabel}
-                control={<input
-                  className="score-plan-card__input"
-                  type="radio"
-                  name="checkout-plan"
-                  value={plan.code}
-                  checked={isSelected}
-                  onChange={() => selectPlan(plan)}
-                  onClick={() => continueWithPlan(plan)}
-                  aria-label={actionLabel}
-                  aria-controls="checkout-action"
-                />}
-              />
-            );
-          })}
-        </CreditPlanGrid>
+        <div className={styles.purchaseType}>
+          <div className="button-row" role="group" aria-label={purchaseCopy.label}>
+            {(["subscription", "one_time"] as const).map(kind => (
+              <button type="button" key={kind} aria-pressed={billingKind === kind}
+                className={`button ${billingKind === kind ? "button-primary" : "button-secondary"}`}
+                onClick={() => {
+                  setBillingKind(kind);
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("billing", kind);
+                  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
+                }}>{kind === "one_time" ? purchaseCopy.oneTime : purchaseCopy.subscription}</button>
+            ))}
+          </div>
+          <p className="body-copy">{billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
+          <Link href={`${APP_ROUTES.billing}#subscriptions`} className="button button-secondary">{purchaseCopy.manageHint}</Link>
+        </div>
+        <label className="field-group">
+          <span className="field-label">{copy.selector.selectedPlan}</span>
+          <select aria-label={copy.selector.selectedPlan} className="field-select" value={selectedPlan.code} onChange={event => choosePlan(event.target.value)}>
+            {displayPlans.map(plan => <option key={plan.code} value={plan.code}>{plan.name} · {plan.cycle} · {plan.price}</option>)}
+          </select>
+        </label>
+        <details className="flow-details">
+          <summary>{flow.planDetails}</summary>
+          <CreditPlanGrid label={copy.selector.plansAria}>
+            <CreditPlanCard plan={selectedPlan} labels={{ creditUsage: copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
+          </CreditPlanGrid>
+        </details>
 
         <div className={styles.selectedPlanBar} role="status" aria-live="polite">
           <span>{copy.selector.selectedPlan}</span>
@@ -131,13 +141,16 @@ export function CheckoutPlanSelector({
               <p className="body-copy large">{copy.selector.freeBody}</p>
             </div>
             <div className="button-row">
-              <Link href={`${APP_ROUTES.scores}/new/scan`} className="button button-primary">
+              <Link href={workReturnPath(returnTo)} className="button button-primary">
                 {copy.selector.freeCta}
               </Link>
             </div>
           </section>
         ) : (
           <AppCheckoutClient
+            key={billingKind}
+            returnTo={returnTo}
+            billingKind={billingKind}
             locale={locale}
             copy={copy.client}
             authMessages={authMessages}

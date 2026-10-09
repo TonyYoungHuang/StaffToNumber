@@ -2,7 +2,7 @@ import type { ScoreEntryMessages } from "../types";
 
 export const jaScoreEntryMessages = {
   pages: {
-    library: { eyebrow: "楽譜ワークスペース", title: "楽譜を認識、管理し、作業を続ける", body: "PDF や楽譜画像をアップロードして認識を始めるか、保存済みの楽譜を開いて編集を続けられます。アップロード、候補、ライブラリを 1 つのワークスペースで管理できます。" },
+    library: { eyebrow: "楽譜ワークスペース", title: "楽譜を認識、管理し、作業を続ける", body: "PDF や楽譜画像の構造を無料で確認します。無料プロジェクトが残っていれば、シンプル認識はワンタップで開始できます。保存済みの楽譜を開いて編集を続けることもできます。" },
     newScore: {
       eyebrow: "新しい楽譜を作成", title: "何から始めますか？", body: "入力元を 1 つ選んでください。次のページには、その方法に必要な手順だけが表示されます。", recommended: "おすすめ", choose: "選択",
       choices: {
@@ -17,7 +17,7 @@ export const jaScoreEntryMessages = {
     source: {
       chooseAnother: "別の入力元を選ぶ",
       headings: {
-        scan: { eyebrow: "新しい楽譜を作成", title: "PDF または楽譜画像をスキャン", body: "ファイルを 1 つ選んで認識を開始します。このページはスキャン専用です。" },
+        scan: { eyebrow: "新しい楽譜を作成", title: "PDF または楽譜画像をスキャン", body: "ファイルの構造を無料で確認します。無料プロジェクトが残っていれば、シンプル認識はワンタップで開始できます。" },
         jianpu: { eyebrow: "新しい楽譜を作成", title: "数字譜から五線譜を作成", body: "数字譜を入力して楽譜を作成します。このページは数字譜入力専用です。" },
         musicxml: { eyebrow: "新しい楽譜を作成", title: "楽譜作成ソフトから読み込む", body: "書き出した MusicXML を選択します。このページはファイル読み込み専用です。" },
         midi: { eyebrow: "新しい楽譜を作成", title: "MIDI から楽譜を作成", body: "MIDI ファイルを 1 つ選択します。このページは MIDI 読み込み専用です。" },

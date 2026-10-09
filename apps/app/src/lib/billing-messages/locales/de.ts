@@ -17,12 +17,12 @@ export const deBillingMessages = {
       body: "Die Produktivseite erstellt keine Testbestellungen und leitet nicht zu einem staging-Checkout weiter. Der Zugang öffnet nach der abschließenden Prüfung echter Zahlungen, Erstattungen und Verlängerungen.", continueFree: "Kostenlos weiterbearbeiten",
     },
     page: {
-      eyebrow: "Credit-Preise", title: "Credit-Tarif auswählen", body: "Jeder erfolgreiche, abrechenbare Vorgang verbraucht einen Credit. Vergleichen Sie Preis, Funktionen und Ressourcen vor der Anmeldung.",
+      eyebrow: "Credit-Preise", title: "Credit-Tarif auswählen", body: "Credits werden beim Erstellen eines Auftrags reserviert und bei einem Fehlschlag oder einer Stornierung automatisch zurückgegeben. Monatliche Credits werden zu Beginn jedes UTC-Kalendermonats zurückgesetzt und nicht übertragen.",
       promoLabel: "Mit jährlicher Zahlung sparen", promoValue: "Etwa 45 %–49 % sparen", planNote: "Monatliche Credits werden jeden Monat zurückgesetzt und nicht übertragen. Anzeigen, Wiedergabesteuerung und nicht übermittelte Grundbearbeitungen verbrauchen keine Credits.",
     },
     selector: {
       plansAria: "Credit-Tarif auswählen", selectedPlan: "Ausgewählter Tarif", continueTemplate: "Mit {name} {cycle} fortfahren", freeEyebrow: "Kostenlos",
-      freeTitle: "Erste vollständige Partitur kostenlos erstellen", freeBody: "Keine Zahlung und keine Karte erforderlich. Der kostenlose Tarif behält ein vollständiges Notenprojekt und stellt monatlich Credits bereit.", freeCta: "Kostenlose Partitur erstellen", creditUsage: "Credits werden nur bei Nutzung abgezogen", includedCapabilities: "Enthaltene Funktionen", benefitsAndResources: "Vorteile und Ressourcen",
+      freeTitle: "Erste vollständige Partitur kostenlos erstellen", freeBody: "Keine Zahlung und keine Karte erforderlich. Der kostenlose Tarif behält ein vollständiges Notenprojekt und stellt monatlich Credits bereit.", freeCta: "Kostenlose Partitur erstellen", creditUsage: "Credits pro Auftrag reserviert", includedCapabilities: "Enthaltene Funktionen", benefitsAndResources: "Vorteile und Ressourcen",
     },
     client: {
       checkoutEyebrow: "Zahlung", title: "Online bezahlen und Zugriff automatisch freischalten", body: "Nach erfolgreicher Zahlung wird der Zugriff im registrierten Konto automatisch aktiviert. Internationale Kunden müssen keinen Code manuell einlösen.",
@@ -49,7 +49,11 @@ export const deBillingMessages = {
     manager: {
       loading: "Abrechnungsdaten werden geladen...", fallbackError: "Abrechnungsdaten konnten nicht geladen werden. Versuchen Sie es erneut.", signIn: "Melden Sie sich an, um die Abrechnung zu sehen.",
       creditEyebrow: "Credit-Guthaben", availableCredits: "Diesen Monat verfügbare Credits", creditUnit: "Credits", creditSummaryTemplate: "{limit} Credits in diesem Monat, davon {used} verbraucht.", creditUsage: "Diesen Monat verwendete Credits", storage: "Dateispeicher",
-      quotaNote: "Jeder erfolgreiche, abrechenbare Vorgang verbraucht einen Credit. Credits werden monatlich zurückgesetzt und nicht übertragen.",
+      prepaidTitle: "Vorausbezahlte Credits",
+      prepaidSummaryTemplate: "{limit} vorausbezahlte Credits; {used} verwendet oder reserviert. Keine monatliche Zurücksetzung und kein Ablauf.",
+      prepaidNote: "Verarbeitung und Exportaufträge verbrauchen Credits. Bearbeitung, Transponieren und Wiedergabe nicht. Bei Fehlern oder Abbruch werden reservierte Credits freigegeben.",
+      additionalPrepaidTemplate: "Zusätzliche vorausbezahlte Credits: {remaining} / {total}. Sie werden bei unzureichenden monatlichen Credits verwendet. Ungenutzte Credits bleiben erhalten.",
+      quotaNote: "Credits werden beim Erstellen eines Auftrags reserviert und bei einem Fehlschlag oder einer Stornierung automatisch zurückgegeben. Monatliche Credits werden zu Beginn jedes UTC-Kalendermonats zurückgesetzt und nicht übertragen.",
       freeEyebrow: "Kostenloser Zugriffsstatus", noPaidTitle: "Kein aktiver Bezahl-Tarif", freeBody: "Ein kostenloses Konto behält ein dauerhaftes Projekt aus einem vollständigen mehrseitigen PDF oder Notenbild – mit Korrektur, Wiedergabe, Transposition, Jianpu, Teilen und Export; das kostenlose Kontingent beträgt {credits}.", unlock: "Vollzugriff freischalten",
       subscriptionsEyebrow: "Abonnements", subscriptionsTitle: "Zugriff und Verlängerungsstatus", manageStripe: "Stripe-Zahlungsmethode verwalten", managingStripe: "Stripe wird geöffnet...", noSubscriptions: "Mit diesem Konto sind keine Abonnements verknüpft.",
       currentPeriodEndsTemplate: "Aktueller Zeitraum endet am {date}", noFixedEnd: "Kein festes Enddatum", renewalFailed: "Die letzte Verlängerung ist fehlgeschlagen. Aktualisieren Sie die Zahlungsmethode.", cancellationScheduled: "Die Kündigung ist zum Ende dieses Zeitraums vorgemerkt.",
@@ -69,14 +73,14 @@ export const deBillingMessages = {
       "converter-pro-monthly": "Für mehr persönliche Notenverarbeitung pro Monat", "converter-pro-annual": "Für dauerhafte, häufige persönliche Notenverarbeitung",
     },
     ctas: { free: "Kostenlose Partitur erstellen", "starter-monthly": "Starter monatlich wählen", "starter-annual": "Starter jährlich wählen", "converter-pro-monthly": "Converter Pro monatlich wählen", "converter-pro-annual": "Converter Pro jährlich wählen" },
-    unitPriceTemplate: "{unitPrice} pro Credit", freeUnitPriceTemplate: "{projectCount} vollständiges Notenprojekt", creditsTemplate: "{monthlyCredits} Credits / Monat", freeCreditsTemplate: "{projectCount} vollständige Partitur · {monthlyCredits} Credits / Monat",
+    unitPriceTemplate: "{unitPrice} pro Credit", freeUnitPriceTemplate: "{projectCount} vollständiges Notenprojekt", creditsTemplate: "{monthlyCredits} Credits / Monat", freeCreditsTemplate: "{projectCount} kostenloses Scan-Projekt (lebenslang) · {monthlyCredits} Credits / Monat (Exporte & Werkzeuge)",
     benefits: {
       freeProject: "{projectCount} vollständiges Notenprojekt dauerhaft erstellen", moreThanFreeProject: "Mehr als das {projectCount} kostenlose Notenprojekt", starterIncluded: "Alle aktuellen Funktionen von Starter", starterMonthlyIncluded: "Alle aktuellen Funktionen von Starter monatlich", converterMonthlyIncluded: "Alle aktuellen Funktionen von Converter Pro monatlich",
       editor: "Online-Editor, Partiturstimmen-Kopierer Beta und Echtzeit-Zusammenarbeit Beta", practice: "Wiedergabe, Browseraufnahme und Übungsfeedback Beta sowie intelligente Transposition", conversion: "Notenschrift ↔ Jianpu und MusicXML ↔ MIDI",
       exports: "PDF/SVG/PNG- und WAV/MP3-Export, wenn der jeweilige Renderer verfügbar ist", freeExports: "Aktuell verfügbare Exporte und Projektwerkzeuge für die kostenlose Partitur nutzen",
     },
     resources: {
-      monthlyCredits: "{monthlyCredits} Credits pro Monat", monthlyCreditsReset: "{monthlyCredits} Credits monatlich, jeden Monat zurückgesetzt", storage: "{storage} GB Dateispeicher", personalLibrary: "Persönliche Bibliothek, Versionsverlauf und offener Notenkatalog",
+      monthlyCredits: "{monthlyCredits} Credits pro Monat", monthlyCreditsReset: "{monthlyCredits} Credits monatlich, jeden Monat zurückgesetzt", freeMonthlyCredits: "{monthlyCredits} Credits monatlich für Exporte und Werkzeuge, jeden Monat zurückgesetzt; neue Scans benötigen einen Einzelpartitur-Pass oder ein Abo", storage: "{storage} MB Dateispeicher", personalLibrary: "Persönliche Bibliothek, Versionsverlauf und offener Notenkatalog",
       monthlyRenewal: "Monatliche Verlängerung ohne lange Bindung", annualSavings: "{annualSavings} gegenüber zwölf Monatszahlungen sparen", freeLibrary: "Offene Notenbibliothek und CC0-Downloads", noCard: "Keine Karte erforderlich; kostenloses Projekt behalten",
     },
   },

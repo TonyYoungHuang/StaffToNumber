@@ -7,8 +7,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
-import { getStoredToken, setStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken, setStoredToken, setPreferredLoginMethod } from "../lib/auth-storage";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
+import { shopError } from "../lib/shop-activation";
+import { useAppLocale } from "./AppLocaleProvider";
 
 type AuthPayload = {
   token: string;
@@ -32,7 +34,7 @@ declare global {
           initialize(options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }): void;
           renderButton(
             parent: HTMLElement,
-            options: { theme: "outline"; size: "large"; shape: "rectangular"; text: "continue_with"; width: number },
+            options: { theme: "outline"; size: "large"; shape: "rectangular"; text: "continue_with"; width: number | string; locale: string },
           ): void;
         };
       };
@@ -41,35 +43,37 @@ declare global {
 }
 
 export function AuthForm({
-  mode,
+  mode: initialMode,
   redirectTo,
   onAuthenticated,
   messages,
+  emailOnly = false,
 }: {
   mode: "register" | "login";
   redirectTo?: string;
   onAuthenticated?: () => void;
   messages: AuthMessageCatalog["form"];
+  emailOnly?: boolean;
 }) {
   const router = useRouter();
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
+  const { locale } = useAppLocale();
+  const [mode, setMode] = useState(initialMode);
+  const googleClientId = emailOnly ? "" : process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
   const googleButtonRef = useRef<HTMLDivElement>(null);
-  const switchRoute = mode === "register" ? APP_ROUTES.login : APP_ROUTES.register;
-  const switchHref = redirectTo
-    ? `${switchRoute}?${new URLSearchParams({ next: redirectTo }).toString()}`
-    : switchRoute;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [googleButtonFailed, setGoogleButtonFailed] = useState(false);
   const sharedCopy = messages.shared;
   const copy = messages[mode];
 
   const statusTone = status ? statusKind : null;
 
   const completeAuthentication = useCallback((payload: AuthPayload, method: "email" | "google") => {
+    setPreferredLoginMethod(method);
     setStoredToken(payload.token);
     trackFunnelEvent(payload.isNewUser || mode === "register" ? "sign_up" : "login", { method });
     setStatus(payload.isNewUser || mode === "register" ? messages.register.success : messages.login.success);
@@ -80,22 +84,40 @@ export function AuthForm({
       return;
     }
     const nextRoute = redirectTo ?? WORKSPACE_ROUTE;
-    router.push(nextRoute);
-    router.refresh();
+    // Start with the new session and an exact URL, including the original tool
+    // anchor. Refreshing an in-flight App Router navigation can append it twice.
+    window.location.assign(nextRoute);
   }, [messages.login.success, messages.register.success, mode, onAuthenticated, redirectTo, router]);
 
   useEffect(() => {
-    if (onAuthenticated || !redirectTo || !getStoredToken()) {
-      return;
-    }
-    router.replace(redirectTo);
-    router.refresh();
+    const token = getStoredToken();
+    if (onAuthenticated || !token) return;
+    let active = true;
+    const controller = new AbortController();
+    void apiRequest<{ user: AuthPayload["user"] }>("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
+    }).then(result => {
+      if (!active || getStoredToken() !== token) return;
+      if (result.ok && result.data?.user?.id) {
+        window.location.replace(redirectTo ?? WORKSPACE_ROUTE);
+      } else if (!result.ok && result.status === 401) {
+        clearStoredToken();
+      }
+    });
+    return () => { active = false; controller.abort(); };
   }, [onAuthenticated, redirectTo, router]);
+
+  // If the GSI script was already loaded by a previous mount/navigation, onLoad will not fire again.
+  useEffect(() => {
+    if (!googleClientId) return;
+    if (window.google?.accounts?.id) setGoogleReady(true);
+  }, [googleClientId]);
 
   useEffect(() => {
     if (!googleClientId || !googleReady || !window.google || !googleButtonRef.current) return;
 
     const button = googleButtonRef.current;
+    setGoogleButtonFailed(false);
     button.replaceChildren();
     window.google.accounts.id.initialize({
       client_id: googleClientId,
@@ -122,14 +144,53 @@ export function AuthForm({
         });
       },
     });
-    window.google.accounts.id.renderButton(button, {
-      theme: "outline",
-      size: "large",
-      shape: "rectangular",
-      text: "continue_with",
-      width: 320,
+    let renderedWidth = 0;
+    const measureWidth = () => {
+      const direct = Math.floor(button.clientWidth);
+      if (direct > 0) return Math.min(400, direct);
+      const parent = Math.floor(button.parentElement?.clientWidth ?? 0);
+      if (parent > 0) return Math.min(400, parent);
+      // Modal / first-paint race: never skip renderButton solely because layout is briefly 0.
+      return 320;
+    };
+    const renderButton = () => {
+      if (!window.google) return;
+      const width = measureWidth();
+      if (width === renderedWidth) return;
+      renderedWidth = width;
+      button.replaceChildren();
+      window.google.accounts.id.renderButton(button, {
+        theme: "outline", size: "large", shape: "rectangular", text: "continue_with", width, locale: locale.replace("-", "_"),
+      });
+    };
+    const labelGoogleFrames = () => {
+      button.querySelectorAll("iframe").forEach(frame => { frame.title = sharedCopy.googleButtonRegionLabel; });
+    };
+    const frameObserver = new MutationObserver(labelGoogleFrames);
+    frameObserver.observe(button, { childList: true, subtree: true });
+    // Double rAF waits for dialog/layout width before the first GIS paint.
+    let frame2 = 0;
+    const frame1 = window.requestAnimationFrame(() => {
+      frame2 = window.requestAnimationFrame(renderButton);
     });
-  }, [completeAuthentication, googleClientId, googleReady, sharedCopy.googleFailed]);
+    labelGoogleFrames();
+    const observer = new ResizeObserver(renderButton);
+    observer.observe(button);
+    const failTimer = window.setTimeout(() => {
+      if (!button.querySelector("iframe")) {
+        setGoogleButtonFailed(true);
+        setStatus(sharedCopy.googleFailed);
+        setStatusKind("error");
+      }
+    }, 8000);
+    return () => {
+      window.cancelAnimationFrame(frame1);
+      window.cancelAnimationFrame(frame2);
+      window.clearTimeout(failTimer);
+      observer.disconnect();
+      frameObserver.disconnect();
+    };
+  }, [completeAuthentication, googleClientId, googleReady, sharedCopy.googleFailed, sharedCopy.googleButtonRegionLabel, locale]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,7 +206,7 @@ export function AuthForm({
     setSubmitting(false);
 
     if (!result.ok) {
-      setStatus(result.error);
+      setStatus(emailOnly ? shopError(result.error, result.status) : result.error);
       setStatusKind("error");
       return;
     }
@@ -168,14 +229,13 @@ export function AuthForm({
             strategy="afterInteractive"
             onLoad={() => setGoogleReady(true)}
             onReady={() => setGoogleReady(true)}
+            onError={() => { setGoogleButtonFailed(true); setStatus(sharedCopy.googleFailed); setStatusKind("error"); }}
           />
-          <div
-            ref={googleButtonRef}
-            className="google-auth-button"
-            role="group"
-            aria-label={sharedCopy.googleButtonRegionLabel}
-            aria-live="polite"
-          />
+          <section className="google-auth-panel" aria-label={sharedCopy.googleButtonRegionLabel}>
+            <strong className="google-auth-heading">{sharedCopy.googleButtonRegionLabel}</strong>
+            {!googleButtonFailed ? <div ref={googleButtonRef} className="google-auth-button" aria-live="polite" /> : null}
+            {googleButtonFailed ? <p className="helper-copy">{sharedCopy.googleFailed}</p> : null}
+          </section>
           <div className="auth-divider"><span>{sharedCopy.googleDivider}</span></div>
         </div>
       ) : null}
@@ -209,18 +269,18 @@ export function AuthForm({
           <button type="submit" disabled={submitting} className="button button-primary">
             {submitting ? sharedCopy.submitWaiting : copy.submit}
           </button>
-          <Link href={switchHref} className="button button-secondary">
+          <button type="button" disabled={submitting} onClick={() => { setMode(mode === "login" ? "register" : "login"); setStatus(null); }} className="button button-secondary">
             {copy.switch}
-          </Link>
+          </button>
         </div>
       </form>
 
       <p className="micro-copy">{copy.footnote}</p>
       {mode === "login" ? (
         <div className="button-row">
-          <Link href={APP_ROUTES.activate} className="button button-tertiary">
+          {!emailOnly ? <Link href={`${APP_ROUTES.activate}?${new URLSearchParams({ next: redirectTo ?? WORKSPACE_ROUTE })}`} className="button button-tertiary">
             {sharedCopy.redeem}
-          </Link>
+          </Link> : null}
           <Link href={APP_ROUTES.forgotPassword} className="button button-secondary">
             {sharedCopy.forgot}
           </Link>

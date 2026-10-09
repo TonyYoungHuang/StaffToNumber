@@ -1,0 +1,33 @@
+.modeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.modeCard { display: flex; flex-direction: column; align-items: flex-start; gap: .8rem; padding: 1.25rem; border: 1px solid var(--border, #d5dde7); border-radius: 1rem; background: var(--surface, #fff); min-width: 0; }
+.modeCard h3, .modeCard p { margin: 0; }
+.modeCard a { margin-top: auto; }
+.modeSelect { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 44px; margin-top: auto; box-sizing: border-box; }
+.modeSelect input { width: 1.1rem; height: 1.1rem; }
+.active { border-color: var(--primary, #3d73a8); box-shadow: 0 0 0 1px var(--primary, #3d73a8); }
+.price { font-size: 1.1rem; font-weight: 700; }
+.workspace { min-width: 0; display: grid; gap: 1.25rem; }
+.navigation { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 1rem; }
+.instruments { display: flex; flex-direction: column; gap: .5rem; }
+.instrument { text-align: left; display: flex; align-items: center; justify-content: space-between; gap: .5rem; white-space: normal; }
+.events { display: flex; flex-wrap: wrap; gap: .4rem; max-height: 15rem; overflow: auto; padding: .4rem; }
+.event { min-height: 44px; padding: .5rem .65rem; border: 1px solid var(--border, #d5dde7); border-radius: .5rem; background: var(--surface, #fff); color: inherit; cursor: pointer; }
+.event[aria-pressed="true"] { outline: 2px solid var(--primary, #3d73a8); outline-offset: 1px; }
+.status { padding: .75rem; border-radius: .6rem; background: var(--surface-alt, #f0f5fa); }
+.player { min-width: 0; overflow-x: auto; background: #fff; color: #172b42; border-radius: .6rem; }
+.playerInner { min-width: 260px; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; }
+.trackGrid { display: grid; gap: .5rem; }
+.track { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .5rem; border-bottom: 1px solid var(--border, #d5dde7); }
+.track strong { flex: 1 1 9rem; overflow-wrap: anywhere; }
+.track label { display: flex; align-items: center; gap: .35rem; }
+.selection { overflow-wrap: anywhere; font-size: .85rem; }
+.properties { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.properties label { min-width: 0; }
+.properties input, .properties select { width: 100%; }
+@media (max-width: 680px) {
+  .modeGrid, .navigation, .properties { grid-template-columns: minmax(0, 1fr); }
+  .instruments { flex-direction: row; flex-wrap: wrap; }
+  .instrument { flex: 1 1 8rem; }
+  .modeCard { padding: 1rem; }
+}

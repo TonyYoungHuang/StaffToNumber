@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { ScoreImportStatus } from "./ScoreImportStatus";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES, type ScoreJson } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { trackFunnelEvent, trackFunnelEventOnce } from "../lib/analytics";
+import { trackFunnelEventOnce } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
 import { buildSupportTemplates } from "../lib/support";
-import { accountActivationRoute } from "../lib/release";
 import {
   ScoreReviewMessagesProvider,
   type ScoreReviewMessages,
@@ -20,6 +20,7 @@ import type { ScoreEditorMessages } from "../lib/score-editor-messages/types";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
 import { ScoreCandidateReviewWorkspace } from "./ScoreCandidateReviewWorkspace";
+import { OneScorePassUpsell } from "./OneScorePassUpsell";
 
 type TrialRevision = {
   id: string;
@@ -46,6 +47,7 @@ type JobsPayload = {
     id: string;
     status: "queued" | "processing" | "completed" | "failed" | "cancelled";
     progressPercent: number;
+    params?: Record<string, unknown> | null; startedAt?: string | null; createdAt?: string; updatedAt?: string; queuePosition?: number | null;
     errorMessage: string | null;
   }>;
   omrDiagnostics: Array<{
@@ -59,6 +61,8 @@ type JobsPayload = {
 type AssetsPayload = {
   assets: Array<{
     assetKind: string;
+    isStale?: boolean;
+    revisionId?: string | null;
     file: { id: string; originalName: string; mimeType: string };
   }>;
 };
@@ -83,6 +87,7 @@ export function TrialScorePreview({
   const [assets, setAssets] = useState<AssetsPayload["assets"]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!scoreId) return;
@@ -98,7 +103,8 @@ export function TrialScorePreview({
     }
     setError(null);
     setScore(scoreResult.data.score);
-    const latestJob = jobsResult.ok ? jobsResult.data.jobs[0] ?? null : null;
+    if (!jobsResult.ok) { setError(jobsResult.error); return; }
+    const latestJob = jobsResult.data.jobs[0] ?? null;
     setJob(latestJob);
     setDiagnostics(jobsResult.ok ? jobsResult.data.omrDiagnostics : []);
     setAssets(assetsResult.ok ? assetsResult.data.assets : []);
@@ -121,10 +127,11 @@ export function TrialScorePreview({
   }, [refresh]);
 
   useEffect(() => {
-    if (!job || !["queued", "processing"].includes(job.status)) return;
-    const timer = window.setInterval(() => void refresh(), 4_000);
+    if (score?.pendingRevision || score?.currentRevision || (job && !["queued", "processing"].includes(job.status))) return;
+    let refreshing = false;
+    const timer = window.setInterval(() => { if (!refreshing) { refreshing = true; void refresh().finally(() => { refreshing = false; }); } }, 4_000);
     return () => window.clearInterval(timer);
-  }, [job, refresh]);
+  }, [job?.status, score?.pendingRevision, score?.currentRevision, refresh]);
 
   const scoreJson = score?.pendingRevision?.scoreJson ?? score?.currentRevision?.scoreJson ?? null;
   const latestDiagnostic = diagnostics[0] ?? null;
@@ -145,7 +152,11 @@ export function TrialScorePreview({
   }, [job?.status, scoreId, scoreJson]);
 
   const sourcePreviewAsset = assets.find((asset) => asset.assetKind === "source_pdf" || asset.assetKind === "source_image") ?? null;
-  const omrPageFiles = assets.filter((asset) => asset.assetKind === "omr_page_image").map((asset) => asset.file);
+  const reviewRevision = score?.pendingRevision ?? score?.currentRevision;
+  const omrPageFiles = assets.filter((asset) =>
+    asset.assetKind === "omr_page_image" && !asset.isStale &&
+    (!asset.revisionId || asset.revisionId === reviewRevision?.id),
+  ).map((asset) => asset.file);
 
   if (score?.pendingRevision?.scoreJson) {
     return (
@@ -181,6 +192,15 @@ export function TrialScorePreview({
     );
   }
 
+  if (!scoreJson) return <ScoreImportStatus title={score?.title ?? copy.loadingScore} locale={locale} job={job ?? undefined}
+    busy={retrying} error={error} onRefresh={() => void refresh()} onRetry={() => {
+      if (!scoreId || !job || retrying) return;
+      setRetrying(true); setError(null);
+      void apiRequest<{ job: JobsPayload["jobs"][number] }>(`/api/scores/${scoreId}/jobs/${job.id}/retry`, {
+        method: "POST", ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      }).then(result => { if (result.ok) setJob(result.data.job); else setError(result.error); }).finally(() => setRetrying(false));
+    }} />;
+
   return (
     <div className="page-stack">
       <section className="page-banner split">
@@ -193,15 +213,10 @@ export function TrialScorePreview({
           <span className={`status-chip ${job?.status === "failed" ? "tone-red" : job?.status === "completed" ? "tone-green" : "tone-amber"}`}>
             {jobLabel}
           </span>
+          {/* P5: One Score Pass primary, subscription secondary (zh: separate activation-code CTA). */}
+          <OneScorePassUpsell source="trial_score_preview" />
           <div className="button-row">
-            <Link
-              href={accountActivationRoute}
-              className="button button-primary"
-              onClick={() => trackFunnelEvent("upgrade_click", { source: "trial_score_preview" })}
-            >
-              {copy.unlock}
-            </Link>
-            <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-secondary">
+            <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-tertiary">
               {copy.back}
             </Link>
           </div>

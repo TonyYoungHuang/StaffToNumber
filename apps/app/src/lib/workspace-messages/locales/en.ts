@@ -39,7 +39,7 @@ export const enWorkspaceMessages = {
       routeValue: "Scan, edit, convert, transpose",
       routeBody: "MusicXML and Score JSON power notation, playback, practice, and multi-format export.",
       freeRouteValue: "One complete free project",
-      freeRouteBody: "The free project includes current project-level tools and 25 credits monthly. Upgrade for more credits.",
+      freeRouteBody: "The free project includes current project-level tools and 25 credits monthly for exports and tools. Scanning another score needs a One Score Pass (US$2.99) or a plan.",
     },
     statuses: { active: "Active", expired: "Expired", inactive: "Inactive" },
     profile: { eyebrow: "Profile", title: "Account overview", email: "Email", created: "Created" },

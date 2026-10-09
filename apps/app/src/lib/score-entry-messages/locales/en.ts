@@ -3,7 +3,7 @@ export const enScoreEntryMessages = {
     library: {
       eyebrow: "Score workspace",
       title: "Scan, manage, and keep working on your scores",
-      body: "Upload a PDF or score image right here, or open a saved score to continue editing. Uploads, candidates, and your library stay in one workspace.",
+      body: "Upload a PDF or score image for a free structure check, then start simple recognition in one tap when your free project is available. You can also open a saved score to continue editing.",
     },
     newScore: {
       eyebrow: "Create a new score",
@@ -26,7 +26,7 @@ export const enScoreEntryMessages = {
     source: {
       chooseAnother: "Choose another source",
       headings: {
-        scan: { eyebrow: "Create a new score", title: "Scan a PDF or score image", body: "Choose one file and start recognition. This page is only for scanning." },
+        scan: { eyebrow: "Create a new score", title: "Scan a PDF or score image", body: "Choose a file for a free structure check, then start simple recognition in one tap when your free project is available." },
         jianpu: { eyebrow: "Create a new score", title: "Create a staff score from numbered notation", body: "Enter your notation and create the score. This page is only for numbered notation." },
         musicxml: { eyebrow: "Create a new score", title: "Import from notation software", body: "Choose a MusicXML export. This page is only for file import." },
         midi: { eyebrow: "Create a new score", title: "Create a score from MIDI", body: "Choose one MIDI file. This page is only for MIDI import." },

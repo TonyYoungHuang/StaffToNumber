@@ -1,6 +1,7 @@
 import {
   formatMessage,
   formatNumber,
+  localizeUsdText,
   SUPPORTED_LOCALES,
   type SupportedLocale,
 } from "@score/i18n";
@@ -44,7 +45,7 @@ function sharedPlanFacts(plan: PricingPlanDisplay) {
   const resources = plan.resources.join(" ");
   return {
     monthlyCredits: requireCapture(plan.credits, /(\d+)\s+credits/iu, `${plan.code} monthly credits`),
-    storage: requireCapture(resources, /(\d+(?:\.\d+)?)\s+GB/iu, `${plan.code} storage`),
+    storage: requireCapture(resources, /(\d+(?:\.\d+)?)\s+MB/iu, `${plan.code} storage`),
     unitPrice: plan.code === "free" ? null : requireCapture(plan.unitPrice, /(\$\d+(?:\.\d+)?)/u, `${plan.code} unit price`),
     annualSavings: plan.code.endsWith("-annual")
       ? requireCapture(resources, /(\$\d+(?:\.\d+)?)/u, `${plan.code} annual savings`)
@@ -80,8 +81,8 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
       projectCount,
       monthlyCredits: formatNumber(Number(facts.monthlyCredits), locale),
       storage: formatNumber(Number(facts.storage), locale),
-      unitPrice: facts.unitPrice,
-      annualSavings: facts.annualSavings,
+      unitPrice: facts.unitPrice ? localizeUsdText(facts.unitPrice, locale) : null,
+      annualSavings: facts.annualSavings ? localizeUsdText(facts.annualSavings, locale) : null,
     };
     const message = (template: string) => formatMessage(template, values);
     const commonBenefits = [copy.benefits.editor, copy.benefits.practice, copy.benefits.conversion];
@@ -99,7 +100,7 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
           copy.benefits.exports,
         ];
     const resources = plan.code === "free"
-      ? [message(copy.resources.monthlyCreditsReset), message(copy.resources.storage), copy.resources.freeLibrary, copy.resources.noCard]
+      ? [message(copy.resources.freeMonthlyCredits), message(copy.resources.storage), copy.resources.freeLibrary, copy.resources.noCard]
       : plan.code.endsWith("-annual")
         ? [message(copy.resources.monthlyCreditsReset), message(copy.resources.storage), message(copy.resources.annualSavings), copy.resources.personalLibrary]
         : [message(copy.resources.monthlyCredits), message(copy.resources.storage), copy.resources.personalLibrary, copy.resources.monthlyRenewal];
@@ -109,7 +110,7 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
       badge: copy.badges[plan.code],
       name: copy.names[tierForPlan(plan.code)],
       cycle: copy.cycles[cycleForPlan(plan.code)],
-      price: plan.price,
+      price: localizeUsdText(plan.price, locale),
       unitPrice: message(plan.code === "free" ? copy.freeUnitPriceTemplate : copy.unitPriceTemplate),
       credits: message(plan.code === "free" ? copy.freeCreditsTemplate : copy.creditsTemplate),
       audience: copy.audiences[plan.code],

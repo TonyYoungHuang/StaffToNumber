@@ -17,12 +17,12 @@ export const jaBillingMessages = {
       body: "本番サイトではテスト注文を作成せず、staging の決済にも移動しません。実際の支払い、返金、定期購入の更新が最終確認を通過した後に、この入口を公開します。", continueFree: "無料編集を続ける",
     },
     page: {
-      eyebrow: "クレジット料金", title: "クレジットプランを選択", body: "課金対象となる操作が成功するたびに1クレジットを使用します。ログイン前に料金、機能、リソースを比較できます。",
+      eyebrow: "クレジット料金", title: "クレジットプランを選択", body: "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。ログイン前に料金、機能、リソースを比較できます。",
       promoLabel: "年払いでお得", promoValue: "約45%～49%お得", planNote: "月間クレジットは毎月リセットされ、未使用分は繰り越されません。閲覧、再生操作、未送信の基本編集ではクレジットを使いません。",
     },
     selector: {
       plansAria: "クレジットプランを選択", selectedPlan: "選択中のプラン", continueTemplate: "{name} {cycle}で続ける", freeEyebrow: "無料",
-      freeTitle: "最初の完全な楽譜を無料で作成", freeBody: "支払いもカードも不要です。無料プランでは完全な楽譜プロジェクトを1件保持し、毎月クレジットを受け取れます。", freeCta: "無料で楽譜を作成", creditUsage: "実際に使ったときだけクレジットを差し引き", includedCapabilities: "含まれる機能", benefitsAndResources: "特典とリソース",
+      freeTitle: "最初の完全な楽譜を無料で作成", freeBody: "支払いもカードも不要です。無料プランでは完全な楽譜プロジェクトを1件保持し、毎月クレジットを受け取れます。", freeCta: "無料で楽譜を作成", creditUsage: "タスク作成時にクレジットを予約", includedCapabilities: "含まれる機能", benefitsAndResources: "特典とリソース",
     },
     client: {
       checkoutEyebrow: "決済", title: "オンラインで支払い、アクセス権を自動有効化", body: "支払いが完了すると、登録アカウントのアクセス権が自動で有効になります。海外のお客様はコードを手動で利用する必要がありません。",
@@ -49,7 +49,11 @@ export const jaBillingMessages = {
     manager: {
       loading: "請求情報を読み込んでいます...", fallbackError: "請求情報を読み込めませんでした。もう一度お試しください。", signIn: "請求情報を見るにはログインしてください。",
       creditEyebrow: "クレジット残高", availableCredits: "今月利用できるクレジット", creditUnit: "クレジット", creditSummaryTemplate: "今月は {limit} クレジット、{used} 使用済みです。", creditUsage: "今月のクレジット使用量", storage: "ファイル保存容量",
-      quotaNote: "課金対象となる操作が成功するたびに1クレジットを使用します。クレジットは毎月リセットされ、繰り越されません。",
+      prepaidTitle: "前払いクレジット",
+      prepaidSummaryTemplate: "前払い {limit} クレジットのうち {used} を使用または予約済みです。毎月のリセットや有効期限はありません。",
+      prepaidNote: "処理と書き出しジョブにクレジットを使用します。編集、移調、再生には使用しません。失敗またはキャンセル時は予約分を返還します。",
+      additionalPrepaidTemplate: "追加の前払いクレジット：{remaining} / {total}。月間クレジットが不足する場合に使用し、未使用分は保持されます。",
+      quotaNote: "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。月間クレジットは毎月リセットされ、繰り越されません。",
       freeEyebrow: "無料利用状況", noPaidTitle: "有効な有料プランはありません", freeBody: "無料アカウントでは、完全な複数ページ PDF または楽譜画像から生涯利用できるプロジェクトを1件作成し、修正、再生、移調、数字譜、共有、書き出しを利用できます。無料枠は {credits} です。", unlock: "フルアクセスを有効化",
       subscriptionsEyebrow: "サブスクリプション", subscriptionsTitle: "アクセス権と更新状況", manageStripe: "Stripe の支払い方法を管理", managingStripe: "Stripe を開いています...", noSubscriptions: "このアカウントに紐付くサブスクリプションはありません。",
       currentPeriodEndsTemplate: "現在の期間は {date} まで", noFixedEnd: "期間終了日は設定されていません", renewalFailed: "直近の更新に失敗しました。支払い方法を更新してください。", cancellationScheduled: "現在の期間終了時に解約されます。",
@@ -69,14 +73,14 @@ export const jaBillingMessages = {
       "converter-pro-monthly": "毎月より多くの楽譜を処理する個人向け", "converter-pro-annual": "長期かつ高頻度で個人の楽譜を処理する方向け",
     },
     ctas: { free: "無料で楽譜を作成", "starter-monthly": "Starter 月払いを選択", "starter-annual": "Starter 年払いを選択", "converter-pro-monthly": "Converter Pro 月払いを選択", "converter-pro-annual": "Converter Pro 年払いを選択" },
-    unitPriceTemplate: "1クレジットあたり {unitPrice}", freeUnitPriceTemplate: "完全な楽譜プロジェクト {projectCount} 件", creditsTemplate: "月 {monthlyCredits} クレジット", freeCreditsTemplate: "完全な楽譜 {projectCount} 件 · 月 {monthlyCredits} クレジット",
+    unitPriceTemplate: "1クレジットあたり {unitPrice}", freeUnitPriceTemplate: "完全な楽譜プロジェクト {projectCount} 件", creditsTemplate: "月 {monthlyCredits} クレジット", freeCreditsTemplate: "生涯 {projectCount} 件の無料スキャン · 月 {monthlyCredits} クレジット（書き出し等）",
     benefits: {
       freeProject: "完全な楽譜プロジェクトを {projectCount} 件、生涯作成", moreThanFreeProject: "無料の楽譜プロジェクト {projectCount} 件という制限を解除", starterIncluded: "現在の Starter の全機能", starterMonthlyIncluded: "現在の Starter 月払いの全機能", converterMonthlyIncluded: "現在の Converter Pro 月払いの全機能",
       editor: "オンラインエディター、パート譜コピー作成 Beta、リアルタイム共同編集 Beta", practice: "再生、ブラウザー録音・練習フィードバック Beta、スマート移調", conversion: "五線譜 ↔ 数字譜、MusicXML ↔ MIDI 変換",
       exports: "対応するレンダラーが利用可能な場合の PDF／SVG／PNG と WAV／MP3 書き出し", freeExports: "無料楽譜で公開済みの書き出し機能とプロジェクト機能を利用",
     },
     resources: {
-      monthlyCredits: "毎月 {monthlyCredits} クレジット", monthlyCreditsReset: "毎月 {monthlyCredits} クレジット、月ごとにリセット", storage: "ファイル保存容量 {storage} GB", personalLibrary: "個人ライブラリ、改訂履歴、公開楽譜カタログ",
+      monthlyCredits: "毎月 {monthlyCredits} クレジット", monthlyCreditsReset: "毎月 {monthlyCredits} クレジット、月ごとにリセット", freeMonthlyCredits: "毎月 {monthlyCredits} クレジットは書き出しなどに使用・月ごとにリセット。新しいスキャンには1曲パスまたはプランが必要です", storage: "ファイル保存容量 {storage} MB", personalLibrary: "個人ライブラリ、改訂履歴、公開楽譜カタログ",
       monthlyRenewal: "長期契約なしの月次更新", annualSavings: "12回の月払いと比べて {annualSavings} お得", freeLibrary: "公開楽譜ライブラリと CC0 ダウンロード", noCard: "カード不要。無料プロジェクトを保持できます",
     },
   },

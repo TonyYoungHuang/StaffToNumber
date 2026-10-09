@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { ScoreOperationBoundary, useScoreActivity, useScoreNavigationLocked } from "./ScoreOperationBoundary";
+import { ScoreWorkspace, WorkspacePanel } from "./ScoreWorkspace";
+import { ScoreImportStatus } from "./ScoreImportStatus";
+import { useFlowMessages } from "../lib/flow-messages/client";
+import { currentWorkPath, upgradePath } from "../lib/flow-return";
+import { trackFunnelEvent } from "../lib/analytics";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatDateTime, formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
+import { formatDateTime, formatMessage, formatNumber, localizeApiError, type SupportedLocale } from "@score/i18n";
+import { pitchClassLabel, semitoneCount } from "../lib/music-labels";
 import { APP_ROUTES, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
 import type {
   AssignmentPracticeSettings,
@@ -22,7 +29,7 @@ import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
-import { ScoreOmrReviewPanel } from "./ScoreOmrReviewPanel";
+import { ScoreOmrReviewPanel, type ScoreSourceRegion } from "./ScoreOmrReviewPanel";
 import { PracticeRecorder } from "./PracticeRecorder";
 import { DEFAULT_PLAYBACK_PRACTICE_SETTINGS, ScorePlaybackPanel } from "./ScorePlaybackPanel";
 import { ScoreVisualEditorPanel, type ScoreEditorCollaborationMutation } from "./ScoreVisualEditorPanel";
@@ -35,6 +42,8 @@ import type { PracticePerformanceAnalysis } from "../lib/practice-performance-an
 import type { ScoreCollaborationOperation } from "../lib/score-collaboration-document";
 import type { ScoreDetailMessages } from "../lib/score-detail-messages/types";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
+import { ScoreEnsembleWorkspace } from "./ScoreEnsembleWorkspace";
+import { getEnsembleMessages } from "../lib/ensemble-messages";
 
 type ScoreRevision = {
   id: string;
@@ -398,12 +407,22 @@ const TRANSPOSE_INTERVAL_OPTIONS = [
   { id: "P8", label: "P8", semitones: 12, diatonicSteps: 7 },
 ] as const;
 
-export function ScoreDetailClient() {
+export function ScoreDetailClient({ ensemble = false }: { ensemble?: boolean }) {
+  const params = useParams();
+  return <ScoreOperationBoundary key={String(params.id)}><ScoreDetailContent ensemble={ensemble} /></ScoreOperationBoundary>;
+}
+
+function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const params = useParams();
   const scoreId = typeof params.id === "string" ? params.id : "";
   const token = useMemo(() => getStoredToken(), []);
   const performancePreviewUrlRef = useRef<Record<string, string>>({});
   const { locale } = useAppLocale();
+  const flow = useFlowMessages();
+  const [exportFormat, setExportFormat] = useState("pdf");
+  const navigationLocked = useScoreNavigationLocked();
+  const submitLockRef = useRef(false);
+  const [lastExportJobId, setLastExportJobId] = useState<string | null>(null);
   const [payload, setPayload] = useState<ScorePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -415,6 +434,7 @@ export function ScoreDetailClient() {
   const [jianpuAccidentalStrategy, setJianpuAccidentalStrategy] = useState<JianpuAccidentalStrategy>("preserve");
   const [generatedPreviewMusicXml, setGeneratedPreviewMusicXml] = useState<string | null>(null);
   const [selectedScoreEventId, setSelectedScoreEventId] = useState<string | null>(null);
+  const [focusedSourceRegion, setFocusedSourceRegion] = useState<ScoreSourceRegion | null>(null);
   const [pendingCollaborationOperations, setPendingCollaborationOperations] = useState<ScoreCollaborationOperation[]>([]);
   const [transposeSemitones, setTransposeSemitones] = useState(2);
   const [transposeMode, setTransposeMode] = useState<"semitones" | "interval" | "targetKey" | "instrument">("semitones");
@@ -711,17 +731,36 @@ export function ScoreDetailClient() {
     setExtractTitle((current) => current || `${scoreJson.title} - ${scoreJson.parts[0].name}`);
   }, [payload?.score.currentRevisionId]);
 
-  const hasActiveScoreJob = scoreJobs.some((job) => job.status === "queued" || job.status === "processing");
+  const requestingExport = exportingMidi || exportingJianpu || exportingScoreJson || exportingMusicXml || exportingPdf || exportingSvg || exportingPng || exportingWav || exportingMp3;
+  const updatingScore = Boolean(candidateAction || restoringRevisionId || applyingClefRecommendations || savingTransposePreset);
+  useScoreActivity(transposing || transposeSuggestionsLoading || updatingScore || requestingExport, false,
+    transposing ? flow.scoreOperations.transposing : transposeSuggestionsLoading ? flow.scoreOperations.suggesting : requestingExport ? flow.scoreOperations.preparingExport : flow.scoreOperations.updating);
+  const activeExportJobs = scoreJobs.filter(job => job.jobType === "render_export" && (job.status === "queued" || job.status === "processing"));
+  const isExportRunning = (format: string) => activeExportJobs.some(job => job.params?.format === format && job.params?.revisionId === payload?.score.currentRevisionId);
+  const selectedExportRunning = isExportRunning(exportFormat);
 
   useEffect(() => {
-    if (!token || !scoreId || !hasActiveScoreJob) {
+    const job = scoreJobs.find(item => item.id === lastExportJobId);
+    if (!job || job.status === "queued" || job.status === "processing") return;
+    setExportStatus(job.status === "failed" ? (locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? exportCopy.failed : job.errorMessage || exportCopy.failed) : `${String(job.params?.format ?? "").toUpperCase()} · ${omrCopy.statuses[job.status]}`);
+    setExportStatusKind(job.status === "completed" ? "success" : "error");
+    setLastExportJobId(null);
+  }, [scoreJobs, lastExportJobId, exportCopy.failed, omrCopy.statuses]);
+
+  const hasActiveScoreJob = scoreJobs.some((job) => job.status === "queued" || job.status === "processing");
+  const waitingForImportJob = Boolean(payload?.score && !payload.score.currentRevision && !payload.score.pendingRevision && scoreJobs.length === 0);
+
+  useEffect(() => {
+    if (!token || !scoreId || (!hasActiveScoreJob && !waitingForImportJob)) {
       return;
     }
 
     let cancelled = false;
+    let refreshing = false;
     const intervalId = window.setInterval(() => {
-      if (!cancelled) {
-        void refreshScoreWorkspace();
+      if (!cancelled && !refreshing) {
+        refreshing = true;
+        void refreshScoreJobs().finally(() => { refreshing = false; });
       }
     }, 5000);
 
@@ -729,7 +768,7 @@ export function ScoreDetailClient() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [hasActiveScoreJob, scoreId, token]);
+  }, [hasActiveScoreJob, waitingForImportJob, scoreId, token]);
 
   useEffect(() => {
     const previewRevision = payload?.score.pendingRevision ?? payload?.score.currentRevision;
@@ -776,10 +815,17 @@ export function ScoreDetailClient() {
   const musicxmlFileId = reviewRevision?.musicxmlFileId ?? null;
   const currentScoreJson = reviewRevision?.scoreJson;
   const sourcePreviewAsset = assets.find((asset) => asset.assetKind === "source_pdf" || asset.assetKind === "source_image") ?? null;
-  const omrPageFiles = assets.filter((asset) => asset.assetKind === "omr_page_image").map((asset) => asset.file);
+  const omrPageFiles = assets.filter((asset) =>
+    asset.assetKind === "omr_page_image" && !asset.isStale &&
+    (!asset.revisionId || asset.revisionId === reviewRevision?.id),
+  ).map((asset) => asset.file);
   const handleScoreEventSelect = useCallback((eventId: string) => {
     setSelectedScoreEventId(eventId);
   }, []);
+  const handleSourceRegionFocus = useCallback((region: ScoreSourceRegion) => {
+    setFocusedSourceRegion(region);
+    if (!score?.pendingRevisionId) window.location.hash = "omr-comparison";
+  }, [score?.pendingRevisionId]);
   const announceCollaborationMutation = useCallback((nextPayload: ScorePayload, mutation: ScoreEditorCollaborationMutation) => {
     const baseRevisionId = payload?.score.pendingRevisionId ?? payload?.score.currentRevisionId ?? null;
     const resultRevisionId = nextPayload.score.pendingRevisionId ?? nextPayload.score.currentRevisionId;
@@ -822,6 +868,19 @@ export function ScoreDetailClient() {
         </Link>
       </div>
     );
+  }
+
+  // The API deliberately omits revision data for projects outside the account's
+  // current access. A ready revision with redacted data is not a processing job.
+  if (reviewRevision && !currentScoreJson) {
+    return <section className="surface-panel stack-lg">
+      <h1 className="page-title">{score.title}</h1>
+      <h2 className="card-title">{flow.upgrade}</h2>
+      <div className="button-row">
+        <Link href={upgradePath(currentWorkPath())} className="button button-primary" onClick={() => trackFunnelEvent("upgrade_click", { source: "score_detail_locked" })}>{flow.upgrade}</Link>
+        <Link href={APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link>
+      </div>
+    </section>;
   }
 
   const revisions = payload.revisions;
@@ -923,8 +982,6 @@ export function ScoreDetailClient() {
     setJobsLoading(false);
 
     if (!result.ok) {
-      setScoreJobs([]);
-      setOmrDiagnostics([]);
       setJobsError(result.error);
       return;
     }
@@ -955,7 +1012,7 @@ export function ScoreDetailClient() {
       setJobsError(result.error);
       return;
     }
-    setScoreJobs((current) => current.map((item) => (item.id === result.data.job.id ? result.data.job : item)));
+    setScoreJobs((current) => [result.data.job, ...current.filter(item => item.id !== result.data.job.id)]);
   }
 
   async function refreshComments() {
@@ -1568,7 +1625,7 @@ export function ScoreDetailClient() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { error?: string } | null;
-        throw new Error(typeof payload?.error === "string" ? payload.error : assignmentCopy.performancePreviewFailed);
+        throw new Error(locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? localizeApiError({ error: payload?.error, status: response.status }, locale) : typeof payload?.error === "string" ? payload.error : assignmentCopy.performancePreviewFailed);
       }
 
       const blob = await response.blob();
@@ -1783,6 +1840,14 @@ export function ScoreDetailClient() {
 
   async function handleTranspose(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (navigationLocked || submitLockRef.current) return;
+
+    if (!score?.currentRevision || score.pendingRevision) {
+      const readiness = flow.scoreReadiness;
+      setTransposeStatus(score?.pendingRevision ? readiness.review : readiness.wait);
+      setTransposeStatusKind("error");
+      return;
+    }
 
     if (!token || !scoreId) {
       setTransposeStatus(transposeCopy.failed);
@@ -1790,7 +1855,9 @@ export function ScoreDetailClient() {
       return;
     }
 
+    submitLockRef.current = true;
     setTransposing(true);
+    try {
     setTransposeStatus(null);
     setTransposeStatusKind(null);
     setTransposeRangeDiagnostic(null);
@@ -1841,7 +1908,6 @@ export function ScoreDetailClient() {
       ),
     });
 
-    setTransposing(false);
     if (!result.ok) {
       setTransposeStatus(result.error);
       setTransposeStatusKind("error");
@@ -1860,16 +1926,27 @@ export function ScoreDetailClient() {
     setTransposeStatus(`${transposeCopy.success} (${result.data.transposeEngine === "music21" ? "music21" : "Score JSON"})`);
     setTransposeStatusKind("success");
     await refreshJianpu();
+    } catch {
+      setTransposeStatus(transposeCopy.failed); setTransposeStatusKind("error");
+    } finally { submitLockRef.current = false; setTransposing(false); }
   }
 
   async function handleLoadTransposeSuggestions() {
+    if (navigationLocked || submitLockRef.current) return;
+    if (!score?.currentRevision || score.pendingRevision) {
+      const readiness = flow.scoreReadiness;
+      setTransposeSuggestionsError(score?.pendingRevision ? readiness.review : readiness.wait);
+      return;
+    }
     const rangeAssignments = buildRangeAssignments(partRangeProfileIds);
     if (!token || !scoreId || (rangeProfileId === "none" && rangeAssignments.length === 0)) {
       setTransposeSuggestionsError(transposeRangeCopy.suggestionFailed);
       return;
     }
 
+    submitLockRef.current = true;
     setTransposeSuggestionsLoading(true);
+    try {
     setTransposeSuggestionsError(null);
     const result = await apiRequest<TransposeSuggestionsPayload>(`/api/scores/${scoreId}/transpose/suggestions`, {
       method: "POST",
@@ -1886,7 +1963,6 @@ export function ScoreDetailClient() {
         limit: 6,
       }),
     });
-    setTransposeSuggestionsLoading(false);
 
     if (!result.ok) {
       setTransposeSuggestionsError(result.error);
@@ -1894,6 +1970,8 @@ export function ScoreDetailClient() {
     }
 
     setTransposeSuggestions(result.data.suggestions);
+    } catch { setTransposeSuggestionsError(transposeRangeCopy.suggestionFailed); }
+    finally { submitLockRef.current = false; setTransposeSuggestionsLoading(false); }
   }
 
   function applyTransposeSuggestion(suggestion: TransposeRangeSuggestion) {
@@ -2059,12 +2137,15 @@ export function ScoreDetailClient() {
     setLoading: (loading: boolean) => void,
     failedMessage: string,
   ) {
+    if (navigationLocked || submitLockRef.current || activeExportJobs.some(job => job.params?.format === format && job.params?.revisionId === score?.currentRevisionId)) return;
     if (!token || !scoreId) {
       setExportStatus(failedMessage);
       setExportStatusKind("error");
       return;
     }
+    submitLockRef.current = true;
     setLoading(true);
+    try {
     setExportStatus(null);
     setExportStatusKind(null);
     const result = await apiRequest<ScoreExportQueuePayload>(`/api/scores/${scoreId}/exports`, {
@@ -2075,15 +2156,17 @@ export function ScoreDetailClient() {
       },
       body: JSON.stringify({ format, options }),
     });
-    setLoading(false);
     if (!result.ok) {
       setExportStatus(result.error);
       setExportStatusKind("error");
       return;
     }
+    setLastExportJobId(result.data.job.id);
     setScoreJobs((current) => [result.data.job, ...current.filter((job) => job.id !== result.data.job.id)]);
     setExportStatus(formatMessage(detailCopy.exports.queued, { format: format.toUpperCase() }));
     setExportStatusKind("success");
+    } catch { setExportStatus(failedMessage); setExportStatusKind("error"); }
+    finally { submitLockRef.current = false; setLoading(false); }
   }
 
   function practiceExportOptions(includeAudioQuality = false): ScoreExportOptions {
@@ -2116,6 +2199,7 @@ export function ScoreDetailClient() {
   }
 
   async function handleExportJianpu() {
+    if (navigationLocked || requestingExport) return;
     if (!token || !scoreId) {
       setExportStatus(jianpuExportCopy.failed);
       setExportStatusKind("error");
@@ -2151,6 +2235,7 @@ export function ScoreDetailClient() {
   }
 
   async function handleExportScoreJson() {
+    if (navigationLocked || requestingExport) return;
     if (!token || !scoreId) {
       setExportStatus(scoreJsonExportCopy.failed);
       setExportStatusKind("error");
@@ -2229,7 +2314,7 @@ export function ScoreDetailClient() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { error?: string } | null;
-      setDownloadError(payload?.error ?? copy.downloadFailed);
+      setDownloadError(locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? localizeApiError({ error: payload?.error, status: response.status }, locale) : payload?.error ?? copy.downloadFailed);
       return;
     }
 
@@ -2242,7 +2327,7 @@ export function ScoreDetailClient() {
     window.URL.revokeObjectURL(url);
   }
 
-  async function handleCandidateDecision(action: "accept" | "reject") {
+  async function handleCandidateDecision(action: "accept" | "reject", coverageReviewed?: boolean) {
     const pendingRevisionId = score?.pendingRevisionId;
     if (!token || !scoreId || !pendingRevisionId) {
       setCandidateActionError(detailCopy.candidateMissing);
@@ -2257,7 +2342,7 @@ export function ScoreDetailClient() {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ pendingRevisionId }),
+      body: JSON.stringify({ pendingRevisionId, ...(coverageReviewed === true ? { coverageReviewed: true } : {}) }),
     });
     setCandidateAction(null);
 
@@ -2280,6 +2365,8 @@ export function ScoreDetailClient() {
 
   if (score.pendingRevision) {
     return (
+      <div className="page-stack">
+      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} fileId={score.pendingRevision.musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={`/scores/${encodeURIComponent(score.id)}/ensemble`} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link>}
       <ScoreCandidateReviewWorkspace
         title={score.title}
         scoreId={score.id}
@@ -2291,7 +2378,7 @@ export function ScoreDetailClient() {
         generatedMusicXml={generatedPreviewMusicXml}
         selectedEventId={selectedScoreEventId}
         onEventSelect={handleScoreEventSelect}
-        onAccept={() => void handleCandidateDecision("accept")}
+        onAccept={(coverageReviewed) => void handleCandidateDecision("accept", coverageReviewed)}
         onReject={() => void handleCandidateDecision("reject")}
         submittingAction={candidateAction}
         actionError={candidateActionError}
@@ -2303,100 +2390,499 @@ export function ScoreDetailClient() {
         restoring={Boolean(restoringRevisionId)}
         revisionStatus={revisionStatus}
         revisionStatusKind={revisionStatusKind}
+        focusedSourceRegion={focusedSourceRegion}
       />
+      </div>
     );
   }
 
+  if (!score.currentRevision) {
+    const importJob = scoreJobs.find((job) => job.jobType === "omr_import" || job.jobType === "audio_transcribe");
+    return <ScoreImportStatus title={score.title} locale={locale} job={importJob}
+      busy={jobsLoading || Boolean(jobActionId)} error={jobsError}
+      onRetry={() => { if (importJob) void handleScoreJobAction(importJob, "retry"); }}
+      onRefresh={() => void refreshScoreWorkspace()} />;
+  }
+
   return (
-    <div className="page-stack">
-      <div className="page-banner split">
-        <div className="stack-md">
-          <p className="eyebrow">{copy.status}: {detailCopy.status.score[score.status]}</p>
-          <h1 className="page-title">{score.title}</h1>
-          <p className="body-copy large">
-            {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)} | {formatDateTime(score.updatedAt, locale)}
-          </p>
-        </div>
-        <div className="page-banner-actions">
-          <Link href={APP_ROUTES.scores} className="button button-secondary">
-            {copy.back}
-          </Link>
-          <button type="button" className="button button-primary" onClick={() => void handleExportMusicXml()} disabled={exportingMusicXml || !currentScoreJson}>
-            {exportingMusicXml ? musicXmlExportCopy.exporting : musicXmlExportCopy.button}
-          </button>
-          <button type="button" className="button button-secondary" onClick={() => void handleExportScoreJson()} disabled={exportingScoreJson || !currentScoreJson}>
-            {exportingScoreJson ? scoreJsonExportCopy.exporting : scoreJsonExportCopy.button}
-          </button>
-          <button type="button" className="button button-primary" onClick={() => void handleExportJianpu()} disabled={exportingJianpu || !currentScoreJson}>
-            {exportingJianpu ? jianpuExportCopy.exporting : jianpuExportCopy.button}
-          </button>
-          <button type="button" className="button button-primary" onClick={() => void handleExportPdf()} disabled={exportingPdf || !currentScoreJson}>
-            {exportingPdf ? pdfExportCopy.exporting : pdfExportCopy.button}
-          </button>
-          <button type="button" className="button button-secondary" onClick={() => void handleExportRenderedImage("svg")} disabled={exportingSvg || !currentScoreJson}>
-            {exportingSvg ? renderedImageExportCopy.exportingSvg : renderedImageExportCopy.svg}
-          </button>
-          <button type="button" className="button button-secondary" onClick={() => void handleExportRenderedImage("png")} disabled={exportingPng || !currentScoreJson}>
-            {exportingPng ? renderedImageExportCopy.exportingPng : renderedImageExportCopy.png}
-          </button>
-          <button type="button" className="button button-primary" onClick={() => void handleExportMidi()} disabled={exportingMidi}>
-            {exportingMidi ? exportCopy.exporting : exportCopy.button}
-          </button>
-          <button type="button" className="button button-primary" onClick={() => void handleExportWav()} disabled={exportingWav || !currentScoreJson}>
-            {exportingWav ? wavExportCopy.exporting : wavExportCopy.button}
-          </button>
-          <button type="button" className="button button-primary" onClick={() => void handleExportMp3()} disabled={exportingMp3 || !currentScoreJson}>
-            {exportingMp3 ? mp3ExportCopy.exporting : mp3ExportCopy.button}
-          </button>
-        </div>
-      </div>
-
-      {downloadError ? <p className="form-status error">{downloadError}</p> : null}
-      {exportStatus && exportStatusKind ? <p className={`form-status ${exportStatusKind}`}>{exportStatus}</p> : null}
-
-      {currentScoreJson && currentScoreJson.parts.length > 0 ? (
+    <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={`/scores/${encodeURIComponent(score.id)}/ensemble`} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link> : null}<Link href={APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
+{downloadError ? <p className="form-status error">{downloadError}</p> : null}
+<WorkspacePanel name="edit">{currentScoreJson ? (
+        <>
+          {ensemble && reviewRevision ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={currentScoreJson} fileId={musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={reviewRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview onSourceRegionFocus={handleSourceRegionFocus} /> : null}
+          <div id="visual-editor">
+            <ScoreVisualEditorPanel
+              scoreId={score.id}
+              token={token}
+              scoreJson={currentScoreJson}
+              baseRevisionId={score.pendingRevisionId ? null : score.currentRevisionId}
+              selectedEventId={selectedScoreEventId}
+              onSelectedEventChange={handleScoreEventSelect}
+              onUpdated={async (nextPayload, mutation) => {
+                announceCollaborationMutation(nextPayload, mutation);
+                setPayload(nextPayload);
+                await refreshJianpu();
+              }}
+              onReload={async (latestPayload) => {
+                setPayload(latestPayload);
+                await refreshJianpu();
+              }}
+            />
+          </div>
+          <details id="correction-editor" className="flow-details"><summary>{flow.advanced}</summary>
+            <ScoreCorrectionPanel
+              scoreId={score.id}
+              token={token}
+              scoreJson={currentScoreJson}
+              onUpdated={async (nextPayload) => {
+                setPayload(nextPayload);
+                await refreshJianpu();
+              }}
+            />
+          </details>
+        </>
+      ) : (
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">{partExtractCopy.eyebrow}</p>
-            <h2 className="card-title">{partExtractCopy.title}</h2>
-            <p className="body-copy">{partExtractCopy.body}</p>
+            <p className="eyebrow">{detailCopy.emptyStates.correctionEyebrow}</p>
+            <h2 className="card-title">{detailCopy.emptyStates.correctionTitle}</h2>
+            <p className="body-copy">{detailCopy.emptyStates.correctionBody}</p>
           </div>
-          <form className="form-grid" onSubmit={handleExtractParts}>
-            <label className="field-group wide">
-              <span>{partExtractCopy.titleLabel}</span>
-              <input className="field-control" type="text" maxLength={160} value={extractTitle} onChange={(event) => setExtractTitle(event.target.value)} />
+        </section>
+      )}</WorkspacePanel>
+<WorkspacePanel name="jianpu"><section id="jianpu-preview" className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">{jianpuCopy.eyebrow}</p>
+          <h2 className="card-title">{jianpuCopy.title}</h2>
+          <p className="body-copy">{jianpuCopy.body}</p>
+        </div>
+        <div className="form-grid">
+          <label className="field-group">
+            <span>{jianpuCopy.pitchSystem}</span>
+            <select className="field-select" value={jianpuPitchSystem} onChange={(event) => setJianpuPitchSystem(event.target.value as JianpuPitchSystem)}>
+              <option value="movable-do">{jianpuCopy.movableDo}</option>
+              <option value="fixed-do">{jianpuCopy.fixedDo}</option>
+            </select>
+          </label>
+          <label className="field-group">
+            <span>{jianpuCopy.accidentals}</span>
+            <select className="field-select" value={jianpuAccidentalStrategy} onChange={(event) => setJianpuAccidentalStrategy(event.target.value as JianpuAccidentalStrategy)}>
+              <option value="preserve">{jianpuCopy.preserve}</option>
+              <option value="prefer-sharps">{jianpuCopy.preferSharps}</option>
+              <option value="prefer-flats">{jianpuCopy.preferFlats}</option>
+            </select>
+          </label>
+          <div className="button-row field-group">
+            <button type="button" className="button button-secondary" onClick={() => void refreshJianpu()} disabled={jianpuLoading}>
+              {jianpuCopy.apply}
+            </button>
+          </div>
+        </div>
+        {jianpuLoading ? <div className="empty-state">{jianpuCopy.loading}</div> : null}
+        {jianpuError ? <p className="form-status error">{jianpuError}</p> : null}
+        {!jianpuLoading && !jianpuError && !jianpu ? <div className="empty-state">{jianpuCopy.empty}</div> : null}
+        {jianpu ? (
+          <div className="jianpu-preview">
+            <div className="jianpu-meta">
+              <span>{jianpuCopy.key}: 1={jianpu.key.tonic} ({transposeTargetCopy[jianpu.key.mode]})</span>
+              <span>{jianpuCopy.source}: {jianpu.metadata.sourceRevisionParser}</span>
+            </div>
+            {jianpu.metadata.warnings.length > 0 ? (
+              <div className="stack-xs" role="status">
+                <p className="metric-label">{jianpuCopy.warnings}</p>
+                {jianpu.metadata.warnings.map((warning, index) => (
+                  <p key={`${index}:${warning}`} className="helper-copy">{warning}</p>
+                ))}
+              </div>
+            ) : null}
+            <JianpuNotationView
+              document={jianpu}
+              selectedEventId={selectedScoreEventId}
+              onEventSelect={handleScoreEventSelect}
+              locale={locale}
+            />
+            <details className="jianpu-source-details">
+              <summary>{jianpuCopy.sourceText}</summary>
+              <pre className="jianpu-block">{jianpu.text}</pre>
+            </details>
+          </div>
+        ) : null}
+      </section></WorkspacePanel>
+<WorkspacePanel name="transpose"><section id="transpose-score" className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">{transposeCopy.eyebrow}</p>
+          <h2 className="card-title">{transposeCopy.title}</h2>
+          <p className="body-copy">{transposeCopy.body}</p>
+        </div>
+        <form className="transpose-panel" onSubmit={handleTranspose}>
+          <label className="field-group">
+            <span>{transposeTargetCopy.mode}</span>
+            <select className="field-select" value={transposeMode} onChange={(event) => setTransposeMode(event.target.value as "semitones" | "interval" | "targetKey" | "instrument")}>
+              <option value="semitones">{transposeTargetCopy.semitoneMode}</option>
+              <option value="interval">{transposeTargetCopy.intervalMode}</option>
+              <option value="targetKey">{transposeTargetCopy.targetKeyMode}</option>
+              <option value="instrument">{transposeTargetCopy.instrumentMode}</option>
+            </select>
+          </label>
+          <label className="field-group">
+            <span>
+              {transposeMode === "targetKey"
+                ? transposeTargetCopy.targetKey
+                : transposeMode === "instrument"
+                  ? transposeTargetCopy.instrument
+                  : transposeMode === "interval"
+                    ? transposeTargetCopy.interval
+                    : transposeCopy.semitones}
+            </span>
+            {transposeMode === "targetKey" ? (
+              <select className="field-select" value={targetTonic} onChange={(event) => setTargetTonic(event.target.value)}>
+                {TARGET_KEY_OPTIONS.map((key) => (
+                  <option key={key} value={key}>
+                    {pitchClassLabel(key, locale)}
+                  </option>
+                ))}
+              </select>
+            ) : transposeMode === "instrument" ? (
+              <select className="field-select" value={instrumentProfileId} onChange={(event) => setInstrumentProfileId(event.target.value as typeof instrumentProfileId)}>
+                {TRANSPOSING_INSTRUMENT_PROFILES.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {detailCopy.profiles.instruments[profile.id].label} ({profile.semitonesFromConcertPitch >= 0 ? "+" : ""}{formatNumber(profile.semitonesFromConcertPitch, locale)})
+                  </option>
+                ))}
+              </select>
+            ) : transposeMode === "interval" ? (
+              <select
+                className="field-select"
+                value={transposeIntervalId}
+                onChange={(event) => setTransposeIntervalId(event.target.value as (typeof TRANSPOSE_INTERVAL_OPTIONS)[number]["id"])}
+              >
+                {TRANSPOSE_INTERVAL_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label} ({locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? semitoneCount(option.semitones, locale) : formatMessage(transposeTargetCopy.intervalSemitones, { count: formatNumber(option.semitones, locale) })})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="field-control"
+                type="number"
+                min={-24}
+                max={24}
+                step={1}
+                value={transposeSemitones}
+                onChange={(event) => setTransposeSemitones(Number(event.target.value))}
+              />
+            )}
+          </label>
+          {transposeMode === "targetKey" ? (
+            <label className="field-group">
+              <span>{transposeTargetCopy.targetMode}</span>
+              <select
+                className="field-select"
+                value={targetMode}
+                onChange={(event) => setTargetMode(event.target.value as (typeof TARGET_MODE_OPTIONS)[number])}
+              >
+                {TARGET_MODE_OPTIONS.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {formatTransposeMode(mode, transposeTargetCopy)}
+                  </option>
+                ))}
+              </select>
             </label>
+          ) : null}
+          {transposeMode === "interval" ? (
+            <label className="field-group">
+              <span>{transposeTargetCopy.direction}</span>
+              <select
+                className="field-select"
+                value={transposeIntervalDirection}
+                onChange={(event) => setTransposeIntervalDirection(Number(event.target.value) === -1 ? -1 : 1)}
+              >
+                <option value={1}>{transposeTargetCopy.up}</option>
+                <option value={-1}>{transposeTargetCopy.down}</option>
+              </select>
+            </label>
+          ) : null}
+          <label className="field-group">
+            <span>{transposeTargetCopy.spelling}</span>
+            <select
+              className="field-select"
+              value={transposeSpellingPolicy}
+              onChange={(event) => setTransposeSpellingPolicy(event.target.value as TransposeSpellingPolicy)}
+            >
+              <option value="auto">{transposeTargetCopy.spellingAuto}</option>
+              <option value="preserve">{transposeTargetCopy.spellingPreserve}</option>
+              <option value="prefer-sharps">{transposeTargetCopy.spellingSharps}</option>
+              <option value="prefer-flats">{transposeTargetCopy.spellingFlats}</option>
+            </select>
+          </label>
+          {transposeMode === "instrument" ? (
+            <label className="field-group">
+              <span>{transposeTargetCopy.pitchDirection}</span>
+              <select
+                className="field-select"
+                value={transposePitchMode}
+                onChange={(event) => setTransposePitchMode(event.target.value as TransposePitchMode)}
+              >
+                <option value="concert-to-written">{transposeTargetCopy.concertToWritten}</option>
+                <option value="written-to-concert">{transposeTargetCopy.writtenToConcert}</option>
+              </select>
+            </label>
+          ) : null}
+          <label className="field-group">
+            <span>{transposeRangeCopy.label}</span>
+            <select
+              className="field-select"
+              value={rangeProfileId}
+              onChange={(event) => {
+                setRangeProfileId(event.target.value);
+                setTransposeSuggestions([]);
+                setTransposeSuggestionsError(null);
+              }}
+            >
+              <option value="none">{transposeRangeCopy.none}</option>
+              {SCORE_RANGE_PROFILES.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {detailCopy.profiles.ranges[profile.id]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-group">
+            <span>{transposeRangeCopy.part}</span>
+            <select
+              className="field-select"
+              value={rangePartId}
+              onChange={(event) => {
+                setRangePartId(event.target.value);
+                setTransposeSuggestions([]);
+                setTransposeSuggestionsError(null);
+              }}
+              disabled={rangeProfileId === "none"}
+            >
+              <option value="all">{transposeRangeCopy.allParts}</option>
+              {currentScoreJson?.parts.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {part.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {currentScoreJson && currentScoreJson.parts.length > 0 ? (
             <div className="field-group wide">
-              <span>{partExtractCopy.parts}</span>
-              <div className="button-row">
+              <span>{transposeRangeCopy.perPart}</span>
+              <div className="form-grid">
                 {currentScoreJson.parts.map((part) => (
                   <label key={part.id} className="field-group">
                     <span>{part.name}</span>
-                    <input type="checkbox" checked={extractPartIds.includes(part.id)} onChange={(event) => toggleExtractPart(part.id, event.target.checked)} />
+                    <select
+                      className="field-select"
+                      value={partRangeProfileIds[part.id] ?? "none"}
+                      onChange={(event) => {
+                        const nextProfileId = event.target.value;
+                        setPartRangeProfileIds((current) => ({
+                          ...current,
+                          [part.id]: nextProfileId,
+                        }));
+                        setTransposeSuggestions([]);
+                        setTransposeSuggestionsError(null);
+                      }}
+                    >
+                      <option value="none">{transposeRangeCopy.noPartProfile}</option>
+                      {SCORE_RANGE_PROFILES.map((profile) => (
+                        <option key={profile.id} value={profile.id}>
+                          {detailCopy.profiles.ranges[profile.id]}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 ))}
               </div>
             </div>
-            <label className="field-group wide">
-              <span>{partExtractCopy.applyClefs}</span>
-              <input type="checkbox" checked={extractApplyClefs} onChange={(event) => setExtractApplyClefs(event.target.checked)} />
-            </label>
-            <div className="button-row wide">
-              <button type="submit" className="button button-primary" disabled={extractingParts || extractPartIds.length === 0}>
-                {extractingParts ? partExtractCopy.working : partExtractCopy.submit}
-              </button>
-              {extractedScore ? (
-                <Link href={`${APP_ROUTES.scores}/${extractedScore.id}`} className="button button-secondary">
-                  {partExtractCopy.open}
-                </Link>
+          ) : null}
+          {transposeMode === "instrument" ? (
+            <p className="helper-copy">
+              {formatInstrumentExamples(instrumentProfileId, detailCopy.profiles.instruments)}
+            </p>
+          ) : null}
+          <div className="button-row">
+            {transposeMode === "semitones" ? (
+              <>
+                <button type="button" className="button button-secondary" onClick={() => setTransposeSemitones((value) => Math.max(-24, value - 1))}>
+                  {transposeCopy.down}
+                </button>
+                <button type="button" className="button button-secondary" onClick={() => setTransposeSemitones((value) => Math.min(24, value + 1))}>
+                  {transposeCopy.up}
+                </button>
+              </>
+            ) : null}
+            <button type="submit" className="button button-primary" disabled={transposing || (transposeMode === "semitones" && transposeSemitones === 0)}>
+              {transposing ? transposeCopy.working : transposeCopy.submit}
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => void handleLoadTransposeSuggestions()}
+              disabled={(rangeProfileId === "none" && buildRangeAssignments(partRangeProfileIds).length === 0) || transposeSuggestionsLoading}
+            >
+              {transposeSuggestionsLoading ? transposeRangeCopy.loadingSuggestions : transposeRangeCopy.loadSuggestions}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => void handleSaveTransposePreset()} disabled={savingTransposePreset}>
+              {savingTransposePreset ? transposeRangeCopy.savingPreset : transposeRangeCopy.savePreset}
+            </button>
+          </div>
+        </form>
+        {transposeStatus && transposeStatusKind ? <p role={transposeStatusKind === "error" ? "alert" : "status"} className={`form-status ${transposeStatusKind}`}>{transposeStatus}</p> : null}
+        {transposeEngineResult ? (
+          <p className="helper-copy">
+            {transposeTargetCopy.engine}: {transposeEngineResult === "music21" ? "music21" : transposeTargetCopy.scoreJsonFallback}
+          </p>
+        ) : null}
+        {transposeWarnings.map((warning, index) => (
+          <p key={`${index}:${warning}`} className="form-status error">
+            {warning}
+          </p>
+        ))}
+        {transposePresetStatus && transposePresetStatusKind ? <p className={`form-status ${transposePresetStatusKind}`}>{transposePresetStatus}</p> : null}
+        {transposeSuggestionsError ? <p className="form-status error">{transposeSuggestionsError}</p> : null}
+        {transposeSuggestions.length > 0 ? (
+          <div className="list-grid">
+            <p className="item-title">{transposeRangeCopy.suggestions}</p>
+            {transposeSuggestions.map((suggestion) => (
+              <div key={suggestion.semitones} className="list-item">
+                <div className="list-item-content">
+                  <p className="item-title">
+                    {formatMessage(transposeRangeCopy.suggestionTitle, { value: locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? semitoneCount(suggestion.semitones, locale, true) : formatSignedNumber(suggestion.semitones, locale), target: pitchClassLabel(suggestion.targetKey.display, locale) })}{" "}
+                    <span className={`status-chip ${suggestion.rangeDiagnostic.outOfRangeNoteCount > 0 ? "tone-amber" : "tone-cyan"}`}>
+                      {suggestion.rangeDiagnostic.outOfRangeNoteCount > 0
+                        ? `${formatNumber(suggestion.rangeDiagnostic.outOfRangeNoteCount, locale)} / ${formatNumber(suggestion.rangeDiagnostic.noteCount, locale)} ${transposeRangeCopy.notes}`
+                        : transposeRangeCopy.noIssues}
+                    </span>
+                  </p>
+                  <p className="item-meta">
+                    {transposeRangeCopy.from} {suggestion.sourceKey.display} | {transposeRangeCopy.score} {suggestion.rangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.lowestMidi)}-
+                    {suggestion.rangeDiagnostic.highestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.highestMidi)}
+                    {suggestion.rangeDiagnostic.checkedPartIds.length > 0 ? ` | ${transposeRangeCopy.checked}: ${formatScorePartIds(suggestion.rangeDiagnostic.checkedPartIds, currentScoreJson)}` : ""}
+                  </p>
+                </div>
+                <button type="button" className="button button-secondary button-ghost" onClick={() => applyTransposeSuggestion(suggestion)}>
+                  {transposeRangeCopy.applySuggestion}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {transposeRangeDiagnostic ? (
+          <div className="list-item">
+            <div className="list-item-content">
+              <p className="item-title">
+                {transposeRangeCopy.summary}: {transposeRangeDiagnostic.label}{" "}
+                <span className={`status-chip ${transposeRangeDiagnostic.outOfRangeNoteCount > 0 ? "tone-amber" : "tone-cyan"}`}>
+                  {transposeRangeDiagnostic.outOfRangeNoteCount > 0
+                    ? `${formatNumber(transposeRangeDiagnostic.outOfRangeNoteCount, locale)} / ${formatNumber(transposeRangeDiagnostic.noteCount, locale)} ${transposeRangeCopy.notes}`
+                    : transposeRangeCopy.noIssues}
+                </span>
+              </p>
+              <p className="item-meta">
+                {transposeRangeCopy.range} {formatMidiNote(transposeRangeDiagnostic.minMidi)}-{formatMidiNote(transposeRangeDiagnostic.maxMidi)} | {transposeRangeCopy.score}{" "}
+                {transposeRangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(transposeRangeDiagnostic.lowestMidi)}-
+                {transposeRangeDiagnostic.highestMidi === null ? "-" : formatMidiNote(transposeRangeDiagnostic.highestMidi)}
+                {transposeRangeDiagnostic.checkedPartIds.length > 0 ? ` | ${transposeRangeCopy.checked}: ${formatScorePartIds(transposeRangeDiagnostic.checkedPartIds, currentScoreJson)}` : ""}
+              </p>
+              {transposeRangeDiagnostic.affectedPartIds.length > 0 ? (
+                <p className="helper-copy">
+                  {transposeRangeCopy.affected}: {transposeRangeDiagnostic.affectedPartIds.join(", ")}
+                </p>
               ) : null}
+              {transposeRangeDiagnostics.length > 1
+                ? transposeRangeDiagnostics.map((diagnostic) => (
+                    <p key={`${diagnostic.profileId}-${diagnostic.checkedPartIds.join("-")}`} className="helper-copy">
+                      {diagnostic.label} / {formatScorePartIds(diagnostic.checkedPartIds, currentScoreJson)}: {formatNumber(diagnostic.outOfRangeNoteCount, locale)} / {formatNumber(diagnostic.noteCount, locale)}{" "}
+                      {transposeRangeCopy.notes}
+                    </p>
+                  ))
+                : null}
+              {transposeRangeDiagnostic.warnings.map((warning, index) => (
+                <p key={`${index}:${warning}`} className="helper-copy">
+                  {warning}
+                </p>
+              ))}
             </div>
-          </form>
-          {partExtractStatus && partExtractStatusKind ? <p className={`form-status ${partExtractStatusKind}`}>{partExtractStatus}</p> : null}
+          </div>
+        ) : null}
+      </section></WorkspacePanel>
+<WorkspacePanel name="play">{score.currentRevision ? (
+        <div id="playback-practice" className="stack-lg">
+          <ScorePlaybackPanel
+              key={score.currentRevisionId ?? score.id}
+              scoreId={score.id}
+              token={token}
+              revisionId={score.currentRevisionId}
+              practiceSettings={playbackPracticeSettings}
+              onPracticeSettingsChange={setPlaybackPracticeSettings}
+              selectedEventId={selectedScoreEventId}
+              onPlaybackEventChange={setSelectedScoreEventId}
+              exportActions={{
+                midi: {
+                  label: exportCopy.button,
+                  loadingLabel: exportCopy.exporting,
+                  loading: exportingMidi || isExportRunning("midi"),
+                  disabled: !currentScoreJson || isExportRunning("midi"),
+                  onClick: () => void handleExportMidi(),
+                },
+                wav: {
+                  label: wavExportCopy.button,
+                  loadingLabel: wavExportCopy.exporting,
+                  loading: exportingWav || isExportRunning("wav"),
+                  disabled: !currentScoreJson || isExportRunning("wav"),
+                  onClick: () => void handleExportWav(),
+                },
+                mp3: {
+                  label: mp3ExportCopy.button,
+                  loadingLabel: mp3ExportCopy.exporting,
+                  loading: exportingMp3 || isExportRunning("mp3"),
+                  disabled: !currentScoreJson || isExportRunning("mp3"),
+                  onClick: () => void handleExportMp3(),
+                },
+              }}
+            />
+          <section className="surface-panel stack-lg">
+            <PracticeRecorder
+              locale={locale}
+              value={practiceRecording}
+              playbackEndpoint={`/api/scores/${score.id}/playback`}
+              practiceSettings={playbackPracticeSettings}
+              selectedEventId={selectedScoreEventId}
+              onEventSelect={setSelectedScoreEventId}
+              onRecording={setPracticeRecording}
+            />
+          </section>
+        </div>
+      ) : (
+        <section className="surface-panel stack-lg">
+          <div className="stack-sm">
+            <p className="eyebrow">{detailCopy.emptyStates.playbackEyebrow}</p>
+            <h2 className="card-title">{detailCopy.emptyStates.playbackTitle}</h2>
+            <p className="body-copy">{detailCopy.emptyStates.playbackBody}</p>
+          </div>
         </section>
-      ) : null}
+      )}</WorkspacePanel>
+<WorkspacePanel name="export"><section className="surface-panel stack-lg flow-export"><h2 className="card-title">{flow.export}</h2>
+<label className="field-group"><span>{flow.format}</span><select aria-label={flow.format} className="field-select" value={exportFormat} onChange={event => setExportFormat(event.target.value)}>
+{["pdf", "musicxml", "midi", "wav", "mp3", "svg", "png", "jianpu", "score-json"].map(format => <option key={format} value={format}>{format === "jianpu" ? flow.jianpu : format === "score-json" ? "Score JSON" : format.toUpperCase()}</option>)}
+</select></label>
+<button type="button" className="button button-primary" disabled={!currentScoreJson || requestingExport || selectedExportRunning} onClick={() => {
+const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMusicXml, midi: handleExportMidi, pdf: handleExportPdf, wav: handleExportWav, mp3: handleExportMp3, svg: () => handleExportRenderedImage("svg"), png: () => handleExportRenderedImage("png"), jianpu: handleExportJianpu, "score-json": handleExportScoreJson }; void actions[exportFormat]();
+}}>{requestingExport || selectedExportRunning ? flow.scoreOperations.exporting : flow.export} {exportFormat.toUpperCase()}</button>
+{exportStatus && exportStatusKind ? <p role={exportStatusKind === "error" ? "alert" : "status"} className={`form-status ${exportStatusKind}`}>{exportStatus}</p> : null}
+{activeExportJobs.map(job => <div key={job.id} className="mini-card stack-sm" data-export-progress={job.id}>
+  <p role="status">{flow.scoreOperations.exporting} {String(job.params?.format ?? "").toUpperCase()} · {omrCopy.statuses[job.status]}</p>
+  <progress max={100} value={job.progressPercent || undefined} aria-label={omrCopy.progressAria} />
+  <p className="helper-copy">{flow.scoreOperations.exportWait}</p>
+  <button type="button" className="button button-secondary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "cancel")}>{omrCopy.cancel}</button>
+</div>)}
 
-      <section id="print-export-settings" className="surface-panel stack-lg">
+{["pdf", "svg", "png"].includes(exportFormat) ? <details className="flow-details"><summary>{flow.advanced}</summary><section id="print-export-settings" className="surface-panel stack-lg">
         <div className="stack-sm">
           <p className="eyebrow">{renderedExportOptionsCopy.eyebrow}</p>
           <h2 className="card-title">{renderedExportOptionsCopy.title}</h2>
@@ -2455,9 +2941,8 @@ export function ScoreDetailClient() {
           </label>
         </div>
         <p className="helper-copy">{renderedExportOptionsCopy.helper}</p>
-      </section>
-
-      <section id="audio-export-settings" className="surface-panel stack-lg">
+      </section></details> : null}
+{["wav", "mp3"].includes(exportFormat) ? <details className="flow-details"><summary>{flow.advanced}</summary><section id="audio-export-settings" className="surface-panel stack-lg">
         <div className="stack-sm">
           <p className="eyebrow">{audioExportOptionsCopy.eyebrow}</p>
           <h2 className="card-title">{audioExportOptionsCopy.title}</h2>
@@ -2506,9 +2991,226 @@ export function ScoreDetailClient() {
             <input className="field-control" type="number" min={-24} max={-9} step={1} value={audioLoudnessTarget} disabled={!audioNormalizeLoudness} onChange={(event) => setAudioLoudnessTarget(Math.min(-9, Math.max(-24, Number(event.target.value) || -16)))} />
           </label>
         </div>
-      </section>
-
-      <section id="score-sharing" className="surface-panel stack-lg">
+      </section></details> : null}
+</section><section id="export-center" className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">{assetCopy.eyebrow}</p>
+          <h2 className="card-title">{assetCopy.title}</h2>
+          <p className="body-copy">{assetCopy.body}</p>
+        </div>
+        {assetsLoading ? <div className="empty-state">{assetCopy.loading}</div> : null}
+        {assetsError ? <p className="form-status error">{assetsError}</p> : null}
+        {!assetsLoading && !assetsError && assets.length === 0 ? <div className="empty-state">{assetCopy.empty}</div> : null}
+        {assets.length > 0 ? (
+          <div className="list-grid">
+            {assets.filter(asset => !isSourceAsset(asset.assetKind) && asset.assetKind !== "score_json_snapshot").map((asset) => (
+              <div key={asset.id} className="list-item">
+                <div className="list-item-content">
+                  <p className="item-title">
+                    {asset.file.originalName} {asset.isStale ? <span className="status-chip tone-amber">{assetCopy.stale}</span> : null}
+                  </p>
+                  <p className="item-meta">
+                    {isSourceAsset(asset.assetKind) ? assetCopy.source : assetCopy.export} | {formatAssetKind(asset.assetKind, assetCopy.kinds)} | {formatSize(asset.file.sizeBytes, locale)} |{" "}
+                    {formatDateTime(asset.createdAt, locale)}
+                  </p>
+                  <details><summary>{flow.advanced}</summary>{asset.revisionId ? <p className="helper-copy">{assetCopy.sourceRevision}: {asset.revisionId.slice(0, 8)}</p> : null}{asset.checksumSha256 ? <p className="helper-copy">SHA-256: {asset.checksumSha256.slice(0, 16)}...</p> : null}</details>
+                </div>
+                <button
+                  type="button"
+                  className="button button-secondary button-ghost"
+                  onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
+                >
+                  {assetCopy.download}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section></WorkspacePanel>
+<WorkspacePanel name={currentScoreJson ? "export" : "edit"}><section id="score-jobs" className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">{omrCopy.eyebrow}</p>
+          <h2 className="card-title">{omrCopy.title}</h2>
+          <p className="body-copy">{omrCopy.body}</p>
+        </div>
+        <div className="button-row">
+          <button type="button" className="button button-secondary" onClick={() => void refreshScoreJobs()} disabled={jobsLoading}>
+            {jobsLoading ? omrCopy.loading : omrCopy.refresh}
+          </button>
+        </div>
+        {hasActiveScoreJob ? (
+          <p className="helper-copy">
+            {omrCopy.running}
+          </p>
+        ) : null}
+        {jobsError ? <p className="form-status error">{jobsError}</p> : null}
+        {!jobsLoading && !jobsError && scoreJobs.length === 0 && omrDiagnostics.length === 0 ? <div className="empty-state">{omrCopy.empty}</div> : null}
+        {scoreJobs.length > 0 ? (
+          <div className="list-grid">
+            {scoreJobs.map((job) => {
+              const outputAssets = assetsForJobOutput(job, assets);
+              return (
+                <div key={job.id} className="list-item">
+                  <div className="list-item-content">
+                    <p className="item-title">
+                      {formatScoreJobLabel(job, omrCopy.types)} <span className={`status-chip ${toneForJobStatus(job.status)}`}>{omrCopy.statuses[job.status]}</span>
+                    </p>
+                    <p className="item-meta">
+                      {formatDateTime(job.createdAt, locale)} | {omrCopy.revision}: {job.resultRevisionId ? job.resultRevisionId.slice(0, 8) : "-"} |{" "}
+                      {omrCopy.outputs}: {formatNumber(job.outputFileIds?.length ?? 0, locale)} | {omrCopy.attempt}: {formatNumber(job.attemptCount, locale)}
+                      {job.queuePosition ? ` | ${omrCopy.queue}: ${formatNumber(job.queuePosition, locale)}` : ""}
+                    </p>
+                    {(job.status === "queued" || job.status === "processing") ? (
+                      <div className="stack-sm">
+                        <progress max={100} value={job.progressPercent} aria-label={omrCopy.progressAria} />
+                        <p className="helper-copy">{formatNumber(job.progressPercent / 100, locale, { style: "percent" })}</p>
+                      </div>
+                    ) : null}
+                    {job.errorMessage ? <p className="form-status error">{locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? localizeApiError({ error: job.errorMessage }, locale) : job.errorMessage}</p> : null}
+                  </div>
+                  {(outputAssets.length > 0 || job.status === "queued" || job.status === "processing" || job.status === "failed" || job.status === "cancelled") ? (
+                    <div className="button-row">
+                      {outputAssets.map((asset) => (
+                        <button
+                          type="button"
+                          className="button button-secondary button-ghost"
+                          key={`${job.id}-${asset.file.id}`}
+                          onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
+                        >
+                          {assetCopy.download} {formatAssetKind(asset.assetKind, assetCopy.kinds)}
+                        </button>
+                      ))}
+                      {(job.status === "queued" || job.status === "processing") ? (
+                        <button type="button" className="button button-secondary button-ghost" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "cancel")}>
+                          {jobActionId === job.id ? omrCopy.working : omrCopy.cancel}
+                        </button>
+                      ) : null}
+                      {(job.status === "failed" || job.status === "cancelled") ? (
+                        <button type="button" className="button button-primary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "retry")}>
+                          {jobActionId === job.id ? omrCopy.working : omrCopy.retry}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+        {omrDiagnostics.length > 0 ? (
+          <div className="stack-md">
+            <h3 className="card-title">{omrCopy.diagnostics}</h3>
+            <div className="list-grid">
+              {omrDiagnostics.map((diagnostic) => {
+                const summary = summarizeOmrDiagnostic(diagnostic.diagnostics, detailCopy.diagnostics, locale);
+                return (
+                  <div key={diagnostic.id} className="list-item">
+                    <div className="list-item-content">
+                      <p className="item-title">
+                        {summary.status} <span className={`status-chip ${toneForDiagnosticStatus(summary.statusCode)}`}>{summary.engine}</span>
+                      </p>
+                      <p className="item-meta">
+                        {formatDateTime(diagnostic.createdAt, locale)} | {omrCopy.confidence}: {formatPercent(diagnostic.confidence, locale)} | {omrCopy.pages}:{" "}
+                        {diagnostic.sourcePageCount === null ? "-" : formatNumber(diagnostic.sourcePageCount, locale)}
+                      </p>
+                      {summary.message ? <details><summary>{omrCopy.diagnostics}</summary><p className="helper-copy">{summary.message}</p></details> : null}
+                      {summary.counts.length > 0 ? <p className="helper-copy">{summary.counts.join(" | ")}</p> : null}
+                      <details><summary>{omrCopy.diagnostics}</summary><pre className="preview-block">{JSON.stringify(diagnostic.diagnostics, null, 2)}</pre></details>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </section></WorkspacePanel>
+<WorkspacePanel name="parts">{currentScoreJson && currentScoreJson.parts.length > 0 ? (
+        <section className="surface-panel stack-lg">
+          <div className="stack-sm">
+            <p className="eyebrow">{partExtractCopy.eyebrow}</p>
+            <h2 className="card-title">{partExtractCopy.title}</h2>
+            <p className="body-copy">{partExtractCopy.body}</p>
+          </div>
+          <form className="form-grid" onSubmit={handleExtractParts}>
+            <label className="field-group wide">
+              <span>{partExtractCopy.titleLabel}</span>
+              <input className="field-control" type="text" maxLength={160} value={extractTitle} onChange={(event) => setExtractTitle(event.target.value)} />
+            </label>
+            <div className="field-group wide">
+              <span>{partExtractCopy.parts}</span>
+              <div className="button-row">
+                {currentScoreJson.parts.map((part) => (
+                  <label key={part.id} className="field-group">
+                    <span>{part.name}</span>
+                    <input type="checkbox" checked={extractPartIds.includes(part.id)} onChange={(event) => toggleExtractPart(part.id, event.target.checked)} />
+                  </label>
+                ))}
+              </div>
+            </div>
+            <label className="field-group wide">
+              <span>{partExtractCopy.applyClefs}</span>
+              <input type="checkbox" checked={extractApplyClefs} onChange={(event) => setExtractApplyClefs(event.target.checked)} />
+            </label>
+            <div className="button-row wide">
+              <button type="submit" className="button button-primary" disabled={extractingParts || extractPartIds.length === 0}>
+                {extractingParts ? partExtractCopy.working : partExtractCopy.submit}
+              </button>
+              {extractedScore ? (
+                <Link href={`${APP_ROUTES.scores}/${extractedScore.id}`} className="button button-secondary">
+                  {partExtractCopy.open}
+                </Link>
+              ) : null}
+            </div>
+          </form>
+          {partExtractStatus && partExtractStatusKind ? <p className={`form-status ${partExtractStatusKind}`}>{partExtractStatus}</p> : null}
+        </section>
+      ) : null}{currentScoreJson ? (
+        <section className="surface-panel stack-lg">
+          <div className="stack-sm">
+            <p className="eyebrow">{clefRecommendationCopy.eyebrow}</p>
+            <h2 className="card-title">{clefRecommendationCopy.title}</h2>
+            <p className="body-copy">{clefRecommendationCopy.body}</p>
+          </div>
+          <div className="button-row">
+            <button type="button" className="button button-secondary" onClick={() => void handleLoadClefRecommendations()} disabled={clefRecommendationsLoading}>
+              {clefRecommendationsLoading ? clefRecommendationCopy.loading : clefRecommendationCopy.load}
+            </button>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => void handleApplyClefRecommendations()}
+              disabled={applyingClefRecommendations || clefRecommendations.every((recommendation) => recommendation.noteCount === 0)}
+            >
+              {applyingClefRecommendations ? clefRecommendationCopy.applying : clefRecommendationCopy.apply}
+            </button>
+          </div>
+          {clefRecommendationStatus && clefRecommendationStatusKind ? <p className={`form-status ${clefRecommendationStatusKind}`}>{clefRecommendationStatus}</p> : null}
+          {clefRecommendations.length > 0 ? (
+            <div className="list-grid">
+              {clefRecommendations.map((recommendation) => (
+                <div key={recommendation.partId} className="list-item">
+                  <div className="list-item-content">
+                    <p className="item-title">
+                      {recommendation.partName}{" "}
+                      <span className={`status-chip ${recommendation.noteCount > 0 ? "tone-cyan" : "tone-neutral"}`}>
+                        {recommendation.noteCount > 0 ? formatClefForDisplay(recommendation.clef, clefRecommendationCopy, locale) : clefRecommendationCopy.noNotes}
+                      </span>
+                    </p>
+                    <p className="item-meta">
+                      {clefRecommendationCopy.current}: {recommendation.currentClef ? formatClefForDisplay(recommendation.currentClef, clefRecommendationCopy, locale) : "-"} |{" "}
+                      {clefRecommendationCopy.recommended}: {formatClefForDisplay(recommendation.clef, clefRecommendationCopy, locale)} | {clefRecommendationCopy.range}:{" "}
+                      {recommendation.lowestMidi === null ? "-" : formatMidiNote(recommendation.lowestMidi)}-
+                      {recommendation.highestMidi === null ? "-" : formatMidiNote(recommendation.highestMidi)}
+                    </p>
+                    <p className="helper-copy">{recommendation.reason}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}</WorkspacePanel>
+<WorkspacePanel name="share"><section id="score-sharing" className="surface-panel stack-lg">
         <div className="stack-sm">
           <p className="eyebrow">{shareCopy.eyebrow}</p>
           <h2 className="card-title">{shareCopy.title}</h2>
@@ -2569,9 +3271,182 @@ export function ScoreDetailClient() {
             })}
           </div>
         ) : null}
-      </section>
-
-      <section id="teaching-workflow" className="surface-panel stack-lg">
+      </section>{currentScoreJson ? <>          <div id="live-collaboration">
+            <ScoreCollaborationPanel
+              scoreId={scoreId}
+              token={token}
+              currentRevisionId={score.pendingRevisionId ?? score.currentRevisionId}
+              pendingOperations={pendingCollaborationOperations}
+              selectedEventId={selectedScoreEventId}
+              onRemoteEventSelect={handleScoreEventSelect}
+              onRemoteRevision={async () => {
+                await refreshScoreSnapshot();
+              }}
+              locale={locale}
+            />
+          </div>
+</> : null}<section id="project-comments" className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">{commentCopy.eyebrow}</p>
+          <h2 className="card-title">{commentCopy.title}</h2>
+          <p className="body-copy">{commentCopy.body}</p>
+        </div>
+        <form className="stack-sm" onSubmit={handlePostComment}>
+          <label className="field-group wide">
+            <span>{commentCopy.target}</span>
+            <select className="field-select" value={selectedCommentTarget.id} onChange={(event) => setCommentTargetId(event.target.value)}>
+              {commentTargetOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-group wide">
+            <span>{commentCopy.submit}</span>
+            <textarea
+              className="field-control"
+              rows={4}
+              maxLength={2000}
+              placeholder={commentCopy.placeholder}
+              value={commentText}
+              onChange={(event) => setCommentText(event.target.value)}
+            />
+          </label>
+          <div className="button-row">
+            <button type="submit" className="button button-primary" disabled={postingComment || commentText.trim().length === 0}>
+              {postingComment ? commentCopy.posting : commentCopy.submit}
+            </button>
+          </div>
+        </form>
+        {commentsLoading ? <div className="empty-state">{commentCopy.loading}</div> : null}
+        {commentsError ? <p className="form-status error">{commentsError}</p> : null}
+        {!commentsLoading && !commentsError && comments.length === 0 ? <div className="empty-state">{commentCopy.empty}</div> : null}
+        {comments.length > 0 ? (
+          <div className="list-grid">
+            {comments.map((comment) => (
+              <div key={comment.id} className="list-item">
+                <div className="list-item-content">
+                  <div className="button-row">
+                    <p className="item-title">{comment.author.displayName}</p>
+                    <span className={`status-chip ${comment.author.verification === "account" ? "tone-green" : "tone-cyan"}`}>
+                      {comment.author.verification === "account" ? commentCopy.accountIdentity : commentCopy.shareIdentity}
+                    </span>
+                    {comment.resolvedAt ? <span className="status-chip tone-green">{commentCopy.resolved}</span> : null}
+                  </div>
+                  <p className="item-meta">
+                    {formatCommentTarget(comment.target, commentCopy.scoreTarget)} | {formatDateTime(comment.createdAt, locale)}
+                  </p>
+                  <p className="body-copy">{comment.body}</p>
+                </div>
+                <button type="button" className="button button-secondary button-ghost" disabled={resolvingCommentId === comment.id} onClick={() => void handleCommentResolution(comment)}>
+                  {comment.resolvedAt ? commentCopy.reopen : commentCopy.resolve}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section></WorkspacePanel>
+<WorkspacePanel name="history"><section id="revision-history" className="surface-panel stack-lg">
+        <div className="stack-sm">
+          <p className="eyebrow">{copy.revisions}</p>
+          <h2 className="card-title">{copy.revisions}</h2>
+        </div>
+        <div className="button-row" role="group" aria-label={detailCopy.revision.undoRedoAria}>
+          <button
+            type="button"
+            className="button button-secondary button-ghost"
+            onClick={() => void handleUndoRevision()}
+            disabled={undoRevisionIds.length === 0 || Boolean(restoringRevisionId)}
+          >
+            {detailCopy.revision.undo}
+          </button>
+          <button
+            type="button"
+            className="button button-secondary button-ghost"
+            onClick={() => void handleRedoRevision()}
+            disabled={redoRevisionIds.length === 0 || Boolean(restoringRevisionId)}
+          >
+            {detailCopy.revision.redo}
+          </button>
+        </div>
+        {revisionStatus && revisionStatusKind ? <p className={`form-status ${revisionStatusKind}`}>{revisionStatus}</p> : null}
+        <div className="list-grid">
+          {revisions.map((revision) => {
+            const isCurrentRevision = revision.id === score.currentRevisionId;
+            return (
+              <div key={revision.id} className="list-item">
+                <div className="list-item-content">
+                  <p className="item-title">
+                    v{formatNumber(revision.revisionNumber, locale)} {isCurrentRevision ? <span className="status-chip tone-primary">{copy.currentBadge}</span> : null}
+                  </p>
+                  <p className="item-meta">
+                    {formatRevisionSource(revision.createdFrom, detailCopy.revision.sources)} | {formatDateTime(revision.createdAt, locale)}
+                  </p>
+                </div>
+                <div className="button-row">
+                  {revision.musicxmlFileId ? (
+                    <button
+                      type="button"
+                      className="button button-secondary button-ghost"
+                      onClick={() => void handleDownload(revision.musicxmlFileId!, `${score.title}-v${revision.revisionNumber}.musicxml`)}
+                    >
+                      {copy.download}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="button button-secondary button-ghost"
+                    onClick={() => void handleRestoreRevision(revision.id)}
+                    disabled={isCurrentRevision || Boolean(restoringRevisionId)}
+                  >
+                    {restoringRevisionId === revision.id ? copy.restoring : copy.restore}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section></WorkspacePanel>
+<WorkspacePanel name="source"><div id="omr-comparison" className="score-comparison-grid">
+          <ScoreOmrReviewPanel
+            scoreId={score.id}
+            sourceFile={sourcePreviewAsset?.file ?? null}
+          pageFiles={omrPageFiles}
+          token={token}
+          scoreJson={currentScoreJson ?? null}
+          selectedEventId={selectedScoreEventId}
+          onEventSelect={handleScoreEventSelect}
+          locale={locale}
+          focusedSourceRegion={focusedSourceRegion}
+        />
+        <section className="surface-panel stack-lg">
+          <div className="stack-sm">
+            <p className="eyebrow">{copy.source}</p>
+            <h2 className="card-title">{copy.previewTitle}</h2>
+            <p className="body-copy">{copy.previewBody}</p>
+          </div>
+          <ScoreMusicXmlPreview
+            fileId={musicxmlFileId ?? null}
+            token={token}
+            musicXml={generatedPreviewMusicXml}
+            scoreJson={currentScoreJson}
+            selectedEventId={selectedScoreEventId}
+            onEventSelect={handleScoreEventSelect}
+            emptyLabel={detailCopy.preview.empty}
+            loadingLabel={detailCopy.preview.loading}
+            errorLabel={detailCopy.preview.error}
+            retryLabel={detailCopy.preview.retry}
+            technicalDetailsLabel={detailCopy.preview.technicalDetails}
+            deferredLabel={detailCopy.preview.deferred}
+            renderLabel={detailCopy.preview.render}
+            eventLabelTemplate={detailCopy.preview.eventLabel}
+            noteLabel={detailCopy.preview.note}
+            restLabel={detailCopy.preview.rest}
+          />
+        </section>
+      </div></WorkspacePanel>
+<WorkspacePanel name="teaching"><section id="teaching-workflow" className="surface-panel stack-lg">
         <div className="stack-sm">
           <p className="eyebrow">{assignmentCopy.eyebrow}</p>
           <h2 className="card-title">{assignmentCopy.title}</h2>
@@ -3028,647 +3903,8 @@ export function ScoreDetailClient() {
             </div>
           ) : null}
         </div>
-      </section>
-
-      <section id="score-jobs" className="surface-panel stack-lg">
-        <div className="stack-sm">
-          <p className="eyebrow">{omrCopy.eyebrow}</p>
-          <h2 className="card-title">{omrCopy.title}</h2>
-          <p className="body-copy">{omrCopy.body}</p>
-        </div>
-        <div className="button-row">
-          <button type="button" className="button button-secondary" onClick={() => void refreshScoreJobs()} disabled={jobsLoading}>
-            {jobsLoading ? omrCopy.loading : omrCopy.refresh}
-          </button>
-        </div>
-        {hasActiveScoreJob ? (
-          <p className="helper-copy">
-            {omrCopy.running}
-          </p>
-        ) : null}
-        {jobsError ? <p className="form-status error">{jobsError}</p> : null}
-        {!jobsLoading && !jobsError && scoreJobs.length === 0 && omrDiagnostics.length === 0 ? <div className="empty-state">{omrCopy.empty}</div> : null}
-        {scoreJobs.length > 0 ? (
-          <div className="list-grid">
-            {scoreJobs.map((job) => {
-              const outputAssets = assetsForJobOutput(job, assets);
-              return (
-                <div key={job.id} className="list-item">
-                  <div className="list-item-content">
-                    <p className="item-title">
-                      {formatScoreJobLabel(job, omrCopy.types)} <span className={`status-chip ${toneForJobStatus(job.status)}`}>{omrCopy.statuses[job.status]}</span>
-                    </p>
-                    <p className="item-meta">
-                      {formatDateTime(job.createdAt, locale)} | {omrCopy.revision}: {job.resultRevisionId ? job.resultRevisionId.slice(0, 8) : "-"} |{" "}
-                      {omrCopy.outputs}: {formatNumber(job.outputFileIds?.length ?? 0, locale)} | {omrCopy.attempt}: {formatNumber(job.attemptCount, locale)}
-                      {job.queuePosition ? ` | ${omrCopy.queue}: ${formatNumber(job.queuePosition, locale)}` : ""}
-                    </p>
-                    {(job.status === "queued" || job.status === "processing") ? (
-                      <div className="stack-sm">
-                        <progress max={100} value={job.progressPercent} aria-label={omrCopy.progressAria} />
-                        <p className="helper-copy">{formatNumber(job.progressPercent / 100, locale, { style: "percent" })}</p>
-                      </div>
-                    ) : null}
-                    {job.errorMessage ? <p className="form-status error">{job.errorMessage}</p> : null}
-                  </div>
-                  {(outputAssets.length > 0 || job.status === "queued" || job.status === "processing" || job.status === "failed" || job.status === "cancelled") ? (
-                    <div className="button-row">
-                      {outputAssets.map((asset) => (
-                        <button
-                          type="button"
-                          className="button button-secondary button-ghost"
-                          key={`${job.id}-${asset.file.id}`}
-                          onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
-                        >
-                          {assetCopy.download} {formatAssetKind(asset.assetKind, assetCopy.kinds)}
-                        </button>
-                      ))}
-                      {(job.status === "queued" || job.status === "processing") ? (
-                        <button type="button" className="button button-secondary button-ghost" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "cancel")}>
-                          {jobActionId === job.id ? omrCopy.working : omrCopy.cancel}
-                        </button>
-                      ) : null}
-                      {(job.status === "failed" || job.status === "cancelled") ? (
-                        <button type="button" className="button button-primary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "retry")}>
-                          {jobActionId === job.id ? omrCopy.working : omrCopy.retry}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
-        {omrDiagnostics.length > 0 ? (
-          <div className="stack-md">
-            <h3 className="card-title">{omrCopy.diagnostics}</h3>
-            <div className="list-grid">
-              {omrDiagnostics.map((diagnostic) => {
-                const summary = summarizeOmrDiagnostic(diagnostic.diagnostics, detailCopy.diagnostics, locale);
-                return (
-                  <div key={diagnostic.id} className="list-item">
-                    <div className="list-item-content">
-                      <p className="item-title">
-                        {summary.status} <span className={`status-chip ${toneForDiagnosticStatus(summary.statusCode)}`}>{summary.engine}</span>
-                      </p>
-                      <p className="item-meta">
-                        {formatDateTime(diagnostic.createdAt, locale)} | {omrCopy.confidence}: {formatPercent(diagnostic.confidence, locale)} | {omrCopy.pages}:{" "}
-                        {diagnostic.sourcePageCount === null ? "-" : formatNumber(diagnostic.sourcePageCount, locale)}
-                      </p>
-                      {summary.message ? <p className="helper-copy">{summary.message}</p> : null}
-                      {summary.counts.length > 0 ? <p className="helper-copy">{summary.counts.join(" | ")}</p> : null}
-                      <pre className="preview-block">{JSON.stringify(diagnostic.diagnostics, null, 2)}</pre>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      <section id="export-center" className="surface-panel stack-lg">
-        <div className="stack-sm">
-          <p className="eyebrow">{assetCopy.eyebrow}</p>
-          <h2 className="card-title">{assetCopy.title}</h2>
-          <p className="body-copy">{assetCopy.body}</p>
-        </div>
-        {assetsLoading ? <div className="empty-state">{assetCopy.loading}</div> : null}
-        {assetsError ? <p className="form-status error">{assetsError}</p> : null}
-        {!assetsLoading && !assetsError && assets.length === 0 ? <div className="empty-state">{assetCopy.empty}</div> : null}
-        {assets.length > 0 ? (
-          <div className="list-grid">
-            {assets.map((asset) => (
-              <div key={asset.id} className="list-item">
-                <div className="list-item-content">
-                  <p className="item-title">
-                    {asset.file.originalName} {asset.isStale ? <span className="status-chip tone-amber">{assetCopy.stale}</span> : null}
-                  </p>
-                  <p className="item-meta">
-                    {isSourceAsset(asset.assetKind) ? assetCopy.source : assetCopy.export} | {formatAssetKind(asset.assetKind, assetCopy.kinds)} | {formatSize(asset.file.sizeBytes, locale)} |{" "}
-                    {formatDateTime(asset.createdAt, locale)}
-                  </p>
-                  {asset.revisionId ? <p className="helper-copy">{assetCopy.sourceRevision}: {asset.revisionId.slice(0, 8)}</p> : null}
-                  {asset.checksumSha256 ? <p className="helper-copy">SHA-256: {asset.checksumSha256.slice(0, 16)}...</p> : null}
-                </div>
-                <button
-                  type="button"
-                  className="button button-secondary button-ghost"
-                  onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
-                >
-                  {assetCopy.download}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      {currentScoreJson ? (
-        <>
-          <div id="visual-editor">
-            <ScoreVisualEditorPanel
-              scoreId={score.id}
-              token={token}
-              scoreJson={currentScoreJson}
-              baseRevisionId={score.pendingRevisionId ? null : score.currentRevisionId}
-              selectedEventId={selectedScoreEventId}
-              onSelectedEventChange={handleScoreEventSelect}
-              onUpdated={async (nextPayload, mutation) => {
-                announceCollaborationMutation(nextPayload, mutation);
-                setPayload(nextPayload);
-                await refreshJianpu();
-              }}
-              onReload={async (latestPayload) => {
-                setPayload(latestPayload);
-                await refreshJianpu();
-              }}
-            />
-          </div>
-          <div id="live-collaboration">
-            <ScoreCollaborationPanel
-              scoreId={scoreId}
-              token={token}
-              currentRevisionId={score.pendingRevisionId ?? score.currentRevisionId}
-              pendingOperations={pendingCollaborationOperations}
-              selectedEventId={selectedScoreEventId}
-              onRemoteEventSelect={handleScoreEventSelect}
-              onRemoteRevision={async () => {
-                await refreshScoreSnapshot();
-              }}
-              locale={locale}
-            />
-          </div>
-          <div id="correction-editor">
-            <ScoreCorrectionPanel
-              scoreId={score.id}
-              token={token}
-              scoreJson={currentScoreJson}
-              onUpdated={async (nextPayload) => {
-                setPayload(nextPayload);
-                await refreshJianpu();
-              }}
-            />
-          </div>
-        </>
-      ) : (
-        <section className="surface-panel stack-lg">
-          <div className="stack-sm">
-            <p className="eyebrow">{detailCopy.emptyStates.correctionEyebrow}</p>
-            <h2 className="card-title">{detailCopy.emptyStates.correctionTitle}</h2>
-            <p className="body-copy">{detailCopy.emptyStates.correctionBody}</p>
-          </div>
-        </section>
-      )}
-
-      <section id="transpose-score" className="surface-panel stack-lg">
-        <div className="stack-sm">
-          <p className="eyebrow">{transposeCopy.eyebrow}</p>
-          <h2 className="card-title">{transposeCopy.title}</h2>
-          <p className="body-copy">{transposeCopy.body}</p>
-        </div>
-        <form className="transpose-panel" onSubmit={handleTranspose}>
-          <label className="field-group">
-            <span>{transposeTargetCopy.mode}</span>
-            <select className="field-select" value={transposeMode} onChange={(event) => setTransposeMode(event.target.value as "semitones" | "interval" | "targetKey" | "instrument")}>
-              <option value="semitones">{transposeTargetCopy.semitoneMode}</option>
-              <option value="interval">{transposeTargetCopy.intervalMode}</option>
-              <option value="targetKey">{transposeTargetCopy.targetKeyMode}</option>
-              <option value="instrument">{transposeTargetCopy.instrumentMode}</option>
-            </select>
-          </label>
-          <label className="field-group">
-            <span>
-              {transposeMode === "targetKey"
-                ? transposeTargetCopy.targetKey
-                : transposeMode === "instrument"
-                  ? transposeTargetCopy.instrument
-                  : transposeMode === "interval"
-                    ? transposeTargetCopy.interval
-                    : transposeCopy.semitones}
-            </span>
-            {transposeMode === "targetKey" ? (
-              <select className="field-select" value={targetTonic} onChange={(event) => setTargetTonic(event.target.value)}>
-                {TARGET_KEY_OPTIONS.map((key) => (
-                  <option key={key} value={key}>
-                    {key}
-                  </option>
-                ))}
-              </select>
-            ) : transposeMode === "instrument" ? (
-              <select className="field-select" value={instrumentProfileId} onChange={(event) => setInstrumentProfileId(event.target.value as typeof instrumentProfileId)}>
-                {TRANSPOSING_INSTRUMENT_PROFILES.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {detailCopy.profiles.instruments[profile.id].label} ({profile.semitonesFromConcertPitch >= 0 ? "+" : ""}{formatNumber(profile.semitonesFromConcertPitch, locale)})
-                  </option>
-                ))}
-              </select>
-            ) : transposeMode === "interval" ? (
-              <select
-                className="field-select"
-                value={transposeIntervalId}
-                onChange={(event) => setTransposeIntervalId(event.target.value as (typeof TRANSPOSE_INTERVAL_OPTIONS)[number]["id"])}
-              >
-                {TRANSPOSE_INTERVAL_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label} ({formatMessage(transposeTargetCopy.intervalSemitones, { count: formatNumber(option.semitones, locale) })})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="field-control"
-                type="number"
-                min={-24}
-                max={24}
-                step={1}
-                value={transposeSemitones}
-                onChange={(event) => setTransposeSemitones(Number(event.target.value))}
-              />
-            )}
-          </label>
-          {transposeMode === "targetKey" ? (
-            <label className="field-group">
-              <span>{transposeTargetCopy.targetMode}</span>
-              <select
-                className="field-select"
-                value={targetMode}
-                onChange={(event) => setTargetMode(event.target.value as (typeof TARGET_MODE_OPTIONS)[number])}
-              >
-                {TARGET_MODE_OPTIONS.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {formatTransposeMode(mode, transposeTargetCopy)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {transposeMode === "interval" ? (
-            <label className="field-group">
-              <span>{transposeTargetCopy.direction}</span>
-              <select
-                className="field-select"
-                value={transposeIntervalDirection}
-                onChange={(event) => setTransposeIntervalDirection(Number(event.target.value) === -1 ? -1 : 1)}
-              >
-                <option value={1}>{transposeTargetCopy.up}</option>
-                <option value={-1}>{transposeTargetCopy.down}</option>
-              </select>
-            </label>
-          ) : null}
-          <label className="field-group">
-            <span>{transposeTargetCopy.spelling}</span>
-            <select
-              className="field-select"
-              value={transposeSpellingPolicy}
-              onChange={(event) => setTransposeSpellingPolicy(event.target.value as TransposeSpellingPolicy)}
-            >
-              <option value="auto">{transposeTargetCopy.spellingAuto}</option>
-              <option value="preserve">{transposeTargetCopy.spellingPreserve}</option>
-              <option value="prefer-sharps">{transposeTargetCopy.spellingSharps}</option>
-              <option value="prefer-flats">{transposeTargetCopy.spellingFlats}</option>
-            </select>
-          </label>
-          {transposeMode === "instrument" ? (
-            <label className="field-group">
-              <span>{transposeTargetCopy.pitchDirection}</span>
-              <select
-                className="field-select"
-                value={transposePitchMode}
-                onChange={(event) => setTransposePitchMode(event.target.value as TransposePitchMode)}
-              >
-                <option value="concert-to-written">{transposeTargetCopy.concertToWritten}</option>
-                <option value="written-to-concert">{transposeTargetCopy.writtenToConcert}</option>
-              </select>
-            </label>
-          ) : null}
-          <label className="field-group">
-            <span>{transposeRangeCopy.label}</span>
-            <select
-              className="field-select"
-              value={rangeProfileId}
-              onChange={(event) => {
-                setRangeProfileId(event.target.value);
-                setTransposeSuggestions([]);
-                setTransposeSuggestionsError(null);
-              }}
-            >
-              <option value="none">{transposeRangeCopy.none}</option>
-              {SCORE_RANGE_PROFILES.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {detailCopy.profiles.ranges[profile.id]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-group">
-            <span>{transposeRangeCopy.part}</span>
-            <select
-              className="field-select"
-              value={rangePartId}
-              onChange={(event) => {
-                setRangePartId(event.target.value);
-                setTransposeSuggestions([]);
-                setTransposeSuggestionsError(null);
-              }}
-              disabled={rangeProfileId === "none"}
-            >
-              <option value="all">{transposeRangeCopy.allParts}</option>
-              {currentScoreJson?.parts.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {currentScoreJson && currentScoreJson.parts.length > 0 ? (
-            <div className="field-group wide">
-              <span>{transposeRangeCopy.perPart}</span>
-              <div className="form-grid">
-                {currentScoreJson.parts.map((part) => (
-                  <label key={part.id} className="field-group">
-                    <span>{part.name}</span>
-                    <select
-                      className="field-select"
-                      value={partRangeProfileIds[part.id] ?? "none"}
-                      onChange={(event) => {
-                        const nextProfileId = event.target.value;
-                        setPartRangeProfileIds((current) => ({
-                          ...current,
-                          [part.id]: nextProfileId,
-                        }));
-                        setTransposeSuggestions([]);
-                        setTransposeSuggestionsError(null);
-                      }}
-                    >
-                      <option value="none">{transposeRangeCopy.noPartProfile}</option>
-                      {SCORE_RANGE_PROFILES.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                          {detailCopy.profiles.ranges[profile.id]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {transposeMode === "instrument" ? (
-            <p className="helper-copy">
-              {formatInstrumentExamples(instrumentProfileId, detailCopy.profiles.instruments)}
-            </p>
-          ) : null}
-          <div className="button-row">
-            {transposeMode === "semitones" ? (
-              <>
-                <button type="button" className="button button-secondary" onClick={() => setTransposeSemitones((value) => Math.max(-24, value - 1))}>
-                  {transposeCopy.down}
-                </button>
-                <button type="button" className="button button-secondary" onClick={() => setTransposeSemitones((value) => Math.min(24, value + 1))}>
-                  {transposeCopy.up}
-                </button>
-              </>
-            ) : null}
-            <button type="submit" className="button button-primary" disabled={transposing || (transposeMode === "semitones" && transposeSemitones === 0)}>
-              {transposing ? transposeCopy.working : transposeCopy.submit}
-            </button>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => void handleLoadTransposeSuggestions()}
-              disabled={(rangeProfileId === "none" && buildRangeAssignments(partRangeProfileIds).length === 0) || transposeSuggestionsLoading}
-            >
-              {transposeSuggestionsLoading ? transposeRangeCopy.loadingSuggestions : transposeRangeCopy.loadSuggestions}
-            </button>
-            <button type="button" className="button button-secondary" onClick={() => void handleSaveTransposePreset()} disabled={savingTransposePreset}>
-              {savingTransposePreset ? transposeRangeCopy.savingPreset : transposeRangeCopy.savePreset}
-            </button>
-          </div>
-        </form>
-        {transposeStatus && transposeStatusKind ? <p className={`form-status ${transposeStatusKind}`}>{transposeStatus}</p> : null}
-        {transposeEngineResult ? (
-          <p className="helper-copy">
-            {transposeTargetCopy.engine}: {transposeEngineResult === "music21" ? "music21" : transposeTargetCopy.scoreJsonFallback}
-          </p>
-        ) : null}
-        {transposeWarnings.map((warning) => (
-          <p key={warning} className="form-status error">
-            {warning}
-          </p>
-        ))}
-        {transposePresetStatus && transposePresetStatusKind ? <p className={`form-status ${transposePresetStatusKind}`}>{transposePresetStatus}</p> : null}
-        {transposeSuggestionsError ? <p className="form-status error">{transposeSuggestionsError}</p> : null}
-        {transposeSuggestions.length > 0 ? (
-          <div className="list-grid">
-            <p className="item-title">{transposeRangeCopy.suggestions}</p>
-            {transposeSuggestions.map((suggestion) => (
-              <div key={suggestion.semitones} className="list-item">
-                <div className="list-item-content">
-                  <p className="item-title">
-                    {formatMessage(transposeRangeCopy.suggestionTitle, { value: formatSignedNumber(suggestion.semitones, locale), target: suggestion.targetKey.display })}{" "}
-                    <span className={`status-chip ${suggestion.rangeDiagnostic.outOfRangeNoteCount > 0 ? "tone-amber" : "tone-cyan"}`}>
-                      {suggestion.rangeDiagnostic.outOfRangeNoteCount > 0
-                        ? `${formatNumber(suggestion.rangeDiagnostic.outOfRangeNoteCount, locale)} / ${formatNumber(suggestion.rangeDiagnostic.noteCount, locale)} ${transposeRangeCopy.notes}`
-                        : transposeRangeCopy.noIssues}
-                    </span>
-                  </p>
-                  <p className="item-meta">
-                    {transposeRangeCopy.from} {suggestion.sourceKey.display} | {transposeRangeCopy.score} {suggestion.rangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.lowestMidi)}-
-                    {suggestion.rangeDiagnostic.highestMidi === null ? "-" : formatMidiNote(suggestion.rangeDiagnostic.highestMidi)}
-                    {suggestion.rangeDiagnostic.checkedPartIds.length > 0 ? ` | ${transposeRangeCopy.checked}: ${formatScorePartIds(suggestion.rangeDiagnostic.checkedPartIds, currentScoreJson)}` : ""}
-                  </p>
-                </div>
-                <button type="button" className="button button-secondary button-ghost" onClick={() => applyTransposeSuggestion(suggestion)}>
-                  {transposeRangeCopy.applySuggestion}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {transposeRangeDiagnostic ? (
-          <div className="list-item">
-            <div className="list-item-content">
-              <p className="item-title">
-                {transposeRangeCopy.summary}: {transposeRangeDiagnostic.label}{" "}
-                <span className={`status-chip ${transposeRangeDiagnostic.outOfRangeNoteCount > 0 ? "tone-amber" : "tone-cyan"}`}>
-                  {transposeRangeDiagnostic.outOfRangeNoteCount > 0
-                    ? `${formatNumber(transposeRangeDiagnostic.outOfRangeNoteCount, locale)} / ${formatNumber(transposeRangeDiagnostic.noteCount, locale)} ${transposeRangeCopy.notes}`
-                    : transposeRangeCopy.noIssues}
-                </span>
-              </p>
-              <p className="item-meta">
-                {transposeRangeCopy.range} {formatMidiNote(transposeRangeDiagnostic.minMidi)}-{formatMidiNote(transposeRangeDiagnostic.maxMidi)} | {transposeRangeCopy.score}{" "}
-                {transposeRangeDiagnostic.lowestMidi === null ? "-" : formatMidiNote(transposeRangeDiagnostic.lowestMidi)}-
-                {transposeRangeDiagnostic.highestMidi === null ? "-" : formatMidiNote(transposeRangeDiagnostic.highestMidi)}
-                {transposeRangeDiagnostic.checkedPartIds.length > 0 ? ` | ${transposeRangeCopy.checked}: ${formatScorePartIds(transposeRangeDiagnostic.checkedPartIds, currentScoreJson)}` : ""}
-              </p>
-              {transposeRangeDiagnostic.affectedPartIds.length > 0 ? (
-                <p className="helper-copy">
-                  {transposeRangeCopy.affected}: {transposeRangeDiagnostic.affectedPartIds.join(", ")}
-                </p>
-              ) : null}
-              {transposeRangeDiagnostics.length > 1
-                ? transposeRangeDiagnostics.map((diagnostic) => (
-                    <p key={`${diagnostic.profileId}-${diagnostic.checkedPartIds.join("-")}`} className="helper-copy">
-                      {diagnostic.label} / {formatScorePartIds(diagnostic.checkedPartIds, currentScoreJson)}: {formatNumber(diagnostic.outOfRangeNoteCount, locale)} / {formatNumber(diagnostic.noteCount, locale)}{" "}
-                      {transposeRangeCopy.notes}
-                    </p>
-                  ))
-                : null}
-              {transposeRangeDiagnostic.warnings.map((warning) => (
-                <p key={warning} className="helper-copy">
-                  {warning}
-                </p>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      {currentScoreJson ? (
-        <section className="surface-panel stack-lg">
-          <div className="stack-sm">
-            <p className="eyebrow">{clefRecommendationCopy.eyebrow}</p>
-            <h2 className="card-title">{clefRecommendationCopy.title}</h2>
-            <p className="body-copy">{clefRecommendationCopy.body}</p>
-          </div>
-          <div className="button-row">
-            <button type="button" className="button button-secondary" onClick={() => void handleLoadClefRecommendations()} disabled={clefRecommendationsLoading}>
-              {clefRecommendationsLoading ? clefRecommendationCopy.loading : clefRecommendationCopy.load}
-            </button>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => void handleApplyClefRecommendations()}
-              disabled={applyingClefRecommendations || clefRecommendations.every((recommendation) => recommendation.noteCount === 0)}
-            >
-              {applyingClefRecommendations ? clefRecommendationCopy.applying : clefRecommendationCopy.apply}
-            </button>
-          </div>
-          {clefRecommendationStatus && clefRecommendationStatusKind ? <p className={`form-status ${clefRecommendationStatusKind}`}>{clefRecommendationStatus}</p> : null}
-          {clefRecommendations.length > 0 ? (
-            <div className="list-grid">
-              {clefRecommendations.map((recommendation) => (
-                <div key={recommendation.partId} className="list-item">
-                  <div className="list-item-content">
-                    <p className="item-title">
-                      {recommendation.partName}{" "}
-                      <span className={`status-chip ${recommendation.noteCount > 0 ? "tone-cyan" : "tone-neutral"}`}>
-                        {recommendation.noteCount > 0 ? formatClefForDisplay(recommendation.clef, clefRecommendationCopy, locale) : clefRecommendationCopy.noNotes}
-                      </span>
-                    </p>
-                    <p className="item-meta">
-                      {clefRecommendationCopy.current}: {recommendation.currentClef ? formatClefForDisplay(recommendation.currentClef, clefRecommendationCopy, locale) : "-"} |{" "}
-                      {clefRecommendationCopy.recommended}: {formatClefForDisplay(recommendation.clef, clefRecommendationCopy, locale)} | {clefRecommendationCopy.range}:{" "}
-                      {recommendation.lowestMidi === null ? "-" : formatMidiNote(recommendation.lowestMidi)}-
-                      {recommendation.highestMidi === null ? "-" : formatMidiNote(recommendation.highestMidi)}
-                    </p>
-                    <p className="helper-copy">{recommendation.reason}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {score.currentRevision ? (
-        <div id="playback-practice" className="stack-lg">
-          <ScorePlaybackPanel
-              key={score.currentRevisionId ?? score.id}
-              scoreId={score.id}
-              token={token}
-              revisionId={score.currentRevisionId}
-              practiceSettings={playbackPracticeSettings}
-              onPracticeSettingsChange={setPlaybackPracticeSettings}
-              selectedEventId={selectedScoreEventId}
-              onPlaybackEventChange={setSelectedScoreEventId}
-              exportActions={{
-                midi: {
-                  label: exportCopy.button,
-                  loadingLabel: exportCopy.exporting,
-                  loading: exportingMidi,
-                  disabled: !currentScoreJson,
-                  onClick: () => void handleExportMidi(),
-                },
-                wav: {
-                  label: wavExportCopy.button,
-                  loadingLabel: wavExportCopy.exporting,
-                  loading: exportingWav,
-                  disabled: !currentScoreJson,
-                  onClick: () => void handleExportWav(),
-                },
-                mp3: {
-                  label: mp3ExportCopy.button,
-                  loadingLabel: mp3ExportCopy.exporting,
-                  loading: exportingMp3,
-                  disabled: !currentScoreJson,
-                  onClick: () => void handleExportMp3(),
-                },
-              }}
-            />
-          <section className="surface-panel stack-lg">
-            <PracticeRecorder
-              locale={locale}
-              value={practiceRecording}
-              playbackEndpoint={`/api/scores/${score.id}/playback`}
-              practiceSettings={playbackPracticeSettings}
-              selectedEventId={selectedScoreEventId}
-              onEventSelect={setSelectedScoreEventId}
-              onRecording={setPracticeRecording}
-            />
-          </section>
-        </div>
-      ) : (
-        <section className="surface-panel stack-lg">
-          <div className="stack-sm">
-            <p className="eyebrow">{detailCopy.emptyStates.playbackEyebrow}</p>
-            <h2 className="card-title">{detailCopy.emptyStates.playbackTitle}</h2>
-            <p className="body-copy">{detailCopy.emptyStates.playbackBody}</p>
-          </div>
-        </section>
-      )}
-
-      <div id="omr-comparison" className="score-comparison-grid">
-          <ScoreOmrReviewPanel
-            scoreId={score.id}
-            sourceFile={sourcePreviewAsset?.file ?? null}
-          pageFiles={omrPageFiles}
-          token={token}
-          scoreJson={currentScoreJson ?? null}
-          selectedEventId={selectedScoreEventId}
-          onEventSelect={handleScoreEventSelect}
-          locale={locale}
-        />
-        <section className="surface-panel stack-lg">
-          <div className="stack-sm">
-            <p className="eyebrow">{copy.source}</p>
-            <h2 className="card-title">{copy.previewTitle}</h2>
-            <p className="body-copy">{copy.previewBody}</p>
-          </div>
-          <ScoreMusicXmlPreview
-            fileId={musicxmlFileId ?? null}
-            token={token}
-            musicXml={generatedPreviewMusicXml}
-            scoreJson={currentScoreJson}
-            selectedEventId={selectedScoreEventId}
-            onEventSelect={handleScoreEventSelect}
-            emptyLabel={detailCopy.preview.empty}
-            loadingLabel={detailCopy.preview.loading}
-            errorLabel={detailCopy.preview.error}
-            retryLabel={detailCopy.preview.retry}
-            technicalDetailsLabel={detailCopy.preview.technicalDetails}
-            deferredLabel={detailCopy.preview.deferred}
-            renderLabel={detailCopy.preview.render}
-            eventLabelTemplate={detailCopy.preview.eventLabel}
-            noteLabel={detailCopy.preview.note}
-            restLabel={detailCopy.preview.rest}
-          />
-        </section>
-      </div>
-
-      <section id="score-json-model" className="surface-panel stack-lg">
+      </section></WorkspacePanel>
+<WorkspacePanel name="advanced"><section id="score-json-model" className="surface-panel stack-lg">
           <div className="stack-sm">
             <p className="eyebrow">Score JSON</p>
             <h2 className="card-title">{copy.modelTitle}</h2>
@@ -3701,8 +3937,8 @@ export function ScoreDetailClient() {
           {scoreSummary && scoreSummary.warnings.length > 0 ? (
             <div className="mini-card stack-xs">
               <p className="metric-label">{summaryCopy.warnings}</p>
-              {scoreSummary.warnings.map((warning) => (
-                <p key={warning} className="helper-copy">
+              {scoreSummary.warnings.map((warning, index) => (
+                <p key={`${index}:${warning}`} className="helper-copy">
                   {warning}
                 </p>
               ))}
@@ -3711,192 +3947,8 @@ export function ScoreDetailClient() {
           <pre className="preview-block">
             {JSON.stringify(score.currentRevision?.scoreJson ?? {}, null, 2)}
           </pre>
-      </section>
-
-      <section id="jianpu-preview" className="surface-panel stack-lg">
-        <div className="stack-sm">
-          <p className="eyebrow">{jianpuCopy.eyebrow}</p>
-          <h2 className="card-title">{jianpuCopy.title}</h2>
-          <p className="body-copy">{jianpuCopy.body}</p>
-        </div>
-        <div className="form-grid">
-          <label className="field-group">
-            <span>{jianpuCopy.pitchSystem}</span>
-            <select className="field-select" value={jianpuPitchSystem} onChange={(event) => setJianpuPitchSystem(event.target.value as JianpuPitchSystem)}>
-              <option value="movable-do">{jianpuCopy.movableDo}</option>
-              <option value="fixed-do">{jianpuCopy.fixedDo}</option>
-            </select>
-          </label>
-          <label className="field-group">
-            <span>{jianpuCopy.accidentals}</span>
-            <select className="field-select" value={jianpuAccidentalStrategy} onChange={(event) => setJianpuAccidentalStrategy(event.target.value as JianpuAccidentalStrategy)}>
-              <option value="preserve">{jianpuCopy.preserve}</option>
-              <option value="prefer-sharps">{jianpuCopy.preferSharps}</option>
-              <option value="prefer-flats">{jianpuCopy.preferFlats}</option>
-            </select>
-          </label>
-          <div className="button-row field-group">
-            <button type="button" className="button button-secondary" onClick={() => void refreshJianpu()} disabled={jianpuLoading}>
-              {jianpuCopy.apply}
-            </button>
-          </div>
-        </div>
-        {jianpuLoading ? <div className="empty-state">{jianpuCopy.loading}</div> : null}
-        {jianpuError ? <p className="form-status error">{jianpuError}</p> : null}
-        {!jianpuLoading && !jianpuError && !jianpu ? <div className="empty-state">{jianpuCopy.empty}</div> : null}
-        {jianpu ? (
-          <div className="jianpu-preview">
-            <div className="jianpu-meta">
-              <span>{jianpuCopy.key}: 1={jianpu.key.tonic} ({transposeTargetCopy[jianpu.key.mode]})</span>
-              <span>{jianpuCopy.source}: {jianpu.metadata.sourceRevisionParser}</span>
-            </div>
-            {jianpu.metadata.warnings.length > 0 ? (
-              <div className="stack-xs" role="status">
-                <p className="metric-label">{jianpuCopy.warnings}</p>
-                {jianpu.metadata.warnings.map((warning) => (
-                  <p key={warning} className="helper-copy">{warning}</p>
-                ))}
-              </div>
-            ) : null}
-            <JianpuNotationView
-              document={jianpu}
-              selectedEventId={selectedScoreEventId}
-              onEventSelect={handleScoreEventSelect}
-              locale={locale}
-            />
-            <details className="jianpu-source-details">
-              <summary>{jianpuCopy.sourceText}</summary>
-              <pre className="jianpu-block">{jianpu.text}</pre>
-            </details>
-          </div>
-        ) : null}
-      </section>
-
-      <section id="project-comments" className="surface-panel stack-lg">
-        <div className="stack-sm">
-          <p className="eyebrow">{commentCopy.eyebrow}</p>
-          <h2 className="card-title">{commentCopy.title}</h2>
-          <p className="body-copy">{commentCopy.body}</p>
-        </div>
-        <form className="stack-sm" onSubmit={handlePostComment}>
-          <label className="field-group wide">
-            <span>{commentCopy.target}</span>
-            <select className="field-select" value={selectedCommentTarget.id} onChange={(event) => setCommentTargetId(event.target.value)}>
-              {commentTargetOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-group wide">
-            <span>{commentCopy.submit}</span>
-            <textarea
-              className="field-control"
-              rows={4}
-              maxLength={2000}
-              placeholder={commentCopy.placeholder}
-              value={commentText}
-              onChange={(event) => setCommentText(event.target.value)}
-            />
-          </label>
-          <div className="button-row">
-            <button type="submit" className="button button-primary" disabled={postingComment || commentText.trim().length === 0}>
-              {postingComment ? commentCopy.posting : commentCopy.submit}
-            </button>
-          </div>
-        </form>
-        {commentsLoading ? <div className="empty-state">{commentCopy.loading}</div> : null}
-        {commentsError ? <p className="form-status error">{commentsError}</p> : null}
-        {!commentsLoading && !commentsError && comments.length === 0 ? <div className="empty-state">{commentCopy.empty}</div> : null}
-        {comments.length > 0 ? (
-          <div className="list-grid">
-            {comments.map((comment) => (
-              <div key={comment.id} className="list-item">
-                <div className="list-item-content">
-                  <div className="button-row">
-                    <p className="item-title">{comment.author.displayName}</p>
-                    <span className={`status-chip ${comment.author.verification === "account" ? "tone-green" : "tone-cyan"}`}>
-                      {comment.author.verification === "account" ? commentCopy.accountIdentity : commentCopy.shareIdentity}
-                    </span>
-                    {comment.resolvedAt ? <span className="status-chip tone-green">{commentCopy.resolved}</span> : null}
-                  </div>
-                  <p className="item-meta">
-                    {formatCommentTarget(comment.target, commentCopy.scoreTarget)} | {formatDateTime(comment.createdAt, locale)}
-                  </p>
-                  <p className="body-copy">{comment.body}</p>
-                </div>
-                <button type="button" className="button button-secondary button-ghost" disabled={resolvingCommentId === comment.id} onClick={() => void handleCommentResolution(comment)}>
-                  {comment.resolvedAt ? commentCopy.reopen : commentCopy.resolve}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section id="revision-history" className="surface-panel stack-lg">
-        <div className="stack-sm">
-          <p className="eyebrow">{copy.revisions}</p>
-          <h2 className="card-title">{copy.revisions}</h2>
-        </div>
-        <div className="button-row" role="group" aria-label={detailCopy.revision.undoRedoAria}>
-          <button
-            type="button"
-            className="button button-secondary button-ghost"
-            onClick={() => void handleUndoRevision()}
-            disabled={undoRevisionIds.length === 0 || Boolean(restoringRevisionId)}
-          >
-            {detailCopy.revision.undo}
-          </button>
-          <button
-            type="button"
-            className="button button-secondary button-ghost"
-            onClick={() => void handleRedoRevision()}
-            disabled={redoRevisionIds.length === 0 || Boolean(restoringRevisionId)}
-          >
-            {detailCopy.revision.redo}
-          </button>
-        </div>
-        {revisionStatus && revisionStatusKind ? <p className={`form-status ${revisionStatusKind}`}>{revisionStatus}</p> : null}
-        <div className="list-grid">
-          {revisions.map((revision) => {
-            const isCurrentRevision = revision.id === score.currentRevisionId;
-            return (
-              <div key={revision.id} className="list-item">
-                <div className="list-item-content">
-                  <p className="item-title">
-                    v{formatNumber(revision.revisionNumber, locale)} {isCurrentRevision ? <span className="status-chip tone-primary">{copy.currentBadge}</span> : null}
-                  </p>
-                  <p className="item-meta">
-                    {formatRevisionSource(revision.createdFrom, detailCopy.revision.sources)} | {formatDateTime(revision.createdAt, locale)}
-                  </p>
-                </div>
-                <div className="button-row">
-                  {revision.musicxmlFileId ? (
-                    <button
-                      type="button"
-                      className="button button-secondary button-ghost"
-                      onClick={() => void handleDownload(revision.musicxmlFileId!, `${score.title}-v${revision.revisionNumber}.musicxml`)}
-                    >
-                      {copy.download}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="button button-secondary button-ghost"
-                    onClick={() => void handleRestoreRevision(revision.id)}
-                    disabled={isCurrentRevision || Boolean(restoringRevisionId)}
-                  >
-                    {restoringRevisionId === revision.id ? copy.restoring : copy.restore}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    </div>
+      </section></WorkspacePanel>
+</ScoreWorkspace>
   );
 }
 
@@ -4210,7 +4262,7 @@ function summarizeOmrDiagnostic(
   const statusCode = stringValue(diagnostics.status) ?? "diagnostic";
   const status = formatDiagnosticStatus(statusCode, copy.statuses);
   const engine = stringValue(diagnostics.engine) ?? "OMR";
-  const message = stringValue(diagnostics.message);
+  const message = locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? null : stringValue(diagnostics.message);
   const counts = [
     numberLabel(copy.measures, diagnostics.measureCount, locale),
     numberLabel(copy.notes, diagnostics.noteCount, locale),

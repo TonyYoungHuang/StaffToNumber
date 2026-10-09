@@ -1,6 +1,6 @@
 # Google SEO 与注册—免费识谱—升级漏斗上线清单
 
-更新日期：2026-08-18
+更新日期：2026-08-18（第 4 节漏斗口径于 2026-10-09 校准）
 
 ## 1. 本阶段交付范围
 
@@ -49,22 +49,39 @@ RESEND_API_KEY=re_...
 
 若 `RESEND_API_KEY` 或发件地址缺失，邮件只进入 preview 模式，不会真实送达。
 
-## 4. 漏斗事件定义
+## 4. 漏斗事件定义（官方口径，2026-10-09 校准）
 
-| 顺序 | GA4 事件 | 触发点 | 关键参数 |
-| --- | --- | --- | --- |
-| 1 | `seo_landing_view` | 用户打开核心 SEO 功能页 | `landing_path` |
-| 2 | `product_cta_click` | 官网主 CTA 点击 | `link_text`, `page_path` |
-| 3 | `sign_up` | 邮箱注册成功 | `method=email` |
-| 4 | `free_omr_created` | 首次 OMR 任务创建成功 | `free_trial`, `source_type` |
-| 5 | `free_omr_preview_viewed` | 免费候选五线谱完成并可查看 | `preview_type` |
-| 6 | `upgrade_click` | 免费额度页或候选页点击升级 | `source` |
-| 7 | `begin_checkout` | 本地订单创建成功、跳转支付前 | `payment_type`, `plan_kind` |
-| 8 | `purchase` | 成功页确认本地订单已支付 | `transaction_id`, `value`, `currency`, `items` |
+**官方漏斗（GA4 探索 → 漏斗探索，按此顺序逐步填写“事件名称”完全等于）：**
+
+```text
+seo_landing_view → product_cta_click → sign_up → free_omr_created → free_omr_preview_viewed → upgrade_click → begin_checkout → purchase
+```
+
+事件名以代码为准（`apps/www/src/lib/analytics.ts`、`apps/app/src/lib/analytics.ts` 的 `trackFunnelEvent`）。不存在 `free_user_created`、`app_landing_view` 这类事件；如在 GA 里看到或在漏斗里自定义了这类名称，以本表为准改回。
+
+| 顺序 | GA4 事件 | 触发点（代码位置） | 关键参数 | 建议 Key event |
+| --- | --- | --- | --- | --- |
+| 1 | `seo_landing_view` | 官网打开核心 SEO 功能页或 `/pricing`（`ProductionAnalytics.tsx`） | `landing_path` | 否 |
+| 2 | `product_cta_click` | 官网任一 `a.public-button` 主按钮点击（`ProductionAnalytics.tsx`） | `link_text`, `link_url`, `page_path` | 否 |
+| 3 | `sign_up` | 新账号注册成功，邮箱或 Google（`AuthForm.tsx`、`PurchaseFlowProvider.tsx`） | `method=email\|google` | **是** |
+| 4 | `free_omr_created` | OMR 识别任务创建成功（`ScoreLibraryManager.tsx`） | `free_trial`, `source_type=pdf\|image`, `recognition_mode=simple\|complex` | **是** |
+| 5 | `free_omr_preview_viewed` | 免费候选五线谱完成并可查看，每个乐谱只记一次（`TrialScorePreview.tsx`） | `preview_type` | 否 |
+| 6 | `upgrade_click` | 任一升级入口点击（见下方 `source` 取值） | `source` | **是** |
+| 7 | `begin_checkout` | 本地订单创建成功、跳转支付前（官网 `CheckoutClient`/`PurchaseFlowProvider`，应用 `AppCheckoutClient`） | `payment_type`, `plan_code`, `plan_kind` | **是** |
+| 8 | `purchase` | 成功页确认本地订单已支付，按订单 ID 去重（`CheckoutStatusClient`/`AppCheckoutStatusClient`） | `transaction_id`, `value`, `currency`, `items` | **是**（GA4 默认已是） |
+
+说明：
+
+- `free_omr_created` 对付费账号也会触发；看“免费”漏斗时按 `free_trial = true` 过滤（需先把 `free_trial` 注册为自定义维度，见 `docs/operations/ga4-key-events-checklist.md`）。
+- `upgrade_click` 的 `source` 取值：`trial_score_preview`（免费预览页解锁）、`score_import`（上传页额度不足/升级）、`score_import_draft_failed`、`score_detail_locked`（乐谱详情页无权限）、`entitlement_gate` / `entitlement_gate_activation`（权益拦截面板）、`app_header`（应用顶部“升级”按钮）。
+- P5 起：`trial_score_preview` / `score_import` 拆分为 `<surface>_one_score` / `<surface>_subscription` / `<surface>_activation_code`（新增 `free_omr_review_*`、`checkout_activation_code`），并附带 `plan_type` 参数；详见 `p5-one-score-pass-upsell.md`。
+- 辅助事件（不进主漏斗，但保留）：`page_view`（两站手动发送，`send_page_view=false`）、`login`（老用户登录）、`view_item_list` / `select_item`（应用结账页套餐列表与选择）。GA4 自动事件 `first_visit`、`session_start`、`user_engagement`、`scroll`、`form_start` 等不是本站埋点，不要放进漏斗。
 
 `purchase` 使用本地订单 ID 去重。Paddle/Stripe Webhook 是付款和权益的真相源；浏览器事件只用于漏斗分析，不能用于发放权益。
 
-`purchase` 已由 GA4 自动列为 Key event。GA4 最长需要 24 小时才会把首次收到的自定义事件加入“近期事件”；届时再把 `sign_up`、`free_omr_created` 和 `upgrade_click` 标记为 Key events。零流量阶段先看每一步是否有数据，不设置虚假的转化率目标。
+**Key events 建议**：`sign_up`、`free_omr_created`、`upgrade_click`、`begin_checkout`、`purchase`。截至 2026-10-09 GA 事件表已收到 `sign_up`、`free_omr_created`，可以直接标记；具体点击路径见 `docs/operations/ga4-key-events-checklist.md`。零流量阶段先看每一步是否有数据，不设置虚假的转化率目标。
+
+**Clarity 仍未启用**：生产环境 `NEXT_PUBLIC_CLARITY_PROJECT_ID` 为空（`deploy/hetzner/public.env` 未配置），因此热力图和会话录屏目前没有数据。需要在 clarity.microsoft.com 创建项目、取得 Project ID，填入后两个前端一起重新构建部署。
 
 ## 5. 发布与验收
 
@@ -78,7 +95,7 @@ node scripts/audit-production-seo.mjs --base-url https://scoretransposer.com --r
 当前使用已验证的 Domain property，不依赖 HTML verification meta，因此不要为该模式添加 `--require-google-verification`。
 
 3. 在浏览器同意分析 Cookie，确认 Cookie Domain 为 `.scoretransposer.com`，进入 `app.` 后不再次丢失同意状态。
-4. 用 GA4 DebugView/Realtime 依次验证 `seo_landing_view → sign_up → free_omr_created → free_omr_preview_viewed → upgrade_click → begin_checkout`。
+4. 用 GA4 DebugView/Realtime 依次验证 `seo_landing_view → product_cta_click → sign_up → free_omr_created → free_omr_preview_viewed → upgrade_click → begin_checkout`（逐项清单见 `docs/operations/ga4-key-events-checklist.md`）。
 5. 用 Paddle Sandbox 完成一次支付，确认 `purchase` 只出现一次、账户权益已开通，并且 `PAYMENT_NOTIFICATION_EMAIL` 收到提醒。
 6. Search Console 提交 sitemap 后检查抓取状态；收录可能需要数天到数周，提交 sitemap 不是排名保证。
 

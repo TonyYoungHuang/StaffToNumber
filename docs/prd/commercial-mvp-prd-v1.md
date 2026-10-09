@@ -171,6 +171,6 @@ ScoreTransposer 已拥有可销售的乐谱处理底座，但正式站还没有�
 - Checkout 到付款成功率。
 - 付款后首次完整导出成功率。
 
-阶段三事件口径：`seo_landing_view`、`sign_up`、`free_omr_created`、`free_omr_preview_viewed`、`upgrade_click`、`begin_checkout`、`purchase`。事件禁止携带邮箱、文件名和乐谱内容，付款权益仍只由验签 Webhook 决定。
+阶段三事件口径（官方漏斗顺序，2026-10-09 校准）：`seo_landing_view` → `product_cta_click` → `sign_up` → `free_omr_created` → `free_omr_preview_viewed` → `upgrade_click` → `begin_checkout` → `purchase`，定义见 `docs/operations/google-seo-funnel-runbook.md` 第 4 节。事件禁止携带邮箱、文件名和乐谱内容，付款权益仍只由验签 Webhook 决定。
 
 零流量阶段不设置虚假的绝对增长目标；先确保每个事件可测、每条链路可完成，再根据首批 20–50 个有效访问建立基线。

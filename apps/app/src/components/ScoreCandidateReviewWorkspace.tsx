@@ -6,12 +6,15 @@ import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
 import type { ScoreJson } from "@score/shared";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
-import { ScoreOmrReviewPanel } from "./ScoreOmrReviewPanel";
+import { ScoreOmrReviewPanel, type ScoreSourceRegion } from "./ScoreOmrReviewPanel";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
 import { ScoreVisualEditorPanel } from "./ScoreVisualEditorPanel";
 import { projectSynchronizedScroll } from "../lib/score-review-viewport";
-import { accountActivationRoute } from "../lib/release";
+import { OneScorePassUpsell } from "./OneScorePassUpsell";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
+import { useScoreNavigationLocked } from "./ScoreOperationBoundary";
+import { ensembleCoverage } from "../lib/ensemble-score-selection";
+import { getEnsembleMessages } from "../lib/ensemble-messages";
 
 type CandidateRevision = {
   id: string;
@@ -51,6 +54,7 @@ export function ScoreCandidateReviewWorkspace({
   revisionStatus,
   revisionStatusKind,
   freeEditing = false,
+  focusedSourceRegion,
 }: {
   title: string;
   scoreId: string;
@@ -62,7 +66,7 @@ export function ScoreCandidateReviewWorkspace({
   generatedMusicXml: string | null;
   selectedEventId: string | null;
   onEventSelect: (eventId: string) => void;
-  onAccept: () => void;
+  onAccept: (coverageReviewed?: boolean) => void;
   onReject: () => void;
   submittingAction: "accept" | "reject" | null;
   actionError: string | null;
@@ -75,13 +79,19 @@ export function ScoreCandidateReviewWorkspace({
   revisionStatus: string | null;
   revisionStatusKind: "success" | "error" | null;
   freeEditing?: boolean;
+  focusedSourceRegion?: ScoreSourceRegion | null;
 }) {
   const copy = useScoreReviewMessages().candidate;
+  const navigationLocked = useScoreNavigationLocked();
   const comparisonRef = useRef<HTMLDivElement | null>(null);
   const syncingScrollRef = useRef(false);
   const releaseSyncFrameRef = useRef<number | null>(null);
   const [reviewZoom, setReviewZoom] = useState(1);
   const [syncScroll, setSyncScroll] = useState(true);
+  const [coverageReviewed, setCoverageReviewed] = useState(false);
+  const requiresCoverageReview = Boolean(ensembleCoverage(revision.scoreJson));
+  const ensembleCopy = getEnsembleMessages(locale);
+  useEffect(() => { setCoverageReviewed(false); }, [revision.id]);
 
   useEffect(() => {
     const comparison = comparisonRef.current;
@@ -133,15 +143,14 @@ export function ScoreCandidateReviewWorkspace({
             {copy.back}
           </Link>
           {freeEditing ? (
-            <Link href={accountActivationRoute} className="button button-primary">
-              {copy.processMore}
-            </Link>
+            <OneScorePassUpsell source="free_omr_review" />
           ) : (
             <>
-              <button type="button" className="button button-secondary" onClick={onReject} disabled={submittingAction !== null}>
+              <button type="button" className="button button-secondary" onClick={onReject} disabled={navigationLocked || submittingAction !== null}>
                 {submittingAction === "reject" ? copy.rejecting : copy.reject}
               </button>
-              <button type="button" className="button button-primary" onClick={onAccept} disabled={submittingAction !== null}>
+              {requiresCoverageReview ? <label className="check-row"><input type="checkbox" data-coverage-reviewed checked={coverageReviewed} disabled={navigationLocked || submittingAction !== null} onChange={event => setCoverageReviewed(event.target.checked)} /><span>{ensembleCopy.coverageReviewConfirm}</span></label> : null}
+              <button type="button" className="button button-primary" onClick={() => onAccept(requiresCoverageReview ? coverageReviewed : undefined)} disabled={navigationLocked || submittingAction !== null || (requiresCoverageReview && !coverageReviewed)}>
                 {submittingAction === "accept" ? copy.accepting : copy.accept}
               </button>
             </>
@@ -159,10 +168,10 @@ export function ScoreCandidateReviewWorkspace({
           {freeEditing ? copy.freeSafetyBody : copy.reviewSafetyBody}
         </p>
         {!freeEditing ? <div className="button-row" role="group" aria-label={copy.historyGroupLabel}>
-          <button type="button" className="button button-secondary button-ghost" onClick={onUndo} disabled={!canUndo || restoring}>
+          <button type="button" className="button button-secondary button-ghost" onClick={onUndo} disabled={navigationLocked || !canUndo || restoring}>
             {copy.undo}
           </button>
-          <button type="button" className="button button-secondary button-ghost" onClick={onRedo} disabled={!canRedo || restoring}>
+          <button type="button" className="button button-secondary button-ghost" onClick={onRedo} disabled={navigationLocked || !canRedo || restoring}>
             {copy.redo}
           </button>
         </div> : null}
@@ -194,6 +203,7 @@ export function ScoreCandidateReviewWorkspace({
           onEventSelect={onEventSelect}
           locale={locale}
           zoom={reviewZoom}
+          focusedSourceRegion={focusedSourceRegion}
         />
         <section className="surface-panel stack-lg">
           <div className="stack-sm">
@@ -229,8 +239,8 @@ export function ScoreCandidateReviewWorkspace({
         scoreJson={revision.scoreJson}
         selectedEventId={selectedEventId}
         onSelectedEventChange={onEventSelect}
-        onUpdated={() => {
-          void onCandidateUpdated();
+        onUpdated={async () => {
+          await onCandidateUpdated();
         }}
         allowCookieAuth={freeEditing}
       />
@@ -239,8 +249,8 @@ export function ScoreCandidateReviewWorkspace({
         scoreId={scoreId}
         token={token}
         scoreJson={revision.scoreJson}
-        onUpdated={() => {
-          void onCandidateUpdated();
+        onUpdated={async () => {
+          await onCandidateUpdated();
         }}
       />
     </div>

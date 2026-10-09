@@ -17,12 +17,12 @@ export const zhTWBillingMessages = {
       body: "正式網站不會建立測試訂單或重新導向 staging 付款。實際付款、退款與訂閱續費通過最終驗收後，此入口才會開放。", continueFree: "繼續免費編輯",
     },
     page: {
-      eyebrow: "點數付費方案", title: "選擇你的點數方案", body: "每次符合計費規則的成功操作會使用一點。登入前可比較價格、功能與資源。",
+      eyebrow: "點數付費方案", title: "選擇你的點數方案", body: "任務建立時預留點數；失敗或取消後自動退回。登入前可比較價格、功能與資源。",
       promoLabel: "年繳更優惠", promoValue: "約節省 45%～49%", planNote: "每月點數會按月重設，未使用點數不會累積。檢視、播放控制與未提交的基本編輯不使用點數。",
     },
     selector: {
       plansAria: "選擇點數方案", selectedPlan: "目前已選", continueTemplate: "繼續購買 {name} {cycle}", freeEyebrow: "免費版",
-      freeTitle: "免費建立你的第一份完整樂譜", freeBody: "無需付款或信用卡。免費方案會長期保留一個完整樂譜專案，並按月提供點數。", freeCta: "免費建立樂譜", creditUsage: "僅在實際使用時扣除點數", includedCapabilities: "包含功能", benefitsAndResources: "權益與資源",
+      freeTitle: "免費建立你的第一份完整樂譜", freeBody: "無需付款或信用卡。免費方案會長期保留一個完整樂譜專案，並按月提供點數。", freeCta: "免費建立樂譜", creditUsage: "任務建立時預留點數", includedCapabilities: "包含功能", benefitsAndResources: "權益與資源",
     },
     client: {
       checkoutEyebrow: "付款", title: "線上付款並自動開通權限", body: "付款成功後，權限會自動開通到註冊帳戶。國際使用者不必手動兌換啟用碼。",
@@ -49,7 +49,11 @@ export const zhTWBillingMessages = {
     manager: {
       loading: "正在載入帳單資訊...", fallbackError: "目前無法載入帳單資訊，請重試。", signIn: "請先登入以查看帳單。",
       creditEyebrow: "點數餘額", availableCredits: "本月可用點數", creditUnit: "點數", creditSummaryTemplate: "本月共 {limit} 點，已使用 {used} 點。", creditUsage: "本月點數使用", storage: "檔案儲存空間",
-      quotaNote: "每次符合計費規則的成功操作會使用一點；點數按月重設，未使用點數不會累積。",
+      prepaidTitle: "一次性點數包 · 可用點數",
+      prepaidSummaryTemplate: "共 {limit} 點，已用或預留 {used}；不按月重設，未用點數保留。",
+      prepaidNote: "識譜與新建匯出使用點數；編輯、移調和試聽不額外扣點。失敗或取消會釋放預留點數；重新處理需再次核對額度。",
+      additionalPrepaidTemplate: "另有一次性點數 {remaining} / {total}，月度額度不足時使用；未用點數保留。",
+      quotaNote: "任務建立時預留點數；失敗或取消後自動退回。月度點數按月重設，未使用點數不會累積。",
       freeEyebrow: "免費使用狀態", noPaidTitle: "目前沒有生效中的付費方案", freeBody: "免費帳戶可從一份完整多頁 PDF 或樂譜圖片建立一個永久專案，並使用校正、播放、移調、轉簡譜、分享與匯出；免費額度為 {credits}。", unlock: "開通完整權限",
       subscriptionsEyebrow: "訂閱", subscriptionsTitle: "存取權與續費狀態", manageStripe: "管理 Stripe 付款方式", managingStripe: "正在開啟 Stripe...", noSubscriptions: "目前帳戶尚無訂閱。",
       currentPeriodEndsTemplate: "目前週期至 {date}", noFixedEnd: "沒有固定的週期結束時間", renewalFailed: "最近一次續費失敗，請更新付款方式。", cancellationScheduled: "已安排在目前週期結束時取消。",
@@ -69,14 +73,14 @@ export const zhTWBillingMessages = {
       "converter-pro-monthly": "適合每月處理更多樂譜的高頻個人使用者", "converter-pro-annual": "適合長期、高頻處理個人樂譜的使用者",
     },
     ctas: { free: "免費建立樂譜", "starter-monthly": "選擇 Starter 月繳", "starter-annual": "選擇 Starter 年繳", "converter-pro-monthly": "選擇 Converter Pro 月繳", "converter-pro-annual": "選擇 Converter Pro 年繳" },
-    unitPriceTemplate: "每點 {unitPrice}", freeUnitPriceTemplate: "{projectCount} 個完整樂譜專案", creditsTemplate: "每月 {monthlyCredits} 點", freeCreditsTemplate: "{projectCount} 個完整樂譜 · 每月 {monthlyCredits} 點",
+    unitPriceTemplate: "每點 {unitPrice}", freeUnitPriceTemplate: "{projectCount} 個完整樂譜專案", creditsTemplate: "每月 {monthlyCredits} 點", freeCreditsTemplate: "終身 {projectCount} 個免費辨識專案 · 每月 {monthlyCredits} 點（匯出等功能）",
     benefits: {
       freeProject: "永久建立 {projectCount} 個完整樂譜專案", moreThanFreeProject: "不再受 {projectCount} 個免費樂譜專案限制", starterIncluded: "包含 Starter 的所有現有功能", starterMonthlyIncluded: "包含 Starter 月繳的所有現有功能", converterMonthlyIncluded: "包含 Converter Pro 月繳的所有現有功能",
       editor: "線上樂譜編輯、聲部分譜副本與多人協作 Beta", practice: "練習播放、瀏覽器錄音回饋 Beta 與智慧移調", conversion: "五線譜／簡譜及 MusicXML／MIDI 轉換",
       exports: "對應渲染服務可用時，支援 PDF／SVG／PNG 與 WAV／MP3 匯出", freeExports: "在該免費樂譜內使用已開放的匯出與專案級功能",
     },
     resources: {
-      monthlyCredits: "每月 {monthlyCredits} 點", monthlyCreditsReset: "每月 {monthlyCredits} 點，按月重設", storage: "{storage} GB 檔案儲存空間", personalLibrary: "個人樂譜庫、修訂記錄與開放曲庫",
+      monthlyCredits: "每月 {monthlyCredits} 點", monthlyCreditsReset: "每月 {monthlyCredits} 點，按月重設", freeMonthlyCredits: "每月 {monthlyCredits} 點用於匯出等功能，按月重設；辨識新樂譜需單曲處理包或方案", storage: "{storage} MB 檔案儲存空間", personalLibrary: "個人樂譜庫、修訂記錄與開放曲庫",
       monthlyRenewal: "按月續費，可隨時停止後續續費", annualSavings: "相較連續月繳一年節省 {annualSavings}", freeLibrary: "開放曲庫瀏覽與 CC0 檔案下載", noCard: "無需信用卡，免費專案長期保留",
     },
   },

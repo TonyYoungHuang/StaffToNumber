@@ -16,7 +16,7 @@ export {
   type SupportedLocale,
 } from "@score/i18n";
 
-export const PRODUCT_NAME = "MusicXML Sheet Music Workspace";
+export const PRODUCT_NAME = "ScoreTransposer";
 
 export const APP_ROUTES = {
   home: "/",
@@ -279,6 +279,8 @@ export type ConversionDirection = "staff_pdf_to_numbered" | "numbered_pdf_to_sta
 export type ActivationCodeStatus = "available" | "redeemed" | "disabled";
 
 export type EntitlementStatus = "inactive" | "active" | "expired";
+export { SHOP_CREDIT_PACKS, isShopCreditPackCode, isShopActivationPlanCode } from "./shop-credit-packs.ts";
+export type { ShopCreditPackCode, ShopActivationPlanCode } from "./shop-credit-packs.ts";
 
 export type StoredFileKind =
   | "input_pdf"
@@ -305,6 +307,51 @@ export type StoredFileKind =
 export type JobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 export type JobResultKind = "none" | "final" | "draft";
+
+export type ScoreRecognitionMode = "simple" | "complex";
+/** Free structural inspection; it does not recognize notes or reserve credits. */
+export type ScoreStructurePreflight = {
+  schemaVersion: 1;
+  recommendation: ScoreRecognitionMode | "uncertain";
+  confidence: "high" | "medium" | "low";
+  sourcePageCount: number;
+  pagesAnalyzed: number;
+  complete: boolean;
+  reasonCodes: string[];
+  elapsedMs?: number;
+  /** Admission only, never a promise of note accuracy. */
+  recognitionSupport?: {
+    supported: boolean;
+    code: "READY" | "PDF_ADAPTIVE_RENDER" | "PDF_PAGE_PIXEL_LIMIT" | "PDF_TOTAL_PIXEL_LIMIT" | "PDF_INVALID";
+    pageDpi?: number[];
+  };
+  pages: Array<{
+    page: number;
+    staffCount: number;
+    systemCount: number;
+    maxStavesPerSystem: number;
+    hasTab: boolean;
+    uncertain: boolean;
+    width?: number;
+    height?: number;
+    rotation?: 0 | 90 | 180 | 270 | null;
+    orientationCertain?: boolean;
+    standardStaffCount?: number;
+    tabStaffCount?: number;
+    reasonCodes?: string[];
+  }>;
+};
+export { attachMusicXmlPreservation, exportPreservedMusicXml, MusicXmlPreservationError } from "./musicxml-preservation.ts";
+
+export type ScoreRecognitionCreditSource = "plan" | "free_trial" | "score_pass";
+
+export type ScoreRecognitionOption = {
+  mode: ScoreRecognitionMode;
+  creditCost: number;
+  canSubmit: boolean;
+  creditSource: ScoreRecognitionCreditSource | null;
+  reason: string | null;
+};
 
 export const SCORE_PROCESSING_QUEUE = "score-processing" as const;
 
@@ -478,6 +525,7 @@ export type ScoreLyric = {
   number?: string;
   syllabic?: string;
   text: string;
+  extend?: { type?: "start" | "continue" | "stop" };
 };
 
 export type ScoreTie = {
@@ -590,9 +638,45 @@ export type ScoreRecognitionPage = {
   };
 };
 
+export type ScoreRecognitionCoverage = {
+  schemaVersion: 1;
+  status: "review-required" | "verified" | "incomplete";
+  sourcePageCount: number;
+  coverageBasis: "detected-layout";
+  manualReview?: { reviewedAt: string; sourcePageCount: number };
+  pages: Array<{ page: number; width: number; height: number;
+    sourceTransform?: { rotationDegrees: 0 | 90 | 180 | 270; exifOrientation?: number;
+      sourceWidth: number; sourceHeight: number; sourceToImage: number[]; imageToSource: number[];
+    };
+    systems: Array<{
+    id: string; bbox: { x: number; y: number; width: number; height: number };
+    staffIds: string[]; expectedMeasureCount?: number;
+    groups?: Array<{ id: string; ordinal: number; staffIds: string[];
+      name?: string; labelConfidence?: number; role?: "pitched" | "percussion";
+      bbox: { x: number; y: number; width: number; height: number };
+    }>;
+  }> }>;
+  staffs: Array<{ id: string; page: number; systemId: string; lineCount: number;
+    instrumentGroupId?: string;
+    kind: "standard" | "tablature" | "percussion" | "unknown"; partId?: string;
+    bbox: { x: number; y: number; width: number; height: number }; confidence?: number;
+  }>;
+  gaps: Array<{ id: string; kind: string; page: number; systemId?: string; staffId?: string;
+    instrumentGroupId?: string;
+    message: string; severity: "warning" | "error";
+  }>;
+  attempts: Array<{ id: string; engine: "audiveris" | "homr" | "layout";
+    scope: "page" | "system" | "instrument-group" | "merge" | "inventory";
+    page?: number; systemId?: string;
+    status: "succeeded" | "failed" | "cancelled" | "budget-exhausted"; elapsedMs: number;
+  }>;
+};
+
 export type ScoreRecognitionLayer = {
-  engine: "audiveris";
+  engine: "audiveris" | "homr" | "hybrid";
   engineVersion?: string;
+  recognitionMode?: ScoreRecognitionMode;
+  coverage?: ScoreRecognitionCoverage;
   pages?: ScoreRecognitionPage[];
   symbols: ScoreRecognitionSymbol[];
 };
@@ -601,6 +685,14 @@ export type ScoreNoteEvent = {
   id: string;
   type: "note";
   pitch: ScorePitch;
+  unpitched?: {
+    displayStep: ScorePitchStep;
+    displayOctave: number;
+    midiPitch?: number;
+    instrumentId?: string;
+  };
+  printObject?: boolean;
+  notehead?: string;
   duration: number;
   durationType?: string;
   dots: number;
@@ -614,6 +706,7 @@ export type ScoreNoteEvent = {
   fermatas?: ScoreFermata[];
   lyrics: ScoreLyric[];
   fingerings?: string[];
+  technical?: { string?: number; fret?: number; bend?: number; hammerOn?: string; pullOff?: string; slide?: string };
   timeModification?: ScoreTimeModification;
   beams?: ScoreBeam[];
   tuplets?: ScoreTuplet[];
@@ -625,6 +718,7 @@ export type ScoreNoteEvent = {
 export type ScoreRestEvent = {
   id: string;
   type: "rest";
+  printObject?: boolean;
   duration: number;
   durationType?: string;
   dots: number;
@@ -645,8 +739,15 @@ export type ScorePart = {
   name: string;
   abbreviation?: string;
   midiProgram?: number;
+  midiChannel?: number;
+  transposeSemitones?: number;
   staffCount?: number;
   measureCount: number;
+  manualCompletion?: {
+    kind: "pitched" | "percussion" | "tablature";
+    status: "needs_review";
+    coverageStaffIds: string[];
+  };
 };
 
 export type ScoreMeasure = {
@@ -706,6 +807,14 @@ export type ScoreJson = {
   staffGroups?: ScoreStaffGroup[];
   measures: ScoreMeasure[];
   recognitionLayer?: ScoreRecognitionLayer;
+  interchange?: {
+    version: 1;
+    originalMusicXml: string;
+    originalEventFingerprints: Record<string, string>;
+    anchors: Array<{ eventId: string; partId: string; measureId: string; noteIndex: number;
+      notationId: string; staff: number; alternateEventId?: string;
+    }>;
+  };
 };
 
 export function migrateScoreJson(input: unknown): ScoreJson {
@@ -833,6 +942,7 @@ export type PlaybackPart = {
   id: string;
   name: string;
   midiProgram?: number;
+  midiChannel?: number;
 };
 
 export type PlaybackNoteEvent = {
@@ -844,6 +954,8 @@ export type PlaybackNoteEvent = {
   voice: string;
   staff?: number;
   pitch: ScorePitch;
+  unpitched?: ScoreNoteEvent["unpitched"];
+  midiChannel?: number;
   midi: number;
   noteName: string;
   startBeat: number;
@@ -928,6 +1040,27 @@ export type PaymentProvider = "stripe" | "paddle";
 export const CHECKOUT_PLAN_CODES = ["starter-monthly", "starter-annual", "converter-pro-monthly", "converter-pro-annual"] as const;
 
 export type CheckoutPlanCode = (typeof CHECKOUT_PLAN_CODES)[number];
+export type CheckoutBillingKind = "subscription" | "one_time";
+export function isCheckoutBillingKind(value: unknown): value is CheckoutBillingKind {
+  return value === "subscription" || value === "one_time";
+}
+
+export function getPurchaseOptionsCopy(locale: SupportedLocale) {
+  const rows = {
+    "zh-CN": ["购买方式", "自动续费订阅", "单次购买", "1 个月", "1 年", "到期不自动续费；同档位再次购买可顺延有效期。", "按所选周期自动续费，可随时取消后续续费。", "单次购买 {name} · {duration}", "管理订阅", "取消自动续费", "单次购买记录", "有效期至 {date}", "已退款", "有效", "已到期", "即将生效", "查看或取消自动续费", "确认取消自动续费？已付款周期仍可使用，到期后不再扣费。", "返回", "开始时间：{date}", "此账户仍有自动续费订阅，请先在账单页取消后续续费，再购买单次套餐。", "支持单次购买一个月或一年，到期不续费。"],
+    "zh-TW": ["購買方式", "自動續費訂閱", "單次購買", "1 個月", "1 年", "到期不自動續費；再次購買同級方案可延長有效期。", "依所選週期自動續費，可隨時取消後續續費。", "單次購買 {name} · {duration}", "管理訂閱", "取消自動續費", "單次購買紀錄", "有效期至 {date}", "已退款", "有效", "已到期", "即將生效", "查看或取消自動續費", "確認取消自動續費？已付款週期仍可使用，到期後不再扣費。", "返回", "開始時間：{date}", "此帳戶仍有自動續費訂閱，請先在帳單頁取消後續續費，再購買單次方案。", "可單次購買一個月或一年，到期不續費。"],
+    en: ["Purchase type", "Auto-renewing subscription", "One-time purchase", "1 month", "1 year", "No automatic renewal. Another purchase of the same tier extends your access.", "Renews automatically for the selected period. Cancel future renewals at any time.", "Buy {name} once · {duration}", "Manage subscription", "Cancel auto-renewal", "One-time purchases", "Access until {date}", "Refunded", "Active", "Expired", "Upcoming", "View or cancel auto-renewal", "Cancel auto-renewal? Keep access for your paid period, with no further renewal charge.", "Go back", "Starts: {date}", "You still have an auto-renewing subscription. Cancel future renewals in Billing before buying a one-time plan.", "Buy one month or one year with no automatic renewal."],
+    ja: ["購入方法", "自動更新サブスクリプション", "1回払い", "1か月", "1年", "自動更新はありません。同じプランの再購入で有効期間が延長されます。", "選択した周期で自動更新されます。次回更新はいつでも解約できます。", "{name} を1回払いで購入 · {duration}", "契約を管理", "自動更新を解約", "1回払いの購入履歴", "有効期限：{date}", "返金済み", "有効", "期限切れ", "開始予定", "自動更新の確認・解約", "自動更新を解約しますか？お支払い済みの期間は利用でき、次回は請求されません。", "戻る", "開始：{date}", "自動更新契約があります。請求ページで次回更新を解約してから1回払いをご購入ください。", "1か月または1年を自動更新なしで購入できます。"],
+    ko: ["구매 방식", "자동 갱신 구독", "일회성 구매", "1개월", "1년", "자동 갱신되지 않습니다. 같은 등급을 다시 구매하면 이용 기간이 연장됩니다.", "선택한 주기로 자동 갱신됩니다. 언제든 다음 갱신을 취소할 수 있습니다.", "{name} 일회성 구매 · {duration}", "구독 관리", "자동 갱신 취소", "일회성 구매 내역", "이용 기한: {date}", "환불됨", "이용 중", "만료됨", "예정", "자동 갱신 확인 또는 취소", "자동 갱신을 취소할까요? 결제한 기간까지 이용할 수 있으며 다음 갱신 요금은 청구되지 않습니다.", "돌아가기", "시작: {date}", "자동 갱신 구독이 있습니다. 청구 페이지에서 다음 갱신을 취소한 후 일회성 요금제를 구매하세요.", "자동 갱신 없이 1개월 또는 1년을 구매하세요."],
+    fr: ["Type d’achat", "Abonnement renouvelable", "Achat unique", "1 mois", "1 an", "Sans renouvellement automatique. Un nouvel achat du même niveau prolonge l’accès.", "Renouvellement automatique selon la période choisie. Résiliable à tout moment.", "Acheter {name} une fois · {duration}", "Gérer l’abonnement", "Annuler le renouvellement", "Achats uniques", "Accès jusqu’au {date}", "Remboursé", "Actif", "Expiré", "À venir", "Voir ou annuler le renouvellement", "Annuler le renouvellement ? L’accès reste disponible jusqu’à la fin de la période payée, sans nouvelle facturation.", "Retour", "Début : {date}", "Un abonnement se renouvelle encore. Annulez ses prochains renouvellements dans Facturation avant un achat unique.", "Achetez un mois ou un an sans renouvellement automatique."],
+    de: ["Kaufart", "Automatisch verlängertes Abo", "Einmalkauf", "1 Monat", "1 Jahr", "Keine automatische Verlängerung. Ein weiterer Kauf derselben Stufe verlängert den Zugang.", "Automatische Verlängerung im gewählten Zeitraum. Künftige Verlängerungen jederzeit kündbar.", "{name} einmal kaufen · {duration}", "Abo verwalten", "Automatische Verlängerung kündigen", "Einmalkäufe", "Zugang bis {date}", "Erstattet", "Aktiv", "Abgelaufen", "Bevorstehend", "Verlängerung ansehen oder kündigen", "Automatische Verlängerung kündigen? Der bezahlte Zeitraum bleibt nutzbar. Es erfolgt keine weitere Verlängerungszahlung.", "Zurück", "Beginn: {date}", "Ein Abo verlängert sich noch automatisch. Kündigen Sie künftige Verlängerungen unter Abrechnung vor einem Einmalkauf.", "Einen Monat oder ein Jahr ohne automatische Verlängerung kaufen."],
+    es: ["Tipo de compra", "Suscripción con renovación", "Compra única", "1 mes", "1 año", "Sin renovación automática. Otra compra del mismo nivel amplía el acceso.", "Se renueva automáticamente según el periodo elegido. Puedes cancelar futuras renovaciones.", "Comprar {name} una vez · {duration}", "Gestionar suscripción", "Cancelar renovación automática", "Compras únicas", "Acceso hasta {date}", "Reembolsado", "Activo", "Caducado", "Próximamente", "Ver o cancelar renovación", "¿Cancelar la renovación? Mantendrás el acceso durante el periodo pagado y no se cobrará otra renovación.", "Volver", "Inicio: {date}", "Todavía tienes una suscripción que se renueva. Cancela futuras renovaciones en Facturación antes de una compra única.", "Compra un mes o un año sin renovación automática."],
+    ru: ["Способ покупки", "Подписка с автопродлением", "Разовая покупка", "1 месяц", "1 год", "Без автопродления. Повторная покупка того же тарифа продлевает доступ.", "Автоматическое продление на выбранный период. Будущие продления можно отменить.", "Купить {name} один раз · {duration}", "Управление подпиской", "Отключить автопродление", "Разовые покупки", "Доступ до {date}", "Возвращено", "Активно", "Истекло", "Ожидается", "Просмотр и отмена автопродления", "Отключить автопродление? Доступ сохранится до конца оплаченного периода, повторного списания не будет.", "Назад", "Начало: {date}", "У вас действует автопродление. Отключите его в разделе оплаты перед разовой покупкой.", "Купите один месяц или год без автопродления."],
+  } as const;
+  const values = rows[locale] ?? rows.en;
+  const keys = ["label","subscription","oneTime","month","year","oneTimeNote","subscriptionNote","buyTemplate","manage","cancel","purchases","expiresTemplate","refunded","active","expired","upcoming","manageHint","cancelConfirm","back","startsTemplate","subscriptionConflict","publicNote"] as const;
+  return Object.fromEntries(keys.map((key,index)=>[key,values[index]])) as Record<typeof keys[number],string>;
+}
 
 export type CheckoutPlanDisplay = {
   code: CheckoutPlanCode;
@@ -968,7 +1101,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "50 积分 / 月",
       audience: "适合持续处理个人乐谱的用户",
       benefits: ["不限一个免费乐谱项目", "在线乐谱编辑、声部分谱副本与多人协作 Beta", "练习播放、浏览器录音反馈 Beta 与智能移调", "五线谱／简谱及 MusicXML／MIDI 转换", "PDF／SVG／PNG 与 WAV／MP3 导出（对应渲染服务可用时）"],
-      resources: ["每月 50 积分", "10 GB 文件存储", "个人乐谱库、修订记录与开放曲库", "按月续费，可随时停止后续续费"],
+      resources: ["每月 50 积分", "250 MB 文件存储", "个人乐谱库、修订记录与开放曲库", "按月续费，可随时停止后续续费"],
       cta: "选择 Starter 月付",
       featured: false,
     },
@@ -982,7 +1115,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "50 积分 / 月",
       audience: "适合长期使用并希望降低任务成本的个人用户",
       benefits: ["包含 Starter 月付全部现有能力", "在线乐谱编辑、声部分谱副本与多人协作 Beta", "练习播放、浏览器录音反馈 Beta 与智能移调", "五线谱／简谱及 MusicXML／MIDI 转换", "PDF／SVG／PNG 与 WAV／MP3 导出（对应渲染服务可用时）"],
-      resources: ["每月 50 积分，按月重置", "10 GB 文件存储", "相比连续月付一年节省 $46.88", "个人乐谱库、修订记录与开放曲库"],
+      resources: ["每月 50 积分，按月重置", "250 MB 文件存储", "相比连续月付一年节省 $46.88", "个人乐谱库、修订记录与开放曲库"],
       cta: "选择 Starter 年付",
       featured: true,
     },
@@ -996,7 +1129,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "200 积分 / 月",
       audience: "适合每月处理更多乐谱的高频个人用户",
       benefits: ["包含 Starter 的全部现有能力", "在线乐谱编辑、声部分谱副本与多人协作 Beta", "练习播放、浏览器录音反馈 Beta 与智能移调", "五线谱／简谱及 MusicXML／MIDI 转换", "PDF／SVG／PNG 与 WAV／MP3 导出（对应渲染服务可用时）"],
-      resources: ["每月 200 积分", "50 GB 文件存储", "个人乐谱库、修订记录与开放曲库", "按月续费，可随时停止后续续费"],
+      resources: ["每月 200 积分", "500 MB 文件存储", "个人乐谱库、修订记录与开放曲库", "按月续费，可随时停止后续续费"],
       cta: "选择 Converter Pro 月付",
       featured: false,
     },
@@ -1010,7 +1143,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "200 积分 / 月",
       audience: "适合长期、高频处理个人乐谱的用户",
       benefits: ["包含 Converter Pro 月付全部现有能力", "在线乐谱编辑、声部分谱副本与多人协作 Beta", "练习播放、浏览器录音反馈 Beta 与智能移调", "五线谱／简谱及 MusicXML／MIDI 转换", "PDF／SVG／PNG 与 WAV／MP3 导出（对应渲染服务可用时）"],
-      resources: ["每月 200 积分，按月重置", "50 GB 文件存储", "相比连续月付一年节省 $80.88", "个人乐谱库、修订记录与开放曲库"],
+      resources: ["每月 200 积分，按月重置", "500 MB 文件存储", "相比连续月付一年节省 $80.88", "个人乐谱库、修订记录与开放曲库"],
       cta: "选择 Converter Pro 年付",
       featured: false,
     },
@@ -1026,7 +1159,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "50 credits / month",
       audience: "For people who regularly process personal scores",
       benefits: ["More than the one free score project", "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "PDF/SVG/PNG and WAV/MP3 export when the corresponding renderer is available"],
-      resources: ["50 credits each month", "10 GB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"],
+      resources: ["50 credits each month", "250 MB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"],
       cta: "Choose Starter monthly",
       featured: false,
     },
@@ -1040,7 +1173,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "50 credits / month",
       audience: "For long-term individual use at a lower cost per credit",
       benefits: ["All current Starter monthly capabilities", "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "PDF/SVG/PNG and WAV/MP3 export when the corresponding renderer is available"],
-      resources: ["50 credits monthly, reset each month", "10 GB file storage", "Save $46.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"],
+      resources: ["50 credits monthly, reset each month", "250 MB file storage", "Save $46.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"],
       cta: "Choose Starter annual",
       featured: true,
     },
@@ -1054,7 +1187,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "200 credits / month",
       audience: "For individuals who process more scores each month",
       benefits: ["All current Starter capabilities", "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "PDF/SVG/PNG and WAV/MP3 export when the corresponding renderer is available"],
-      resources: ["200 credits each month", "50 GB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"],
+      resources: ["200 credits each month", "500 MB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"],
       cta: "Choose Converter Pro monthly",
       featured: false,
     },
@@ -1068,7 +1201,7 @@ const CHECKOUT_PLAN_CATALOG: Record<PricingCatalogLocale, readonly CheckoutPlanD
       credits: "200 credits / month",
       audience: "For sustained, high-frequency personal score processing",
       benefits: ["All current Converter Pro monthly capabilities", "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "PDF/SVG/PNG and WAV/MP3 export when the corresponding renderer is available"],
-      resources: ["200 credits monthly, reset each month", "50 GB file storage", "Save $80.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"],
+      resources: ["200 credits monthly, reset each month", "500 MB file storage", "Save $80.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"],
       cta: "Choose Converter Pro annual",
       featured: false,
     },
@@ -1087,10 +1220,10 @@ const FREE_PLAN_CATALOG: Record<PricingCatalogLocale, PricingPlanDisplay> = {
     cycle: "终身",
     price: "$0",
     unitPrice: "一个完整乐谱项目",
-    credits: "1 个完整乐谱 · 25 积分 / 月",
+    credits: "终身 1 个免费识谱项目 · 每月 25 积分（导出等功能）",
     audience: "适合先用一份完整乐谱体验全部项目级能力",
     benefits: ["终身创建一个完整乐谱项目", "在线乐谱编辑、声部分谱副本与多人协作 Beta", "练习播放、浏览器录音反馈 Beta 与智能移调", "五线谱／简谱及 MusicXML／MIDI 转换", "该免费项目内使用已开放的导出与项目级功能"],
-    resources: ["每月 25 积分，按月重置", "1 GB 文件存储", "开放曲库浏览与 CC0 文件下载", "无需信用卡，免费项目长期保留"],
+    resources: ["每月 25 积分用于导出等功能，按月重置；识别新乐谱需单曲处理包或套餐", "50 MB 文件存储", "开放曲库浏览与 CC0 文件下载", "无需信用卡，免费项目长期保留"],
     cta: "免费创建乐谱",
     featured: false,
   },
@@ -1101,10 +1234,10 @@ const FREE_PLAN_CATALOG: Record<PricingCatalogLocale, PricingPlanDisplay> = {
     cycle: "Lifetime",
     price: "$0",
     unitPrice: "One complete score project",
-    credits: "1 complete score · 25 credits / month",
+    credits: "1 lifetime free scan project · 25 credits / month for exports & tools",
     audience: "Use every current project-level tool with one complete score",
     benefits: ["Create one complete score project for life", "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "Use currently released exports and project-level tools on that free score"],
-    resources: ["25 credits monthly, reset each month", "1 GB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"],
+    resources: ["25 credits monthly for exports and tools, reset each month; new scans need a One Score Pass or plan", "50 MB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"],
     cta: "Create a free score",
     featured: false,
   },
@@ -1273,7 +1406,20 @@ export type PdfPagePointSize = {
   heightPoints: number;
 };
 
+/** PDFium renders the visible CropBox clipped to MediaBox, including rotation. */
+export function pdfVisiblePageSize(page: {
+  getMediaBox(): { x: number; y: number; width: number; height: number };
+  getCropBox(): { x: number; y: number; width: number; height: number };
+  getRotation(): { angle: number };
+}): PdfPagePointSize {
+  const media = page.getMediaBox(), crop = page.getCropBox();
+  const width = Math.min(media.x + media.width, crop.x + crop.width) - Math.max(media.x, crop.x);
+  const height = Math.min(media.y + media.height, crop.y + crop.height) - Math.max(media.y, crop.y);
+  return Math.abs(page.getRotation().angle % 180) === 90 ? { widthPoints: height, heightPoints: width } : { widthPoints: width, heightPoints: height };
+}
+
 export type PdfRasterPageEstimate = PdfPagePointSize & {
+  dpi?: number;
   pageNumber: number;
   widthPixels: number;
   heightPixels: number;
@@ -1375,3 +1521,50 @@ export function evaluatePdfRasterBudget(
 
   return { ok: true, dpi: policy.dpi, pageCount: pageSizes.length, totalPixels, pages };
 }
+
+/** Bound bitmap allocation while keeping every page at a useful reading resolution.
+ * Equal shares of the total budget prevent a large early page starving later pages.
+ * The returned per-page DPI is mandatory for the renderer, not just an estimate.
+ */
+export function planPdfRasterBudget(
+  pageSizes: readonly PdfPagePointSize[], policy: PdfRasterBudgetPolicy, minimumDpi = Math.min(150, policy.dpi),
+): PdfRasterBudgetResult {
+  evaluatePdfRasterBudget([], policy); // validate configuration
+  if (!Number.isSafeInteger(minimumDpi) || minimumDpi <= 0 || minimumDpi > policy.dpi) throw new RangeError("Invalid minimum PDF DPI.");
+  if (!pageSizes.length) return { ok: false, reason: "invalid_page_size", dpi: policy.dpi, pageCount: 0, totalPixels: 0, pages: [] };
+  // PDFium reads page coordinates as floats; reserve a small rounding margin.
+  const pageBudget = Math.floor(Math.min(policy.maxPagePixels, Math.floor(policy.maxTotalPixels / pageSizes.length)) * .99);
+  const pages: PdfRasterPageEstimate[] = [];
+  let totalPixels = 0;
+  for (let index = 0; index < pageSizes.length; index++) {
+    const size = pageSizes[index];
+    const failure = (reason: "invalid_page_size" | "page_pixel_limit" | "total_pixel_limit", page?: PdfRasterPageEstimate): PdfRasterBudgetResult =>
+      ({ ok: false, reason, dpi: policy.dpi, pageCount: pageSizes.length, totalPixels, pages, page });
+    if (![size.widthPoints, size.heightPoints].every(value => Number.isFinite(value) && value > 0)) return failure("invalid_page_size");
+    const at = (dpi: number): PdfRasterPageEstimate => {
+      const widthPixels = Math.ceil(size.widthPoints * dpi / 72), heightPixels = Math.ceil(size.heightPoints * dpi / 72);
+      return { ...size, pageNumber: index + 1, dpi, widthPixels, heightPixels, pixelCount: widthPixels * heightPixels };
+    };
+    const floor = at(minimumDpi);
+    if (!Number.isSafeInteger(floor.pixelCount) || floor.pixelCount <= 0) return failure("invalid_page_size");
+    if (floor.pixelCount > pageBudget) return failure(floor.pixelCount > policy.maxPagePixels ? "page_pixel_limit" : "total_pixel_limit", floor);
+    let low = minimumDpi, high = policy.dpi;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (at(middle).pixelCount <= pageBudget) low = middle;
+      else high = middle - 1;
+    }
+    const page = at(low);
+    pages.push(page); totalPixels += page.pixelCount;
+  }
+  return { ok: true, dpi: policy.dpi, pageCount: pages.length, totalPixels, pages };
+}
+
+/** A score pass is a one-off product, never a recurring plan. */
+export const SINGLE_SCORE_PASS = { code: "single-score", amountMinor: 299, currency: "usd", maxPages: 5, credits: 10 } as const;
+export type PurchasePlanCode = CheckoutPlanCode | typeof SINGLE_SCORE_PASS.code;
+export function isPurchasePlanCode(value: unknown): value is PurchasePlanCode {
+  return value === SINGLE_SCORE_PASS.code || isCheckoutPlanCode(value);
+}
+
+export { getSingleScorePassCopy } from "./single-score-copy.ts";

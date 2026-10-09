@@ -40,7 +40,7 @@ NEXT_PUBLIC_TEACHING_AVAILABLE=false
 ## 4. 搜索与监测配置
 
 - 配置 `GOOGLE_SITE_VERIFICATION`、`BING_SITE_VERIFICATION`，需要百度收录时再配置 `BAIDU_SITE_VERIFICATION`。
-- 配置 GA4、Clarity 并设置 `NEXT_PUBLIC_ANALYTICS_ENABLED=true`；浏览器同意分析后确认 `page_view` 和 `product_cta_click` 事件到达。
+- 配置 GA4、Clarity 并设置 `NEXT_PUBLIC_ANALYTICS_ENABLED=true`；浏览器同意分析后确认 `page_view` 和 `product_cta_click` 事件到达。Key events 标记、自定义维度和跨子域 DebugView 验证见 `docs/operations/ga4-key-events-checklist.md`；截至 2026-10-09 生产仍未配置 `NEXT_PUBLIC_CLARITY_PROJECT_ID`。
 - 生成至少 32 字符的 `INTERNAL_TOOLS_TOKEN`，生产环境的 `/seo-audit`、报告接口和 `/operations-checklist` 只能凭令牌访问。
 - 在 AI TDK 后台导入 `/seo-audit/report?token=...`，逐页核对事实、截图、案例和内容哈希，由真实负责人批准。
 - 不为 Cookie 切换的中文内容声明 hreflang。建立 `/zh-cn/...` 独立 URL 前只提交英文 URL。

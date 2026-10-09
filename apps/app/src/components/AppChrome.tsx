@@ -2,9 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { formatNumber } from "@score/i18n";
-import { APP_ROUTES } from "@score/shared";
+import { APP_ROUTES, getPurchaseOptionsCopy } from "@score/shared";
 import {
   ArrowNorthEastIcon,
   SiteShellFooter,
@@ -15,15 +15,29 @@ import {
 } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import type { AppShellCopy } from "../lib/app-messages";
-import { getStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges, preferredLoginPath } from "../lib/auth-storage";
+import { upgradePath } from "../lib/flow-return";
+import { trackFunnelEvent } from "../lib/analytics";
 import { PUBLIC_SITE_URL } from "../lib/support";
 import { AppLocaleSwitcher } from "./AppLocaleSwitcher";
 import { useAppLocale } from "./AppLocaleProvider";
 
 export function AppChrome({ children, copy }: { children: ReactNode; copy: AppShellCopy }) {
   const pathname = usePathname();
+  const [returnPath, setReturnPath] = useState(pathname);
+  useEffect(() => {
+    const update = () => setReturnPath(window.location.pathname + window.location.search + window.location.hash);
+    update(); window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, [pathname]);
   const { locale } = useAppLocale();
-  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+  const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
+  const [loginHref, setLoginHref] = useState<string>(APP_ROUTES.login);
+  useEffect(() => { setLoginHref(preferredLoginPath(returnPath)); }, [returnPath, token]);
+  const activationHref = loginHref.startsWith("/activate") ? "/activate?shop=1" : APP_ROUTES.activate;
+  const [balance, setBalance] = useState<{ token: string; remaining: number } | null>(null);
+  const isAuthScreen = [APP_ROUTES.login, APP_ROUTES.register, APP_ROUTES.forgotPassword, APP_ROUTES.resetPassword].some(route => pathname === route);
+  const remainingCredits = !isAuthScreen && token && balance?.token === token ? balance.remaining : null;
   const primaryHref = `${APP_ROUTES.scores}#free-scan`;
   const publicSiteUrl = PUBLIC_SITE_URL.replace(/\/$/u, "");
   const publicHref = (path: string) => {
@@ -37,18 +51,25 @@ export function AppChrome({ children, copy }: { children: ReactNode; copy: AppSh
   const isScoresActive = pathname === APP_ROUTES.scores || pathname.startsWith(`${APP_ROUTES.scores}/`);
 
   useEffect(() => {
+    if (isAuthScreen || !token) return;
     let active = true;
+    let requestId = 0;
+    const controller = new AbortController();
 
     async function refreshCredits() {
-      const token = getStoredToken();
-      if (!token) {
-        if (active) setRemainingCredits(null);
-        return;
-      }
+      const currentRequest = ++requestId;
       const result = await apiRequest<{ usage: { jobs: { remaining: number } } }>("/api/payments/billing/usage", {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
-      if (active) setRemainingCredits(result.ok ? result.data.usage.jobs.remaining : null);
+      if (!active || currentRequest !== requestId || getStoredToken() !== token) return;
+      if (!result.ok) {
+        setBalance(null);
+        if (result.status === 401) clearStoredToken();
+        return;
+      }
+      const remaining = result.data?.usage?.jobs?.remaining;
+      setBalance(Number.isSafeInteger(remaining) && remaining >= 0 ? { token: token!, remaining } : null);
     }
 
     const handleFocus = () => { void refreshCredits(); };
@@ -57,32 +78,32 @@ export function AppChrome({ children, copy }: { children: ReactNode; copy: AppSh
     window.addEventListener("focus", handleFocus);
     return () => {
       active = false;
+      controller.abort();
       window.clearInterval(refreshTimer);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [pathname]);
+  }, [isAuthScreen, pathname, token]);
 
+  const currentScore = /^\/scores\/(?!new(?:\/|$)|shared(?:\/|$))[^/]+$/.test(pathname) ? pathname : APP_ROUTES.scores;
   const navItems: SiteShellNavItem[] = [
+    { href: activationHref, label: copy.activate, active: pathname === APP_ROUTES.activate },
     { href: APP_ROUTES.scores, label: copy.scores, active: isScoresActive },
-    { href: publicHref("/pdf-score-scanner"), label: copy.scanner },
-    { href: publicHref("/score-editor"), label: copy.editor },
-    { href: publicHref("/transpose-score"), label: copy.transpose },
-    { href: publicHref("/library"), label: copy.library },
-    { href: publicHref("/#pricing"), label: copy.pricing },
-    { label: copy.help, children: [{ href: publicHref("/#workflow"), label: copy.guide }, { href: publicHref("/support"), label: copy.contact }] },
-    ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: copy.classes, active: pathname.startsWith(APP_ROUTES.classrooms) }] : []),
+    { href: primaryHref, label: copy.scanner },
+    { href: `${currentScore}#visual-editor`, label: copy.editor },
+    { href: `${currentScore}#transpose-score`, label: copy.transpose },
+    { label: copy.help, children: [{ href: publicHref("/library"), label: copy.library }, ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: copy.classes }] : []), { href: APP_ROUTES.billing, label: getPurchaseOptionsCopy(locale).manage }, { href: publicHref("/#workflow"), label: copy.guide }, { href: publicHref("/support"), label: copy.contact }] },
   ];
   const actions: SiteShellAction[] = [
     remainingCredits === null
-      ? { href: APP_ROUTES.billing, label: copy.billing, tone: "secondary", desktopOnly: true }
+      ? { href: loginHref, label: copy.login, tone: "secondary" }
       : { href: APP_ROUTES.billing, label: `${copy.credits}: ${formatNumber(remainingCredits, locale)}`, tone: "credit", icon: <SparkIcon width={16} height={16} /> },
-    ...(checkoutAvailable ? [{ href: APP_ROUTES.checkout, label: copy.upgrade, tone: "tertiary" as const }] : []),
+    ...(checkoutAvailable ? [{ href: upgradePath(returnPath), label: copy.upgrade, tone: "tertiary" as const, onClick: () => { trackFunnelEvent("upgrade_click", { source: "app_header" }); } }] : []),
     { href: primaryHref, label: copy.primaryAction, tone: "primary", icon: <ArrowNorthEastIcon width={16} height={16} /> },
   ];
   const footerLinks = [
     { href: APP_ROUTES.register, label: copy.register },
     { href: APP_ROUTES.billing, label: copy.billing },
-    { href: APP_ROUTES.activate, label: copy.activate },
+    { href: activationHref, label: copy.activate },
     ...(checkoutAvailable ? [{ href: APP_ROUTES.checkout, label: copy.checkout }] : []),
     { href: APP_ROUTES.scores, label: copy.scores },
     { href: publicHref("/about"), label: copy.about },
@@ -94,7 +115,7 @@ export function AppChrome({ children, copy }: { children: ReactNode; copy: AppSh
   return (
     <div className="app-frame">
       <SiteShellHeader
-        brandHref={publicHref("/")}
+        brandHref={token ? APP_ROUTES.scores : publicHref("/")}
         brandLabel={copy.brandHomeLabel}
         brandCaption={copy.brandCaption}
         navItems={navItems}

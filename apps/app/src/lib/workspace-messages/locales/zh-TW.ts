@@ -10,7 +10,7 @@ export const zhTWWorkspaceMessages = {
   banner: { payNow: "立即開通", activationOptions: "查看啟用方式", accountSetup: "查看帳戶設定", importScore: "匯入 PDF 或圖片", openJobs: "開啟工作頁" },
   dashboard: {
     signInFirst: "請先登入再查看控制台。", loadingEyebrow: "正在讀取帳戶資料", loadingTitle: "正在載入帳戶詳細資料...", accessEyebrow: "需要登入", accessTitle: "此工作台區域需要有效登入。", signIn: "登入", createAccount: "建立帳戶", lookupEyebrow: "帳戶查詢", lookupTitle: "找不到此帳戶。",
-    metrics: { email: "帳戶電子郵件", emailBody: "已登入，可繼續上傳檔案或建立工作。", freeEmailBody: "已登入，可從一份完整 PDF 或樂譜圖片建立終身免費專案。", entitlement: "授權狀態", entitlementBody: "一年期存取權由啟用碼統一管理。", route: "樂譜工作台", routeValue: "掃描、編輯、轉換與移調", routeBody: "所有流程以 MusicXML 與 Score JSON 為基礎，並支援播放、練習與多格式匯出。", freeRouteValue: "一個完整免費專案", freeRouteBody: "免費專案可使用現有專案功能，每月含 25 點額度；升級可取得更多額度。" },
+    metrics: { email: "帳戶電子郵件", emailBody: "已登入，可繼續上傳檔案或建立工作。", freeEmailBody: "已登入，可從一份完整 PDF 或樂譜圖片建立終身免費專案。", entitlement: "授權狀態", entitlementBody: "一年期存取權由啟用碼統一管理。", route: "樂譜工作台", routeValue: "掃描、編輯、轉換與移調", routeBody: "所有流程以 MusicXML 與 Score JSON 為基礎，並支援播放、練習與多格式匯出。", freeRouteValue: "一個完整免費專案", freeRouteBody: "免費專案可使用現有專案功能，每月 25 點用於匯出等功能；辨識新樂譜需購買單曲處理包（US$2.99）或方案。" },
     statuses: { active: "有效", expired: "已到期", inactive: "未啟用" },
     profile: { eyebrow: "資料", title: "帳戶概覽", email: "電子郵件", created: "建立時間" },
     entitlement: { eyebrow: "授權", title: "存取期限", starts: "開始時間", ends: "結束時間", inactive: "尚未生效", missing: "沒有授權" },

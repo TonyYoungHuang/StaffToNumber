@@ -5,7 +5,7 @@ export const zhCNScoreEntryMessages = {
     library: {
       eyebrow: "乐谱工作台",
       title: "识别、管理并继续处理你的乐谱",
-      body: "直接上传 PDF 或乐谱图片开始识别，也可以打开已有乐谱继续编辑。上传、候选结果和乐谱库都在同一个工作台。",
+      body: "上传 PDF 或乐谱图片，先免费检查结构；若仍有免费项目，简单识谱可一键开始。也可以打开已有乐谱继续编辑。",
     },
     newScore: {
       eyebrow: "创建新乐谱",
@@ -25,7 +25,7 @@ export const zhCNScoreEntryMessages = {
     source: {
       chooseAnother: "换一种方式",
       headings: {
-        scan: { eyebrow: "创建新乐谱", title: "识别 PDF 或乐谱图片", body: "选择一个文件并开始识别。这个页面只处理扫描识别。" },
+        scan: { eyebrow: "创建新乐谱", title: "识别 PDF 或乐谱图片", body: "选择文件后先免费检查乐谱结构，查看推荐方式和价格，确认后才开始识别。" },
         jianpu: { eyebrow: "创建新乐谱", title: "用简谱生成五线谱", body: "输入简谱内容并创建乐谱。这个页面只处理简谱输入。" },
         musicxml: { eyebrow: "创建新乐谱", title: "从制谱软件导入", body: "选择导出的 MusicXML 文件。这个页面只处理文件导入。" },
         midi: { eyebrow: "创建新乐谱", title: "从 MIDI 创建乐谱", body: "选择一个 MIDI 文件。这个页面只处理 MIDI 导入。" },
@@ -81,7 +81,7 @@ export const zhCNScoreEntryMessages = {
       exhaustedTitle: "本账户的一个永久免费乐谱项目已经创建。",
       exhaustedBody: "这份完整乐谱仍可继续校正、播放、移调、转简谱、保留版本、分享和导出；升级只用于创建和处理更多乐谱。",
       exhaustedLibrary: "继续使用免费乐谱",
-      exhaustedUpgrade: "兑换激活码",
+      exhaustedUpgrade: "开通完整功能",
     },
     backup: {
       chooseFile: "请选择乐谱备份文件。",

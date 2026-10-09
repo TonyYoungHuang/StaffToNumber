@@ -10,7 +10,7 @@ export const zhCNWorkspaceMessages = {
   banner: { payNow: "立即开通", activationOptions: "查看激活方式", accountSetup: "查看账户设置", importScore: "导入 PDF 或图片", openJobs: "打开任务页" },
   dashboard: {
     signInFirst: "请先登录后再查看控制台。", loadingEyebrow: "正在读取账户资料", loadingTitle: "账户详情加载中...", accessEyebrow: "需要登录", accessTitle: "这个工作台区域需要有效登录。", signIn: "登录", createAccount: "创建账户", lookupEyebrow: "账户查询", lookupTitle: "未找到该账户。",
-    metrics: { email: "账户邮箱", emailBody: "当前已登录，可以继续上传文件或创建任务。", freeEmailBody: "当前已登录，可从一份完整 PDF 或乐谱图片创建终身免费项目。", entitlement: "授权状态", entitlementBody: "一年期访问权限由激活码统一管理。", route: "乐谱工作台", routeValue: "扫描、编辑、互换与移调", routeBody: "所有流程统一基于 MusicXML 与 Score JSON，并支持播放、练习和多格式导出。", freeRouteValue: "一个完整免费项目", freeRouteBody: "免费项目开放现有项目级功能，每月包含 25 积分；升级后可获得更多积分。" },
+    metrics: { email: "账户邮箱", emailBody: "当前已登录，可以继续上传文件或创建任务。", freeEmailBody: "当前已登录，可从一份完整 PDF 或乐谱图片创建终身免费项目。", entitlement: "授权状态", entitlementBody: "一年期访问权限由激活码统一管理。", route: "乐谱工作台", routeValue: "扫描、编辑、互换与移调", routeBody: "所有流程统一基于 MusicXML 与 Score JSON，并支持播放、练习和多格式导出。", freeRouteValue: "一个完整免费项目", freeRouteBody: "免费项目开放现有项目级功能，每月 25 积分用于导出等功能；识别新乐谱需购买单曲处理包（US$2.99）或开通套餐。" },
     statuses: { active: "有效", expired: "已过期", inactive: "未激活" },
     profile: { eyebrow: "资料", title: "账户概览", email: "邮箱", created: "创建时间" },
     entitlement: { eyebrow: "授权", title: "访问有效期", starts: "开始时间", ends: "结束时间", inactive: "尚未生效", missing: "暂无授权" },

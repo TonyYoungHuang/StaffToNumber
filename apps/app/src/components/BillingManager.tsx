@@ -1,7 +1,10 @@
 "use client";
 
+import { getSingleScorePassCopy } from "@score/shared";
+
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import Link from "next/link";
+import { getPurchaseOptionsCopy } from "@score/shared";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
@@ -56,14 +59,18 @@ type Seat = {
   assignedAt: string;
 };
 
-type BillingPayload = { subscriptions: Subscription[]; invoices: Invoice[]; seatAssignments: Seat[] };
-type AccessPayload = { user: { entitlement: { status: "inactive" | "active" | "expired" } } };
+type Purchase = { id: string; planCode: string; status: string; startsAt: string; endsAt: string; amountMinor: number; currency: string; amountRefundedMinor: number };
+type BillingPayload = { subscriptions: Subscription[]; invoices: Invoice[]; seatAssignments: Seat[]; purchases?: Purchase[] };
+type ScorePass = { id: string; documentId: string | null; remaining: number; credits: number };
+type AccessPayload = { user: { scorePasses?: ScorePass[]; entitlement: { status: "inactive" | "active" | "expired" } } };
 type QuotaTier = BillingQuotaTier | "legacy" | "pro" | "education";
 type QuotaUsage = {
   tier: QuotaTier;
   periodStart: string;
   periodEnd: string;
   jobs: { used: number; limit: number; remaining: number };
+  creditMode?: "monthly" | "prepaid";
+  prepaid?: { total: number; used: number; remaining: number };
   storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
 };
 
@@ -78,6 +85,9 @@ type ManagerStatus = { message: string; tone: "success" | "error" };
 const cancelableStatuses = new Set(["active", "trialing", "past_due", "paused", "unpaid"]);
 
 export function BillingManager({ locale, copy, freePlanCredits }: BillingManagerProps) {
+  const passCopy = getSingleScorePassCopy(locale);
+  const [passes, setPasses] = useState<ScorePass[]>([]);
+  const purchaseCopy = getPurchaseOptionsCopy(locale);
   const [billing, setBilling] = useState<BillingPayload>({ subscriptions: [], invoices: [], seatAssignments: [] });
   const [quota, setQuota] = useState<QuotaUsage | null>(null);
   const [entitlementStatus, setEntitlementStatus] = useState<"checking" | "inactive" | "active" | "expired">("checking");
@@ -108,6 +118,7 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
     }
 
     setBilling(result.data);
+    setPasses(accessResult.ok ? accessResult.data.user.scorePasses ?? [] : []);
     setEntitlementStatus(accessResult.ok ? accessResult.data.user.entitlement.status : "inactive");
     setQuota(quotaResult.ok ? quotaResult.data.usage : null);
     setStatus(null);
@@ -170,6 +181,7 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
 
   async function cancelSubscription(subscriptionId: string) {
     if (!token) return;
+    if (!window.confirm(purchaseCopy.cancelConfirm)) return;
     setBusy(`cancel-${subscriptionId}`);
     const result = await apiRequest<{ subscriptionId: string; cancelAtPeriodEnd: boolean }>(`/api/payments/billing/subscriptions/${subscriptionId}/cancel`, {
       method: "POST",
@@ -191,58 +203,12 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
 
   return (
     <div className="page-stack" lang={locale}>
-      {quota ? (
-        <section className="surface-panel credit-balance-panel stack-lg">
-          <div className="stack-xs">
-            <p className="eyebrow">{copy.creditEyebrow}</p>
-            <h2 className="card-title">{`${copy.quotaTiers[normalizeQuotaTier(quota.tier)]} · ${copy.availableCredits}`}</h2>
-          </div>
-          <div className="credit-balance-summary">
-            <div className="credit-balance-value">
-              <strong>{formatNumber(quota.jobs.remaining, locale)}</strong>
-              <span>{copy.creditUnit}</span>
-            </div>
-            <p>{formatMessage(copy.creditSummaryTemplate, {
-              limit: formatNumber(quota.jobs.limit, locale),
-              used: formatNumber(quota.jobs.used, locale),
-            })}</p>
-          </div>
-          <div className="metric-grid">
-            <QuotaMeter
-              label={copy.creditUsage}
-              used={quota.jobs.used}
-              limit={quota.jobs.limit}
-              value={`${formatNumber(quota.jobs.used, locale)} / ${formatNumber(quota.jobs.limit, locale)}`}
-            />
-            <QuotaMeter
-              label={copy.storage}
-              used={quota.storage.usedBytes}
-              limit={quota.storage.limitBytes}
-              value={`${formatBillingBytes(quota.storage.usedBytes, locale)} / ${formatBillingBytes(quota.storage.limitBytes, locale)}`}
-            />
-          </div>
-          <p className="helper-copy">{copy.quotaNote}</p>
-        </section>
-      ) : null}
-
-      {entitlementStatus !== "active" && entitlementStatus !== "checking" ? (
-        <section className="surface-panel stack-lg">
-          <div className="stack-sm">
-            <p className="eyebrow">{copy.freeEyebrow}</p>
-            <h2 className="card-title">{copy.noPaidTitle}</h2>
-            <p className="body-copy">{formatMessage(copy.freeBody, { credits: freePlanCredits })}</p>
-          </div>
-          <div className="button-row">
-            <Link href={accountActivationRoute} className="button button-primary">{copy.unlock}</Link>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="surface-panel stack-lg">
+      <section className="surface-panel stack-lg subscription-management" id="subscriptions">
         <div className="section-heading-row">
           <div className="stack-xs">
             <p className="eyebrow">{copy.subscriptionsEyebrow}</p>
-            <h2 className="card-title">{copy.subscriptionsTitle}</h2>
+            <h2 className="card-title">{purchaseCopy.manage}</h2>
+            <p className="body-copy">{purchaseCopy.manageHint}</p>
           </div>
           {billing.subscriptions.some((subscription) => subscription.provider === "stripe") ? (
             <button type="button" className="button button-secondary" disabled={busy === "portal"} onClick={() => void openPortal()}>
@@ -281,11 +247,11 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
                     {!subscription.cancelAtPeriodEnd && cancelableStatuses.has(subscription.status) ? (
                       <button
                         type="button"
-                        className="button button-tertiary"
+                        className="button subscription-cancel-button"
                         disabled={cancelBusy}
                         onClick={() => void cancelSubscription(subscription.id)}
                       >
-                        {cancelBusy ? copy.canceling : copy.cancel}
+                        {cancelBusy ? copy.canceling : purchaseCopy.cancel}
                       </button>
                     ) : null}
                   </div>
@@ -332,6 +298,90 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
           );
         })}
       </section>
+
+
+      {passes.length ? <section className="surface-panel stack-lg" id="score-passes">
+        <h2 className="card-title">{passCopy.name}</h2>
+        {passes.map(pass => <div className="list-item stack-sm" key={pass.id}>
+          <strong>{passCopy.remaining}: {pass.remaining} / {pass.credits}</strong>
+          {pass.documentId ? <Link href={`/scores/${encodeURIComponent(pass.documentId)}`} className="button button-secondary">{passCopy.open}</Link>
+            : <Link href="/scores#free-scan" className="button button-secondary">{passCopy.unused}</Link>}
+        </div>)}
+      </section> : null}
+
+      {quota ? (
+        <section className="surface-panel credit-balance-panel stack-lg">
+          <div className="stack-xs">
+            <p className="eyebrow">{copy.creditEyebrow}</p>
+            <h2 className="card-title">{quota.creditMode === "prepaid" ? copy.prepaidTitle : `${copy.quotaTiers[normalizeQuotaTier(quota.tier)]} · ${copy.availableCredits}`}</h2>
+          </div>
+          <div className="credit-balance-summary">
+            <div className="credit-balance-value">
+              <strong>{formatNumber(quota.jobs.remaining, locale)}</strong>
+              <span>{copy.creditUnit}</span>
+            </div>
+            <p>{formatMessage(quota.creditMode === "prepaid" ? copy.prepaidSummaryTemplate : copy.creditSummaryTemplate, {
+              limit: formatNumber(quota.jobs.limit, locale),
+              used: formatNumber(quota.jobs.used, locale),
+            })}</p>
+          </div>
+          <div className="metric-grid">
+            <QuotaMeter
+              label={copy.creditUsage}
+              used={quota.jobs.used}
+              limit={quota.jobs.limit}
+              value={`${formatNumber(quota.jobs.used, locale)} / ${formatNumber(quota.jobs.limit, locale)}`}
+            />
+            <QuotaMeter
+              label={copy.storage}
+              used={quota.storage.usedBytes}
+              limit={quota.storage.limitBytes}
+              value={`${formatBillingBytes(quota.storage.usedBytes, locale)} / ${formatBillingBytes(quota.storage.limitBytes, locale)}`}
+            />
+          </div>
+          <p className="helper-copy">{quota.creditMode === "prepaid" ? copy.prepaidNote : copy.quotaNote}</p>
+          {quota.creditMode !== "prepaid" && quota.prepaid?.total ? <p className="helper-copy">{formatMessage(copy.additionalPrepaidTemplate, {
+            remaining: formatNumber(quota.prepaid.remaining, locale),
+            total: formatNumber(quota.prepaid.total, locale),
+          })}</p> : null}
+        </section>
+      ) : null}
+
+      {entitlementStatus !== "active" && entitlementStatus !== "checking" ? (
+        <section className="surface-panel stack-lg">
+          <div className="stack-sm">
+            <p className="eyebrow">{copy.freeEyebrow}</p>
+            <h2 className="card-title">{copy.noPaidTitle}</h2>
+            <p className="body-copy">{formatMessage(copy.freeBody, { credits: freePlanCredits })}</p>
+          </div>
+          <div className="button-row">
+            <Link href={accountActivationRoute} className="button button-primary">{copy.unlock}</Link>
+          </div>
+        </section>
+      ) : null}
+
+      {(billing.purchases?.length ?? 0) > 0 ? (
+        <section className="surface-panel stack-lg" id="one-time-purchases">
+          <h2 className="card-title">{purchaseCopy.purchases}</h2>
+          <p className="body-copy">{purchaseCopy.oneTimeNote}</p>
+          {billing.purchases!.map((purchase) => {
+            const state = purchase.status === "refunded" ? "refunded"
+              : Date.parse(purchase.endsAt) <= Date.now() ? "expired"
+                : Date.parse(purchase.startsAt) > Date.now() ? "upcoming" : "active";
+            return <div className="list-item" key={purchase.id}>
+              <div className="stack-sm">
+                <p className="item-title">{purchase.planCode === "single-score" ? passCopy.name : purchase.planCode.startsWith("converter-pro") ? "Converter Pro" : "Starter"} · {purchase.planCode === "single-score" ? passCopy.once : purchase.planCode.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month}{" "}
+                  <span className={`status-chip ${state === "active" ? "tone-green" : "tone-amber"}`}>{purchaseCopy[state]}</span>
+                </p>
+                <p className="item-meta">{formatBillingMoney(purchase.amountMinor, purchase.currency, locale, copy.amountPending)}</p>
+                <p className="item-meta">{formatMessage(purchaseCopy.startsTemplate, { date: formatBillingDateTime(purchase.startsAt, locale) })}</p>
+                {purchase.endsAt ? <p className="item-meta">{formatMessage(purchaseCopy.expiresTemplate, { date: formatBillingDateTime(purchase.endsAt, locale) })}</p> : null}
+                {purchase.amountRefundedMinor > 0 ? <p className="item-meta">{formatMessage(copy.refundedTemplate, { amount: formatBillingMoney(purchase.amountRefundedMinor, purchase.currency, locale, copy.amountPending) })}</p> : null}
+              </div>
+            </div>;
+          })}
+        </section>
+      ) : null}
 
       <section className="surface-panel stack-lg">
         <div className="stack-xs">

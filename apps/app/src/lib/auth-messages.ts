@@ -168,7 +168,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continue with Google, or create an account with email and password. Create one lifetime free project from a complete multi-page PDF or score image.",
         submit: "Create account",
         switch: "Already have an account",
-        footnote: "Free includes one complete lifetime score project with current correction, playback, transposition, Jianpu, version, sharing, and export tools, plus 25 credits monthly.",
+        footnote: "Free includes one complete lifetime score project with current correction, playback, transposition, Jianpu, version, sharing, and export tools, plus 25 credits monthly for exports and tools. Scanning another score needs a One Score Pass or plan.",
         success: "Account created. Redirecting...",
       },
       login: {
@@ -184,7 +184,7 @@ export const AUTH_MESSAGE_CATALOGS = {
     resetRequest: {
       eyebrow: "Password reset",
       title: "Send a reset link",
-      body: "Enter the account email and the system will prepare a password reset email. If transactional email is not configured yet, the link will appear in API preview logs.",
+      body: "Enter your account email to request a reset link. Check your inbox and spam folder. If the message does not arrive, contact support for help.",
       email: "Account email",
       placeholder: "you@example.com",
       submit: "Send reset email",
@@ -281,7 +281,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "使用 Google，或用邮箱和密码创建账户。注册后可以从一份完整多页 PDF 或乐谱图片创建终身免费项目。",
         submit: "创建账户",
         switch: "已有账户",
-        footnote: "免费方案只限一个完整乐谱项目；该项目可使用现有校正、播放、移调、简谱、版本、分享和导出能力，每月包含 25 积分。",
+        footnote: "免费方案只限一个完整乐谱项目；该项目可使用现有校正、播放、移调、简谱、版本、分享和导出能力，每月 25 积分用于导出等功能；识别新乐谱需单曲处理包或套餐。",
         success: "账户已创建，正在跳转...",
       },
       login: {
@@ -394,7 +394,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "使用 Google，或以電子郵件和密碼建立帳戶。註冊後可從一份完整多頁 PDF 或樂譜圖片建立永久免費專案。",
         submit: "建立帳戶",
         switch: "已有帳戶",
-        footnote: "免費方案包含一個永久完整樂譜專案，可使用現有校正、播放、移調、簡譜、版本、分享與匯出工具，並每月提供 25 點數。",
+        footnote: "免費方案包含一個永久完整樂譜專案，可使用現有校正、播放、移調、簡譜、版本、分享與匯出工具，並每月提供 25 點數用於匯出等功能；辨識新樂譜需單曲處理包或方案。",
         success: "帳戶已建立，正在重新導向...",
       },
       login: {
@@ -507,7 +507,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Google を使用するか、メールとパスワードでアカウントを作成します。完全な複数ページ PDF または楽譜画像から、生涯無料のプロジェクトを 1 件作成できます。",
         submit: "アカウントを作成",
         switch: "すでにアカウントをお持ちですか",
-        footnote: "無料プランには、生涯利用できる完全な楽譜プロジェクト 1 件と、修正、再生、移調、数字譜、バージョン、共有、書き出しの現行ツール、さらに毎月 25 クレジットが含まれます。",
+        footnote: "無料プランには、生涯利用できる完全な楽譜プロジェクト 1 件と、修正、再生、移調、数字譜、バージョン、共有、書き出しの現行ツール、さらに書き出しなどに使える毎月 25 クレジットが含まれます。別の楽譜のスキャンには1曲パスまたはプランが必要です。",
         success: "アカウントを作成しました。移動しています...",
       },
       login: {
@@ -620,7 +620,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Google을 사용하거나 이메일과 비밀번호로 계정을 만드세요. 완전한 여러 페이지 PDF 또는 악보 이미지로 평생 무료 프로젝트 하나를 만들 수 있습니다.",
         submit: "계정 만들기",
         switch: "이미 계정이 있나요",
-        footnote: "무료 플랜에는 평생 이용 가능한 완전한 악보 프로젝트 하나와 현재 제공되는 교정, 재생, 조옮김, 숫자보, 버전, 공유 및 내보내기 도구, 매월 25크레딧이 포함됩니다.",
+        footnote: "무료 플랜에는 평생 이용 가능한 완전한 악보 프로젝트 하나와 현재 제공되는 교정, 재생, 조옮김, 숫자보, 버전, 공유 및 내보내기 도구, 내보내기 등에 쓰는 매월 25크레딧이 포함됩니다. 다른 악보를 스캔하려면 한 곡 이용권 또는 요금제가 필요합니다.",
         success: "계정을 만들었습니다. 이동 중...",
       },
       login: {
@@ -733,7 +733,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continuez avec Google ou créez un compte avec votre e-mail et un mot de passe. Créez un projet gratuit à vie à partir d’un PDF multipage complet ou d’une image de partition.",
         submit: "Créer un compte",
         switch: "Vous avez déjà un compte",
-        footnote: "L’offre gratuite comprend un projet de partition complet à vie, les outils actuels de correction, lecture, transposition, Jianpu, versions, partage et export, ainsi que 25 crédits par mois.",
+        footnote: "L’offre gratuite comprend un projet de partition complet à vie, les outils actuels de correction, lecture, transposition, Jianpu, versions, partage et export, ainsi que 25 crédits par mois pour les exports et outils. Numériser une autre partition nécessite un Pass une partition ou une offre.",
         success: "Compte créé. Redirection en cours...",
       },
       login: {
@@ -846,7 +846,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continúa con Google o crea una cuenta con correo y contraseña. Crea un proyecto gratuito para siempre a partir de un PDF multipágina completo o una imagen de partitura.",
         submit: "Crear cuenta",
         switch: "Ya tengo una cuenta",
-        footnote: "El plan gratuito incluye un proyecto de partitura completo para siempre, las herramientas actuales de corrección, reproducción, transporte, Jianpu, versiones, uso compartido y exportación, además de 25 créditos al mes.",
+        footnote: "El plan gratuito incluye un proyecto de partitura completo para siempre, las herramientas actuales de corrección, reproducción, transporte, Jianpu, versiones, uso compartido y exportación, además de 25 créditos al mes para exportaciones y herramientas. Escanear otra partitura requiere un Pase para una partitura o un plan.",
         success: "Cuenta creada. Redirigiendo...",
       },
       login: {
@@ -862,7 +862,7 @@ export const AUTH_MESSAGE_CATALOGS = {
     resetRequest: {
       eyebrow: "Restablecer contraseña",
       title: "Enviar un enlace de restablecimiento",
-      body: "Introduce el correo de la cuenta y el sistema preparará el mensaje. Si aún no se ha configurado el correo transaccional, el enlace aparecerá en los registros de vista previa de la API.",
+      body: "Introduce el correo de tu cuenta para solicitar un enlace de restablecimiento. Revisa la bandeja de entrada y el correo no deseado. Si el mensaje no llega, contacta con soporte.",
       email: "Correo de la cuenta",
       placeholder: "you@example.com",
       submit: "Enviar correo de restablecimiento",
@@ -959,7 +959,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Fahren Sie mit Google fort oder erstellen Sie ein Konto mit E-Mail und Passwort. Erstellen Sie ein dauerhaft kostenloses Projekt aus einem vollständigen mehrseitigen PDF oder Notenbild.",
         submit: "Konto erstellen",
         switch: "Ich habe bereits ein Konto",
-        footnote: "Kostenlos enthalten sind ein vollständiges, dauerhaftes Notenprojekt, die aktuellen Werkzeuge für Korrektur, Wiedergabe, Transposition, Jianpu, Versionen, Teilen und Export sowie monatlich 25 Credits.",
+        footnote: "Kostenlos enthalten sind ein vollständiges, dauerhaftes Notenprojekt, die aktuellen Werkzeuge für Korrektur, Wiedergabe, Transposition, Jianpu, Versionen, Teilen und Export sowie monatlich 25 Credits für Exporte und Werkzeuge. Für eine weitere Partitur-Erkennung ist ein Einzelpartitur-Pass oder ein Abo nötig.",
         success: "Konto erstellt. Weiterleitung...",
       },
       login: {
@@ -975,7 +975,7 @@ export const AUTH_MESSAGE_CATALOGS = {
     resetRequest: {
       eyebrow: "Passwort zurücksetzen",
       title: "Link zum Zurücksetzen senden",
-      body: "Geben Sie die Konto-E-Mail ein, um eine Nachricht zum Zurücksetzen vorzubereiten. Wenn der E-Mail-Versand noch nicht eingerichtet ist, erscheint der Link in den API-Vorschauprotokollen.",
+      body: "Geben Sie die E-Mail-Adresse Ihres Kontos ein. Prüfen Sie anschließend auch den Spamordner. Wenn keine Nachricht ankommt, wenden Sie sich an den Support.",
       email: "Konto-E-Mail",
       placeholder: "you@example.com",
       submit: "E-Mail zum Zurücksetzen senden",
@@ -1072,7 +1072,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Продолжите через Google или создайте аккаунт с электронной почтой и паролем. Создайте один бессрочный бесплатный проект из полного многостраничного PDF или изображения нот.",
         submit: "Создать аккаунт",
         switch: "У меня уже есть аккаунт",
-        footnote: "Бесплатный план включает один полный бессрочный нотный проект, текущие инструменты исправления, воспроизведения, транспонирования, цифровой записи, версий, публикации и экспорта, а также 25 кредитов ежемесячно.",
+        footnote: "Бесплатный план включает один полный бессрочный нотный проект, текущие инструменты исправления, воспроизведения, транспонирования, цифровой записи, версий, публикации и экспорта, а также 25 кредитов ежемесячно на экспорт и инструменты. Для сканирования другой партитуры нужен пакет для одной партитуры или тариф.",
         success: "Аккаунт создан. Переходим дальше...",
       },
       login: {
@@ -1088,7 +1088,7 @@ export const AUTH_MESSAGE_CATALOGS = {
     resetRequest: {
       eyebrow: "Сброс пароля",
       title: "Отправить ссылку для сброса",
-      body: "Введите электронную почту аккаунта, и система подготовит письмо для сброса пароля. Если почтовый сервис ещё не настроен, ссылка появится в журналах предварительного просмотра API.",
+      body: "Введите адрес электронной почты аккаунта. Затем проверьте входящие и папку «Спам». Если письмо не приходит, обратитесь в поддержку.",
       email: "Электронная почта аккаунта",
       placeholder: "you@example.com",
       submit: "Отправить письмо для сброса",
