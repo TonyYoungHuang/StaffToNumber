@@ -6,6 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --import tsx --test tests/request-proxy.test.ts",
+    "predeploy:staging": "node ../../scripts/assert-cloudflare-active.mjs",
+    "predeploy:production": "node ../../scripts/assert-cloudflare-active.mjs",
     "deploy:staging": "wrangler deploy --config ../../deploy/cloudflare/wrangler.staging.jsonc",
     "deploy:production": "wrangler deploy --config ../../deploy/cloudflare/wrangler.production.jsonc",
     "types:staging": "wrangler types --config ../../deploy/cloudflare/wrangler.staging.jsonc worker-configuration.d.ts"

@@ -1,5 +1,7 @@
 import type { ScoreArticulation, ScoreBeam, ScoreClef, ScoreDynamic, ScoreEvent, ScoreFermata, ScoreGrace, ScoreJson, ScoreLyric, ScoreOrnament, ScorePart, ScorePitchStep, ScoreSlur, ScoreTempo, ScoreTie, ScoreTimeModification, ScoreTuplet, ScoreWedge } from "@score/shared";
 
+import { synchronizeEditedTabViews } from "./score-tab-linkage.js";
+
 export type ScoreNotePatch = {
   eventId: string;
   eventType?: "note" | "rest";
@@ -26,6 +28,9 @@ export type ScoreNotePatch = {
   grace?: ScoreGrace | null;
   ornaments?: ScoreOrnament[];
   measureRest?: boolean;
+  technical?: { string?: number; fret?: number; bend?: number; hammerOn?: string; pullOff?: string; slide?: string } | null;
+  clearTechnicalFields?: Array<"string" | "fret" | "bend" | "hammerOn" | "pullOff" | "slide">;
+  unpitched?: { displayStep: ScorePitchStep; displayOctave: number; instrumentId?: string; midiPitch?: number } | null;
 };
 
 export type ScoreNoteInsertPatch = {
@@ -562,10 +567,17 @@ function validateLyrics(input: unknown): ScoreLyric[] | undefined {
 
   const lyrics = input
     .map((item, index) => {
-      const lyric = item as { number?: unknown; syllabic?: unknown; text?: unknown } | null;
+      const lyric = item as { number?: unknown; syllabic?: unknown; text?: unknown; extend?: unknown } | null;
       const text = typeof lyric?.text === "string" ? lyric.text.trim() : "";
+      let extend: ScoreLyric["extend"];
+      if (lyric?.extend !== undefined) {
+        if (!lyric.extend || typeof lyric.extend !== "object" || Array.isArray(lyric.extend)) throw new Error("Lyric extension must be an object.");
+        const type = (lyric.extend as { type?: unknown }).type;
+        if (type !== undefined && type !== "start" && type !== "continue" && type !== "stop") throw new Error("Unsupported lyric extension type.");
+        extend = type ? { type } : {};
+      }
 
-      if (!text) {
+      if (!text && !extend) {
         return null;
       }
 
@@ -583,9 +595,10 @@ function validateLyrics(input: unknown): ScoreLyric[] | undefined {
         number,
         syllabic,
         text,
+        ...(extend ? { extend } : {}),
       };
     })
-    .filter((lyric): lyric is { number: string; syllabic: string; text: string } => Boolean(lyric));
+    .filter((lyric): lyric is NonNullable<typeof lyric> => Boolean(lyric));
 
   return lyrics;
 }
@@ -920,6 +933,9 @@ export function validateScoreNotePatch(input: unknown): ScoreNotePatch {
   const tuplets = validateTuplets(patch.tuplets, patch.eventId);
   const grace = validateGrace(patch.grace, patch.eventId);
   const ornaments = validateOrnaments(patch.ornaments, patch.eventId);
+  const technical = validateTechnical(patch.technical);
+  if (patch.clearTechnicalFields !== undefined && (!Array.isArray(patch.clearTechnicalFields) || patch.clearTechnicalFields.some(key => !["string", "fret", "bend", "hammerOn", "pullOff", "slide"].includes(key)))) throw new Error("Invalid TAB fields to clear.");
+  const unpitched = validateUnpitched(patch.unpitched);
 
   return {
     eventId: patch.eventId,
@@ -947,7 +963,38 @@ export function validateScoreNotePatch(input: unknown): ScoreNotePatch {
     grace,
     ornaments,
     measureRest: patch.measureRest,
+    technical,
+    clearTechnicalFields: patch.clearTechnicalFields,
+    unpitched,
   };
+}
+
+function validateTechnical(input: ScoreNotePatch["technical"]): ScoreNotePatch["technical"] {
+  if (input === undefined || input === null) return input;
+  if (typeof input !== "object" || Array.isArray(input)) throw new Error("TAB technique must be an object.");
+  const output: NonNullable<ScoreNotePatch["technical"]> = {};
+  for (const [key, max] of [["string", 12], ["fret", 36], ["bend", 12]] as const) {
+    const value = input[key];
+    if (value !== undefined) {
+      if (!Number.isFinite(value) || value < (key === "string" ? 1 : 0) || value > max || (key !== "bend" && !Number.isInteger(value))) throw new Error(`Invalid TAB ${key}.`);
+      output[key] = value;
+    }
+  }
+  for (const key of ["hammerOn", "pullOff", "slide"] as const) {
+    if (input[key] !== undefined) {
+      if (input[key] !== "start" && input[key] !== "stop") throw new Error(`Invalid TAB ${key} type.`);
+      output[key] = input[key];
+    }
+  }
+  return output;
+}
+
+function validateUnpitched(input: ScoreNotePatch["unpitched"]): ScoreNotePatch["unpitched"] {
+  if (input === undefined || input === null) return input;
+  if (typeof input !== "object" || !SCORE_PITCH_STEPS.has(input.displayStep) || !Number.isInteger(input.displayOctave) || input.displayOctave < 0 || input.displayOctave > 9) throw new Error("Invalid percussion display pitch.");
+  if (input.midiPitch !== undefined && (!Number.isInteger(input.midiPitch) || input.midiPitch < 0 || input.midiPitch > 127)) throw new Error("Invalid percussion MIDI pitch.");
+  if (input.instrumentId !== undefined && (typeof input.instrumentId !== "string" || input.instrumentId.length > 100)) throw new Error("Invalid percussion instrument id.");
+  return { displayStep: input.displayStep, displayOctave: input.displayOctave, ...(input.instrumentId ? { instrumentId: input.instrumentId } : {}), ...(input.midiPitch !== undefined ? { midiPitch: input.midiPitch } : {}) };
 }
 
 export function validateScoreNoteInsertPatch(input: unknown): ScoreNoteInsertPatch {
@@ -1364,6 +1411,15 @@ export function applyScoreNotePatch(input: {
 }): ScoreJson {
   let updated = false;
   const generatedAt = input.generatedAt ?? new Date().toISOString();
+  const selectedEvent = input.score.measures.flatMap(measure => measure.events).find(event => event.id === input.patch.eventId);
+  if (selectedEvent && expandLinkedEventIds(input.score, [selectedEvent.id]).size > 1 && (
+    (input.patch.staff !== undefined && input.patch.staff !== (selectedEvent.staff ?? 1)) ||
+    (input.patch.voice !== undefined && input.patch.voice !== (selectedEvent.voice ?? "1")) ||
+    (input.patch.chord !== undefined && input.patch.chord !== (selectedEvent.type === "note" ? selectedEvent.chord : false)) ||
+    (input.patch.grace !== undefined && JSON.stringify(input.patch.grace ?? null) !== JSON.stringify(selectedEvent.type === "note" ? selectedEvent.grace ?? null : null))
+  )) {
+    throw new Error("Changing chord position, staff, voice or grace structure in linked standard/TAB notation requires both views to be re-established together.");
+  }
   const hasRhythmPatch =
     input.patch.duration !== undefined ||
     input.patch.durationType !== undefined ||
@@ -1408,6 +1464,8 @@ export function applyScoreNotePatch(input: {
         return {
           id: event.id,
           type: "rest" as const,
+          ...(event.type === "rest" && event.printObject !== undefined ? { printObject: event.printObject } : {}),
+          ...(event.recognition ? { recognition: event.recognition } : {}),
           duration,
           durationType,
           dots: input.patch.dots ?? event.dots,
@@ -1444,6 +1502,8 @@ export function applyScoreNotePatch(input: {
       return {
         ...event,
         type: "note" as const,
+        printObject: event.type === "rest" && event.printObject === false ? undefined : event.printObject,
+        recognition: event.type === "rest" ? undefined : event.recognition,
         pitch: {
           ...existingPitch,
           step: input.patch.step ?? existingPitch.step,
@@ -1465,6 +1525,21 @@ export function applyScoreNotePatch(input: {
         tuplets: input.patch.tuplets ?? existingTuplets,
         grace: input.patch.grace === null ? undefined : input.patch.grace ?? existingGrace,
         ornaments: input.patch.ornaments ?? existingOrnaments,
+        technical: input.patch.technical === null ? undefined : (() => {
+          const next = { ...(event.type === "note" ? event.technical : {}), ...input.patch.technical };
+          for (const key of input.patch.clearTechnicalFields ?? []) delete next[key];
+          return Object.keys(next).length ? next : undefined;
+        })(),
+        unpitched: input.patch.unpitched === null ? undefined : input.patch.unpitched ? {
+          ...input.patch.unpitched,
+          // A new drum pitch needs its own instrument definition; changing a
+          // shared id would retune every other drum note after export/reimport.
+          ...(input.patch.unpitched.midiPitch !== undefined && event.type === "note" && input.patch.unpitched.midiPitch !== event.unpitched?.midiPitch && (!input.patch.unpitched.instrumentId || input.patch.unpitched.instrumentId === event.unpitched?.instrumentId) ? { instrumentId: `${measure.partId}-drum-${input.patch.unpitched.midiPitch}` } : {}),
+        } : (event.type === "note" ? event.unpitched :
+          input.score.parts.find(part => part.id === measure.partId)?.manualCompletion?.kind === "percussion" ? {
+            displayStep: input.patch.step ?? existingPitch.step,
+            displayOctave: input.patch.octave ?? existingPitch.octave,
+          } : undefined),
         lyrics:
           input.patch.lyrics !== undefined
             ? input.patch.lyrics
@@ -1473,6 +1548,7 @@ export function applyScoreNotePatch(input: {
               : input.patch.lyricText.trim().length > 0
                 ? [
                     {
+                      ...existingLyrics[0],
                       number: existingLyrics[0]?.number ?? "1",
                       syllabic: existingLyrics[0]?.syllabic ?? "single",
                       text: input.patch.lyricText.trim(),
@@ -1495,14 +1571,40 @@ export function applyScoreNotePatch(input: {
     throw new Error("Score event was not found in the current score revision.");
   }
 
-  return {
+  // Converting the first blank placeholder is the other entry point for manual
+  // parts. Keep the unfilled duration in that staff instead of shortening it.
+  for (const measure of measures) {
+    const originalMeasure = input.score.measures.find(item => item.id === measure.id);
+    const original = originalMeasure?.events.find(event => event.id === input.patch.eventId);
+    const index = measure.events.findIndex(event => event.id === input.patch.eventId);
+    const event = measure.events[index];
+    if (!original || original.type !== "rest" || !original.recognition?.issues.includes("manual-measure-placeholder") ||
+      event?.type !== "note" || !input.score.parts.find(part => part.id === measure.partId)?.manualCompletion) continue;
+    if (event.chord || (event.staff ?? 1) !== (original.staff ?? 1) || (event.voice ?? "1") !== (original.voice ?? "1")) {
+      throw new Error("Enter this blank staff's first note without changing its staff, voice or chord position.");
+    }
+    if (event.duration > original.duration + 0.000001) throw new Error("The note exceeds this blank staff's remaining duration.");
+    const remaining = original.duration - event.duration;
+    if (remaining > 0.000001) {
+      const occupiedIds = new Set(measures.flatMap(item => item.events.map(note => note.id)));
+      const rests = splitRestEvent(original, remaining, measureCapacity(input.score, measure.id)?.divisions ?? measure.attributes?.divisions ?? 1, occupiedIds)
+        .map(rest => ({ ...rest, printObject: false, recognition: original.recognition }));
+      measure.events.splice(index + 1, 0, ...rests);
+    }
+  }
+
+  let corrected = synchronizeEditedTabViews(input.score, {
     ...input.score,
     metadata: {
       ...input.score.metadata,
+      noteCount: measures.reduce((count, measure) => count + measure.events.filter(event => event.type === "note").length, 0),
+      restCount: measures.reduce((count, measure) => count + measure.events.filter(event => event.type === "rest").length, 0),
       warnings: [...input.score.metadata.warnings, `Manual score event correction applied to ${input.patch.eventId} at ${generatedAt}.`],
     },
     measures,
-  };
+  }, input.patch.eventId);
+  for (const id of chordRhythmEventIds) if (id !== input.patch.eventId) corrected = synchronizeEditedTabViews(input.score, corrected, id);
+  return corrected;
 }
 
 export function applyScoreNoteInsertPatch(input: {
@@ -1518,6 +1620,13 @@ export function applyScoreNoteInsertPatch(input: {
     throw new Error("Target measure was not found in the current score revision.");
   }
 
+  const manualPart = input.score.parts.find(part => part.id === targetMeasure.partId)?.manualCompletion;
+  const insertionAnchor = targetMeasure.events.find(event => event.id === (input.patch.beforeEventId ?? input.patch.afterEventId));
+  const insertionStaff = input.patch.staff ?? (manualPart ? insertionAnchor?.staff ?? 1 : undefined);
+  const insertionVoice = input.patch.voice ?? (manualPart ?
+    ((insertionAnchor?.staff ?? 1) === (insertionStaff ?? 1) ? insertionAnchor?.voice : undefined) ?? String(insertionStaff ?? 1) : undefined);
+  let consumedPlaceholder = false;
+
   const newEvent: ScoreEvent = {
     id: createManualEventId(input.score, input.patch.measureId, generatedAt),
     type: "note",
@@ -1526,11 +1635,14 @@ export function applyScoreNoteInsertPatch(input: {
       alter: input.patch.alter ?? 0,
       octave: input.patch.octave ?? 4,
     },
+    ...(manualPart?.kind === "percussion" ? {
+      unpitched: { displayStep: input.patch.step ?? "C", displayOctave: input.patch.octave ?? 4 },
+    } : {}),
     duration: input.patch.duration ?? 1,
     durationType: input.patch.durationType ?? "quarter",
     dots: 0,
-    voice: input.patch.voice,
-    staff: input.patch.staff,
+    voice: insertionVoice,
+    staff: insertionStaff,
     accidental: accidentalFromAlter(input.patch.alter ?? 0),
     chord: input.patch.chord ?? false,
     ties: [],
@@ -1560,7 +1672,46 @@ export function applyScoreNoteInsertPatch(input: {
       insertIndex = afterIndex + 1;
     }
 
-    events.splice(insertIndex, 0, newEvent);
+    const placeholderIndex = manualPart && !newEvent.chord ? events.findIndex(event =>
+      event.type === "rest" && event.recognition?.issues.includes("manual-measure-placeholder") &&
+      (event.staff ?? 1) === (newEvent.staff ?? 1) && (event.voice ?? "1") === (newEvent.voice ?? "1")
+    ) : -1;
+    if (placeholderIndex >= 0) {
+      const placeholder = events[placeholderIndex];
+      if (placeholder.type !== "rest") throw new Error("Invalid manual measure placeholder.");
+      const isPlaceholder = (event: ScoreEvent) => event.type === "rest" &&
+        event.recognition?.issues.includes("manual-measure-placeholder") &&
+        (event.staff ?? 1) === (newEvent.staff ?? 1) && (event.voice ?? "1") === (newEvent.voice ?? "1");
+      const available = events.filter(isPlaceholder).reduce((duration, event) => duration + event.duration, 0);
+      if (newEvent.duration > available + 0.000001) {
+        throw new Error("The inserted note exceeds the remaining empty duration in this manual staff.");
+      }
+      const occupiedIds = new Set(input.score.measures.flatMap(item => item.events.map(event => event.id)));
+      const divisions = measureCapacity(input.score, targetMeasure.id)?.divisions ?? targetMeasure.attributes?.divisions ?? 1;
+      let toConsume = newEvent.duration;
+      const anchorIsPlaceholder = insertionAnchor && isPlaceholder(insertionAnchor);
+      const requestedIndex = (input.patch.beforeEventId || input.patch.afterEventId) && !anchorIsPlaceholder ? insertIndex : placeholderIndex;
+      let rebuiltInsertIndex = 0;
+      let rebuiltLength = 0;
+      const replacement = events.flatMap((event, index): ScoreEvent[] => {
+        if (index === requestedIndex) rebuiltInsertIndex = rebuiltLength;
+        if (event.type !== "rest" || !isPlaceholder(event) || toConsume <= 0.000001) { rebuiltLength += 1; return [event]; }
+        const remaining = Math.max(0, event.duration - toConsume);
+        toConsume = Math.max(0, toConsume - event.duration);
+        occupiedIds.delete(event.id);
+        const rests = remaining > 0.000001 ? splitRestEvent(event, remaining, divisions, occupiedIds).map(rest => ({
+          ...rest, printObject: false, recognition: event.recognition,
+        })) : [];
+        rebuiltLength += rests.length;
+        return rests;
+      });
+      if (requestedIndex === events.length) rebuiltInsertIndex = replacement.length;
+      replacement.splice(rebuiltInsertIndex, 0, newEvent);
+      events.splice(0, events.length, ...replacement);
+      consumedPlaceholder = true;
+    } else {
+      events.splice(insertIndex, 0, newEvent);
+    }
     return {
       ...measure,
       events,
@@ -1576,10 +1727,21 @@ export function applyScoreNoteInsertPatch(input: {
     metadata: {
       ...input.score.metadata,
       noteCount: input.score.metadata.noteCount + 1,
+      ...(consumedPlaceholder ? { restCount: measures.reduce((count, measure) => count + measure.events.filter(event => event.type === "rest").length, 0) } : {}),
       warnings: [...input.score.metadata.warnings, `Manual note insertion applied to ${input.patch.measureId} at ${generatedAt}.`],
     },
     measures,
   };
+}
+
+function expandLinkedEventIds(score: ScoreJson, ids: string[]) {
+  const existing = new Set(score.measures.flatMap(measure => measure.events.map(event => event.id)));
+  const result = new Set(ids);
+  for (const anchor of score.interchange?.anchors ?? []) if (anchor.alternateEventId && (result.has(anchor.eventId) || result.has(anchor.alternateEventId))) {
+    if (existing.has(anchor.eventId)) result.add(anchor.eventId);
+    if (existing.has(anchor.alternateEventId)) result.add(anchor.alternateEventId);
+  }
+  return result;
 }
 
 export function applyScoreEventDeletePatch(input: {
@@ -1589,11 +1751,13 @@ export function applyScoreEventDeletePatch(input: {
 }): ScoreJson {
   let deletedEvent: ScoreEvent | null = null;
   let deletedEventType: ScoreEvent["type"] | null = null;
+  const deletedIds = expandLinkedEventIds(input.score, [input.patch.eventId]);
+  const removed = input.score.measures.flatMap(measure => measure.events).filter(event => deletedIds.has(event.id));
   const generatedAt = input.generatedAt ?? new Date().toISOString();
 
   const measures = input.score.measures.map((measure) => {
     const events = measure.events.filter((event) => {
-      if (event.id !== input.patch.eventId) {
+      if (!deletedIds.has(event.id)) {
         return true;
       }
       deletedEvent = event;
@@ -1617,8 +1781,8 @@ export function applyScoreEventDeletePatch(input: {
     ...input.score,
     metadata: {
       ...input.score.metadata,
-      noteCount: Math.max(0, input.score.metadata.noteCount - (deletedEventType === "note" ? 1 : 0)),
-      restCount: Math.max(0, input.score.metadata.restCount - (deletedEventType === "rest" ? 1 : 0)),
+      noteCount: Math.max(0, input.score.metadata.noteCount - removed.filter(event => event.type === "note").length),
+      restCount: Math.max(0, input.score.metadata.restCount - removed.filter(event => event.type === "rest").length),
       warnings: [...input.score.metadata.warnings, `Manual score event deletion applied to ${input.patch.eventId} at ${generatedAt}.`],
     },
     measures,
@@ -1631,7 +1795,10 @@ export function applyScoreEventBatchPatch(input: {
   generatedAt?: string;
 }): ScoreJson {
   const generatedAt = input.generatedAt ?? new Date().toISOString();
-  const requestedIds = new Set(input.patch.eventIds);
+  const requestedIds = input.patch.action === "delete" ? expandLinkedEventIds(input.score, input.patch.eventIds) : new Set(input.patch.eventIds);
+  if (input.patch.action !== "delete" && input.patch.eventIds.some(id => expandLinkedEventIds(input.score, [id]).size > 1)) {
+    throw new Error("Moving or duplicating linked standard/TAB views together is not supported by this command. Use pitch, rhythm and TAB properties, or insert a new event in each view.");
+  }
   const sourceEvents = input.score.measures.flatMap((measure) => measure.events).filter((event) => requestedIds.has(event.id));
   if (sourceEvents.length !== requestedIds.size) {
     throw new Error("One or more score events were not found in the current revision.");
@@ -1778,6 +1945,7 @@ export function applyScoreEventReorderPatch(input: {
 
   const originalSourceEventIndex = sourceMeasure.events.findIndex((event) => event.id === input.patch.eventId);
   const movedToAnotherPosition = sourceMeasureIndex !== targetMeasureIndex || input.patch.targetIndex !== originalSourceEventIndex;
+  if (movedToAnotherPosition && expandLinkedEventIds(input.score, [input.patch.eventId]).size > 1) throw new Error("This event has a linked standard/TAB view. Change pitch or rhythm with its properties; moving one view would detach the other.");
   const connectedTuplet = connectedTupletEventIds(input.score, input.patch.eventId);
   if (movedToAnotherPosition && connectedTuplet.size > 1) {
     throw new Error("Tuplet events must be moved as a complete multi-selection to preserve rhythmic structure.");
@@ -1841,7 +2009,7 @@ export function applyScoreEventReorderPatch(input: {
   const noteCount = measures.reduce((count, measure) => count + measure.events.filter((item) => item.type === "note").length, 0);
   const restCount = measures.reduce((count, measure) => count + measure.events.filter((item) => item.type === "rest").length, 0);
 
-  return {
+  return synchronizeEditedTabViews(input.score, {
     ...input.score,
     metadata: {
       ...input.score.metadata,
@@ -1853,7 +2021,7 @@ export function applyScoreEventReorderPatch(input: {
       ],
     },
     measures,
-  };
+  }, input.patch.eventId);
 }
 
 function normalizeChordSequence(events: ScoreEvent[]) {

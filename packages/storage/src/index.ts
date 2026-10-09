@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { assertMinimumFreeSpace } from "./capacity.js";
+export { assertMinimumFreeSpace, StorageCapacityError } from "./capacity.js";
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -36,6 +38,8 @@ export type ObjectStorageConfig = {
   secretAccessKey?: string;
   keyPrefix?: string;
   maxAttempts?: number;
+  checksumMode?: "sha256" | "md5";
+  minimumFreeBytes?: number;
   serverSideEncryption?: "AES256" | "aws:kms";
   kmsKeyId?: string;
   gatewayUrl?: string;
@@ -148,7 +152,7 @@ export class ObjectStorage {
   readonly keyPrefix: string;
   private readonly localRoot: string;
   private readonly s3: S3Sender | null;
-  private readonly useR2CompatibleChecksums: boolean;
+  private readonly useMd5TransportChecksums: boolean;
   private readonly gatewayUrl: string | null;
   private readonly gatewayToken: string | null;
 
@@ -157,7 +161,9 @@ export class ObjectStorage {
     this.localRoot = path.resolve(config.localRoot);
     this.bucket = config.bucket?.trim() || null;
     this.keyPrefix = normalizePrefix(config.keyPrefix);
-    this.useR2CompatibleChecksums = isCloudflareR2Endpoint(config.endpoint);
+    // Some S3 implementations need MD5 transport checksums. Application-level
+    // SHA-256 metadata and materialization checks remain enabled in either mode.
+    this.useMd5TransportChecksums = config.checksumMode === "md5" || (config.checksumMode !== "sha256" && isCloudflareR2Endpoint(config.endpoint));
     this.gatewayUrl = config.gatewayUrl?.trim().replace(/\/+$/u, "") || null;
     this.gatewayToken = config.gatewayToken?.trim() || null;
 
@@ -173,8 +179,8 @@ export class ObjectStorage {
         endpoint: config.endpoint?.trim() || undefined,
         forcePathStyle: config.forcePathStyle ?? false,
         maxAttempts: config.maxAttempts ?? 3,
-        requestChecksumCalculation: this.useR2CompatibleChecksums ? "WHEN_REQUIRED" : undefined,
-        responseChecksumValidation: this.useR2CompatibleChecksums ? "WHEN_REQUIRED" : undefined,
+        requestChecksumCalculation: this.useMd5TransportChecksums ? "WHEN_REQUIRED" : undefined,
+        responseChecksumValidation: this.useMd5TransportChecksums ? "WHEN_REQUIRED" : undefined,
       };
       if (config.accessKeyId && config.secretAccessKey) {
         clientConfig.credentials = { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey };
@@ -186,6 +192,7 @@ export class ObjectStorage {
   }
 
   async persistFile(input: { sourcePath: string; objectKey: string; contentType: string; removeSource?: boolean }) {
+    assertMinimumFreeSpace(path.dirname(input.sourcePath), this.config.minimumFreeBytes, fs.statSync(input.sourcePath).size);
     const sourcePath = resolveInside(this.localRoot, input.sourcePath);
     const stats = await fs.promises.stat(sourcePath);
     const checksumSha256 = await sha256File(sourcePath);
@@ -220,14 +227,14 @@ export class ObjectStorage {
       };
     }
     const checksumBase64 = Buffer.from(checksumSha256, "hex").toString("base64");
-    const contentMd5 = this.useR2CompatibleChecksums ? await md5FileBase64(sourcePath) : undefined;
+    const contentMd5 = this.useMd5TransportChecksums ? await md5FileBase64(sourcePath) : undefined;
     await this.s3!.send(new PutObjectCommand({
       Bucket: this.bucket!,
       Key: key,
       Body: fs.createReadStream(sourcePath),
       ContentLength: stats.size,
       ContentType: input.contentType,
-      ChecksumSHA256: this.useR2CompatibleChecksums ? undefined : checksumBase64,
+      ChecksumSHA256: this.useMd5TransportChecksums ? undefined : checksumBase64,
       ContentMD5: contentMd5,
       Metadata: { "sha256-hex": checksumSha256 },
       ServerSideEncryption: this.config.serverSideEncryption,
@@ -260,6 +267,7 @@ export class ObjectStorage {
         Bucket: this.bucket!,
         Key: objectKey,
         ContentType: input.contentType,
+        ChecksumAlgorithm: this.useMd5TransportChecksums ? undefined : "SHA256",
         ServerSideEncryption: this.config.serverSideEncryption,
         SSEKMSKeyId: this.config.serverSideEncryption === "aws:kms" ? this.config.kmsKeyId : undefined,
       }));
@@ -298,8 +306,8 @@ export class ObjectStorage {
         PartNumber: input.partNumber,
         Body: input.body,
         ContentLength: input.body.length,
-        ChecksumSHA256: this.useR2CompatibleChecksums ? undefined : Buffer.from(checksumSha256, "hex").toString("base64"),
-        ContentMD5: this.useR2CompatibleChecksums ? createHash("md5").update(input.body).digest("base64") : undefined,
+        ChecksumSHA256: this.useMd5TransportChecksums ? undefined : Buffer.from(checksumSha256, "hex").toString("base64"),
+        ContentMD5: this.useMd5TransportChecksums ? createHash("md5").update(input.body).digest("base64") : undefined,
       }));
       if (!response.ETag) throw new Error("S3 did not return an ETag for the uploaded part.");
       return { partNumber: input.partNumber, etag: response.ETag, sizeBytes: input.body.length, checksumSha256 };
@@ -338,7 +346,7 @@ export class ObjectStorage {
           Parts: parts.map((part) => ({
             PartNumber: part.partNumber,
             ETag: part.etag,
-            ChecksumSHA256: this.useR2CompatibleChecksums ? undefined : Buffer.from(part.checksumSha256, "hex").toString("base64"),
+            ChecksumSHA256: this.useMd5TransportChecksums ? undefined : Buffer.from(part.checksumSha256, "hex").toString("base64"),
           })),
         },
       }));

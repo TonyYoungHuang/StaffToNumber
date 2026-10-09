@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  assertStripeEventMode,
+  stripeCredentialMode,
   buildPaddleTransactionEndpoint,
   buildPaddleCheckoutRedirectUrl,
   buildLocalizedAppReturnUrl,
   buildLocalizedPublicCheckoutUrl,
+  buildCheckoutCancelUrl,
   buildStripeCheckoutSessionParams,
   hashPaymentOrderToken,
   normalizeStripeCredential,
@@ -13,6 +16,39 @@ import {
   resolveCheckoutPriceId,
   stripeSessionMatchesPaymentOrder,
 } from "./payments.js";
+
+test("Stripe Checkout uses the selected French locale for both purchase types", () => {
+  const input = { orderId: "test-order", publicToken: "test-token", priceId: "price_test_only" };
+  for (const billingKind of ["one_time", "subscription"] as const) {
+    const params = buildStripeCheckoutSessionParams({ ...input, billingKind, locale: "fr-FR" });
+    assert.equal(params.locale, "fr");
+    assert.equal(params.mode, billingKind === "one_time" ? "payment" : "subscription");
+    assert.deepEqual(params.line_items, [{ price: "price_test_only", quantity: 1 }]);
+  }
+  assert.equal(buildStripeCheckoutSessionParams({ ...input, locale: "zh-CN" }).locale, "zh");
+  assert.equal(buildStripeCheckoutSessionParams({ ...input, locale: "zh-TW" }).locale, "zh-TW");
+  assert.equal(buildStripeCheckoutSessionParams(input).locale, "auto");
+});
+
+test("pricing checkout returns to the exact localized plan without exposing an order token or accepting an external return URL", () => {
+  const input = { baseUrl: "https://scoretransposer.com", provider: "stripe" as const, planCode: "starter-annual" as const, orderId: "order-pricing", publicToken: "private-order-token" };
+  for (const [locale, prefix] of [["en", ""], ["zh-CN", "/zh-cn"], ["zh-TW", "/zh-tw"], ["ja", "/ja"], ["ko", "/ko"], ["fr", "/fr"], ["es", "/es"], ["de", "/de"], ["ru", "/ru"]]) {
+    for (const billingKind of ["subscription", "one_time"] as const) {
+      const url = new URL(buildCheckoutCancelUrl({ ...input, locale, billingKind, returnTo: "pricing" }));
+      assert.equal(url.pathname, `${prefix}/pricing`);
+      assert.equal(url.searchParams.get("plan"), input.planCode);
+      assert.equal(url.searchParams.get("billing"), billingKind);
+      assert.equal(url.searchParams.get("provider"), "stripe");
+      assert.equal(url.searchParams.has("token"), false);
+    }
+  }
+  for (const returnTo of [undefined, "https://untrusted.invalid", "//untrusted.invalid", { pricing: true }]) {
+    const url = new URL(buildCheckoutCancelUrl({ ...input, billingKind: "subscription", locale: "fr", returnTo }));
+    assert.equal(url.origin, input.baseUrl);
+    assert.equal(url.pathname, "/fr/checkout/cancel");
+    assert.equal(url.searchParams.get("token"), input.publicToken);
+  }
+});
 
 test("payment providers return to the locale-prefixed public checkout route", () => {
   const params = { provider: "stripe", order_id: "order-1", token: "public-token" };
@@ -177,6 +213,21 @@ test("webhook signing secrets ignore accidental surrounding whitespace", () => {
 test("Stripe API credentials ignore clipboard whitespace", () => {
   assert.equal(normalizeStripeCredential("  sk_test_example\r\n"), "sk_test_example");
   assert.equal(normalizeStripeCredential("sk_test_\r\n example"), "sk_test_example");
+});
+
+test("Stripe live and sandbox webhook events cannot cross account modes", () => {
+  for (const prefix of ["sk", "rk"]) {
+    const liveKey = `\uFEFF ${prefix}_live_example\r\n`;
+    const testKey = `${prefix}_test_example`;
+    assert.equal(stripeCredentialMode(liveKey), "live");
+    assert.equal(stripeCredentialMode(testKey), "test");
+    assert.doesNotThrow(() => assertStripeEventMode({ livemode: true }, liveKey));
+    assert.doesNotThrow(() => assertStripeEventMode({ livemode: false }, testKey));
+    assert.throws(() => assertStripeEventMode({ livemode: false }, liveKey), /mode does not match/u);
+    assert.throws(() => assertStripeEventMode({ livemode: true }, testKey), /mode does not match/u);
+  }
+  assert.equal(stripeCredentialMode("pk_live_example"), null);
+  assert.throws(() => assertStripeEventMode({ livemode: true }, ""), /mode does not match/u);
 });
 
 test("Stripe price identifiers ignore clipboard BOM and whitespace", () => {

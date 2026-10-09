@@ -10,6 +10,8 @@ import {
   buildLocaleCookie,
   detectLocale,
   formatCurrency,
+  localizeUsdText,
+  localizeApiError,
   formatMessage,
   formatNumber,
   formatPlural,
@@ -194,4 +196,20 @@ test("uses a key-safe translator with interpolation and English catalog fallback
   assert.equal(resolveMessageLocale("ja"), "ja");
   assert.equal((await loadMessageCatalog("ja"))["siteChrome.scanner"], "楽譜スキャン");
   assert.equal(createTranslator({})("siteChrome.scanner"), "Scanner");
+});
+
+test("French currency display preserves USD amounts and fractional unit prices", () => {
+  assert.equal(localizeUsdText("$7.99", "fr").replace(/\s/gu, " "), "7,99 $US");
+  assert.equal(localizeUsdText("$0.082", "fr").replace(/\s/gu, " "), "0,082 $US");
+  assert.equal(localizeUsdText("$49", "en"), "$49");
+});
+
+test("French and English API errors provide actionable customer guidance", () => {
+  assert.match(localizeApiError({ error: "Invalid email or password.", status: 401 }, "fr-FR"), /mot de passe est incorrect/u);
+  assert.match(localizeApiError({ code: "PLAN_JOB_QUOTA_EXCEEDED", status: 403 }, "fr"), /crédits/u);
+  assert.match(localizeApiError({ code: "ACTIVE_RECURRING_SUBSCRIPTION", status: 409 }, "fr"), /renouvellements/u);
+  assert.match(localizeApiError({ error: "Please describe the issue in a bit more detail.", status: 400 }, "fr"), /10 caractères/u);
+  assert.match(localizeApiError({ error: "Internal provider diagnostic", status: 503 }, "fr"), /momentanément indisponible/u);
+  assert.match(localizeApiError({ status: 0 }, "fr"), /connexion Internet/u);
+  assert.match(localizeApiError({ error: "Internal provider diagnostic", status: 503 }, "en"), /temporarily unavailable/u);
 });

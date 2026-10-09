@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -34,6 +35,7 @@ test("real S3-compatible storage supports the complete private object lifecycle"
     accessKeyId,
     secretAccessKey,
     keyPrefix: "integration",
+    checksumMode: process.env.S3_TEST_CHECKSUM_MODE === "md5" ? "md5" : undefined,
   });
   try {
     assert.deepEqual(await storage.checkHealth(), { backend: "s3", target: bucket });
@@ -48,6 +50,17 @@ test("real S3-compatible storage supports the complete private object lifecycle"
     assert.equal(await fs.promises.readFile(materialized, "utf8"), "<score-partwise version=\"4.0\"/>");
     assert.equal(await storage.delete(persisted.ref), true);
     assert.equal(await storage.exists(persisted.ref), false);
+    const body = Buffer.concat([Buffer.alloc(5 * 1024 * 1024, 42), Buffer.from("final score part")]);
+    const session = await storage.beginResumableUpload({ objectKey: "integration/multipart.bin", contentType: "application/octet-stream" });
+    const parts = [
+      await storage.uploadResumablePart({ session, partNumber: 1, body: body.subarray(0, 5 * 1024 * 1024) }),
+      await storage.uploadResumablePart({ session, partNumber: 2, body: body.subarray(5 * 1024 * 1024) }),
+    ];
+    const multipart = await storage.completeResumableUpload({ session, parts });
+    const multipartPath = path.join(root, "multipart.bin");
+    await storage.materialize(multipart.ref, multipartPath, createHash("sha256").update(body).digest("hex"));
+    assert.deepEqual(await fs.promises.readFile(multipartPath), body);
+    assert.equal(await storage.delete(multipart.ref), true);
   } finally {
     await client.send(new DeleteBucketCommand({ Bucket: bucket })).catch(() => undefined);
     await fs.promises.rm(root, { recursive: true, force: true });

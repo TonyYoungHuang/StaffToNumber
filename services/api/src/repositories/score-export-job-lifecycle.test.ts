@@ -74,7 +74,9 @@ test("export jobs can be cancelled and retried without replacing their immutable
   const retried = retryScoreJob({ jobId: job!.id, userId, documentId: document.id });
   assert.equal(retried?.status, "queued");
   assert.equal(retried?.cancel_requested_at, null);
-  assert.deepEqual(JSON.parse(retried!.params_json!), snapshot);
+  const { creditReservedAt, ...retriedSnapshot } = JSON.parse(retried!.params_json!);
+  assert.equal(typeof creditReservedAt, "string");
+  assert.deepEqual(retriedSnapshot, snapshot);
 });
 
 test("OMR imports use the same cancellable and retryable long-job contract", () => {

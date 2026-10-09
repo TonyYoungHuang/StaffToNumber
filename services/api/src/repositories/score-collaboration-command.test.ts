@@ -17,11 +17,13 @@ const {
   applyCanonicalScoreCollaborationCommand,
   applyScoreCollaborationHistoryCommand,
   createScoreDocumentFromDerivedScoreJson,
+  createScoreAsset,
   createScoreRevisionFromScoreJson,
   createScoreShare,
   findCurrentRevisionForDocument,
   findScoreDocumentById,
   listScoreCommentsByDocumentId,
+  listScoreAssetsByDocumentId,
   listScoreRevisionsByDocumentId,
   mapScoreCollaborationCommandForApi,
   mapScoreShareForApi,
@@ -85,6 +87,28 @@ function createDocument(label: string) {
 function notePatch(eventId: string, step: "D" | "F" | "G" | "A") {
   return { type: "note.patch" as const, patch: { eventId, step } };
 }
+
+test("source pages remain available through a collaborative edit and undo while old rendered artifacts stay historical", () => {
+  const { document, revision: base } = createDocument("Source reference continuity");
+  const fileId = crypto.randomUUID(), originalPath = path.join(testDir, `${fileId}.png`);
+  fs.writeFileSync(originalPath, "source");
+  db.prepare("INSERT INTO files (id,user_id,original_name,stored_name,storage_path,mime_type,size_bytes,file_kind,created_at) VALUES (?,?,?,?,?,'image/png',6,'source_image',?)")
+    .run(fileId, userId, "original.png", `${fileId}.png`, originalPath, timestamp);
+  createScoreAsset({ documentId: document.id, fileId, assetKind: "omr_page_image", revisionId: base.id, checksumSha256: "source-checksum" });
+  createScoreAsset({ documentId: document.id, fileId, assetKind: "rendered_pdf", revisionId: base.id });
+  const operationId = crypto.randomUUID();
+  const applied = applyCanonicalScoreCollaborationCommand({ operationId, documentId: document.id, actorId: userId, actorRole: "owner", baseRevisionId: base.id, command: notePatch("event-1", "D") });
+  assert.ok(applied.revision);
+  const currentAssets = listScoreAssetsByDocumentId(document.id).filter(asset => asset.revision_id === applied.revision!.id);
+  assert.equal(currentAssets.length, 1); assert.equal(currentAssets[0].asset_kind, "omr_page_image"); assert.equal(currentAssets[0].stale_at, null);
+  assert.equal(currentAssets[0].checksum_sha256, "source-checksum");
+  const undone = applyScoreCollaborationHistoryCommand({ operationId: crypto.randomUUID(), documentId: document.id, actorId: userId, actorRole: "owner", baseRevisionId: applied.revision.id, action: "undo", targetOperationId: operationId });
+  assert.ok(undone.revision);
+  const historyAssets = listScoreAssetsByDocumentId(document.id).filter(asset => asset.revision_id === undone.revision!.id);
+  assert.equal(historyAssets.length, 1); assert.equal(historyAssets[0].asset_kind, "omr_page_image"); assert.equal(historyAssets[0].stale_at, null);
+  assert.ok(fs.existsSync(originalPath));
+  assert.ok(listScoreAssetsByDocumentId(document.id).some(asset => asset.asset_kind === "rendered_pdf" && asset.revision_id === base.id && asset.stale_at !== null));
+});
 
 test("merges disjoint commands from one base revision and records overlapping conflicts", () => {
   const { document, revision: base } = createDocument("Concurrent merge");

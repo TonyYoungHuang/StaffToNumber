@@ -47,6 +47,17 @@ test("notification email delivery is opt-in and preferences update idempotently"
   assert.equal((db.prepare("SELECT count(*) AS count FROM score_notification_preferences").get() as { count: number }).count, 1);
 });
 
+test("German and Russian locale preferences round-trip without English fallback", () => {
+  const db = createTestDb();
+  try {
+    for (const locale of ["de", "ru"] as const) {
+      const result = updateNotificationPreferences(db,{userId:"user-1",emailClassroomAnnouncements:true,locale});
+      assert.equal(result.locale,locale);
+      assert.equal(getNotificationPreferences(db,"user-1").locale,locale);
+    }
+  } finally { db.close(); }
+});
+
 test("opting out cancels pending email deliveries without changing sent history", () => {
   const db = createTestDb();
   updateNotificationPreferences(db, { userId: "user-1", emailClassroomAnnouncements: true, locale: "en" });

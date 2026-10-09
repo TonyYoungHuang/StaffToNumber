@@ -1,6 +1,68 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCheckoutIntentNotificationEmail, buildPaymentNotificationEmail } from "./email.js";
+import { buildCheckoutIntentNotificationEmail, buildPaymentNotificationEmail, buildPasswordResetEmail, buildSupportConfirmationEmail, buildSupportNotificationEmail, buildPasswordResetUrl } from "./email.js";
+
+test("French password reset keeps its language and token through the app handoff", () => {
+  const resetUrl = buildPasswordResetUrl("https://app.example.test/reset-password?source=email", "test+token&value", "fr-FR");
+  const handoff = new URL(resetUrl);
+  assert.equal(handoff.pathname, "/api/locale");
+  assert.equal(handoff.searchParams.get("locale"), "fr");
+  const next = new URL(handoff.searchParams.get("next")!, handoff.origin);
+  assert.equal(next.pathname, "/reset-password");
+  assert.equal(next.searchParams.get("token"), "test+token&value");
+  assert.equal(next.searchParams.get("source"), "email");
+  const email = buildPasswordResetEmail({ email: "test@example.test", locale: "fr-FR", resetUrl, expiresHours: 2 });
+  assert.match(email.subject, /réinitialisation/u);
+  assert.match(email.text, /2 heure/u);
+  assert.match(email.html, /lang="fr"/u);
+  assert.match(email.html, /&amp;/u);
+  assert.doesNotMatch(email.text, /password reset|You requested/u);
+});
+
+test("French support confirmation escapes customer text and retains the locale", () => {
+  const input = { referenceCode: "SUP-TEST", locale: "fr", contactName: "<script>test</script>", contactEmail: "test@example.test", categoryLabel: "Paiement et vérification de commande", subject: "Accès & paiement", supportUrl: "https://example.test/fr/support" };
+  const email = buildSupportConfirmationEmail(input);
+  assert.match(email.subject, /demande d’assistance reçue/u);
+  assert.match(email.text, /Paiement et vérification de commande/u);
+  assert.match(email.html, /&lt;script&gt;/u);
+  assert.doesNotMatch(email.html, /<script>/u);
+  assert.match(email.html, /https:\/\/example.test\/fr\/support/u);
+  const notification = buildSupportNotificationEmail({ ...input, message: "Question de test", createdAt: "2026-09-29T00:00:00Z" });
+  assert.match(notification.text, /Locale: fr/u);
+});
+
+test("German and Russian customer emails preserve locale links and escape user content", () => {
+  for (const locale of ["de", "ru"] as const) {
+    const resetUrl = buildPasswordResetUrl("https://app.example.test", "test+token&value", locale);
+    const email = buildPasswordResetEmail({ email:"test@example.test", locale, resetUrl, expiresHours:2 });
+    assert.match(email.subject,/ScoreTransposer/);
+    assert.doesNotMatch(email.text,/You requested|password reset link/);
+    assert.match(email.html,new RegExp(`lang="${locale}"`));
+    assert.match(email.html,/&amp;/);
+    assert.equal(new URL(resetUrl).searchParams.get("locale"),locale);
+    const support = buildSupportConfirmationEmail({referenceCode:"SUP-TEST",locale,contactName:"<script>test</script>",contactEmail:"test@example.test",categoryLabel:"Payment",subject:"Access & payment",supportUrl:`https://example.test/${locale}/support`});
+    assert.match(support.html,/&lt;script&gt;/); assert.doesNotMatch(support.html,/<script>/);
+    assert.match(support.html,new RegExp(`/${locale}/support`));
+    assert.doesNotMatch(support.text,/Your support request/);
+  }
+});
+
+test("Spanish reset and support messages preserve language, credentials and HTML escaping", () => {
+  const resetUrl = buildPasswordResetUrl("https://app.example.test/reset-password", "test+token&value", "es-ES");
+  const handoff = new URL(resetUrl);
+  const next = new URL(handoff.searchParams.get("next")!, handoff.origin);
+  assert.equal(handoff.searchParams.get("locale"), "es");
+  assert.equal(next.searchParams.get("token"), "test+token&value");
+  const reset = buildPasswordResetEmail({ email: "test@example.test", locale: "es-ES", resetUrl, expiresHours: 1 });
+  assert.match(reset.html, /lang="es"/u);
+  assert.match(reset.text, /Restablecer contraseña/u);
+  assert.doesNotMatch(reset.text, /You requested|password reset/u);
+  const support = buildSupportConfirmationEmail({ referenceCode: "SUP-TEST", locale: "es", contactName: "<script>test</script>", contactEmail: "test@example.test", categoryLabel: "Pago", subject: "Acceso & pago", supportUrl: "https://example.test/es/support" });
+  assert.match(support.subject, /Solicitud de soporte recibida/u);
+  assert.match(support.html, /&lt;script&gt;/u);
+  assert.doesNotMatch(support.html, /<script>/u);
+  assert.match(support.html, /\/es\/support/u);
+});
 
 test("payment notification email contains demand-validation details without secrets", () => {
   const email = buildPaymentNotificationEmail({

@@ -14,11 +14,13 @@ const {
   acceptPendingScoreRevision,
   createCandidateScoreRevisionFromScoreJson,
   createOmrImportScoreDocument,
+  createScoreAsset,
   createScoreRevisionFromScoreJson,
   findCurrentRevisionForDocument,
   findPendingRevisionForDocument,
   findScoreDocumentById,
   findScoreRevisionById,
+  listScoreAssetsByDocumentId,
   rejectPendingScoreRevision,
 } = await import("./score-repository.js");
 
@@ -106,6 +108,9 @@ test("OMR candidate requires explicit acceptance before becoming current", () =>
   assert.equal(findScoreDocumentById(awaitingReview.id)?.current_revision_id, null);
   assert.equal(findScoreDocumentById(awaitingReview.id)?.pending_revision_id, correctedCandidate.id);
 
+  createScoreAsset({ documentId: awaitingReview.id, fileId: sourceFileId, assetKind: "omr_page_image", revisionId: correctedCandidate.id });
+  createScoreAsset({ documentId: awaitingReview.id, fileId: sourceFileId, assetKind: "score_musicxml", revisionId: candidate.id });
+
   const accepted = acceptPendingScoreRevision({
     documentId: awaitingReview.id,
     pendingRevisionId: correctedCandidate.id,
@@ -119,6 +124,11 @@ test("OMR candidate requires explicit acceptance before becoming current", () =>
   assert.equal(accepted.document.pending_revision_id, null);
   assert.equal(accepted.document.status, "ready");
   assert.equal(findScoreRevisionById(correctedCandidate.id)?.status, "superseded");
+  const assets = listScoreAssetsByDocumentId(awaitingReview.id);
+  const correctedPage = assets.find((asset) => asset.asset_kind === "omr_page_image");
+  assert.equal(correctedPage?.revision_id, accepted.revision.id);
+  assert.equal(correctedPage?.stale_at, null);
+  assert.ok(assets.find((asset) => asset.asset_kind === "score_musicxml")?.stale_at);
 });
 
 test("rejecting a later candidate preserves the existing official revision", () => {

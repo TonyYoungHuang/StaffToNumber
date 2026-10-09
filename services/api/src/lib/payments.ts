@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
-import { getLocaleConfig, normalizeLocale, type CheckoutPlanCode, type PaymentProvider } from "@score/shared";
+import { getLocaleConfig, normalizeLocale, type CheckoutBillingKind, type CheckoutPlanCode, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
 import { config } from "../config.js";
 
 type PaddleTransactionResponse = {
@@ -31,7 +31,7 @@ const stripeManagedPaymentsApiVersion = "2026-03-04.preview";
 
 export function buildLocalizedPublicCheckoutUrl(input: {
   baseUrl: string;
-  pathname: "/checkout/success" | "/checkout/cancel";
+  pathname: "/checkout/success" | "/checkout/cancel" | "/pricing";
   locale?: string | null;
   searchParams: Readonly<Record<string, string>>;
 }) {
@@ -40,6 +40,27 @@ export function buildLocalizedPublicCheckoutUrl(input: {
   const target = new URL(`${prefix}${input.pathname}`, `${input.baseUrl.replace(/\/$/u, "")}/`);
   for (const [key, value] of Object.entries(input.searchParams)) target.searchParams.set(key, value);
   return target.toString();
+}
+
+export function buildCheckoutCancelUrl(input: {
+  baseUrl: string;
+  locale?: string | null;
+  returnTo?: unknown;
+  planCode: PurchasePlanCode;
+  billingKind: CheckoutBillingKind;
+  provider: PaymentProvider;
+  orderId: string;
+  publicToken: string;
+}) {
+  const pricing = input.returnTo === "pricing";
+  return buildLocalizedPublicCheckoutUrl({
+    baseUrl: input.baseUrl,
+    pathname: pricing ? "/pricing" : "/checkout/cancel",
+    locale: input.locale,
+    searchParams: pricing
+      ? { plan: input.planCode, billing: input.billingKind, provider: input.provider }
+      : { provider: input.provider, order_id: input.orderId, token: input.publicToken },
+  });
 }
 
 export function localizePublicPaddleCheckoutPageUrl(input: {
@@ -76,6 +97,9 @@ export function buildLocalizedAppReturnUrl(input: {
 }
 
 type StripeCheckoutSessionInput = {
+  locale?: string | null;
+  billingKind?: CheckoutBillingKind;
+  planCode?: PurchasePlanCode;
   orderId: string;
   publicToken: string;
   customerEmail?: string | null;
@@ -155,12 +179,14 @@ function configuredCheckoutPriceIds(provider: PaymentProvider): CheckoutPlanPric
       };
 }
 
-export function getCheckoutPriceId(provider: PaymentProvider, planCode: CheckoutPlanCode) {
+export function getCheckoutPriceId(provider: PaymentProvider, planCode: PurchasePlanCode, billingKind: CheckoutBillingKind = "subscription") {
+  if (planCode === "single-score") return provider === "stripe" && billingKind === "one_time" ? config.stripeSingleScorePriceId || null : null;
+  if (billingKind === "one_time") return provider === "stripe" ? resolveCheckoutPriceId(planCode, config.stripeOneTimePriceIds) : null;
   return resolveCheckoutPriceId(planCode, configuredCheckoutPriceIds(provider));
 }
 
-export function isPaymentProviderEnabled(provider: PaymentProvider, planCode: CheckoutPlanCode) {
-  return listEnabledPaymentProviders().includes(provider) && Boolean(getCheckoutPriceId(provider, planCode));
+export function isPaymentProviderEnabled(provider: PaymentProvider, planCode: PurchasePlanCode, billingKind: CheckoutBillingKind = "subscription") {
+  return listEnabledPaymentProviders().includes(provider) && Boolean(getCheckoutPriceId(provider, planCode, billingKind));
 }
 
 export function getPaddleClientEnvironment() {
@@ -177,6 +203,8 @@ export function buildStripeCheckoutSessionParams(
   }
 
   const metadata = {
+    ...(input.billingKind ? { billingKind: input.billingKind } : {}),
+    ...(input.planCode ? { planCode: input.planCode } : {}),
     orderId: input.orderId,
     orderTokenHash: hashPaymentOrderToken(input.publicToken),
     priceId,
@@ -184,8 +212,10 @@ export function buildStripeCheckoutSessionParams(
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),
     seatQuantity: String(Math.max(1, input.seatQuantity ?? 1)),
   };
+  const selectedLocale = normalizeLocale(input.locale);
   const params: ManagedPaymentsCheckoutParams = {
-    mode: config.paymentBillingMode,
+    locale: selectedLocale === "zh-CN" ? "zh" : selectedLocale ?? "auto",
+    mode: input.billingKind ? input.billingKind === "one_time" ? "payment" : "subscription" : config.paymentBillingMode,
     billing_address_collection: "auto",
     allow_promotion_codes: true,
     line_items: [
@@ -205,7 +235,11 @@ export function buildStripeCheckoutSessionParams(
       ? { managed_payments: { enabled: true as const } }
       : {}),
   };
-  if (config.paymentBillingMode === "subscription") params.subscription_data = { metadata };
+  if (params.mode === "subscription") params.subscription_data = { metadata };
+  if (input.billingKind === "one_time") {
+    params.customer_creation = "always";
+    params.payment_intent_data = { metadata };
+  }
   return params;
 }
 
@@ -244,6 +278,18 @@ export function normalizeStripeCredential(value: string) {
 
 export const normalizeWebhookSigningSecret = normalizeStripeCredential;
 
+export function stripeCredentialMode(credential: string): "live" | "test" | null {
+  const match = /^(?:sk|rk)_(live|test)_[A-Za-z0-9]+$/u.exec(normalizeStripeCredential(credential));
+  return match ? match[1] as "live" | "test" : null;
+}
+
+export function assertStripeEventMode(event: { livemode: boolean }, credential: string) {
+  const mode = stripeCredentialMode(credential);
+  if (!mode || event.livemode !== (mode === "live")) {
+    throw new Error("Stripe event mode does not match the configured account credentials.");
+  }
+}
+
 export function buildStripeCheckoutRequestOptions(orderId: string, managedPaymentsEnabled = config.stripeManagedPaymentsEnabled) {
   const requestOptions: Stripe.RequestOptions = {
     idempotencyKey: `scoretransposer-checkout-${orderId}`,
@@ -280,7 +326,9 @@ export function verifyStripeWebhook(rawBody: Buffer, signature: string) {
     throw new Error("Stripe webhook is not configured.");
   }
 
-  return stripeClient.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  const event = stripeClient.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  assertStripeEventMode(event, config.stripeSecretKey);
+  return event;
 }
 
 export async function expireStripeCheckoutSession(sessionId: string) {

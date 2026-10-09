@@ -1,4 +1,5 @@
 import type { ScoreJson, ScorePitch, ScoreKeySignature, ScorePitchStep, TransposePitchMode, TransposeSpellingPolicy } from "@score/shared";
+import { synchronizeEditedTabViews } from "./score-tab-linkage.js";
 
 export type ScoreRangeProfile = {
   id: string;
@@ -367,8 +368,12 @@ export function transposeScoreJson(input: {
   const operationLabel = input.operationLabel ? ` for ${input.operationLabel}` : "";
   const spellingPolicy = input.spellingPolicy ?? "auto";
   let appliedTargetKey = false;
+  const percussionPartIds = new Set(input.score.parts.filter((part) => {
+    const notes = input.score.measures.filter((measure) => measure.partId === part.id).flatMap((measure) => measure.events).filter((event) => event.type === "note");
+    return part.midiChannel === 10 || (notes.length > 0 && notes.every((event) => event.unpitched));
+  }).map((part) => part.id));
 
-  return {
+  let transposed: ScoreJson = {
     ...input.score,
     title: `${input.score.title} (${direction} semitones${targetLabel}${operationLabel})`,
     metadata: {
@@ -384,7 +389,7 @@ export function transposeScoreJson(input: {
         ? {
             ...measure.attributes,
             key:
-              input.targetKey && measure.attributes.key && !appliedTargetKey
+              percussionPartIds.has(measure.partId) ? measure.attributes.key : input.targetKey && measure.attributes.key && !appliedTargetKey
                 ? (() => {
                     appliedTargetKey = true;
                     return {
@@ -396,7 +401,7 @@ export function transposeScoreJson(input: {
           }
         : measure.attributes,
       events: measure.events.map((event) => {
-        if (event.type === "rest") {
+        if (event.type === "rest" || event.unpitched) {
           return event;
         }
 
@@ -413,6 +418,10 @@ export function transposeScoreJson(input: {
       }),
     })),
   };
+  for (const anchor of input.score.interchange?.anchors ?? []) if (anchor.alternateEventId) {
+    transposed = synchronizeEditedTabViews(input.score, transposed, anchor.alternateEventId);
+  }
+  return transposed;
 }
 
 export function analyzeTransposedScoreRange(
@@ -437,7 +446,7 @@ export function analyzeTransposedScoreRange(
     }
 
     for (const event of measure.events) {
-      if (event.type !== "note") {
+      if (event.type !== "note" || event.unpitched) {
         continue;
       }
 

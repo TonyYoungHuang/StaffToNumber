@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import net from "node:net";
 import { pipeline } from "node:stream/promises";
-import { evaluatePdfRasterBudget, type PdfRasterBudgetPolicy } from "@score/shared";
+import { pdfVisiblePageSize, planPdfRasterBudget, type PdfRasterBudgetPolicy } from "@score/shared";
 import { PDFDocument } from "pdf-lib";
 import { config } from "../config.js";
 import { ObjectStorageUnavailableError } from "./object-storage.js";
@@ -76,6 +76,7 @@ export class UploadSecurityError extends Error {
     message: string,
     public readonly code:
       | "EMPTY_FILE"
+      | "FILE_TOO_LARGE"
       | "UNSUPPORTED_FILE_TYPE"
       | "MALWARE_DETECTED"
       | "SCANNER_UNAVAILABLE"
@@ -88,6 +89,8 @@ export class UploadSecurityError extends Error {
       | "PDF_INVALID"
       | "PDF_PAGE_PIXEL_LIMIT"
       | "PDF_TOTAL_PIXEL_LIMIT"
+      | "PDF_PAGE_COUNT_LIMIT"
+      | "PDF_PAGE_DIMENSION_LIMIT"
       | "UNSAFE_STORAGE_PATH",
     public readonly statusCode: 400 | 413 | 422 | 503 = 400,
   ) {
@@ -123,37 +126,63 @@ export function omrPdfRasterSafetyPolicy(): PdfRasterBudgetPolicy {
 }
 
 export async function inspectPdfRasterSafety(source: Uint8Array, policy = omrPdfRasterSafetyPolicy()) {
-  let pdf: PDFDocument;
+  let pages: ReturnType<PDFDocument["getPages"]>;
   try {
-    pdf = await PDFDocument.load(source);
+    const pdf = await PDFDocument.load(source);
+    // A corrupt catalog may load but fail only when its page tree is read.
+    pages = pdf.getPages();
   } catch {
     throw new UploadSecurityError("The PDF document could not be parsed safely.", "PDF_INVALID", 422);
   }
 
-  const pages = pdf.getPages();
   if (pages.length === 0) {
     throw new UploadSecurityError("The PDF document does not contain any pages.", "PDF_INVALID", 422);
   }
-  const inspection = evaluatePdfRasterBudget(
-    pages.map((page) => ({ widthPoints: page.getWidth(), heightPoints: page.getHeight() })),
+  const inspection = planPdfRasterBudget(
+    pages.map(pdfVisiblePageSize),
     policy,
   );
   if (inspection.ok) return inspection;
   if (inspection.reason === "page_pixel_limit") {
     throw new UploadSecurityError(
-      `PDF page ${inspection.page?.pageNumber ?? "unknown"} would rasterize to ${inspection.page?.pixelCount ?? "too many"} pixels at ${policy.dpi} DPI; the per-page limit is ${policy.maxPagePixels}. Resize or crop the page and try again.`,
+      `PDF page ${inspection.page?.pageNumber ?? "unknown"} would rasterize to ${inspection.page?.pixelCount ?? "too many"} pixels at the minimum useful render resolution; the per-page limit is ${policy.maxPagePixels}. Crop the page or export it at a normal paper size and retry.`,
       "PDF_PAGE_PIXEL_LIMIT",
       413,
     );
   }
   if (inspection.reason === "total_pixel_limit") {
     throw new UploadSecurityError(
-      `The PDF would rasterize to more than ${policy.maxTotalPixels} pixels at ${policy.dpi} DPI across all pages. Split the score into smaller files and try again.`,
+      `The PDF would rasterize to more than ${policy.maxTotalPixels} pixels at the minimum useful render resolution across all pages. Split the score into smaller files and try again.`,
       "PDF_TOTAL_PIXEL_LIMIT",
       413,
     );
   }
   throw new UploadSecurityError("The PDF contains an invalid page size.", "PDF_INVALID", 422);
+}
+
+/** Metadata only: free inspection rasterizes lazily under its own small budget. */
+export async function inspectPdfStructurePreflight(source: Uint8Array) {
+  try {
+    const pdf = await PDFDocument.load(source);
+    const pages = pdf.getPages();
+    if (pages.length === 0) throw new UploadSecurityError("The PDF does not contain any pages.", "PDF_INVALID", 422);
+    if (pages.length > 2000) throw new UploadSecurityError("The PDF contains too many pages for the free structure check. Split it into smaller files.", "PDF_PAGE_COUNT_LIMIT", 413);
+    for (const page of pages) {
+      const width = page.getWidth(), height = page.getHeight();
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+        throw new UploadSecurityError("The PDF contains an invalid page size.", "PDF_INVALID", 422);
+      }
+      // Bound pathological canvas coordinates without imposing the paid OMR's
+      // 300-DPI whole-document raster allocation on the free downscaled check.
+      if (width > 14_400 || height > 14_400) {
+        throw new UploadSecurityError("The PDF contains an unusually large page canvas. Resize the page and retry.", "PDF_PAGE_DIMENSION_LIMIT", 413);
+      }
+    }
+    return { pageCount: pages.length };
+  } catch (error) {
+    if (error instanceof UploadSecurityError) throw error;
+    throw new UploadSecurityError("The PDF document could not be parsed safely.", "PDF_INVALID", 422);
+  }
 }
 
 type MediaProbePayload = {
@@ -496,6 +525,11 @@ export async function storeVerifiedUpload(input: {
   try {
     await pipeline(input.stream, fs.createWriteStream(quarantinePath, { flags: "wx" }));
     const stats = await fs.promises.stat(quarantinePath);
+    // Multipart streams can end successfully after truncating at their configured limit.
+    // Reject the partial file before scanning or promoting it as a successful upload.
+    if ((input.stream as NodeJS.ReadableStream & { truncated?: boolean }).truncated || stats.size > config.uploadMaxBytes) {
+      throw new UploadSecurityError(`The uploaded file exceeds the ${Math.floor(config.uploadMaxBytes / 1024 / 1024)} MB limit.`, "FILE_TOO_LARGE", 413);
+    }
     if (stats.size === 0) {
       throw new UploadSecurityError("The uploaded file is empty.", "EMPTY_FILE");
     }
@@ -551,6 +585,9 @@ function resolveUploadPath(root: string, candidate: string) {
 }
 
 export function uploadErrorResponse(error: unknown) {
+  if (error instanceof Error && "code" in error && error.code === "STORAGE_CAPACITY_REACHED") {
+    return { statusCode: 503, body: { error: error.message, code: error.code } };
+  }
   if (error && typeof error === "object" && "code" in error && "statusCode" in error
     && (error.code === "PLAN_STORAGE_QUOTA_EXCEEDED" || error.code === "PLAN_JOB_QUOTA_EXCEEDED")) {
     const quotaError = error as { message: string; code: string; statusCode: number; quota?: unknown };

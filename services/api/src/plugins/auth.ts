@@ -1,3 +1,5 @@
+import { db } from "../db.js";
+import { scorePassForDocument } from "../lib/score-passes.js";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { config } from "../config.js";
@@ -85,7 +87,14 @@ export const authPlugin = fp(async (app) => {
     if (profile?.entitlement.status === "active") return;
 
     const documentId = (request.params as { id?: unknown } | null)?.id;
-    if (typeof documentId !== "string" || !isFreeTrialScoreDocumentForUser(documentId, request.authUserId)) {
+    if (typeof documentId === "string" && scorePassForDocument(db, request.authUserId, documentId)
+      && request.routeOptions.url?.includes("/export/")) {
+      // The current editor uses /exports, where reservations, failures and
+      // retries are metered. Do not allow the legacy synchronous API to bypass it.
+      reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" });
+      return;
+    }
+    if (typeof documentId !== "string" || (!isFreeTrialScoreDocumentForUser(documentId, request.authUserId) && !scorePassForDocument(db, request.authUserId, documentId))) {
       reply.code(403).send({ error: "An active entitlement or this account's free editing project is required." });
     }
   });

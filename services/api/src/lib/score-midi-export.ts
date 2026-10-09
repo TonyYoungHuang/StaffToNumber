@@ -27,6 +27,16 @@ function channelForIndex(index: number) {
   return channel >= 10 ? channel + 1 : channel;
 }
 
+function isPlayableEvent(event: PlaybackNoteEvent) {
+  const midi = event.unpitched?.midiPitch;
+  return !event.unpitched || (Number.isInteger(midi) && midi! >= 0 && midi! <= 127);
+}
+
+function percussionNoteName(event: PlaybackNoteEvent) {
+  const midi = event.unpitched!.midiPitch!;
+  return `${["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][midi % 12]}${Math.floor(midi / 12) - 1}`;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -132,6 +142,7 @@ function addTempoChangesToTrack(track: InstanceType<typeof MidiWriter.Track>, pl
 }
 
 function filterEvents(events: PlaybackNoteEvent[], options: PlaybackMidiExportOptions) {
+  events = events.filter(isPlayableEvent);
   const soloPartIds = options.soloPartIds ?? [];
   const mutedPartIds = options.mutedPartIds ?? [];
   const sectionStart = options.loopEnabled ? Math.max(0, options.loopStartBeat ?? 0) : 0;
@@ -176,23 +187,23 @@ export function playbackToMidiFile(playback: PlaybackDocument, options: Playback
       addMeasureMarkersToTrack(track, playback, sectionStartBeat, options);
     }
 
-    const channel = channelForIndex(index);
+    const channel = Number.isInteger(part.midiChannel) && part.midiChannel! >= 1 && part.midiChannel! <= 16 ? part.midiChannel! : channelForIndex(index);
     const instrument = programChangeInstrument(part.midiProgram);
-    if (instrument !== undefined) {
+    const partEvents = events.filter((event) => event.partId === part.id);
+    if (instrument !== undefined && channel !== 10 && partEvents.some((event) => !event.unpitched)) {
       track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument, channel }));
     }
 
-    const partEvents = events.filter((event) => event.partId === part.id);
     addLyricsToTrack(track, partEvents, sectionStartBeat);
 
     for (const event of partEvents) {
       track.addEvent(
         new MidiWriter.NoteEvent({
-          pitch: [event.noteName],
+          pitch: [event.unpitched ? percussionNoteName(event) : event.noteName],
           duration: `T${ticksFromBeats(event.soundDurationBeats ?? event.durationBeats)}`,
           startTick: startTicksFromBeats(event.startBeat - sectionStartBeat),
           velocity: Math.round(clamp(event.velocity * volumeForPart(event.partId, options), 0, 1) * 100),
-          channel,
+          channel: event.unpitched ? 10 : channel,
         }),
       );
     }

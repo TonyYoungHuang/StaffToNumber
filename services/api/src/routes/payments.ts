@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { isCheckoutPlanCode, type CheckoutPlanCode, type PaymentProvider } from "@score/shared";
+import { isPurchasePlanCode, isCheckoutBillingKind, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
+import { fulfillOneTimePurchase, hasRenewingSubscription, prepareOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { config } from "../config.js";
 import { getPlanQuotaUsage } from "../lib/plan-quotas.js";
 import { findUserByEmail, getUserProfile } from "../repositories/auth-repository.js";
@@ -10,6 +11,7 @@ import {
   buildPaddleCheckoutRedirectUrl,
   buildLocalizedAppReturnUrl,
   buildLocalizedPublicCheckoutUrl,
+  buildCheckoutCancelUrl,
   localizePublicPaddleCheckoutPageUrl,
   createPaddleTransaction,
   createStripeBillingPortalSession,
@@ -66,14 +68,15 @@ function checkoutIdempotencyHash(input: {
   header: string | string[] | undefined;
   userId: string;
   provider: PaymentProvider;
-  planCode?: CheckoutPlanCode | null;
+  planCode?: PurchasePlanCode | null;
+  billingKind?: CheckoutBillingKind;
   organizationId?: string | null;
   seatQuantity?: number;
 }) {
   const key = normalizedIdempotencyKey(input.header);
   if (!key) return null;
   return createHash("sha256")
-    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), key].join(":"))
+    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), ...(input.billingKind === "one_time" ? ["one_time"] : []), key].join(":"))
     .digest("hex");
 }
 
@@ -94,7 +97,7 @@ async function sendCheckoutIntentAlert(
     order: PaymentOrderRow;
     userId: string;
     providerEnabled: boolean;
-    planCode?: CheckoutPlanCode | null;
+    planCode?: PurchasePlanCode | null;
   },
 ) {
   const email = buildCheckoutIntentNotificationEmail({
@@ -171,7 +174,8 @@ function recoverStripePaymentOrder(
   const timestamp = new Date(session.created * 1_000).toISOString();
   const now = new Date().toISOString();
   const billingKind = session.mode === "subscription" ? "subscription" : "one_time";
-  const paymentConfirmed = session.payment_status === "paid" && billingKind === "subscription";
+  const purchase = fulfillOneTimePurchase(db, session);
+  const paymentConfirmed = (session.payment_status === "paid" && billingKind === "subscription") || Boolean(purchase);
   const seatQuantity = Math.max(1, Math.min(Number(session.metadata?.seatQuantity) || 1, 100_000));
   return {
     id: input.orderId,
@@ -194,7 +198,7 @@ function recoverStripePaymentOrder(
     activation_code_id: null,
     paid_at: paymentConfirmed ? now : null,
     cancelled_at: null,
-    failure_reason: session.payment_status === "paid" && billingKind === "one_time"
+    failure_reason: session.payment_status === "paid" && billingKind === "one_time" && !purchase
       ? "Recovered one-time payment requires activation-code review."
       : null,
     created_at: timestamp,
@@ -210,15 +214,19 @@ export async function paymentRoutes(app: FastifyInstance) {
       preHandler: app.requireAuth,
     },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; organizationId?: string; seatQuantity?: number };
+      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; billingKind?: unknown; organizationId?: string; seatQuantity?: number; returnTo?: unknown };
 
       if (!isProvider(body.provider)) {
         return reply.code(400).send({ error: "Payment provider is required." });
       }
-      if (!isCheckoutPlanCode(body.planCode)) {
+      if (!isPurchasePlanCode(body.planCode)) {
         return reply.code(400).send({ error: "A valid checkout plan is required." });
       }
       const planCode = body.planCode;
+      const billingKind = body.billingKind ?? "subscription";
+      if (!isCheckoutBillingKind(billingKind) || (planCode === "single-score" && billingKind !== "one_time") || (billingKind === "one_time" && body.provider !== "stripe")) {
+        return reply.code(400).send({ error: "Invalid purchase type or payment provider." });
+      }
 
       const profile = request.authUserId ? getUserProfile(request.authUserId) : null;
       const customerEmail = profile?.email ?? null;
@@ -228,6 +236,9 @@ export async function paymentRoutes(app: FastifyInstance) {
 
       const organizationId = typeof body.organizationId === "string" && body.organizationId.trim() ? body.organizationId.trim() : null;
       const seatQuantity = organizationId ? Math.max(2, Math.min(Number(body.seatQuantity) || 2, 100_000)) : 1;
+      if (billingKind === "one_time" && (organizationId || (planCode !== "single-score" && hasRenewingSubscription(db, request.authUserId!)))) {
+        return reply.code(409).send({ error: "Cancel future subscription renewals in Billing before buying a one-time personal plan.", code: "ACTIVE_RECURRING_SUBSCRIPTION" });
+      }
       if (organizationId) {
         const access = db.prepare(`
           SELECT organizations.id
@@ -248,6 +259,7 @@ export async function paymentRoutes(app: FastifyInstance) {
           userId: request.authUserId!,
           provider: body.provider,
           planCode,
+          billingKind,
           organizationId,
           seatQuantity,
         });
@@ -267,7 +279,7 @@ export async function paymentRoutes(app: FastifyInstance) {
         customerEmail,
         locale: body.locale?.trim() || null,
         entitlementDays: config.entitlementDays,
-        billingKind: config.paymentBillingMode === "subscription" ? "subscription" : "one_time",
+        billingKind,
         organizationId,
         seatQuantity,
         idempotencyKeyHash,
@@ -284,8 +296,8 @@ export async function paymentRoutes(app: FastifyInstance) {
         return reply.code(503).send({ error: "Unable to persist the payment order safely." });
       }
 
-      const priceId = getCheckoutPriceId(body.provider, planCode);
-      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode);
+      const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
+      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode, billingKind);
       if (!reusable) {
         try {
           await sendCheckoutIntentAlert(app, {
@@ -322,16 +334,20 @@ export async function paymentRoutes(app: FastifyInstance) {
         locale: body.locale,
         searchParams: returnParams,
       });
-      const cancelBase = buildLocalizedPublicCheckoutUrl({
+      const cancelBase = buildCheckoutCancelUrl({
         baseUrl: config.publicSiteUrl,
-        pathname: "/checkout/cancel",
         locale: body.locale,
-        searchParams: returnParams,
+        returnTo: body.returnTo,
+        planCode, billingKind, provider: body.provider,
+        orderId: order.id, publicToken: order.public_token,
       });
 
       try {
         if (body.provider === "stripe") {
+          if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: request.authUserId!, planCode, priceId: priceId! });
           const session = await createStripeCheckoutSession({
+          locale: body.locale,
+            billingKind, planCode,
             orderId: order.id,
             publicToken: order.public_token,
             customerEmail,
@@ -391,18 +407,22 @@ export async function paymentRoutes(app: FastifyInstance) {
   );
 
   app.post("/payments/checkout", async (request, reply) => {
-    const body = (request.body ?? {}) as { provider?: PaymentProvider; email?: string; locale?: string; planCode?: unknown };
+    const body = (request.body ?? {}) as { provider?: PaymentProvider; email?: string; locale?: string; planCode?: unknown; billingKind?: unknown };
 
     if (!isProvider(body.provider)) {
       return reply.code(400).send({ error: "Payment provider is required." });
     }
-    if (!isCheckoutPlanCode(body.planCode)) {
+    if (!isPurchasePlanCode(body.planCode)) {
       return reply.code(400).send({ error: "A valid checkout plan is required." });
     }
     const planCode = body.planCode;
+    const billingKind = body.billingKind ?? "subscription";
+    if (!isCheckoutBillingKind(billingKind) || (planCode === "single-score" && billingKind !== "one_time") || (billingKind === "one_time" && body.provider !== "stripe")) {
+      return reply.code(400).send({ error: "Invalid purchase type or payment provider." });
+    }
 
-    const priceId = getCheckoutPriceId(body.provider, planCode);
-    if (!isPaymentProviderEnabled(body.provider, planCode) || !priceId) {
+    const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
+    if (!isPaymentProviderEnabled(body.provider, planCode, billingKind) || !priceId) {
       return reply.code(400).send({ error: "This payment provider is not enabled." });
     }
 
@@ -417,6 +437,9 @@ export async function paymentRoutes(app: FastifyInstance) {
         code: "ACCOUNT_REQUIRED",
       });
     }
+    if (billingKind === "one_time" && planCode !== "single-score" && hasRenewingSubscription(db, account.id)) {
+      return reply.code(409).send({ error: "Cancel future subscription renewals in Billing before buying a one-time plan.", code: "ACTIVE_RECURRING_SUBSCRIPTION" });
+    }
     let idempotencyKeyHash: string | null;
     try {
       idempotencyKeyHash = checkoutIdempotencyHash({
@@ -424,6 +447,7 @@ export async function paymentRoutes(app: FastifyInstance) {
         userId: account.id,
         provider: body.provider,
         planCode,
+        billingKind,
       });
     } catch (error) {
       return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid idempotency key." });
@@ -441,7 +465,7 @@ export async function paymentRoutes(app: FastifyInstance) {
       customerEmail: account.email,
       locale: body.locale?.trim() || null,
       entitlementDays: config.entitlementDays,
-      billingKind: config.paymentBillingMode === "subscription" ? "subscription" : "one_time",
+      billingKind,
       idempotencyKeyHash,
     });
 
@@ -472,7 +496,10 @@ export async function paymentRoutes(app: FastifyInstance) {
 
     try {
       if (body.provider === "stripe") {
+        if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: account.id, planCode, priceId });
         const session = await createStripeCheckoutSession({
+          locale: body.locale,
+          billingKind, planCode,
           orderId: order.id,
           publicToken: order.public_token,
           customerEmail: account.email,
@@ -564,7 +591,11 @@ export async function paymentRoutes(app: FastifyInstance) {
     try {
       if (order.status === "pending" && order.provider === "stripe" && (query.sessionId || order.checkout_session_id)) {
         const session = await retrieveStripeCheckoutSession(query.sessionId ?? order.checkout_session_id!);
-        if (session.payment_status === "paid") {
+        if (!stripeSessionMatchesPaymentOrder(session, { orderId: order.id, publicToken: query.token, sessionId: session.id })) {
+          return reply.code(400).send({ error: "Checkout session does not match this order." });
+        }
+        const purchase = fulfillOneTimePurchase(db, session);
+        if (session.payment_status === "paid" || purchase) {
           await completePaymentOrderEverywhere(order, {
             amountMinor: session.amount_total ?? null,
             currency: session.currency ?? null,

@@ -1,3 +1,6 @@
+import { getUserProfile } from "../repositories/auth-repository.js";
+import { isFreeTrialScoreDocumentForUser } from "../lib/free-trial.js";
+import { scorePassForDocument } from "../lib/score-passes.js";
 import fs from "node:fs";
 import path from "node:path";
 import { ObjectStorage, type ResumableUploadPart, type ResumableUploadSession } from "@score/storage";
@@ -99,11 +102,13 @@ export async function fileRoutes(app: FastifyInstance) {
     if (!row) return reply.code(404).send({ error: "Resumable upload not found." });
     if (row.status !== "uploading" || Date.parse(row.expires_at) <= Date.now()) return reply.code(409).send({ error: "Resumable upload is no longer active." });
     const partNumber = Number(params.partNumber);
-    if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10_000) return reply.code(400).send({ error: "Part number must be from 1 to 10000." });
+    const expectedParts = Math.ceil(row.expected_size_bytes / RESUMABLE_CHUNK_SIZE);
+    if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > expectedParts) return reply.code(400).send({ error: "Upload part exceeds the declared file size." });
     const file = await request.file();
     if (!file) return reply.code(400).send({ error: "No upload part provided." });
     const body = await file.toBuffer();
-    if (body.length === 0 || body.length > RESUMABLE_CHUNK_SIZE) return reply.code(400).send({ error: `Upload parts must be from 1 to ${RESUMABLE_CHUNK_SIZE} bytes.` });
+    const expectedPartBytes = Math.min(RESUMABLE_CHUNK_SIZE, row.expected_size_bytes - (partNumber - 1) * RESUMABLE_CHUNK_SIZE);
+    if (body.length !== expectedPartBytes) return reply.code(400).send({ error: "Upload part size does not match the declared file size." });
     const session = JSON.parse(row.session_json) as ResumableUploadSession;
     const part = await resumableStaging.uploadResumablePart({ session, partNumber, body });
     db.prepare(`
@@ -231,7 +236,7 @@ export async function fileRoutes(app: FastifyInstance) {
   app.get(
     "/files/:id/download",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -239,6 +244,16 @@ export async function fileRoutes(app: FastifyInstance) {
 
       if (!file || file.user_id !== request.authUserId) {
         return reply.code(404).send({ error: "File not found." });
+      }
+
+      if (getUserProfile(request.authUserId!)?.entitlement.status !== "active") {
+        const projects = db.prepare(`SELECT id FROM score_documents WHERE user_id = ? AND (source_file_id = ?
+          OR id IN (SELECT document_id FROM score_assets WHERE file_id = ?)
+          OR id IN (SELECT document_id FROM score_revisions WHERE musicxml_file_id = ?))`)
+          .all(request.authUserId!, file.id, file.id, file.id) as Array<{ id: string }>;
+        if (!projects.some(p => isFreeTrialScoreDocumentForUser(p.id, request.authUserId!) || scorePassForDocument(db, request.authUserId!, p.id))) {
+          return reply.code(403).send({ error: "Access to this score is required." });
+        }
       }
 
       if (!(await storedFileExists(file))) {

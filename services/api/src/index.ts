@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import fastifyRawBody from "fastify-raw-body";
 import formbody from "@fastify/formbody";
 import { PRODUCT_NAME } from "@score/shared";
+import { assertMinimumFreeSpace } from "@score/storage";
 import { config } from "./config.js";
 import { validateRuntimeConfig } from "./config.js";
 import { db, initDb } from "./db.js";
@@ -72,6 +73,11 @@ await app.register(fastifyRawBody, {
 await registerApiObservability(app);
 await registerApiRateLimiting(app);
 await app.register(authPlugin);
+app.addHook("preHandler", async request => {
+  if (request.headers["content-type"]?.startsWith("multipart/form-data")) {
+    assertMinimumFreeSpace(config.storageDir, config.storageMinFreeBytes, config.uploadMaxBytes * 2);
+  }
+});
 await app.register(authRoutes, { prefix: "/api" });
 await app.register(accountRoutes, { prefix: "/api" });
 await app.register(copyrightRoutes, { prefix: "/api" });

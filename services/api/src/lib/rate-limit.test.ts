@@ -13,6 +13,8 @@ import {
 
 test("sensitive API workflows receive separate production rate-limit policies", () => {
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/login"), { id: "auth", max: 10, timeWindowMs: 900_000 });
+  assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/activation-code"), { id: "auth", max: 10, timeWindowMs: 900_000 });
+  assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/enable-code-login"), { id: "auth", max: 10, timeWindowMs: 900_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/google"), { id: "auth", max: 10, timeWindowMs: 900_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/forgot-password"), { id: "password", max: 5, timeWindowMs: 900_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("GET", "/api/account/data-export"), { id: "privacy-export", max: 5, timeWindowMs: 3_600_000 });
@@ -44,6 +46,7 @@ test("rate-limit keys isolate bearer identities without exposing their token", (
   const authKeyB = createApiRateLimitKey({ ...requestB, method: "POST", url: "/api/auth/login" } as FastifyRequest);
   assert.equal(authKeyA, authKeyB);
   assert.equal(authKeyA, "auth:127.0.0.1:anonymous");
+  assert.equal(createApiRateLimitKey({ ...requestA, method: "POST", url: "/api/auth/activation-code" } as FastifyRequest), createApiRateLimitKey({ ...requestB, method: "POST", url: "/api/auth/activation-code" } as FastifyRequest));
 });
 
 test("the API limiter returns standard 429 metadata after the authentication budget is exhausted", async () => {

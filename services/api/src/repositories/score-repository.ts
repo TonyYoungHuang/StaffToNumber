@@ -1,9 +1,11 @@
+import { assertScorePassCredit, bindScorePass, lockScorePassAccount, recordScorePassJob, scorePassForDocument } from "../lib/score-passes.js";
 import type {
   AssignmentPracticeSettings,
   JobStatus,
   ScoreDocumentStatus,
   ScoreJobType,
   ScoreJson,
+  ScoreRecognitionMode,
   ScoreProjectSettings,
   ScoreRevisionSource,
   ScoreRevisionStatus,
@@ -15,6 +17,8 @@ import { createId } from "../lib/auth.js";
 import { parseJianpuToScoreJson } from "../lib/jianpu-score-parser.js";
 import { parseMidiToScoreJson } from "../lib/midi-score-parser.js";
 import { parseMusicXmlToScoreJson } from "../lib/musicxml-score-parser.js";
+import { scoreJsonToMusicXml } from "../lib/score-musicxml-export.js";
+import { addManualScorePart, ScoreAddPartError, type ScoreAddPartInput } from "../lib/score-add-part.js";
 import {
   applyCanonicalScoreCommand,
   canonicalScoreCommandLabel,
@@ -31,8 +35,10 @@ import {
 } from "../lib/score-collaboration-history.js";
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
-import { assertProcessingQuota } from "../lib/plan-quotas.js";
+import { assertProcessingQuota, processingJobCreditCost, processingJobParams, recognitionCreditCost } from "../lib/plan-quotas.js";
+import { assertRecognitionQuote, normalizeRecognitionMode, RecognitionAccessError } from "../lib/recognition-options.js";
 import { assertFreeTrialOmrAvailable } from "../lib/free-trial.js";
+import { getUserProfile } from "./auth-repository.js";
 
 type ScoreDocumentRow = {
   id: string;
@@ -615,18 +621,33 @@ export function createOmrImportScoreDocument(input: {
   sourceFileKind: Extract<StoredFileKind, "source_pdf" | "source_image">;
   sourceOriginalName: string;
   freeTrial?: boolean;
+  scorePass?: boolean;
+  pageCount?: number;
+  recognitionMode?: ScoreRecognitionMode;
+  expectedCreditCost?: number;
 }) {
-  assertProcessingQuota(input.userId);
+  const recognitionMode = normalizeRecognitionMode(input.recognitionMode);
+  const creditCost = recognitionCreditCost(recognitionMode);
+  assertRecognitionQuote(recognitionMode, input.expectedCreditCost);
   const timestamp = nowIso();
   const documentId = createId();
   const jobId = createId();
   const diagnosticsId = createId();
   const context = currentRequestContext();
 
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
 
   try {
-    if (input.freeTrial) assertFreeTrialOmrAvailable(input.userId);
+    lockScorePassAccount(db, input.userId);
+    const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
+    if (recognitionMode === "complex" && !isPaid && (!input.scorePass || input.freeTrial)) {
+      throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
+    }
+    const usePass = !isPaid && Boolean(input.scorePass);
+    const freeTrial = !isPaid && !usePass;
+    assertProcessingQuota(input.userId, usePass, creditCost);
+    const passId = usePass ? bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
+    if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
     db.prepare(
       `
         INSERT INTO score_documents (
@@ -661,7 +682,11 @@ export function createOmrImportScoreDocument(input: {
         engine: "audiveris",
         sourceOriginalName: input.sourceOriginalName,
         sourceFileKind: input.sourceFileKind,
-        freeTrial: Boolean(input.freeTrial),
+        freeTrial,
+        recognitionMode,
+        creditCost,
+        creditSource: passId ? "score_pass" : freeTrial ? "free_trial" : "plan",
+        creditReservedAt: timestamp,
       }),
       context?.requestId ?? null,
       context?.traceId ?? null,
@@ -688,6 +713,7 @@ export function createOmrImportScoreDocument(input: {
       timestamp,
     );
 
+    if (passId) recordScorePassJob(db, passId, jobId);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -706,15 +732,16 @@ export function createAudioTranscribeScoreDocument(input: {
   sourceFileId: string;
   sourceOriginalName: string;
 }) {
-  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const documentId = createId();
   const jobId = createId();
   const context = currentRequestContext();
 
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
 
   try {
+    lockScorePassAccount(db, input.userId);
+    assertProcessingQuota(input.userId);
     db.prepare(
       `
         INSERT INTO score_documents (
@@ -748,6 +775,7 @@ export function createAudioTranscribeScoreDocument(input: {
       JSON.stringify({
         engine: "basic-pitch",
         sourceOriginalName: input.sourceOriginalName,
+        creditReservedAt: timestamp,
         message: "Audio-to-score is queued as an experimental candidate pipeline. Basic Pitch should create MIDI and the worker will try a first-pass editable Score JSON revision.",
       }),
       context?.requestId ?? null,
@@ -776,15 +804,16 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
   rightsConfirmedAt: string;
   transcriptionProfile: "monophonic" | "polyphonic-balanced";
 }) {
-  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const documentId = createId();
   const jobId = createId();
   const context = currentRequestContext();
 
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
 
   try {
+    lockScorePassAccount(db, input.userId);
+    assertProcessingQuota(input.userId);
     db.prepare(
       `
         INSERT INTO score_documents (
@@ -810,6 +839,7 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
       JSON.stringify({
         engine: "basic-pitch",
         sourceUrl: input.sourceUrl,
+        creditReservedAt: timestamp,
         sourceKind: "audio_url",
         rightsBasis: input.rightsBasis,
         rightsConfirmedAt: input.rightsConfirmedAt,
@@ -1709,44 +1739,95 @@ export function findSharedScoreByToken(shareToken: string) {
     .get(shareToken) as SharedScoreRow | undefined;
 }
 
-export function createScoreRevisionFromScoreJson(input: {
+function copyScoreSourceAssetReferences(documentId: string, sourceRevisionId: string | null, revisionId: string, timestamp: string) {
+  if (!sourceRevisionId) return;
+  const references = db.prepare("SELECT id FROM score_assets WHERE document_id = ? AND revision_id = ? AND stale_at IS NULL AND asset_kind IN ('source_pdf','source_image','omr_page_image')")
+    .all(documentId, sourceRevisionId) as Array<{ id: string }>;
+  for (const reference of references) {
+    db.prepare("INSERT INTO score_assets (id,document_id,file_id,asset_kind,revision_id,params_json,engine_json,checksum_sha256,stale_at,created_at) SELECT ?,document_id,file_id,asset_kind,?,params_json,engine_json,checksum_sha256,NULL,? FROM score_assets WHERE id = ? AND document_id = ?")
+      .run(createId(), revisionId, timestamp, reference.id, documentId);
+  }
+}
+
+export function createManualScorePartRevision(input: { documentId: string; userId: string; part: ScoreAddPartInput }) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    // Lock before reading the base: candidate confirmation and concurrent edits cannot be overwritten.
+    db.prepare("UPDATE score_documents SET updated_at = updated_at WHERE id = ? AND user_id = ?").run(input.documentId, input.userId);
+    const document = findScoreDocumentById(input.documentId);
+    if (!document || document.user_id !== input.userId) throw new ScoreAddPartError("Score document not found.", "SCORE_NOT_FOUND", 404);
+    if (document.status === "archived") throw new ScoreAddPartError("This score is archived.", "SCORE_NOT_EDITABLE", 409);
+    const baseRevision = findEditableRevisionForDocument(document);
+    if (!baseRevision) throw new ScoreAddPartError("No editable score revision is available.", "SCORE_NOT_READY", 409);
+    if (input.part.baseRevisionId && input.part.baseRevisionId !== baseRevision.id) {
+      throw new ScoreAddPartError("The score changed. Reload its latest revision before adding a part.", "SCORE_EDIT_REVISION_CONFLICT", 409);
+    }
+    const result = addManualScorePart(migrateScoreJson(JSON.parse(baseRevision.score_json)), input.part);
+    // This also rejects any unsupported source-preservation change before storing a revision.
+    scoreJsonToMusicXml(result.score);
+    const revisionId = createId(), timestamp = nowIso();
+    const nextRevisionNumber = (db.prepare("SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number FROM score_revisions WHERE document_id = ?")
+      .get(document.id) as { next_revision_number: number }).next_revision_number;
+    if (document.pending_revision_id) {
+      db.prepare("UPDATE score_revisions SET status = 'superseded' WHERE id = ? AND document_id = ? AND status = 'candidate'")
+        .run(document.pending_revision_id, document.id);
+    }
+    db.prepare("INSERT INTO score_revisions (id,document_id,revision_number,score_json,musicxml_file_id,created_from,status,created_at) VALUES (?,?,?,?,NULL,'manual_edit','candidate',?)")
+      .run(revisionId, document.id, nextRevisionNumber, JSON.stringify(result.score), timestamp);
+    db.prepare("UPDATE score_documents SET pending_revision_id = ?, status = 'needs_review', updated_at = ? WHERE id = ?")
+      .run(revisionId, timestamp, document.id);
+    // Only source images can be reused for changed content. Keep historical assets and
+    // clone their references; a rendered score or MusicXML artifact is no longer current.
+    copyScoreSourceAssetReferences(document.id, baseRevision.id, revisionId, timestamp);
+    const revision = findScoreRevisionById(revisionId);
+    if (!revision) throw new Error("Could not read the new manual part revision.");
+    db.exec("COMMIT");
+    return { revision, part: result.part };
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export class ScoreEditRevisionConflictError extends Error {
+  readonly statusCode = 409;
+  readonly code = "SCORE_EDIT_REVISION_CONFLICT";
+  constructor() { super("The score changed. Reload its latest revision before saving your edit."); }
+}
+
+type ScoreRevisionWriteInput = {
   documentId: string;
   scoreJson: ScoreJson;
   createdFrom: ScoreRevisionSource;
   musicxmlFileId?: string | null;
-}) {
-  const document = findScoreDocumentById(input.documentId);
-  if (document?.pending_revision_id) {
-    return createCandidateScoreRevisionFromScoreJson({
-      documentId: input.documentId,
-      scoreJson: input.scoreJson,
-      createdFrom: input.createdFrom,
-      musicxmlFileId: input.musicxmlFileId,
-    });
-  }
+  expectedEditableRevisionId?: string | null;
+};
 
-  const timestamp = nowIso();
-  const revisionId = createId();
-  const nextRevisionNumber =
-    (db
-      .prepare(
-        `
-          SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number
-          FROM score_revisions
-          WHERE document_id = ?
-        `,
-      )
-      .get(input.documentId) as { next_revision_number: number }).next_revision_number ?? 1;
-
-  db.exec("BEGIN");
-
+function createScoreRevisionWithLockedDocument(input: ScoreRevisionWriteInput, forceCandidate: boolean) {
+  if (input.scoreJson.interchange) scoreJsonToMusicXml(input.scoreJson);
+  db.exec("BEGIN IMMEDIATE");
   try {
+    db.prepare("UPDATE score_documents SET updated_at = updated_at WHERE id = ?").run(input.documentId);
+    const document = findScoreDocumentById(input.documentId);
+    if (!document) throw new Error("Score document not found.");
+    const editableRevisionId = document.pending_revision_id ?? document.current_revision_id;
+    if (input.expectedEditableRevisionId !== undefined && input.expectedEditableRevisionId !== editableRevisionId) {
+      throw new ScoreEditRevisionConflictError();
+    }
+    const candidate = forceCandidate || Boolean(document.pending_revision_id);
+    const timestamp = nowIso(), revisionId = createId();
+    const nextRevisionNumber = (db.prepare("SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number FROM score_revisions WHERE document_id = ?")
+      .get(input.documentId) as { next_revision_number: number }).next_revision_number;
+    if (candidate && document.pending_revision_id) {
+      db.prepare("UPDATE score_revisions SET status = 'superseded' WHERE id = ? AND document_id = ? AND status = 'candidate'")
+        .run(document.pending_revision_id, input.documentId);
+    }
     db.prepare(
       `
         INSERT INTO score_revisions (
-          id, document_id, revision_number, score_json, musicxml_file_id, created_from, created_at
+          id, document_id, revision_number, score_json, musicxml_file_id, created_from, status, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
     ).run(
       revisionId,
@@ -1755,18 +1836,22 @@ export function createScoreRevisionFromScoreJson(input: {
       JSON.stringify(input.scoreJson),
       input.musicxmlFileId ?? null,
       input.createdFrom,
+      candidate ? "candidate" : "accepted",
       timestamp,
     );
+    if (candidate) {
+      db.prepare("UPDATE score_documents SET pending_revision_id = ?, status = 'needs_review', updated_at = ? WHERE id = ?")
+        .run(revisionId, timestamp, input.documentId);
+    } else {
+      db.prepare("UPDATE score_documents SET current_revision_id = ?, status = 'ready', updated_at = ? WHERE id = ?")
+        .run(revisionId, timestamp, input.documentId);
+    }
 
-    db.prepare(
-      `
-        UPDATE score_documents
-        SET current_revision_id = ?, status = 'ready', updated_at = ?
-        WHERE id = ?
-      `,
-    ).run(revisionId, timestamp, input.documentId);
+    if (input.createdFrom === "manual_edit" || input.createdFrom === "transpose") {
+      copyScoreSourceAssetReferences(input.documentId, editableRevisionId, revisionId, timestamp);
+    }
 
-    db.prepare(
+    if (!candidate) db.prepare(
       `
         UPDATE score_assets
         SET stale_at = COALESCE(stale_at, ?)
@@ -1776,13 +1861,19 @@ export function createScoreRevisionFromScoreJson(input: {
       `,
     ).run(timestamp, input.documentId, revisionId);
 
+    const revision = findScoreRevisionById(revisionId);
+    if (!revision) throw new Error("Could not read the new score revision.");
     db.exec("COMMIT");
+    return revision;
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;
   }
 
-  return findScoreRevisionById(revisionId);
+}
+
+export function createScoreRevisionFromScoreJson(input: ScoreRevisionWriteInput) {
+  return createScoreRevisionWithLockedDocument(input, false);
 }
 
 function collaborationCommandSelect() {
@@ -1813,6 +1904,7 @@ export function applyCanonicalScoreCollaborationCommand(input: {
   db.exec("BEGIN IMMEDIATE");
 
   try {
+    db.prepare("UPDATE score_documents SET updated_at = updated_at WHERE id = ?").run(input.documentId);
     const existing = db.prepare(`${collaborationCommandSelect()} WHERE id = ?`).get(input.operationId) as ScoreCollaborationCommandRow | undefined;
     if (existing) {
       const matches =
@@ -1906,6 +1998,8 @@ export function applyCanonicalScoreCollaborationCommand(input: {
       return { status: "conflict", command: conflict, revision: null };
     }
 
+    if (editedScoreJson.interchange) scoreJsonToMusicXml(editedScoreJson);
+
     const revisionId = createId();
     const nextRevisionNumber =
       (db.prepare("SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number FROM score_revisions WHERE document_id = ?")
@@ -1918,7 +2012,8 @@ export function applyCanonicalScoreCollaborationCommand(input: {
     const updated = db.prepare(
       "UPDATE score_documents SET current_revision_id = ?, status = 'ready', updated_at = ? WHERE id = ? AND current_revision_id = ? AND pending_revision_id IS NULL",
     ).run(revisionId, timestamp, document.id, currentRevision.id);
-    if (updated.changes !== 1) throw new Error("Score revision changed during collaboration command commit.");
+    if (updated.changes !== 1) throw new ScoreEditRevisionConflictError();
+    copyScoreSourceAssetReferences(document.id, currentRevision.id, revisionId, timestamp);
     db.prepare(
       "UPDATE score_assets SET stale_at = COALESCE(stale_at, ?) WHERE document_id = ? AND revision_id IS NOT NULL AND revision_id <> ?",
     ).run(timestamp, document.id, revisionId);
@@ -1955,6 +2050,7 @@ export function applyScoreCollaborationHistoryCommand(input: {
   db.exec("BEGIN IMMEDIATE");
 
   try {
+    db.prepare("UPDATE score_documents SET updated_at = updated_at WHERE id = ?").run(input.documentId);
     const existing = db.prepare(`${collaborationCommandSelect()} WHERE id = ?`).get(input.operationId) as ScoreCollaborationCommandRow | undefined;
     if (existing) {
       const existingCommand = parseHistoryCommand(existing.command_json);
@@ -2100,6 +2196,8 @@ export function applyScoreCollaborationHistoryCommand(input: {
       return { status: "conflict", command: conflict, revision: null };
     }
 
+    if (reversedScore.interchange) scoreJsonToMusicXml(reversedScore);
+
     const revisionId = createId();
     const nextRevisionNumber =
       (db.prepare("SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number FROM score_revisions WHERE document_id = ?")
@@ -2112,7 +2210,8 @@ export function applyScoreCollaborationHistoryCommand(input: {
     const updated = db.prepare(
       "UPDATE score_documents SET current_revision_id = ?, status = 'ready', updated_at = ? WHERE id = ? AND current_revision_id = ? AND pending_revision_id IS NULL",
     ).run(revisionId, timestamp, document.id, currentRevision.id);
-    if (updated.changes !== 1) throw new Error("Score revision changed during collaboration history commit.");
+    if (updated.changes !== 1) throw new ScoreEditRevisionConflictError();
+    copyScoreSourceAssetReferences(document.id, currentRevision.id, revisionId, timestamp);
     db.prepare(
       "UPDATE score_assets SET stale_at = COALESCE(stale_at, ?) WHERE document_id = ? AND revision_id IS NOT NULL AND revision_id <> ?",
     ).run(timestamp, document.id, revisionId);
@@ -2144,76 +2243,23 @@ function parseHistoryCommand(commandJson: string) {
   return null;
 }
 
-export function createCandidateScoreRevisionFromScoreJson(input: {
-  documentId: string;
-  scoreJson: ScoreJson;
-  createdFrom: ScoreRevisionSource;
-  musicxmlFileId?: string | null;
-}) {
-  const timestamp = nowIso();
-  const revisionId = createId();
-  const nextRevisionNumber =
-    (db
-      .prepare(
-        `
-          SELECT COALESCE(MAX(revision_number), 0) + 1 AS next_revision_number
-          FROM score_revisions
-          WHERE document_id = ?
-        `,
-      )
-      .get(input.documentId) as { next_revision_number: number }).next_revision_number ?? 1;
-
-  db.exec("BEGIN");
-  try {
-    db.prepare(
-      `
-        UPDATE score_revisions
-        SET status = 'superseded'
-        WHERE id = (SELECT pending_revision_id FROM score_documents WHERE id = ?)
-          AND status = 'candidate'
-      `,
-    ).run(input.documentId);
-
-    db.prepare(
-      `
-        INSERT INTO score_revisions (
-          id, document_id, revision_number, score_json, musicxml_file_id, created_from, status, created_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, 'candidate', ?)
-      `,
-    ).run(
-      revisionId,
-      input.documentId,
-      nextRevisionNumber,
-      JSON.stringify(input.scoreJson),
-      input.musicxmlFileId ?? null,
-      input.createdFrom,
-      timestamp,
-    );
-
-    db.prepare(
-      `
-        UPDATE score_documents
-        SET pending_revision_id = ?, status = 'needs_review', updated_at = ?
-        WHERE id = ?
-      `,
-    ).run(revisionId, timestamp, input.documentId);
-
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
-
-  return findScoreRevisionById(revisionId);
+export function createCandidateScoreRevisionFromScoreJson(input: ScoreRevisionWriteInput) {
+  return createScoreRevisionWithLockedDocument(input, true);
 }
 
-export function acceptPendingScoreRevision(input: { documentId: string; pendingRevisionId?: string | null }) {
+export class ScoreCoverageReviewRequiredError extends Error {
+  readonly statusCode = 409;
+  readonly code = "SCORE_COVERAGE_REVIEW_REQUIRED";
+  constructor() { super("Review all detected pages, instrument groups, and coverage gaps before confirming this score."); }
+}
+
+export function acceptPendingScoreRevision(input: { documentId: string; pendingRevisionId?: string | null; coverageReviewed?: boolean }) {
   const timestamp = nowIso();
   const acceptedRevisionId = createId();
 
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
   try {
+    db.prepare("UPDATE score_documents SET updated_at = updated_at WHERE id = ?").run(input.documentId);
     const document = db
       .prepare(`${scoreDocumentSelect()} WHERE id = ?`)
       .get(input.documentId) as ScoreDocumentRow | undefined;
@@ -2229,6 +2275,12 @@ export function acceptPendingScoreRevision(input: { documentId: string; pendingR
       db.exec("ROLLBACK");
       return undefined;
     }
+
+    const scoreJson = JSON.parse(candidate.score_json) as ScoreJson;
+    const coverage = scoreJson.recognitionLayer?.coverage;
+    if (coverage && input.coverageReviewed !== true) throw new ScoreCoverageReviewRequiredError();
+    if (coverage) coverage.manualReview = { reviewedAt: timestamp, sourcePageCount: coverage.sourcePageCount };
+    const acceptedScoreJson = coverage ? JSON.stringify(scoreJson) : candidate.score_json;
 
     const nextRevisionNumber =
       (db
@@ -2248,7 +2300,7 @@ export function acceptPendingScoreRevision(input: { documentId: string; pendingR
         )
         VALUES (?, ?, ?, ?, ?, 'candidate_accept', 'accepted', ?)
       `,
-    ).run(acceptedRevisionId, document.id, nextRevisionNumber, candidate.score_json, candidate.musicxml_file_id, timestamp);
+    ).run(acceptedRevisionId, document.id, nextRevisionNumber, acceptedScoreJson, candidate.musicxml_file_id, timestamp);
 
     db.prepare("UPDATE score_revisions SET status = 'superseded' WHERE id = ?").run(candidate.id);
     db.prepare(
@@ -2258,6 +2310,10 @@ export function acceptPendingScoreRevision(input: { documentId: string; pendingR
         WHERE id = ?
       `,
     ).run(acceptedRevisionId, timestamp, document.id);
+
+    db.prepare(
+      "UPDATE score_assets SET revision_id = ? WHERE document_id = ? AND revision_id = ? AND stale_at IS NULL",
+    ).run(acceptedRevisionId, document.id, candidate.id);
 
     db.prepare(
       `
@@ -2354,7 +2410,12 @@ export function createScoreExportJob(input: {
   documentId: string;
   params: Record<string, unknown>;
 }) {
-  assertProcessingQuota(input.userId);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+  lockScorePassAccount(db, input.userId);
+  const usePass = getUserProfile(input.userId)?.entitlement.status !== "active" && Boolean(scorePassForDocument(db, input.userId, input.documentId));
+  const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId) : null;
+  assertProcessingQuota(input.userId, Boolean(passId));
   const timestamp = nowIso();
   const jobId = createId();
   const context = currentRequestContext();
@@ -2367,8 +2428,11 @@ export function createScoreExportJob(input: {
       )
       VALUES (?, ?, ?, NULL, 'render_export', 'queued', ?, NULL, NULL, NULL, 0, 0, NULL, ?, ?, ?, ?, NULL, NULL)
     `,
-  ).run(jobId, input.userId, input.documentId, JSON.stringify(input.params), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
+  ).run(jobId, input.userId, input.documentId, JSON.stringify({ ...input.params, creditReservedAt: timestamp }), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
+  if (passId) recordScorePassJob(db, passId, jobId);
+  db.exec("COMMIT");
   return findScoreJobById(jobId);
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
 }
 
 export function cancelScoreJob(input: { jobId: string; userId: string; documentId: string }) {
@@ -2386,17 +2450,69 @@ export function cancelScoreJob(input: { jobId: string; userId: string; documentI
 }
 
 export function retryScoreJob(input: { jobId: string; userId: string; documentId: string }) {
-  const timestamp = nowIso();
-  const result = db.prepare(
-    `
-      UPDATE score_jobs
-      SET status = 'queued', error_message = NULL, output_file_ids_json = NULL,
-          result_revision_id = NULL, progress_percent = 0, cancel_requested_at = NULL,
-          started_at = NULL, completed_at = NULL, updated_at = ?
-      WHERE id = ? AND user_id = ? AND document_id = ? AND status IN ('failed', 'cancelled')
-    `,
-  ).run(timestamp, input.jobId, input.userId, input.documentId);
-  return result.changes === 1 ? findScoreJobById(input.jobId) : undefined;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    lockScorePassAccount(db, input.userId);
+    const existing = findScoreJobById(input.jobId);
+    if (!existing || existing.user_id !== input.userId || existing.document_id !== input.documentId || !["failed", "cancelled"].includes(existing.status)) {
+      db.exec("COMMIT");
+      return undefined;
+    }
+    const params = processingJobParams(existing.params_json);
+    const newOmrAttempt = existing.job_type === "omr_import";
+    if (newOmrAttempt) {
+      // Keep the old failed attempt and its diagnostics. Serialize duplicate
+      // clicks under the account lock so they cannot reserve credits twice.
+      const pendingRetry = listScoreJobsByDocumentId(input.documentId).find(candidate =>
+        processingJobParams(candidate.params_json).recoveryOfJobId === existing.id &&
+        ["queued", "processing", "completed"].includes(candidate.status));
+      if (pendingRetry) { db.exec("COMMIT"); return pendingRetry; }
+      if (!existing.input_file_id || !db.prepare("SELECT id FROM files WHERE id = ? AND user_id = ?").get(existing.input_file_id, input.userId)) {
+        db.exec("COMMIT"); return undefined;
+      }
+    }
+    const retryJobId = newOmrAttempt ? createId() : existing.id;
+    const recognitionMode = existing.job_type === "omr_import" ? normalizeRecognitionMode(params.recognitionMode) : "simple";
+    const creditCost = processingJobCreditCost(existing);
+    const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
+    if (existing.job_type === "omr_import" && params.freeTrial === true && !isPaid) {
+      // A failed attempt releases the allowance. Retrying it must reserve that
+      // allowance again so another queued/successful free project cannot overlap.
+      assertFreeTrialOmrAvailable(input.userId);
+    }
+    const reservedPass = db.prepare("SELECT purchase_id FROM score_pass_jobs WHERE job_id = ?").get(existing.id) as { purchase_id: string } | undefined;
+    const usePass = Boolean(reservedPass) || (!isPaid && Boolean(scorePassForDocument(db, input.userId, input.documentId)));
+    if (existing.job_type === "omr_import" && recognitionMode === "complex" && !isPaid && !usePass) {
+      throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
+    }
+    const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
+    assertProcessingQuota(input.userId, Boolean(passId), creditCost);
+    if (passId) recordScorePassJob(db, passId, retryJobId);
+    const timestamp = nowIso();
+    const nextParams = JSON.stringify({ ...params, creditReservedAt: timestamp,
+      ...(newOmrAttempt ? { recognitionMode, creditCost, recoveryOfJobId: existing.id } : {}) });
+    let changed: number;
+    if (newOmrAttempt) {
+      changed = db.prepare(`INSERT INTO score_jobs (
+        id, user_id, document_id, input_file_id, job_type, status, params_json,
+        result_revision_id, output_file_ids_json, error_message, request_id, trace_id, created_at, updated_at, started_at, completed_at
+      ) VALUES (?, ?, ?, ?, 'omr_import', 'queued', ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, NULL)`)
+        .run(retryJobId, input.userId, input.documentId, existing.input_file_id, nextParams,
+          currentRequestContext()?.requestId ?? null, currentRequestContext()?.traceId ?? null, timestamp, timestamp).changes;
+    } else {
+      changed = db.prepare(`UPDATE score_jobs
+        SET status = 'queued', error_message = NULL, output_file_ids_json = NULL,
+            result_revision_id = NULL, progress_percent = 0, cancel_requested_at = NULL,
+            started_at = NULL, completed_at = NULL, updated_at = ?, params_json = ?
+        WHERE id = ? AND user_id = ? AND document_id = ? AND status IN ('failed', 'cancelled')`)
+        .run(timestamp, nextParams, retryJobId, input.userId, input.documentId).changes;
+    }
+    db.exec("COMMIT");
+    return changed === 1 ? findScoreJobById(retryJobId) : undefined;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 export function attachMusicXmlFileToRevision(input: {

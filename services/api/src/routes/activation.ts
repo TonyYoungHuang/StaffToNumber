@@ -8,10 +8,10 @@ export async function activationRoutes(app: FastifyInstance) {
       preHandler: app.requireAuth,
     },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { code?: string };
-      const code = body.code?.trim();
+      const body = (request.body ?? {}) as { code?: unknown };
+      const code = typeof body.code === "string" ? body.code.trim() : "";
 
-      if (!code) {
+      if (!code || code.length > 128) {
         return reply.code(400).send({ error: "Activation code is required." });
       }
 
@@ -23,13 +23,16 @@ export async function activationRoutes(app: FastifyInstance) {
             ? "Activation code not found."
             : result.reason === "expired"
               ? "Activation code has expired."
-              : "Activation code already used.";
-        return reply.code(409).send({ error: errorMessage });
+              : result.reason === "disabled"
+                ? "Activation code has been disabled."
+                : "Activation code already used.";
+        return reply.code(409).send({ error: errorMessage, code: `ACTIVATION_${result.reason.toUpperCase()}` });
       }
 
       return reply.send({
         ok: true,
         entitlement: result.entitlement,
+        alreadyRedeemed: result.alreadyRedeemed,
       });
     },
   );

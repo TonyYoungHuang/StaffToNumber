@@ -1,3 +1,4 @@
+import { exportPreservedMusicXml } from "@score/shared";
 import type {
   ScoreBarline,
   ScoreClef,
@@ -64,6 +65,19 @@ function pitchToXml(pitch: ScorePitch, indent: number) {
   ];
 }
 
+function percussionInstrumentId(event: ScoreNoteEvent, partId: string) {
+  return event.unpitched ? event.unpitched.instrumentId ?? `${partId}-drum-${event.unpitched.midiPitch ?? "unknown"}` : undefined;
+}
+
+function unpitchedToXml(unpitched: NonNullable<ScoreNoteEvent["unpitched"]>, indent: number) {
+  return [
+    `${" ".repeat(indent)}<unpitched>`,
+    ...tag("display-step", unpitched.displayStep, indent + 2),
+    ...tag("display-octave", unpitched.displayOctave, indent + 2),
+    `${" ".repeat(indent)}</unpitched>`,
+  ];
+}
+
 function keyToXml(key: ScoreKeySignature | undefined, indent: number) {
   if (!key) {
     return [];
@@ -123,12 +137,14 @@ function clefToXml(clef: ScoreClef | undefined, indent: number) {
   ];
 }
 
-function attributesToXml(attributes: ScoreMeasureAttributes | undefined, indent: number) {
-  if (!attributes) {
+function attributesToXml(attributes: ScoreMeasureAttributes | undefined, indent: number, transposeSemitones?: number) {
+  if (!attributes && transposeSemitones === undefined) {
     return [];
   }
 
+  attributes ??= {};
   const clefs = attributes.clefs?.length ? attributes.clefs : attributes.clef ? [attributes.clef] : [];
+  const octaveChange = Math.trunc((transposeSemitones ?? 0) / 12);
   return [
     `${" ".repeat(indent)}<attributes>`,
     ...tag("divisions", attributes.divisions, indent + 2),
@@ -136,6 +152,12 @@ function attributesToXml(attributes: ScoreMeasureAttributes | undefined, indent:
     ...timeToXml(attributes.time, indent + 2),
     ...tag("staves", attributes.staves, indent + 2),
     ...clefs.flatMap((clef) => clefToXml(clef, indent + 2)),
+    ...(transposeSemitones !== undefined ? [
+      `${" ".repeat(indent + 2)}<transpose>`,
+      ...tag("chromatic", transposeSemitones - 12 * octaveChange, indent + 4),
+      ...(octaveChange !== 0 ? tag("octave-change", octaveChange, indent + 4) : []),
+      `${" ".repeat(indent + 2)}</transpose>`,
+    ] : []),
     `${" ".repeat(indent)}</attributes>`,
   ];
 }
@@ -331,14 +353,15 @@ function restToXml(event: ScoreRestEvent, indent: number) {
   ];
 
   return [
-    `${" ".repeat(indent)}<note id="${escapeXml(event.id)}">`,
+    `${" ".repeat(indent)}<note id="${escapeXml(event.id)}"${event.printObject !== undefined ? ` print-object="${event.printObject ? "yes" : "no"}"` : ""}>`,
     `${" ".repeat(indent + 2)}<rest${event.measureRest ? ' measure="yes"' : ""}/>`,
     ...tag("duration", event.duration, indent + 2),
     ...tag("voice", event.voice, indent + 2),
     ...tag("type", event.durationType, indent + 2),
     ...Array.from({ length: event.dots }, () => `${" ".repeat(indent + 2)}<dot/>`),
     ...timeModificationToXml(event.timeModification, indent + 2),
-    ...(event.beams ?? []).map((beam) => `${" ".repeat(indent + 2)}<beam number="${escapeXml(beam.number)}">${escapeXml(beam.type)}</beam>`),
+    ...tag("staff", event.staff, indent + 2),
+    ...(event.beams ?? []).map((beam) => `${" ".repeat(indent + 2)}<beam number="${escapeXml(beam.number)}">${escapeXml(beam.type.replace("-hook", " hook"))}</beam>`),
     ...(notations.length > 0
       ? [
           `${" ".repeat(indent + 2)}<notations>`,
@@ -346,12 +369,11 @@ function restToXml(event: ScoreRestEvent, indent: number) {
           `${" ".repeat(indent + 2)}</notations>`,
         ]
       : []),
-    ...tag("staff", event.staff, indent + 2),
     `${" ".repeat(indent)}</note>`,
   ];
 }
 
-function noteToXml(event: ScoreNoteEvent, indent: number) {
+function noteToXml(event: ScoreNoteEvent, indent: number, partId: string) {
   const fingerings = event.fingerings?.map((fingering) => fingering.trim()).filter(Boolean) ?? [];
   const articulations = event.articulations?.map((articulation) => articulation.type).filter(Boolean) ?? [];
   const slurs = event.slurs ?? [];
@@ -368,28 +390,35 @@ function noteToXml(event: ScoreNoteEvent, indent: number) {
           `${" ".repeat(indent + 4)}</articulations>`,
         ]
       : []),
-    ...(fingerings.length > 0
+    ...(fingerings.length > 0 || event.technical
       ? [
           `${" ".repeat(indent + 4)}<technical>`,
           ...fingerings.map((fingering) => `${" ".repeat(indent + 6)}<fingering>${escapeXml(fingering)}</fingering>`),
+          ...tag("string", event.technical?.string, indent + 6),
+          ...tag("fret", event.technical?.fret, indent + 6),
+          ...(event.technical?.bend !== undefined ? [`${" ".repeat(indent + 6)}<bend><bend-alter>${escapeXml(event.technical.bend)}</bend-alter></bend>`] : []),
+          ...([['hammerOn', 'hammer-on'], ['pullOff', 'pull-off'], ['slide', 'slide']] as const).flatMap(([field, key]) => event.technical?.[field] ? [`${" ".repeat(indent + 6)}<${key} type="${escapeXml(event.technical[field]!)}"/>`] : []),
           `${" ".repeat(indent + 4)}</technical>`,
         ]
       : []),
   ];
 
   return [
-    `${" ".repeat(indent)}<note id="${escapeXml(event.id)}">`,
-    ...(event.chord ? [`${" ".repeat(indent + 2)}<chord/>`] : []),
+    `${" ".repeat(indent)}<note id="${escapeXml(event.id)}"${event.printObject !== undefined ? ` print-object="${event.printObject ? "yes" : "no"}"` : ""}>`,
     ...graceToXml(event.grace, indent + 2),
-    ...pitchToXml(event.pitch, indent + 2),
+    ...(event.chord ? [`${" ".repeat(indent + 2)}<chord/>`] : []),
+    ...(event.unpitched ? unpitchedToXml(event.unpitched, indent + 2) : pitchToXml(event.pitch, indent + 2)),
     ...(event.grace ? [] : tag("duration", event.duration, indent + 2)),
     ...event.ties.map((tie) => `${" ".repeat(indent + 2)}<tie type="${escapeXml(tie.type)}"/>`),
+    ...(event.unpitched && percussionInstrumentId(event, partId) ? [`${" ".repeat(indent + 2)}<instrument id="${escapeXml(percussionInstrumentId(event, partId)!)}"/>`] : []),
     ...tag("voice", event.voice, indent + 2),
     ...tag("type", event.durationType, indent + 2),
     ...Array.from({ length: event.dots }, () => `${" ".repeat(indent + 2)}<dot/>`),
     ...tag("accidental", event.accidental, indent + 2),
     ...timeModificationToXml(event.timeModification, indent + 2),
-    ...(event.beams ?? []).map((beam) => `${" ".repeat(indent + 2)}<beam number="${escapeXml(beam.number)}">${escapeXml(beam.type)}</beam>`),
+    ...tag("notehead", event.notehead, indent + 2),
+    ...tag("staff", event.staff, indent + 2),
+    ...(event.beams ?? []).map((beam) => `${" ".repeat(indent + 2)}<beam number="${escapeXml(beam.number)}">${escapeXml(beam.type.replace("-hook", " hook"))}</beam>`),
     ...(notations.length > 0
       ? [
           `${" ".repeat(indent + 2)}<notations>`,
@@ -400,30 +429,83 @@ function noteToXml(event: ScoreNoteEvent, indent: number) {
     ...event.lyrics.flatMap((lyric) => [
       `${" ".repeat(indent + 2)}<lyric${lyric.number ? ` number="${escapeXml(lyric.number)}"` : ""}>`,
       ...tag("syllabic", lyric.syllabic, indent + 4),
-      ...tag("text", lyric.text, indent + 4),
+      ...(lyric.text ? tag("text", lyric.text, indent + 4) : []),
+      ...(lyric.extend ? [`${" ".repeat(indent + 4)}<extend${lyric.extend.type ? ` type="${escapeXml(lyric.extend.type)}"` : ""}/>`] : []),
       `${" ".repeat(indent + 2)}</lyric>`,
     ]),
-    ...tag("staff", event.staff, indent + 2),
     `${" ".repeat(indent)}</note>`,
   ];
 }
 
-function eventToXml(event: ScoreEvent, indent: number) {
-  return event.type === "rest" ? restToXml(event, indent) : noteToXml(event, indent);
+function eventToXml(event: ScoreEvent, indent: number, partId: string) {
+  return event.type === "rest" ? restToXml(event, indent) : noteToXml(event, indent, partId);
 }
 
-function scorePartToXml(part: ScoreJson["parts"][number], indent: number) {
+function measureEventsToXml(events: ScoreEvent[], indent: number, partId: string) {
+  const voices = new Map<string, ScoreEvent[]>();
+  for (const event of events) {
+    const voice = `${event.staff ?? 1}:${event.voice ?? "1"}`;
+    const group = voices.get(voice) ?? [];
+    group.push(event);
+    voices.set(voice, group);
+  }
+  if (voices.size <= 1) return events.flatMap((event) => eventToXml(event, indent, partId));
+  const lines: string[] = [];
+  let previousDuration = 0;
+  for (const voiceEvents of voices.values()) {
+    if (previousDuration > 0) lines.push(
+      `${" ".repeat(indent)}<backup>`,
+      ...tag("duration", previousDuration, indent + 2),
+      `${" ".repeat(indent)}</backup>`,
+    );
+    lines.push(...voiceEvents.flatMap((event) => eventToXml(event, indent, partId)));
+    previousDuration = voiceEvents.reduce((duration, event) => duration + (event.type === "note" && (event.chord || event.grace) ? 0 : event.duration), 0);
+  }
+  return lines;
+}
+
+function scorePartToXml(part: ScoreJson["parts"][number], score: ScoreJson, indent: number) {
+  const percussionInstruments = new Map<string, number | undefined>();
+  let hasPitchedNotes = false;
+  for (const measure of score.measures.filter((item) => item.partId === part.id)) {
+    for (const event of measure.events) {
+      if (event.type === "note" && !event.unpitched) hasPitchedNotes = true;
+      if (event.type !== "note" || !event.unpitched) continue;
+      const id = percussionInstrumentId(event, part.id);
+      if (id) percussionInstruments.set(id, event.unpitched.midiPitch ?? percussionInstruments.get(id));
+    }
+  }
+  const hasMelodicInstrument = (percussionInstruments.size === 0 || hasPitchedNotes || (part.midiChannel !== undefined && part.midiChannel !== 10)) && Boolean(part.midiProgram || part.midiChannel);
+  let melodicInstrumentId = `${part.id}-I1`;
+  while (percussionInstruments.has(melodicInstrumentId)) melodicInstrumentId += "-pitched";
   return [
     `${" ".repeat(indent)}<score-part id="${escapeXml(part.id)}">`,
     `${" ".repeat(indent + 2)}<part-name>${escapeXml(part.name)}</part-name>`,
     ...(part.abbreviation ? [`${" ".repeat(indent + 2)}<part-abbreviation>${escapeXml(part.abbreviation)}</part-abbreviation>`] : []),
-    ...(part.midiProgram
+    ...(hasMelodicInstrument && percussionInstruments.size > 0 ? [
+      `${" ".repeat(indent + 2)}<score-instrument id="${escapeXml(melodicInstrumentId)}">`,
+      ...tag("instrument-name", part.name, indent + 4),
+      `${" ".repeat(indent + 2)}</score-instrument>`,
+    ] : []),
+    ...Array.from(percussionInstruments, ([id]) => [
+      `${" ".repeat(indent + 2)}<score-instrument id="${escapeXml(id)}">`,
+      ...tag("instrument-name", part.name, indent + 4),
+      `${" ".repeat(indent + 2)}</score-instrument>`,
+    ]).flat(),
+    ...(hasMelodicInstrument
       ? [
-          `${" ".repeat(indent + 2)}<midi-instrument id="${escapeXml(part.id)}-I1">`,
-          `${" ".repeat(indent + 4)}<midi-program>${escapeXml(part.midiProgram)}</midi-program>`,
+          `${" ".repeat(indent + 2)}<midi-instrument id="${escapeXml(melodicInstrumentId)}">`,
+          ...tag("midi-channel", part.midiChannel, indent + 4),
+          ...tag("midi-program", part.midiProgram, indent + 4),
           `${" ".repeat(indent + 2)}</midi-instrument>`,
         ]
       : []),
+    ...Array.from(percussionInstruments, ([id, midiPitch]) => [
+      `${" ".repeat(indent + 2)}<midi-instrument id="${escapeXml(id)}">`,
+      ...tag("midi-channel", midiPitch !== undefined ? 10 : part.midiChannel, indent + 4),
+      ...tag("midi-unpitched", midiPitch === undefined ? undefined : midiPitch + 1, indent + 4),
+      `${" ".repeat(indent + 2)}</midi-instrument>`,
+    ]).flat(),
     `${" ".repeat(indent)}</score-part>`,
   ];
 }
@@ -456,7 +538,7 @@ function partListToXml(score: ScoreJson, indent: number) {
       .filter((group) => group.start === index)
       .sort((left, right) => right.end - left.end)
       .forEach(({ group }) => lines.push(...staffGroupStartToXml(group, indent + 2)));
-    lines.push(...scorePartToXml(part, indent + 2));
+    lines.push(...scorePartToXml(part, score, indent + 2));
     groups
       .filter((group) => group.end === index)
       .sort((left, right) => right.start - left.start)
@@ -485,17 +567,17 @@ export function scoreJsonToMusicXml(score: ScoreJson, options: ScoreMusicXmlExpo
       `  <part id="${escapeXml(part.id)}">`,
       ...score.measures
         .filter((measure) => measure.partId === part.id)
-        .flatMap((measure) => [
+        .flatMap((measure, measureIndex) => [
           `    <measure number="${escapeXml(measure.number)}"${measure.implicit ? ` implicit="yes"` : ""}${measure.layout?.measureWidth !== undefined ? ` width="${escapeXml(measure.layout.measureWidth)}"` : ""}>`,
           ...layoutHintToXml(measure.layout, 6),
-          ...attributesToXml(measure.attributes, 6),
+          ...attributesToXml(measure.attributes, 6, measureIndex === 0 ? part.transposeSemitones : undefined),
           ...(measure.harmonies ?? []).flatMap((harmony) => harmonyToXml(harmony, 6)),
           ...(measure.tempos ?? []).flatMap((tempo) => tempoToXml(tempo, 6)),
           ...(measure.dynamics ?? []).flatMap((dynamic) => dynamicToXml(dynamic, 6)),
           ...(measure.wedges ?? []).flatMap((wedge) => wedgeToXml(wedge, 6)),
           ...(measure.navigationMarks ?? []).flatMap((mark) => navigationMarkToXml(mark, 6)),
           ...(measure.rehearsalMarks ?? []).flatMap((mark) => rehearsalMarkToXml(mark, 6)),
-          ...measure.events.flatMap((event) => eventToXml(event, 6)),
+          ...measureEventsToXml(measure.events, 6, part.id),
           ...(measure.barlines ?? []).flatMap((barline) => barlineToXml(barline, 6)),
           `    </measure>`,
         ]),
@@ -504,5 +586,6 @@ export function scoreJsonToMusicXml(score: ScoreJson, options: ScoreMusicXmlExpo
     `</score-partwise>`,
   ];
 
-  return `${lines.join("\n")}\n`;
+  const generated = `${lines.join("\n")}\n`;
+  return exportPreservedMusicXml(score, generated) ?? generated;
 }

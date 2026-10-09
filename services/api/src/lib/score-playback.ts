@@ -597,6 +597,8 @@ function currentMeasureStartBeat(cursorByVoice: Map<string, number>) {
 }
 
 export function scoreJsonToPlayback(score: ScoreJson, generatedAt = new Date().toISOString()): PlaybackDocument {
+  const eventIds = new Set(score.measures.flatMap(measure => measure.events.map(event => event.id)));
+  const alternateIds = new Set((score.interchange?.anchors ?? []).filter(anchor => anchor.alternateEventId && eventIds.has(anchor.alternateEventId)).map(anchor => anchor.eventId));
   const events: PlaybackNoteEvent[] = [];
   const measureMarkers: PlaybackMeasureMarker[] = [];
   const tempoChanges: PlaybackTempoChange[] = [];
@@ -665,18 +667,32 @@ export function scoreJsonToPlayback(score: ScoreJson, generatedAt = new Date().t
 
       for (const event of measure.events) {
         const voice = event.voice ?? "1";
-        const currentCursor = cursorByVoice.get(voice) ?? 0;
+        const voiceKey = `${event.staff ?? 1}:${voice}`;
+        const currentCursor = cursorByVoice.get(voiceKey) ?? 0;
         const durationBeats = activeDivisions > 0 ? event.duration / activeDivisions : event.duration;
         const playbackDurationBeats = durationWithFermata(durationBeats, event.fermatas);
 
         if (event.type === "rest") {
-          cursorByVoice.set(voice, roundBeat(currentCursor + playbackDurationBeats));
+          cursorByVoice.set(voiceKey, roundBeat(currentCursor + playbackDurationBeats));
           totalBeats = Math.max(totalBeats, currentCursor + playbackDurationBeats);
           continue;
         }
 
-        const startBeat = event.chord ? lastStartByVoice.get(voice) ?? currentCursor : currentCursor;
-        const midi = midiFromPitch(event.pitch);
+        const startBeat = event.chord ? lastStartByVoice.get(voiceKey) ?? currentCursor : currentCursor;
+        if (alternateIds.has(event.id)) {
+          lastStartByVoice.set(voiceKey, startBeat);
+          if (!event.chord) cursorByVoice.set(voiceKey, roundBeat(currentCursor + playbackDurationBeats));
+          totalBeats = Math.max(totalBeats, startBeat + playbackDurationBeats);
+          continue;
+        }
+        if (event.unpitched && (!Number.isInteger(event.unpitched.midiPitch) || event.unpitched.midiPitch! < 0 || event.unpitched.midiPitch! > 127)) {
+          warnings.push(`Unpitched note ${event.id} has no MIDI drum mapping and is silent during playback.`);
+          lastStartByVoice.set(voiceKey, startBeat);
+          if (!event.chord) cursorByVoice.set(voiceKey, roundBeat(currentCursor + playbackDurationBeats));
+          totalBeats = Math.max(totalBeats, startBeat + playbackDurationBeats);
+          continue;
+        }
+        const midi = event.unpitched ? event.unpitched.midiPitch! : midiFromPitch(event.pitch) + (part.transposeSemitones ?? 0);
         const currentTieKey = tieKey({ voice, staff: event.staff, midi });
         const tieStarts = hasTie(event.ties, "start");
         const tieStops = hasTie(event.ties, "stop");
@@ -691,9 +707,9 @@ export function scoreJsonToPlayback(score: ScoreJson, generatedAt = new Date().t
             activeTies.delete(currentTieKey);
           }
 
-          lastStartByVoice.set(voice, startBeat);
+          lastStartByVoice.set(voiceKey, startBeat);
           if (!event.chord) {
-            cursorByVoice.set(voice, roundBeat(currentCursor + playbackDurationBeats));
+            cursorByVoice.set(voiceKey, roundBeat(currentCursor + playbackDurationBeats));
             totalBeats = Math.max(totalBeats, currentCursor + playbackDurationBeats);
           } else {
             totalBeats = Math.max(totalBeats, startBeat + playbackDurationBeats);
@@ -712,6 +728,7 @@ export function scoreJsonToPlayback(score: ScoreJson, generatedAt = new Date().t
           voice,
           staff: event.staff,
           pitch: event.pitch,
+          ...(event.unpitched ? { unpitched: event.unpitched, midiChannel: 10 } : {}),
           midi,
           noteName: noteNameFromMidi(midi),
           startBeat: roundBeat(startBeat),
@@ -728,9 +745,9 @@ export function scoreJsonToPlayback(score: ScoreJson, generatedAt = new Date().t
           warnings.push(`Tie stop on ${event.id} did not match an active tie start, so playback triggers it as a separate note.`);
         }
 
-        lastStartByVoice.set(voice, startBeat);
+        lastStartByVoice.set(voiceKey, startBeat);
         if (!event.chord) {
-          cursorByVoice.set(voice, roundBeat(currentCursor + playbackDurationBeats));
+          cursorByVoice.set(voiceKey, roundBeat(currentCursor + playbackDurationBeats));
           totalBeats = Math.max(totalBeats, currentCursor + playbackDurationBeats);
         } else {
           totalBeats = Math.max(totalBeats, startBeat + playbackDurationBeats);
@@ -759,6 +776,7 @@ export function scoreJsonToPlayback(score: ScoreJson, generatedAt = new Date().t
       id: part.id,
       name: part.name,
       midiProgram: part.midiProgram,
+      ...(part.midiChannel !== undefined ? { midiChannel: part.midiChannel } : {}),
     })),
     measureMarkers: measureMarkers.sort((left, right) => left.startBeat - right.startBeat || left.partId.localeCompare(right.partId) || left.measureNumber.localeCompare(right.measureNumber)),
     tempoChanges,

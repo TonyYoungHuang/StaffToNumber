@@ -1,8 +1,9 @@
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
+import { normalizeLocale, type SupportedLocale } from "@score/i18n";
 
 export type NotificationPreferences = {
   emailClassroomAnnouncements: boolean;
-  locale: "zh-CN" | "en";
+  locale: SupportedLocale;
   updatedAt: string | null;
 };
 
@@ -15,7 +16,7 @@ type PreferenceRow = {
 function mapPreferences(row: PreferenceRow | undefined): NotificationPreferences {
   return {
     emailClassroomAnnouncements: row?.email_classroom_announcements === 1,
-    locale: row?.locale === "zh-CN" ? "zh-CN" : "en",
+    locale: normalizeLocale(row?.locale) ?? "en",
     updatedAt: row?.updated_at ?? null,
   };
 }
@@ -31,7 +32,7 @@ export function getNotificationPreferences(db: RuntimeDatabaseLike, userId: stri
 export function updateNotificationPreferences(db: RuntimeDatabaseLike, input: {
   userId: string;
   emailClassroomAnnouncements: boolean;
-  locale: "zh-CN" | "en";
+  locale: SupportedLocale;
 }) {
   const now = new Date().toISOString();
   db.exec("BEGIN IMMEDIATE");

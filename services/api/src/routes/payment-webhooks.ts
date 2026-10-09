@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import type { PaymentOrderRow } from "../repositories/payment-repository.js";
 import { findPaymentOrderById, findPaymentOrderByCheckoutSessionId, findPaymentOrderByTransactionId, completePaymentOrder } from "../repositories/payment-repository.js";
-import { cancelPaddleSubscription, cancelStripeSubscription, verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
+import { cancelPaddleSubscription, cancelStripeSubscription, stripeCredentialMode, verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
 import { normalizePaddleBillingEvent, normalizeStripeBillingEvent } from "../lib/billing-events.js";
 import { findBillingSubscriptionForRefund, processBillingWebhookEvent } from "../repositories/billing-repository.js";
 import { db } from "../db.js";
+import { applyOneTimeRefund, fulfillOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { buildPaymentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
 import { config } from "../config.js";
 import {
@@ -27,7 +28,7 @@ async function sendPaymentAlert(app: FastifyInstance, order: PaymentOrderRow, pr
       provider: order.provider,
       environment: order.provider === "paddle"
         ? config.paddleEnvironment
-        : config.stripeSecretKey.trim().startsWith("sk_live_") ? "live" : "test",
+        : stripeCredentialMode(config.stripeSecretKey) === "live" ? "live" : "test",
       orderId: order.id,
       providerReference,
       customerEmail: order.customer_email,
@@ -61,6 +62,7 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
 
       try {
         const event = verifyStripeWebhook(rawRequest.rawBody, signature);
+        if (event.type === "charge.refunded") applyOneTimeRefund(db, event.data.object);
 
         const billingEvent = normalizeStripeBillingEvent(event, rawRequest.rawBody);
         if (billingEvent?.refund?.fullyRefunded) {
@@ -80,7 +82,8 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
             ?? (session.id ? await findDurablePaymentOrderByCheckoutSessionId(session.id) : undefined)
             ?? (orderId ? await findDurablePaymentOrderById(orderId) : undefined);
 
-          if (order && session.payment_status === "paid") {
+          const purchase = fulfillOneTimePurchase(db, session);
+          if (order && (session.payment_status === "paid" || purchase)) {
             const shouldNotify = order.status !== "paid" && !billingProcessingResult?.duplicate;
             let completedOrder: PaymentOrderRow | undefined;
             if (localOrder) {

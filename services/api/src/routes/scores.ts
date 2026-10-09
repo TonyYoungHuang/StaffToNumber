@@ -1,9 +1,15 @@
+import { ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
+import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
+import { countTiffPages } from "../lib/score-pass-pages.js";
+import { assertRecognitionQuote, getRecognitionOptions, normalizeRecognitionMode, RecognitionAccessError, RecognitionPriceChangedError, resolveRecognitionAccess } from "../lib/recognition-options.js";
+import { PlanQuotaExceededError } from "../lib/plan-quotas.js";
 import fs from "node:fs";
 import path from "node:path";
 import { isIP } from "node:net";
 import { spawn } from "node:child_process";
 import {
   migrateScoreJson,
+  MusicXmlPreservationError,
   SCORE_RANGE_PROFILES,
   TRANSPOSING_INSTRUMENT_PROFILES,
   type AssignmentPracticeSettings,
@@ -25,13 +31,12 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { config } from "../config.js";
 import { db } from "../db.js";
 import {
-  assertFreeTrialOmrAvailable,
   FreeTrialLimitError,
   isFreeTrialScoreDocumentForUser,
 } from "../lib/free-trial.js";
 import { linkEducationInvitationsByEmail, listAccessibleClassroomIds, resolveClassroomAccess, resolveOrganizationRole } from "../lib/education-access.js";
 import { createId } from "../lib/auth.js";
-import { openStoredFile, storedFileExists } from "../lib/object-storage.js";
+import { deleteStoredFileObject, openStoredFile, storedFileExists } from "../lib/object-storage.js";
 import { omrPdfRasterSafetyPolicy, storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
 import { scoreJsonToJianpu } from "../lib/jianpu-converter.js";
 import { storeJianpuSourceText } from "../lib/jianpu-source-storage.js";
@@ -68,6 +73,7 @@ import { extractScoreParts } from "../lib/score-part-extract.js";
 import { countPlaybackMidiEvents, playbackToMidiFile } from "../lib/score-midi-export.js";
 import { transposeScoreJsonWithMusic21 } from "../lib/score-music21-transpose.js";
 import { scoreJsonToMusicXml } from "../lib/score-musicxml-export.js";
+import { ScoreAddPartError, validateScoreAddPartInput } from "../lib/score-add-part.js";
 import { renderMusicXmlWithMuseScore } from "../lib/score-pdf-export.js";
 import { scoreJsonToPlayback } from "../lib/score-playback.js";
 import { validateCanonicalScoreCommandRequest } from "../lib/score-collaboration-command.js";
@@ -88,6 +94,8 @@ import { listClassroomStaff } from "../repositories/education-organization-repos
 import { listStudentGuardians } from "../repositories/education-repository.js";
 import {
   acceptPendingScoreRevision,
+  ScoreCoverageReviewRequiredError,
+  ScoreEditRevisionConflictError,
   applyCanonicalScoreCollaborationCommand,
   applyScoreCollaborationHistoryCommand,
   attachMusicXmlFileToRevision,
@@ -110,6 +118,7 @@ import {
   createScoreDocumentFromMusicXml,
   createOmrImportScoreDocument,
   createScoreRevisionFromScoreJson,
+  createManualScorePartRevision,
   findCurrentRevisionForDocument,
   findEditableRevisionForDocument,
   findPendingRevisionForDocument,
@@ -161,6 +170,17 @@ import {
   setScoreCommentResolved,
   updateScoreDocumentSettings,
 } from "../repositories/score-repository.js";
+
+function scoreNotReadyResponse(document: NonNullable<ReturnType<typeof findScoreDocumentById>>) {
+  if (document.pending_revision_id) {
+    return { code: "SCORE_REVIEW_REQUIRED", nextAction: "review", error: "Review and confirm the recognized score before using this feature." };
+  }
+  const jobs = listScoreJobsByDocumentId(document.id);
+  if (jobs.some((job) => job.status === "queued" || job.status === "processing")) {
+    return { code: "SCORE_PROCESSING", nextAction: "wait", retryAfterSeconds: 5, error: "Your score is still being recognized. Wait for recognition, then review and confirm it." };
+  }
+  return { code: "SCORE_NOT_READY", nextAction: "retry_import", error: "No usable score is available yet. Retry recognition or import another file." };
+}
 
 function sanitizeFilename(filename: string) {
   return filename.replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -1541,6 +1561,19 @@ function mapOwnedScoreForAccess(document: Parameters<typeof mapScoreDocumentForA
 }
 
 export async function scoreRoutes(app: FastifyInstance) {
+  registerScoreStructurePreflightRoute(app);
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof ScoreCoverageReviewRequiredError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
+    if (error instanceof ScoreEditRevisionConflictError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
+    if (error instanceof ScoreAddPartError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
+    if (error instanceof MusicXmlPreservationError) return reply.code(409).send({ error: error.message, code: "MUSICXML_PRESERVATION_CONFLICT" });
+    if (error instanceof ScorePassError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
+    if (error instanceof RecognitionAccessError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
+    if (error instanceof PlanQuotaExceededError) return reply.code(error.statusCode).send({ error: error.message, code: error.code, quota: error.quota });
+    if (error instanceof FreeTrialLimitError) return reply.code(error.statusCode).send({ error: error.message, code: error.code, freeTrial: error.trial });
+    return reply.send(error);
+  });
+  app.get("/scores/recognition-options", { preHandler: app.requireScorePreviewAccess }, async request => getRecognitionOptions(request.authUserId!));
   app.get(
     "/scores/tooling/status",
     {
@@ -1585,7 +1618,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       return {
         scores: listScoreDocumentsByUserId(request.authUserId!).map((document) => mapOwnedScoreForAccess(
           document,
-          paidAccess || isFreeTrialScoreDocumentForUser(document.id, request.authUserId!),
+          paidAccess || isFreeTrialScoreDocumentForUser(document.id, request.authUserId!) || Boolean(scorePassForDocument(db, request.authUserId!, document.id)),
         )),
       };
     },
@@ -1605,7 +1638,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
 
       const paidAccess = getUserProfile(request.authUserId!)?.entitlement.status === "active";
-      const editingAccess = paidAccess || isFreeTrialScoreDocumentForUser(document.id, request.authUserId!);
+      const editingAccess = paidAccess || isFreeTrialScoreDocumentForUser(document.id, request.authUserId!) || Boolean(scorePassForDocument(db, request.authUserId!, document.id));
 
       return reply.send({
         score: mapOwnedScoreForAccess(document, editingAccess),
@@ -1688,7 +1721,7 @@ export async function scoreRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const params = request.params as { id: string };
-      const body = request.body as { pendingRevisionId?: string } | null;
+      const body = request.body as { pendingRevisionId?: string; coverageReviewed?: boolean } | null;
       const document = findScoreDocumentById(params.id);
 
       if (!document || document.user_id !== request.authUserId) {
@@ -1698,6 +1731,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const result = acceptPendingScoreRevision({
         documentId: document.id,
         pendingRevisionId: body?.pendingRevisionId,
+        coverageReviewed: body?.coverageReviewed,
       });
       if (!result?.document || !result.revision) {
         return reply.code(409).send({ error: "This score does not have a matching candidate revision awaiting review." });
@@ -1741,6 +1775,19 @@ export async function scoreRoutes(app: FastifyInstance) {
   );
 
   app.get(
+    "/scores/:id/candidate/playback",
+    { preHandler: app.requireScorePreviewAccess },
+    async (request, reply) => {
+      const params = request.params as { id: string };
+      const document = findScoreDocumentById(params.id);
+      if (!document || document.user_id !== request.authUserId) return reply.code(404).send({ error: "Score document not found." });
+      const candidate = findPendingRevisionForDocument(document);
+      if (!candidate || candidate.status !== "candidate") return reply.code(404).send({ error: "Candidate score revision not found." });
+      return reply.send({ revisionId: candidate.id, playback: scoreJsonToPlayback(migrateScoreJson(JSON.parse(candidate.score_json))) });
+    },
+  );
+
+  app.get(
     "/scores/:id/candidate/musicxml-preview",
     {
       preHandler: app.requireScorePreviewAccess,
@@ -1780,7 +1827,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -1816,7 +1863,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -1896,6 +1943,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: restoredScoreJson,
+        expectedEditableRevisionId: document.pending_revision_id ?? document.current_revision_id,
         createdFrom: "restore",
         musicxmlFileId: revision.musicxml_file_id,
       });
@@ -3118,7 +3166,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -3189,7 +3237,16 @@ export async function scoreRoutes(app: FastifyInstance) {
       if (!document || document.user_id !== request.authUserId) {
         return reply.code(404).send({ error: "Score document not found." });
       }
-      const job = retryScoreJob({ jobId: params.jobId, userId: request.authUserId!, documentId: document.id });
+      let job;
+      try {
+        job = retryScoreJob({ jobId: params.jobId, userId: request.authUserId!, documentId: document.id });
+      } catch (error) {
+        if (error instanceof ScorePassError) throw error;
+        if (error instanceof FreeTrialLimitError) {
+          return reply.code(error.statusCode).send({ error: error.message, code: error.code, freeTrial: error.trial });
+        }
+        throw error;
+      }
       if (!job) {
         return reply.code(409).send({ error: "Only failed or cancelled jobs can be retried." });
       }
@@ -3220,7 +3277,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -3285,7 +3342,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -3442,6 +3499,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: revisionScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "transpose",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3485,7 +3543,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       return reply.send({
@@ -3509,7 +3567,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3525,6 +3583,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3538,6 +3597,21 @@ export async function scoreRoutes(app: FastifyInstance) {
         revision: mapScoreRevisionForApi(nextRevision),
         revisions: listScoreRevisionsByDocumentId(document.id).map(mapScoreRevisionForApi),
         recommendations: recommendScoreClefs(editedScoreJson),
+      });
+    },
+  );
+
+  app.post(
+    "/scores/:id/edit/add-part",
+    { preHandler: app.requireScoreEditingAccess },
+    async (request, reply) => {
+      const params = request.params as { id: string };
+      const part = validateScoreAddPartInput(request.body);
+      const result = createManualScorePartRevision({ documentId: params.id, userId: request.authUserId!, part });
+      const document = findScoreDocumentById(params.id)!;
+      return reply.code(201).send({
+        score: mapScoreDocumentForApi(document), revision: mapScoreRevisionForApi(result.revision),
+        revisions: listScoreRevisionsByDocumentId(document.id).map(mapScoreRevisionForApi), part: result.part,
       });
     },
   );
@@ -3565,7 +3639,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3581,6 +3655,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3620,7 +3695,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3636,6 +3711,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3675,7 +3751,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3691,6 +3767,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3730,7 +3807,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3746,6 +3823,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3781,7 +3859,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
       let editedScoreJson;
       try {
@@ -3792,6 +3870,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3829,7 +3908,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3845,6 +3924,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3884,7 +3964,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3900,6 +3980,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3939,7 +4020,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -3955,6 +4036,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3994,7 +4076,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -4010,6 +4092,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4049,7 +4132,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -4065,6 +4148,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4104,7 +4188,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -4120,6 +4204,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4159,7 +4244,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findEditableRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let editedScoreJson;
@@ -4175,6 +4260,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
+        expectedEditableRevisionId: revision.id,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4212,7 +4298,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       return reply.send({
@@ -4236,10 +4322,11 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       return reply.send({
+        revisionId: revision.id,
         playback: scoreJsonToPlayback(migrateScoreJson(JSON.parse(revision.score_json))),
       });
     },
@@ -4260,7 +4347,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4285,7 +4372,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4358,7 +4445,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4440,7 +4527,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4536,7 +4623,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4611,7 +4698,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4679,7 +4766,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
@@ -4742,7 +4829,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let options: RenderedScoreExportOptions;
@@ -4762,6 +4849,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         });
         return reply.code(201).send(exportPayload);
       } catch (error) {
+        if (error instanceof ScorePassError) throw error;
         return reply.code(503).send({ error: error instanceof Error ? error.message : "Could not render the score PDF." });
       }
     },
@@ -4782,7 +4870,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let options: RenderedScoreExportOptions;
@@ -4802,6 +4890,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         });
         return reply.code(201).send(exportPayload);
       } catch (error) {
+        if (error instanceof ScorePassError) throw error;
         return reply.code(503).send({ error: error instanceof Error ? error.message : "Could not render the score SVG." });
       }
     },
@@ -4822,7 +4911,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const revision = findCurrentRevisionForDocument(document);
       if (!revision) {
-        return reply.code(404).send({ error: "Current score revision not found." });
+        return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
       let options: RenderedScoreExportOptions;
@@ -4842,6 +4931,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         });
         return reply.code(201).send(exportPayload);
       } catch (error) {
+        if (error instanceof ScorePassError) throw error;
         return reply.code(503).send({ error: error instanceof Error ? error.message : "Could not render the score PNG." });
       }
     },
@@ -5122,20 +5212,28 @@ export async function scoreRoutes(app: FastifyInstance) {
       preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
-      const profile = getUserProfile(request.authUserId!);
-      const isPaid = profile?.entitlement.status === "active";
-      let freeTrial = null;
-      if (!isPaid) {
-        try {
-          freeTrial = assertFreeTrialOmrAvailable(request.authUserId!);
-        } catch (error) {
-          if (error instanceof FreeTrialLimitError) {
-            return reply.code(error.statusCode).send({ error: error.message, code: error.code, freeTrial: error.trial });
-          }
-          throw error;
+      const query = request.query as { recognitionMode?: unknown; mode?: unknown; expectedCreditCost?: unknown };
+      let expectedCreditCost: number | undefined;
+      if (query.expectedCreditCost !== undefined) {
+        if (typeof query.expectedCreditCost !== "string" || !/^[1-9]\d*$/.test(query.expectedCreditCost)
+          || !Number.isSafeInteger(Number(query.expectedCreditCost))) {
+          return reply.code(400).send({ code: "INVALID_EXPECTED_CREDIT_COST", error: "Expected recognition credits must be a positive integer." });
         }
+        expectedCreditCost = Number(query.expectedCreditCost);
       }
-
+      const priceChangedResponse = () => reply.code(409).send({ code: "OMR_PRICE_CHANGED",
+        error: "The recognition price changed. Review the current price and confirm again.", ...getRecognitionOptions(request.authUserId!) });
+      if (query.recognitionMode !== undefined && query.mode !== undefined && query.recognitionMode !== query.mode) {
+        throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Conflicting recognition modes were supplied.");
+      }
+      const queryMode = query.recognitionMode ?? query.mode;
+      let recognitionMode = normalizeRecognitionMode(queryMode);
+      if (queryMode !== undefined) {
+        try { assertRecognitionQuote(recognitionMode, expectedCreditCost); }
+        catch (error) { if (error instanceof RecognitionPriceChangedError) return priceChangedResponse(); throw error; }
+      }
+      // Reject ineligible requests before reading/storing their upload.
+      if (queryMode !== undefined) resolveRecognitionAccess(request.authUserId!, recognitionMode);
       const file = await request.file();
 
       if (!file) {
@@ -5163,6 +5261,37 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const fileKind = verified.detectedKind === "pdf" ? "source_pdf" : "source_image";
 
+      let recognition;
+      try {
+        const fields = file.fields;
+        const readModeField = (field: typeof fields[string]) => {
+          if (field === undefined) return undefined;
+          if (Array.isArray(field) || field.type !== "field") throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Recognition mode must be supplied once as a text field.");
+          return normalizeRecognitionMode(field.value);
+        };
+        const canonical = readModeField(fields.recognitionMode), alias = readModeField(fields.mode);
+        if (canonical !== undefined && alias !== undefined && canonical !== alias) throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Conflicting recognition modes were supplied.");
+        const fieldValue = canonical ?? alias;
+        if (queryMode !== undefined && fieldValue !== undefined && queryMode !== fieldValue) {
+          throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Conflicting recognition modes were supplied.");
+        }
+        recognitionMode = normalizeRecognitionMode(queryMode ?? fieldValue);
+        assertRecognitionQuote(recognitionMode, expectedCreditCost);
+        recognition = resolveRecognitionAccess(request.authUserId!, recognitionMode);
+      } catch (error) {
+        await fs.promises.rm(targetPath, { force: true });
+        if (error instanceof RecognitionPriceChangedError) return priceChangedResponse();
+        throw error;
+      }
+      const useScorePass = recognition.creditSource === "score_pass";
+
+      const pageCount = verified.pdfRasterInspection?.pageCount ?? (useScorePass && verified.detectedKind === "tiff"
+        ? countTiffPages(await fs.promises.readFile(targetPath)) : 1);
+      if (useScorePass && (pageCount < 1 || pageCount > 5)) {
+        await fs.promises.rm(targetPath, { force: true });
+        throw new ScorePassError("SCORE_PASS_PAGE_LIMIT", "A One Score Pass supports one score of up to 5 pages.");
+      }
+
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
       try {
         storedFile = await createStoredFile({
@@ -5184,14 +5313,38 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(500).send({ error: "Could not store the OMR source file." });
       }
 
-      const result = createOmrImportScoreDocument({
+      let result;
+      try {
+      result = createOmrImportScoreDocument({
         userId: request.authUserId!,
         title: deriveTitle(filename),
         sourceFileId: storedFile.id,
         sourceFileKind: fileKind,
         sourceOriginalName: storedFile.original_name,
-        freeTrial: Boolean(freeTrial),
+        freeTrial: recognition.creditSource === "free_trial",
+        scorePass: useScorePass,
+        pageCount,
+        recognitionMode,
+        expectedCreditCost,
       });
+      } catch (error) {
+        // Another request may have reserved the last credits while this file uploaded.
+        // Only this request's unreferenced source is removed after a rolled-back reservation.
+        try {
+          const removed = db.prepare(`DELETE FROM files WHERE id = ? AND user_id = ?
+            AND NOT EXISTS (SELECT 1 FROM score_assets WHERE file_id = files.id)
+            AND NOT EXISTS (SELECT 1 FROM score_documents WHERE source_file_id = files.id)
+            AND NOT EXISTS (SELECT 1 FROM score_jobs WHERE input_file_id = files.id)
+            AND NOT EXISTS (SELECT 1 FROM jobs WHERE input_file_id = files.id)`)
+            .run(storedFile.id, request.authUserId!);
+          if (removed.changes === 1) {
+            await deleteStoredFileObject(storedFile);
+            await fs.promises.rm(targetPath, { force: true });
+          }
+        } catch (cleanupError) { request.log.warn({ cleanupError, fileId: storedFile.id }, "Rejected OMR source cleanup failed."); }
+        if (error instanceof RecognitionPriceChangedError) return priceChangedResponse();
+        throw error;
+      }
 
       if (!result.document || !result.job) {
         return reply.code(500).send({ error: "Could not create the OMR import score project." });
@@ -5200,6 +5353,8 @@ export async function scoreRoutes(app: FastifyInstance) {
       return reply.code(201).send({
         score: mapScoreDocumentForApi(result.document),
         job: mapScoreJobForApi(result.job),
+        recognition: { mode: recognitionMode, creditCost: JSON.parse(result.job.params_json!).creditCost,
+          creditSource: JSON.parse(result.job.params_json!).creditSource },
       });
     },
   );

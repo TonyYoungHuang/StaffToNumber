@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { getLocaleConfig, normalizeLocale } from "@score/shared";
 import { config } from "../config.js";
 import {
   buildSupportConfirmationEmail,
@@ -15,22 +16,37 @@ import {
 const SUPPORT_CATEGORY_LABELS = {
   payment: {
     en: "Payment and order review",
+    es: "Revisión de pagos y pedidos",
+    fr: "Paiement et vérification de commande",
+    de: "Zahlung und Bestellprüfung", ru: "Оплата и проверка заказа",
     zh: "支付与订单核查",
   },
   activation: {
     en: "Activation and entitlement issue",
+    es: "Activación y acceso",
+    fr: "Activation et accès",
+    de: "Aktivierung und Zugang", ru: "Активация и доступ",
     zh: "激活与权限问题",
   },
   job: {
     en: "Upload or result issue",
+    es: "Problema de subida o resultado",
+    fr: "Import ou résultat",
+    de: "Import oder Ergebnis", ru: "Импорт или результат",
     zh: "上传与结果问题",
   },
   privacy: {
     en: "Privacy or deletion request",
+    es: "Privacidad o eliminación",
+    fr: "Confidentialité ou suppression",
+    de: "Datenschutz oder Löschung", ru: "Конфиденциальность или удаление",
     zh: "隐私或删除请求",
   },
   general: {
     en: "General support",
+    es: "Soporte general",
+    fr: "Assistance générale",
+    de: "Allgemeine Unterstützung", ru: "Общие вопросы",
     zh: "一般支持",
   },
 } as const;
@@ -69,7 +85,7 @@ function sanitizeMessage(value: unknown) {
 }
 
 function resolveLocale(value: unknown) {
-  return value === "zh-CN" ? "zh-CN" : "en";
+  return normalizeLocale(typeof value === "string" ? value : undefined) ?? "en";
 }
 
 function isSupportCategory(value: unknown): value is SupportCategory {
@@ -80,8 +96,8 @@ function isSupportStatus(value: unknown): value is SupportRequestStatus {
   return typeof value === "string" && SUPPORT_STATUSES.includes(value as SupportRequestStatus);
 }
 
-function getSupportCategoryLabel(category: SupportCategory, locale: "en" | "zh-CN") {
-  return locale === "zh-CN" ? SUPPORT_CATEGORY_LABELS[category].zh : SUPPORT_CATEGORY_LABELS[category].en;
+function getSupportCategoryLabel(category: SupportCategory, locale: ReturnType<typeof resolveLocale>) {
+  return SUPPORT_CATEGORY_LABELS[category][locale === "zh-CN" ? "zh" : locale === "es" || locale === "fr" || locale === "de" || locale === "ru" ? locale : "en"];
 }
 
 export async function supportRoutes(app: FastifyInstance) {
@@ -243,7 +259,7 @@ export async function supportRoutes(app: FastifyInstance) {
     }
 
     const categoryLabel = getSupportCategoryLabel(body.category, locale);
-    const supportUrl = `${config.publicSiteUrl.replace(/\/$/, "")}/support`;
+    const supportUrl = `${config.publicSiteUrl.replace(/\/$/, "")}${getLocaleConfig(locale).sitePathPrefix}/support`;
 
     const notificationEmail = buildSupportNotificationEmail({
       referenceCode: created.reference_code,

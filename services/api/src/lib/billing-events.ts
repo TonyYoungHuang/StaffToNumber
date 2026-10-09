@@ -22,6 +22,7 @@ function integer(value: unknown) {
 }
 
 function unixIso(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
   const seconds = integer(value);
   return seconds === null ? null : new Date(seconds * 1000).toISOString();
 }
@@ -51,6 +52,32 @@ function stripeSubscriptionId(invoice: JsonRecord) {
   const direct = identifier(invoice.subscription);
   if (direct) return direct;
   return identifier(record(record(invoice.parent).subscription_details).subscription);
+}
+
+function stripeInvoiceSubscriptionPeriod(invoice: JsonRecord, providerSubscriptionId: string | null) {
+  const lines = record(invoice.lines);
+  if (!providerSubscriptionId || !Array.isArray(lines.data) || lines.has_more === true) return null;
+  let servicePeriod: { start: number; end: number } | null = null;
+  for (const value of lines.data) {
+    const line = record(value);
+    const parent = record(line.parent);
+    const subscriptionDetails = record(parent.subscription_item_details);
+    const modern = parent.type === "subscription_item_details";
+    if (!modern && line.type !== "subscription") continue;
+    const lineSubscriptionId = identifier(modern ? subscriptionDetails.subscription : line.subscription);
+    if (lineSubscriptionId && lineSubscriptionId !== providerSubscriptionId) continue;
+    if ((modern ? subscriptionDetails.proration : line.proration) === true) continue;
+    const period = record(line.period);
+    const start = period.start;
+    const end = period.end;
+    if (typeof start !== "number" || typeof end !== "number"
+      || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end <= start
+      || Number.isNaN(new Date(start * 1000).valueOf()) || Number.isNaN(new Date(end * 1000).valueOf())) return null;
+    // Mixed billing intervals have no single reliable subscription-level period.
+    if (servicePeriod && (servicePeriod.start !== start || servicePeriod.end !== end)) return null;
+    servicePeriod = { start, end };
+  }
+  return servicePeriod;
 }
 
 function stripeSubscriptionStatus(value: unknown): BillingSubscriptionStatus {
@@ -88,6 +115,9 @@ export function normalizeStripeBillingEvent(event: {
   const base = { provider: "stripe" as const, eventId: event.id, eventType: event.type, rawPayload };
 
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+    // Completion can precede settlement for delayed payment methods. Trials and
+    // zero-payment subscriptions are handled by subscription lifecycle events.
+    if (object.payment_status !== "paid") return null;
     const providerSubscriptionId = identifier(object.subscription);
     const providerCustomerId = identifier(object.customer);
     if (!providerSubscriptionId || !providerCustomerId) return null;
@@ -107,6 +137,7 @@ export function normalizeStripeBillingEvent(event: {
   }
 
   if (event.type.startsWith("customer.subscription.")) {
+    const firstItem = record((record(object.items).data as unknown[] | undefined)?.[0]);
     const providerSubscriptionId = identifier(object.id);
     const providerCustomerId = identifier(object.customer);
     if (!providerSubscriptionId) return null;
@@ -120,8 +151,8 @@ export function normalizeStripeBillingEvent(event: {
         status: event.type === "customer.subscription.deleted" ? "cancelled" : stripeSubscriptionStatus(object.status),
         planRef: stripePlan(object),
         seatQuantity: stripeSeatQuantity(object),
-        currentPeriodStart: unixIso(object.current_period_start),
-        currentPeriodEnd: unixIso(object.current_period_end),
+        currentPeriodStart: unixIso(firstItem.current_period_start ?? object.current_period_start),
+        currentPeriodEnd: unixIso(firstItem.current_period_end ?? object.current_period_end),
         cancelAtPeriodEnd: object.cancel_at_period_end === true,
         canceledAt: unixIso(object.canceled_at),
         endedAt: unixIso(object.ended_at),
@@ -136,6 +167,10 @@ export function normalizeStripeBillingEvent(event: {
     const failed = event.type === "invoice.payment_failed" || event.type === "invoice.payment_action_required";
     const paid = event.type === "invoice.paid" || object.status === "paid";
     const providerCustomerId = identifier(object.customer);
+    // Invoice period_* bounds describe invoice-item accumulation, not service.
+    // Missing/ambiguous line periods remain null so the repository keeps the
+    // dates supplied by subscription lifecycle events.
+    const servicePeriod = stripeInvoiceSubscriptionPeriod(object, providerSubscriptionId);
     return {
       ...base,
       customer: providerCustomerId ? { providerCustomerId, ...identity } : undefined,
@@ -144,8 +179,8 @@ export function normalizeStripeBillingEvent(event: {
         providerCustomerId,
         ...identity,
         status: paid ? "active" : failed ? "past_due" : "incomplete",
-        currentPeriodStart: unixIso(object.period_start),
-        currentPeriodEnd: unixIso(object.period_end),
+        currentPeriodStart: unixIso(servicePeriod?.start),
+        currentPeriodEnd: unixIso(servicePeriod?.end),
         paymentFailedAt: failed ? new Date().toISOString() : null,
       } : undefined,
       invoice: {

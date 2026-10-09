@@ -12,6 +12,8 @@ export const objectStorage = new ObjectStorage({
   secretAccessKey: config.s3SecretAccessKey,
   keyPrefix: config.s3KeyPrefix,
   maxAttempts: config.s3MaxAttempts,
+  checksumMode: config.s3ChecksumMode,
+  minimumFreeBytes: config.storageMinFreeBytes,
   serverSideEncryption: config.s3ServerSideEncryption,
   kmsKeyId: config.s3KmsKeyId,
   gatewayUrl: config.objectStorageGatewayUrl,

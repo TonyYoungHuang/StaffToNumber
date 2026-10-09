@@ -6,7 +6,14 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CreateMultipartUploadCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, UploadPartCommand } from "@aws-sdk/client-s3";
-import { createStorageObjectKey, ObjectStorage } from "./index.js";
+import { assertMinimumFreeSpace, createStorageObjectKey, ObjectStorage, StorageCapacityError } from "./index.js";
+
+test("disk reserve rejects writes before they consume the reserved space", (context) => {
+  context.mock.method(fs, "statfsSync", () => ({ bavail: 8000, bsize: 1024 * 1024 }));
+  assert.doesNotThrow(() => assertMinimumFreeSpace(os.tmpdir(), 6000 * 1024 * 1024, 2000 * 1024 * 1024));
+  assert.throws(() => assertMinimumFreeSpace(os.tmpdir(), 6000 * 1024 * 1024, 2001 * 1024 * 1024),
+    (error: unknown) => error instanceof StorageCapacityError && error.statusCode === 503);
+});
 
 test("local storage persists, streams, materializes, and deletes only safe paths", async () => {
   const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-storage-"));
@@ -137,13 +144,17 @@ test("S3 resumable uploads use native multipart commands and preserve encryption
   const completed = await storage.completeResumableUpload({ session, parts: [part] });
   await storage.abortResumableUpload(session);
   assert.equal((commands[0] as CreateMultipartUploadCommand).input.ServerSideEncryption, "AES256");
+  assert.equal((commands[0] as CreateMultipartUploadCommand).input.ChecksumAlgorithm, "SHA256");
   assert.equal((commands[1] as UploadPartCommand).input.PartNumber, 1);
   assert.equal(commands[2] instanceof CompleteMultipartUploadCommand, true);
   assert.equal(commands[3] instanceof AbortMultipartUploadCommand, true);
   assert.equal(completed.ref.storagePath, "s3://private-scores/users/u1/large.pdf");
 });
 
-test("Cloudflare R2 multipart parts use supported MD5 transport checksums", async () => {
+for (const configuration of [
+  { label: "Cloudflare R2", endpoint: "https://0123456789abcdef.r2.cloudflarestorage.com", checksumMode: undefined },
+  { label: "self-hosted S3", endpoint: "http://storage:3900", checksumMode: "md5" as const },
+]) test(`${configuration.label} multipart parts use supported MD5 transport checksums`, async () => {
   const commands: unknown[] = [];
   const body = Buffer.from("%PDF-r2-part");
   const storage = new ObjectStorage({
@@ -151,7 +162,8 @@ test("Cloudflare R2 multipart parts use supported MD5 transport checksums", asyn
     localRoot: ".",
     bucket: "scoretransposer-staging",
     region: "auto",
-    endpoint: "https://0123456789abcdef.r2.cloudflarestorage.com",
+    endpoint: configuration.endpoint,
+    checksumMode: configuration.checksumMode,
   }, {
     async send(command: unknown) {
       commands.push(command);
@@ -162,6 +174,7 @@ test("Cloudflare R2 multipart parts use supported MD5 transport checksums", asyn
   } as never);
 
   const session = await storage.beginResumableUpload({ objectKey: "staging/large.pdf", contentType: "application/pdf" });
+  assert.equal((commands[0] as CreateMultipartUploadCommand).input.ChecksumAlgorithm, undefined);
   const part = await storage.uploadResumablePart({ session, partNumber: 1, body });
   await storage.completeResumableUpload({ session, parts: [part] });
   const upload = commands[1] as UploadPartCommand;

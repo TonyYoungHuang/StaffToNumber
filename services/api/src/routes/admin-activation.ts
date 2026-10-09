@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
+import { isCheckoutPlanCode, type CheckoutPlanCode } from "@score/shared";
 import { config } from "../config.js";
-import { generateActivationCodes, listActivationCodes, mapActivationCodeForAdmin } from "../repositories/auth-repository.js";
+import { disableUnusedActivationCode, generateActivationCodes, listActivationCodes, mapActivationCodeForAdmin } from "../repositories/auth-repository.js";
 
 function parseExpiresAt(value: unknown) {
   if (value == null || value === "") {
@@ -26,12 +27,12 @@ export async function adminActivationRoutes(app: FastifyInstance) {
       preHandler: app.requireAdmin,
     },
     async (request) => {
-      const query = (request.query ?? {}) as { limit?: string };
+      const query = (request.query ?? {}) as { limit?: string; search?: string };
       const limit = query.limit ? Number(query.limit) : 100;
 
       return {
         adminEnabled: Boolean(config.adminApiKey),
-        codes: listActivationCodes(Number.isFinite(limit) ? limit : 100).map(mapActivationCodeForAdmin),
+        codes: listActivationCodes(Number.isFinite(limit) ? Math.floor(limit) : 100, typeof query.search === "string" ? query.search.slice(0, 200) : "").map(mapActivationCodeForAdmin),
       };
     },
   );
@@ -43,6 +44,7 @@ export async function adminActivationRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const body = (request.body ?? {}) as {
+        planCode?: CheckoutPlanCode;
         quantity?: number;
         entitlementDays?: number;
         prefix?: string;
@@ -51,8 +53,16 @@ export async function adminActivationRoutes(app: FastifyInstance) {
       };
 
       const quantity = Number(body.quantity ?? 1);
-      const entitlementDays = Number(body.entitlementDays ?? config.entitlementDays);
+      if (body.planCode != null && !isCheckoutPlanCode(body.planCode)) {
+        return reply.code(400).send({ error: "Unknown activation plan." });
+      }
+      const entitlementDays = body.planCode ? (body.planCode.endsWith("annual") ? 365 : 30) : Number(body.entitlementDays ?? config.entitlementDays);
       const expiresAt = parseExpiresAt(body.expiresAt);
+
+      if ((body.prefix != null && (typeof body.prefix !== "string" || !/^[A-Za-z0-9]{0,8}$/.test(body.prefix))) ||
+          (body.note != null && (typeof body.note !== "string" || body.note.length > 500))) {
+        return reply.code(400).send({ error: "Invalid prefix or note." });
+      }
 
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > 200) {
         return reply.code(400).send({ error: "Quantity must be an integer between 1 and 200." });
@@ -66,7 +76,12 @@ export async function adminActivationRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "Expires at must be a valid ISO date." });
       }
 
+      if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+        return reply.code(400).send({ error: "Redemption deadline must be in the future." });
+      }
+
       const result = generateActivationCodes({
+        planCode: body.planCode,
         quantity,
         entitlementDays,
         prefix: body.prefix,
@@ -81,4 +96,10 @@ export async function adminActivationRoutes(app: FastifyInstance) {
       });
     },
   );
+
+  app.post("/admin/activation-codes/:id/disable", { preHandler: app.requireAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (!disableUnusedActivationCode(id)) return reply.code(409).send({ error: "Only unused activation codes can be disabled." });
+    return { ok: true };
+  });
 }

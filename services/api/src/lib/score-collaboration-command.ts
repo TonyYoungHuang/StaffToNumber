@@ -84,7 +84,13 @@ export function canonicalScoreCommandScopes(score: ScoreJson, command: Canonical
   const scopes = new Set<string>();
   const eventMeasure = new Map(score.measures.flatMap((measure) => measure.events.map((event) => [event.id, measure.id] as const)));
   const addEvent = (eventId: string | undefined) => {
-    if (eventId) scopes.add(`event:${eventId}`);
+    if (eventId) {
+      scopes.add(`event:${eventId}`);
+      for (const anchor of score.interchange?.anchors ?? []) {
+        if (anchor.eventId === eventId && anchor.alternateEventId) scopes.add(`event:${anchor.alternateEventId}`);
+        else if (anchor.alternateEventId === eventId) scopes.add(`event:${anchor.eventId}`);
+      }
+    }
   };
   const addMeasure = (measureId: string | undefined) => {
     if (measureId) scopes.add(`measure:${measureId}`);

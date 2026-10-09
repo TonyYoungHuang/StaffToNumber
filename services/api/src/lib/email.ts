@@ -1,4 +1,5 @@
-import { PRODUCT_NAME, type CheckoutPlanCode } from "@score/shared";
+import { PRODUCT_NAME, normalizeLocale, type PurchasePlanCode } from "@score/shared";
+import { formatMessage, getTransactionalCopy } from "@score/i18n";
 import { config } from "../config.js";
 
 type EmailInput = {
@@ -58,7 +59,7 @@ type CheckoutIntentNotificationEmailInput = {
   provider: "stripe" | "paddle";
   siteEnvironment: string;
   providerEnabled: boolean;
-  planCode?: CheckoutPlanCode | null;
+  planCode?: PurchasePlanCode | null;
   orderId: string;
   userId: string;
   customerEmail: string;
@@ -73,7 +74,35 @@ export function isTransactionalEmailEnabled() {
   return Boolean(config.resendApiKey && config.emailFromAddress);
 }
 
+export function buildPasswordResetUrl(baseUrl: string, token: string, locale?: string | null) {
+  const reset = new URL(baseUrl);
+  reset.searchParams.set("token", token);
+  const selectedLocale = normalizeLocale(locale);
+  if (!selectedLocale) return reset.toString();
+  const handoff = new URL("/api/locale", reset.origin);
+  handoff.searchParams.set("locale", selectedLocale);
+  handoff.searchParams.set("next", `${reset.pathname}${reset.search}${reset.hash}`);
+  return handoff.toString();
+}
+
 export function buildPasswordResetEmail(input: PasswordResetEmailInput) {
+  const locale = normalizeLocale(input.locale);
+  if (locale === "en" || locale === "es" || locale === "de" || locale === "ru") {
+    const copy = getTransactionalCopy(locale);
+    const subject = `${PRODUCT_NAME}: ${copy.resetSubject}`;
+    const lines = [copy.resetIntro, `${copy.account}: ${input.email}`, `${copy.resetAction}: ${input.resetUrl}`, formatMessage(copy.expires, { hours: input.expiresHours }), formatMessage(copy.ignore, { support: config.supportEmail })];
+    return { subject, text: lines.join("\n\n"), html: `<div lang="${locale}" style="font-family:Arial,sans-serif;line-height:1.7"><h2>${escapeHtml(subject)}</h2>${lines.map(line => `<p>${escapeHtml(line)}</p>`).join("")}<p><a href="${escapeHtml(input.resetUrl)}">${escapeHtml(copy.resetAction)}</a></p></div>` };
+  }
+  if (normalizeLocale(input.locale) === "fr") {
+    const subject = `${PRODUCT_NAME} : réinitialisation du mot de passe`;
+    const text = [
+      `Vous avez demandé à réinitialiser votre mot de passe ${PRODUCT_NAME}.`, "",
+      `Adresse du compte : ${input.email}`, `Lien de réinitialisation : ${input.resetUrl}`,
+      `Ce lien expire dans ${input.expiresHours} heure(s).`, "",
+      `Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail ou contactez ${config.supportEmail}.`,
+    ].join("\n");
+    return { subject, text, html: `<div lang="fr" style="font-family:Arial,sans-serif;line-height:1.7;color:#111"><h2>${escapeHtml(subject)}</h2><p>Vous avez demandé à réinitialiser votre mot de passe.</p><p>Adresse du compte : ${escapeHtml(input.email)}</p><p><a href="${escapeHtml(input.resetUrl)}">Réinitialiser mon mot de passe</a></p><p>Ce lien expire dans ${input.expiresHours} heure(s).</p><p>Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail ou contactez ${escapeHtml(config.supportEmail)}.</p></div>` };
+  }
   const isChinese = input.locale === "zh-CN";
   const subject = isChinese
     ? `${PRODUCT_NAME} 密码重置链接`
@@ -123,6 +152,22 @@ export function buildPasswordResetEmail(input: PasswordResetEmailInput) {
 }
 
 export function buildSupportConfirmationEmail(input: SupportConfirmationEmailInput) {
+  const locale = normalizeLocale(input.locale);
+  if (locale === "en" || locale === "es" || locale === "de" || locale === "ru") {
+    const copy = getTransactionalCopy(locale);
+    const subject = `[${input.referenceCode}] ${PRODUCT_NAME}: ${copy.supportSubject}`;
+    const lines = [formatMessage(copy.greeting, { name: input.contactName?.trim() || input.contactEmail }), copy.supportIntro, `${copy.reference}: ${input.referenceCode}`, `${copy.category}: ${input.categoryLabel}`, `${copy.subject}: ${input.subject}`, formatMessage(copy.supportNext, { url: input.supportUrl }), formatMessage(copy.supportContact, { support: config.supportEmail })];
+    return { subject, text: lines.join("\n\n"), html: `<div lang="${locale}" style="font-family:Arial,sans-serif;line-height:1.7"><h2>${escapeHtml(subject)}</h2>${lines.map(line => `<p>${escapeHtml(line)}</p>`).join("")}</div>` };
+  }
+  if (normalizeLocale(input.locale) === "fr") {
+    const greeting = `Bonjour ${input.contactName?.trim() || input.contactEmail},`;
+    const subject = `[${input.referenceCode}] ${PRODUCT_NAME} : demande d’assistance reçue`;
+    const lines = [greeting, "", `Nous avons reçu votre demande d’assistance ${PRODUCT_NAME}.`,
+      `Référence : ${input.referenceCode}`, `Catégorie : ${input.categoryLabel}`, `Objet : ${input.subject}`, "",
+      `Pour ajouter des informations, répondez à cet e-mail ou rendez-vous sur ${input.supportUrl}.`,
+      `Adresse de l’assistance : ${config.supportEmail}`];
+    return { subject, text: lines.join("\n"), html: `<div lang="fr" style="font-family:Arial,sans-serif;line-height:1.7;color:#111"><h2>${escapeHtml(subject)}</h2>${lines.map(line => `<p>${escapeHtml(line)}</p>`).join("")}<p><a href="${escapeHtml(input.supportUrl)}">Contacter l’assistance</a></p></div>` };
+  }
   const isChinese = input.locale === "zh-CN";
   const greetingName = input.contactName?.trim() || input.contactEmail;
   const subject = isChinese
@@ -183,7 +228,7 @@ export function buildSupportConfirmationEmail(input: SupportConfirmationEmailInp
 }
 
 export function buildSupportNotificationEmail(input: SupportNotificationEmailInput) {
-  const localeLabel = input.locale === "zh-CN" ? "zh-CN" : "en";
+  const localeLabel = normalizeLocale(input.locale) ?? "en";
   const subject = `[Support][${input.referenceCode}] ${input.categoryLabel} - ${input.subject}`;
   const lines = [
     `Reference: ${input.referenceCode}`,

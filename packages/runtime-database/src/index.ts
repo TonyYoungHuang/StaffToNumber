@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { deserialize } from "node:v8";
 import { Worker } from "node:worker_threads";
+export { assertAccountStorageQuota, resolveStorageQuotaTier, storageQuotaPolicyFromEnv } from "./storage-quota.js";
 
 export type RuntimeDatabasePrimary = "sqlite" | "postgres";
 

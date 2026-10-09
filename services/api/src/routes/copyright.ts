@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { formatDateTime, getLocaleConfig, getTransactionalCopy, normalizeLocale } from "@score/i18n";
 import { config } from "../config.js";
 import { sendTransactionalEmail } from "../lib/email.js";
 import {
@@ -94,7 +95,8 @@ export async function copyrightRoutes(app: FastifyInstance) {
   app.post("/copyright/complaints", async (request, reply) => {
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (trimText(body.website, 40)) return reply.code(400).send({ error: "Complaint could not be accepted." });
-    const locale = body.locale === "zh-CN" ? "zh-CN" : "en";
+    const locale = normalizeLocale(typeof body.locale === "string" ? body.locale : null) ?? "en";
+    const receiptCopy = getTransactionalCopy(locale);
     const claimantName = trimText(body.claimantName, 120);
     const claimantEmail = normalizeEmail(body.claimantEmail);
     const organization = trimText(body.organization, 160);
@@ -130,15 +132,15 @@ export async function copyrightRoutes(app: FastifyInstance) {
       signature,
       responseHours: config.copyrightResponseHours,
     });
-    const statusUrl = `${config.publicSiteUrl.replace(/\/$/u, "")}/copyright-complaint#track`;
+    const statusUrl = `${config.publicSiteUrl.replace(/\/$/u, "")}${getLocaleConfig(locale).sitePathPrefix}/copyright-complaint#track`;
     const claimantEmailContent = buildEmail({
-      title: locale === "zh-CN" ? "版权投诉已收到" : "Copyright complaint received",
+      title: receiptCopy.copyrightSubject,
       lines: [
-        `${locale === "zh-CN" ? "编号" : "Reference"}: ${complaint.reference_code}`,
-        `${locale === "zh-CN" ? "查询码" : "Access code"}: ${accessCode}`,
-        `${locale === "zh-CN" ? "首次响应目标" : "Initial response target"}: ${complaint.response_due_at}`,
-        `${locale === "zh-CN" ? "查询页面" : "Status page"}: ${statusUrl}`,
-        locale === "zh-CN" ? "请妥善保管查询码；平台不会再次在网页中显示。" : "Keep the access code private; it will not be shown on the website again.",
+        `${receiptCopy.reference}: ${complaint.reference_code}`,
+        `${receiptCopy.accessCode}: ${accessCode}`,
+        `${receiptCopy.responseTarget}: ${formatDateTime(complaint.response_due_at, locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC`,
+        `${receiptCopy.statusPage}: ${statusUrl}`,
+        receiptCopy.keepCode,
       ],
     });
     const operatorEmailContent = buildEmail({
@@ -151,7 +153,7 @@ export async function copyrightRoutes(app: FastifyInstance) {
       ],
     });
     const [confirmation, notification] = await Promise.allSettled([
-      sendTransactionalEmail({ to: claimantEmail, subject: `[${complaint.reference_code}] Copyright complaint received`, ...claimantEmailContent, replyTo: config.supportEmail }),
+      sendTransactionalEmail({ to: claimantEmail, subject: `[${complaint.reference_code}] ${receiptCopy.copyrightSubject}`, ...claimantEmailContent, replyTo: config.supportEmail }),
       sendTransactionalEmail({ to: config.supportEmail, subject: `[Copyright][${complaint.reference_code}] New complaint`, ...operatorEmailContent, replyTo: claimantEmail }),
     ]);
     if (confirmation.status === "rejected") app.log.error({ error: confirmation.reason, referenceCode: complaint.reference_code }, "Copyright confirmation email failed");

@@ -19,6 +19,24 @@ import {
 } from "./upload-security.js";
 import { ObjectStorageUnavailableError } from "./object-storage.js";
 
+test("truncated multipart streams are rejected before scanning and leave no partial file", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-truncated-upload-"));
+  const stream = Object.assign(Readable.from(Buffer.from("%PDF-1.4\npartial")), { truncated: true });
+  let scanned = false;
+  try {
+    await assert.rejects(storeVerifiedUpload({
+      stream, targetPath: path.join(root, "source.pdf"), allowedKinds: uploadKinds.pdf,
+      quarantineDir: path.join(root, ".quarantine"),
+      scan: async () => { scanned = true; return "clean"; },
+    }), (error: unknown) => error instanceof UploadSecurityError && error.code === "FILE_TOO_LARGE" && error.statusCode === 413);
+    assert.equal(scanned, false);
+    assert.equal(fs.existsSync(path.join(root, "source.pdf")), false);
+    assert.deepEqual(await fs.promises.readdir(path.join(root, ".quarantine")), []);
+  } finally {
+    await fs.promises.rm(root, { recursive: true, force: true });
+  }
+});
+
 test("object storage failures retain a retryable 503 upload contract", () => {
   assert.deepEqual(uploadErrorResponse(new ObjectStorageUnavailableError()), {
     statusCode: 503,
@@ -251,7 +269,7 @@ test("PDF raster safety rejects oversized pages and aggregate pixel overages", a
   const policy = { dpi: 300, maxPagePixels: 12_000_000, maxTotalPixels: 120_000_000 };
   try {
     const oversized = await PDFDocument.create();
-    oversized.addPage([17 * 72, 24 * 72]);
+    oversized.addPage([40 * 72, 60 * 72]);
     await fs.promises.writeFile(oversizedPath, await oversized.save());
     await assert.rejects(
       inspectPdfRasterSafety(await fs.promises.readFile(oversizedPath), policy),
@@ -265,7 +283,7 @@ test("PDF raster safety rejects oversized pages and aggregate pixel overages", a
     multiPage.addPage([612, 792]);
     await fs.promises.writeFile(multiPagePath, await multiPage.save());
     await assert.rejects(
-      inspectPdfRasterSafety(await fs.promises.readFile(multiPagePath), { ...policy, maxTotalPixels: 10_000_000 }),
+      inspectPdfRasterSafety(await fs.promises.readFile(multiPagePath), { ...policy, maxTotalPixels: 3_000_000 }),
       (error: unknown) => error instanceof UploadSecurityError
         && error.code === "PDF_TOTAL_PIXEL_LIMIT"
         && error.statusCode === 413,
@@ -280,7 +298,7 @@ test("storeVerifiedUpload keeps an over-budget PDF in quarantine", async () => {
   const targetPath = path.join(root, "stored", "oversized.pdf");
   try {
     const oversized = await PDFDocument.create();
-    oversized.addPage([17 * 72, 24 * 72]);
+    oversized.addPage([40 * 72, 60 * 72]);
     const bytes = await oversized.save();
     await assert.rejects(
       storeVerifiedUpload({

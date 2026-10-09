@@ -215,6 +215,40 @@ export function initDb() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS billing_one_time_purchases (
+      id TEXT PRIMARY KEY,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      plan_code TEXT NOT NULL,
+      plan_ref TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'refunded')),
+      checkout_session_id TEXT UNIQUE,
+      payment_intent_id TEXT UNIQUE,
+      starts_at TEXT,
+      ends_at TEXT,
+      paid_at TEXT,
+      amount_minor INTEGER,
+      currency TEXT,
+      amount_refunded_minor INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_one_time_purchases_user ON billing_one_time_purchases(user_id, status, ends_at);
+
+
+    CREATE TABLE IF NOT EXISTS score_passes (
+      purchase_id TEXT PRIMARY KEY REFERENCES billing_one_time_purchases(id) ON DELETE CASCADE,
+      document_id TEXT UNIQUE,
+      credit_limit INTEGER NOT NULL DEFAULT 10 CHECK (credit_limit > 0),
+      max_pages INTEGER NOT NULL DEFAULT 5 CHECK (max_pages > 0),
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS score_pass_jobs (
+      job_id TEXT PRIMARY KEY,
+      purchase_id TEXT NOT NULL REFERENCES score_passes(purchase_id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_score_pass_jobs_purchase ON score_pass_jobs(purchase_id);
+
     CREATE TABLE IF NOT EXISTS billing_customers (
       id TEXT PRIMARY KEY,
       provider TEXT NOT NULL,
@@ -1064,6 +1098,8 @@ export function initDb() {
   ensureColumn("activation_codes", "expires_at", "TEXT");
   ensureColumn("activation_codes", "created_by", "TEXT");
   ensureColumn("activation_codes", "disabled_at", "TEXT");
+  ensureColumn("activation_codes", "plan_code", "TEXT");
+  ensureColumn("activation_codes", "login_enabled_at", "TEXT");
   ensureColumn("payment_orders", "customer_email", "TEXT");
   ensureColumn("payment_orders", "user_id", "TEXT");
   ensureColumn("payment_orders", "locale", "TEXT");
@@ -1346,6 +1382,9 @@ function validatePostgresSchema() {
     "score_jobs",
     "jobs",
     "billing_subscriptions",
+    "billing_one_time_purchases",
+    "score_passes",
+    "score_pass_jobs",
     "job_dispatch_outbox",
     "service_runtime",
   ];

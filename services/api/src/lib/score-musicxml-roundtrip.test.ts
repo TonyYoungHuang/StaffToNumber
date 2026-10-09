@@ -13,6 +13,136 @@ import {
   validateScoreNotePatch,
 } from "./score-edit.js";
 import { scoreJsonToMusicXml } from "./score-musicxml-export.js";
+import { scoreJsonToPlayback } from "./score-playback.js";
+import { countPlaybackMidiEvents, playbackToMidiFile } from "./score-midi-export.js";
+import { analyzeTransposedScoreRange, transposeScoreJson } from "./score-transpose.js";
+
+const percussionMusicXml = `<score-partwise version="4.0">
+  <part-list><score-part id="Dr"><part-name>Drums</part-name>
+    <midi-instrument id="kick"><midi-channel>10</midi-channel><midi-unpitched>37</midi-unpitched></midi-instrument>
+    <midi-instrument id="snare"><midi-channel>10</midi-channel><midi-unpitched>39</midi-unpitched></midi-instrument>
+  </score-part></part-list>
+  <part id="Dr"><measure number="1">
+    <attributes><divisions>1</divisions><key><fifths>0</fifths></key><clef><sign>percussion</sign></clef></attributes>
+    <note id="kick-note"><unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched><duration>1</duration><instrument id="kick"/><type>quarter</type></note>
+    <note id="snare-note"><chord/><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><instrument id="snare"/><type>quarter</type><notehead>x</notehead></note>
+    <note id="unknown-note"><unpitched><display-step>B</display-step><display-octave>4</display-octave></unpitched><duration>1</duration><type>quarter</type></note>
+    <note id="hidden-rest" print-object="no"><rest/><duration>1</duration><type>quarter</type></note>
+    <note id="last-note"><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><instrument id="snare"/><type>quarter</type></note>
+  </measure></part>
+</score-partwise>`;
+
+test("percussion positions, x noteheads, mapping and hidden placeholders survive MusicXML round trip", () => {
+  const imported = parse(percussionMusicXml);
+  assert.equal(imported.parts[0].midiChannel, 10);
+  assert.equal(imported.measures[0].events.length, 5);
+  const kick = imported.measures[0].events[0];
+  const snare = imported.measures[0].events[1];
+  assert.ok(kick.type === "note" && snare.type === "note");
+  assert.deepEqual(kick.unpitched, { displayStep: "F", displayOctave: 4, instrumentId: "kick", midiPitch: 36 });
+  assert.equal(snare.unpitched?.midiPitch, 38);
+  assert.equal(snare.notehead, "x");
+  assert.equal(imported.measures[0].events[3].printObject, false);
+  const xml = scoreJsonToMusicXml(imported);
+  assert.doesNotMatch(xml, /<pitch>/);
+  assert.match(xml, /<midi-unpitched>39<\/midi-unpitched>/);
+  assert.match(xml, /<notehead>x<\/notehead>/);
+  const reparsed = parse(xml);
+  assert.deepEqual(reparsed.measures[0].events[0], kick);
+  assert.deepEqual(reparsed.measures[0].events[1], snare);
+  const unknown = reparsed.measures[0].events[2];
+  assert.ok(unknown.type === "note");
+  assert.equal(unknown.unpitched?.midiPitch, undefined);
+  assert.equal(reparsed.measures[0].events[3].printObject, false);
+});
+
+test("transposition and range checks preserve percussion instead of treating placement as pitch", () => {
+  const score = parse(percussionMusicXml);
+  const transposed = transposeScoreJson({ score, semitones: 7, generatedAt: "fixture" });
+  assert.deepEqual(transposed.measures[0].events, score.measures[0].events);
+  assert.deepEqual(transposed.measures[0].attributes, score.measures[0].attributes);
+  assert.equal(analyzeTransposedScoreRange(transposed, { id: "fixture", label: "Fixture", minMidi: 0, maxMidi: 127 }).noteCount, 0);
+});
+
+test("percussion playback keeps chord and silent timing, and MIDI uses mapped channel 10 notes", () => {
+  const playback = scoreJsonToPlayback(parse(percussionMusicXml), "fixture");
+  assert.deepEqual(playback.events.map((event) => [event.midi, event.startBeat, event.midiChannel]), [[36, 0, 10], [38, 0, 10], [38, 3, 10]]);
+  assert.equal(playback.totalBeats, 4);
+  assert.match(playback.metadata.warnings.join(" "), /no MIDI drum mapping/);
+  playback.events[0].noteName = "B4";
+  const bytes = Buffer.from(playbackToMidiFile(playback));
+  assert.ok(bytes.includes(Buffer.from([0x99, 36])));
+  assert.ok(bytes.includes(Buffer.from([0x99, 38])));
+  assert.equal(bytes.includes(Buffer.from([0x99, 71])), false);
+  assert.equal(bytes.includes(Buffer.from([0xc9])), false);
+  playback.events.push({ ...playback.events[0], id: "unknown", unpitched: { displayStep: "B", displayOctave: 4 } });
+  assert.equal(countPlaybackMidiEvents(playback), 3);
+});
+
+test("an unmapped percussion note stays silent after exporting beside one known instrument", () => {
+  const score = parse(percussionMusicXml);
+  score.measures[0].events = score.measures[0].events.filter((event) => event.id !== "kick-note");
+  const reparsed = parse(scoreJsonToMusicXml(score));
+  const unknown = reparsed.measures[0].events.find((event) => event.id === "unknown-note");
+  assert.ok(unknown?.type === "note");
+  assert.equal(unknown.unpitched?.midiPitch, undefined);
+  assert.equal(scoreJsonToPlayback(reparsed).events.length, 2);
+});
+
+test("mixed pitched and muted guitar notation keeps its melodic program and channel", () => {
+  const xml = `<score-partwise><part-list><score-part id="Gtr"><part-name>Guitar</part-name><midi-instrument id="Gtr-I1"><midi-channel>2</midi-channel><midi-program>25</midi-program></midi-instrument></score-part></part-list>
+    <part id="Gtr"><measure number="1"><attributes><divisions>1</divisions></attributes>
+      <note id="pitched"><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration></note>
+      <note id="muted"><unpitched><display-step>B</display-step><display-octave>4</display-octave></unpitched><duration>1</duration><instrument id="Gtr-I1"/><notehead>x</notehead></note>
+      <note id="after"><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration></note>
+    </measure></part></score-partwise>`;
+  const score = parse(xml);
+  const exported = scoreJsonToMusicXml(score);
+  assert.doesNotMatch(exported, /<midi-channel>10<\/midi-channel>/);
+  assert.equal((exported.match(/<score-instrument id="Gtr-I1"/g) ?? []).length, 1);
+  const reparsed = parse(exported);
+  assert.equal(reparsed.parts[0].midiProgram, 25);
+  assert.equal(reparsed.parts[0].midiChannel, 2);
+  const playback = scoreJsonToPlayback(reparsed);
+  assert.deepEqual(playback.events.map((event) => [event.midi, event.startBeat]), [[64, 0], [65, 2]]);
+  assert.equal(playback.totalBeats, 3);
+});
+
+test("multi-voice MusicXML backs up the previous voice without counting chords or grace", () => {
+  const xml = `<score-partwise><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes>
+    <note id="upper"><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration><voice>1</voice></note>
+    <note id="chord"><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration><voice>1</voice></note>
+    <note id="grace"><grace/><pitch><step>D</step><octave>5</octave></pitch><voice>1</voice></note>
+    <note id="rest"><rest/><duration>3</duration><voice>1</voice></note>
+    <backup><duration>4</duration></backup>
+    <note id="lower"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>2</voice></note>
+  </measure></part></score-partwise>`;
+  const score = parse(xml);
+  const exported = scoreJsonToMusicXml(score);
+  assert.match(exported, /<backup>\s*<duration>4<\/duration>\s*<\/backup>\s*<note id="lower">/);
+  assert.equal((exported.match(/<backup>/g) ?? []).length, 1);
+  assert.equal(scoreJsonToPlayback(parse(exported)).events.find((event) => event.sourceEventId === "lower")?.startBeat, 0);
+  score.measures[0].events = score.measures[0].events.filter((event) => event.voice !== "2");
+  assert.doesNotMatch(scoreJsonToMusicXml(score), /<backup>/);
+});
+
+test("octave-transposing guitar and bass keep written C4 while sounding C3 after round trip", () => {
+  const xml = `<score-partwise><part-list><score-part id="Gtr"><part-name>Guitar</part-name></score-part><score-part id="Bass"><part-name>Bass</part-name></score-part></part-list>
+    ${["Gtr", "Bass"].map((id) => `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions><transpose><chromatic>0</chromatic><octave-change>-1</octave-change></transpose></attributes><note id="${id}-note"><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note></measure><measure number="2"><note id="${id}-after"><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration></note></measure></part>`).join("")}
+  </score-partwise>`;
+  const score = parse(xml);
+  assert.deepEqual(score.parts.map((part) => part.transposeSemitones), [-12, -12]);
+  const exported = scoreJsonToMusicXml(score);
+  assert.equal((exported.match(/<transpose>/g) ?? []).length, 2);
+  const reopened = parse(exported);
+  assert.deepEqual(reopened.parts.map((part) => part.transposeSemitones), [-12, -12]);
+  assert.ok(reopened.measures[0].events[0].type === "note");
+  assert.deepEqual(reopened.measures[0].events[0].pitch, { step: "C", alter: 0, octave: 4 });
+  assert.deepEqual(scoreJsonToPlayback(reopened).events.map((event) => [event.midi, event.noteName]), [[48, "C3"], [48, "C3"], [50, "D3"], [50, "D3"]]);
+  const percussion = parse(percussionMusicXml);
+  percussion.parts[0].transposeSemitones = -12;
+  assert.deepEqual(scoreJsonToPlayback(percussion).events.map((event) => event.midi), [36, 38, 38]);
+});
 
 const professionalMusicXml = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">
@@ -592,4 +722,24 @@ test("direct measure layout controls survive MusicXML export and reopen", () => 
   assert.equal(reopened.measures[0]?.layout?.newPage, true);
   assert.equal(reopened.measures[0]?.layout?.measureWidth, 360);
   assert.equal(reopened.measures[0]?.layout?.staffDistance, 96);
+});
+
+
+test("MusicXML hook beams use standard space-separated values on interchange", () => {
+  const xml=`<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Test</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>16th</type><beam number="1">forward hook</beam><beam number="2">backward hook</beam></note></measure></part></score-partwise>`;
+  const score=parse(xml);
+  assert.deepEqual(score.measures[0].events[0].beams?.map(beam=>beam.type),["forward-hook","backward-hook"]);
+  assert.ok(!score.metadata.warnings.some(warning=>warning.includes("beam")));
+  const output=scoreJsonToMusicXml(score);
+  assert.match(output,/>forward hook<\/beam>/);assert.match(output,/>backward hook<\/beam>/);
+});
+
+
+test("repeated printed measure numbers retain distinct editable note identities", () => {
+  const musicXml=`<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Test</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure></part></score-partwise>`;
+  const score=parse(musicXml);
+  const events=score.measures.flatMap(measure=>measure.events);
+  assert.equal(events.length,2);
+  assert.equal(new Set(events.map(event=>event.id)).size,2);
+  assert.deepEqual(score.measures.map(measure=>measure.number),["1","1"]);
 });

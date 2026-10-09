@@ -25,7 +25,7 @@ export function getFreeTrialAccess(userId: string): FreeTrialAccess {
   const rows = db.prepare(`
     SELECT params_json
     FROM score_jobs
-    WHERE user_id = ? AND job_type = 'omr_import'
+    WHERE user_id = ? AND job_type = 'omr_import' AND status NOT IN ('failed', 'cancelled')
   `).all(userId) as Array<{ params_json: string | null }>;
   const used = rows.reduce((count, row) => {
     if (!row.params_json) return count;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { config } from "../config.js";
+import { assertAccountStorageQuota } from "@score/runtime-database";
 import { db, initDb } from "../db.js";
 import { processBillingWebhookEvent } from "../repositories/billing-repository.js";
 import {
@@ -17,6 +18,19 @@ function insertUser(id: string, email: string) {
     VALUES (?, ?, 'hash', 'salt', ?, ?, 'active')
   `).run(id, email, now, now);
 }
+
+test("generated outputs and uploads share the free account storage boundary", () => {
+  initDb();
+  const id = `storage-output-${crypto.randomUUID()}`;
+  insertUser(id, `${id}@quota.test`);
+  db.prepare(`INSERT INTO files (id, user_id, original_name, stored_name, storage_path, mime_type, size_bytes, file_kind, created_at)
+    VALUES (?, ?, 'output.pdf', 'output.pdf', '/unused/output.pdf', 'application/pdf', ?, 'rendered_pdf', ?)`)
+    .run(id, id, 49 * 1024 * 1024, new Date().toISOString());
+  assert.doesNotThrow(() => assertAccountStorageQuota(db, id, 1024 * 1024));
+  assert.throws(() => assertAccountStorageQuota(db, id, 2 * 1024 * 1024), /storage quota/);
+  assert.throws(() => assertStorageQuota(id, 2 * 1024 * 1024), /storage quota/);
+  assert.throws(() => assertAccountStorageQuota(db, id, Number.NaN), /storage quota/);
+});
 
 test("free processing and storage quotas reject excess usage", () => {
   initDb();
@@ -70,7 +84,7 @@ test("an active Starter subscription receives 50 monthly jobs", () => {
   const usage = getPlanQuotaUsage(userId);
   assert.equal(usage.tier, "starter");
   assert.equal(usage.jobs.limit, 50);
-  assert.equal(usage.storage.limitBytes, 10 * 1024 * 1024 * 1024);
+  assert.equal(usage.storage.limitBytes, 250 * 1024 * 1024);
   assert.doesNotThrow(() => assertProcessingQuota(userId));
 });
 
@@ -103,7 +117,7 @@ test("a known Starter price stays on Starter quotas even when legacy seat metada
     const usage = getPlanQuotaUsage(userId);
     assert.equal(usage.tier, "starter");
     assert.equal(usage.jobs.limit, 50);
-    assert.equal(usage.storage.limitBytes, 10 * 1024 * 1024 * 1024);
+    assert.equal(usage.storage.limitBytes, 250 * 1024 * 1024);
   } finally {
     config.stripeStarterMonthlyPriceId = previousPlanRef;
   }
@@ -138,7 +152,7 @@ test("a Converter Pro price reference receives 200 monthly jobs", () => {
     const usage = getPlanQuotaUsage(userId);
     assert.equal(usage.tier, "converter-pro");
     assert.equal(usage.jobs.limit, 200);
-    assert.equal(usage.storage.limitBytes, 50 * 1024 * 1024 * 1024);
+    assert.equal(usage.storage.limitBytes, 500 * 1024 * 1024);
   } finally {
     config.stripeConverterProMonthlyPriceId = previousPlanRef;
   }

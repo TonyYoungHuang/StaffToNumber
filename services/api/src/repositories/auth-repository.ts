@@ -1,10 +1,13 @@
+import { listScorePasses } from "../lib/score-passes.js";
 import { randomBytes } from "node:crypto";
-import type { ActivationCodeStatus, EntitlementStatus } from "@score/shared";
+import type { ActivationCodeStatus, EntitlementStatus, CheckoutPlanCode } from "@score/shared";
 import { db } from "../db.js";
-import { createId } from "../lib/auth.js";
+import { createId, createSalt, createToken, hashPassword } from "../lib/auth.js";
 import { addDays, nowIso } from "../lib/time.js";
 import { findActiveSubscriptionEntitlement } from "./billing-repository.js";
+import { addPurchaseMonths, findActiveOneTimePurchase } from "./one-time-purchase-repository.js";
 import { getFreeTrialAccess } from "../lib/free-trial.js";
+import { normalizeActivationCode } from "../lib/activation-code.js";
 
 type UserRow = {
   id: string;
@@ -28,6 +31,8 @@ type SessionRow = {
 };
 
 type ActivationCodeRow = {
+  login_enabled_at: string | null;
+  plan_code: CheckoutPlanCode | null;
   id: string;
   code: string;
   status: ActivationCodeStatus;
@@ -126,6 +131,7 @@ export function findActiveSessionByToken(token: string) {
 }
 
 export function createActivationCode(input: {
+  planCode?: CheckoutPlanCode | null;
   code: string;
   entitlementDays: number;
   batchId?: string | null;
@@ -139,11 +145,11 @@ export function createActivationCode(input: {
   db.prepare(
     `
       INSERT INTO activation_codes (
-        id, code, status, entitlement_days, created_at, batch_id, note, expires_at, created_by, disabled_at, redeemed_at, redeemed_by_user_id
+        id, code, status, entitlement_days, created_at, batch_id, note, expires_at, created_by, disabled_at, redeemed_at, redeemed_by_user_id, plan_code
       )
-      VALUES (?, ?, 'available', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+      VALUES (?, ?, 'available', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
     `,
-  ).run(id, input.code, input.entitlementDays, timestamp, input.batchId ?? null, input.note ?? null, input.expiresAt ?? null, input.createdBy ?? null);
+  ).run(id, input.code, input.entitlementDays, timestamp, input.batchId ?? null, input.note ?? null, input.expiresAt ?? null, input.createdBy ?? null, input.planCode ?? null);
 }
 
 export function findActivationCodeByCode(code: string) {
@@ -151,7 +157,7 @@ export function findActivationCodeByCode(code: string) {
     .prepare(
       `
         SELECT id, code, status, entitlement_days, created_at, redeemed_at, redeemed_by_user_id
-               , batch_id, note, expires_at, created_by, disabled_at
+               , batch_id, note, expires_at, created_by, disabled_at, plan_code, login_enabled_at
         FROM activation_codes
         WHERE code = ?
       `,
@@ -164,7 +170,7 @@ export function findActivationCodeById(id: string) {
     .prepare(
       `
         SELECT id, code, status, entitlement_days, created_at, redeemed_at, redeemed_by_user_id
-               , batch_id, note, expires_at, created_by, disabled_at
+               , batch_id, note, expires_at, created_by, disabled_at, plan_code, login_enabled_at
         FROM activation_codes
         WHERE id = ?
       `,
@@ -180,6 +186,7 @@ export function ensureActivationCode(code: string, entitlementDays: number) {
 }
 
 export function generateActivationCodes(input: {
+  planCode?: CheckoutPlanCode;
   quantity: number;
   entitlementDays: number;
   prefix?: string;
@@ -191,10 +198,13 @@ export function generateActivationCodes(input: {
   const batchId = createId();
   const codes: ActivationCodeRow[] = [];
 
+  db.exec("BEGIN");
+  try {
   for (let index = 0; index < quantity; index += 1) {
     const code = createUniqueActivationCode(input.prefix);
     createActivationCode({
       code,
+      planCode: input.planCode,
       entitlementDays: input.entitlementDays,
       batchId,
       note: input.note,
@@ -207,6 +217,8 @@ export function generateActivationCodes(input: {
       codes.push(created);
     }
   }
+  db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
 
   return {
     batchId,
@@ -234,17 +246,23 @@ export function issueActivationCode(input: {
   return findActivationCodeByCode(code);
 }
 
-export function listActivationCodes(limit = 100) {
+export function listActivationCodes(limit = 100, search = "") {
   return db
     .prepare(
       `
-        SELECT id, code, status, entitlement_days, created_at, batch_id, note, expires_at, created_by, disabled_at, redeemed_at, redeemed_by_user_id
+        SELECT id, code, status, entitlement_days, created_at, batch_id, note, expires_at, created_by, disabled_at, redeemed_at, redeemed_by_user_id, plan_code, login_enabled_at
         FROM activation_codes
+        WHERE lower(code || ' ' || COALESCE(note, '') || ' ' || COALESCE(batch_id, '')) LIKE lower(?) ESCAPE '!'
         ORDER BY datetime(created_at) DESC
         LIMIT ?
       `,
     )
-    .all(Math.max(1, Math.min(limit, 200))) as ActivationCodeRow[];
+    .all(`%${search.replace(/[!%_]/g, "!$&")}%`, Math.max(1, Math.min(limit, 200))) as ActivationCodeRow[];
+}
+
+export function disableUnusedActivationCode(id: string) {
+  const result = db.prepare("UPDATE activation_codes SET status = 'disabled', disabled_at = ? WHERE id = ? AND status = 'available'").run(nowIso(), id);
+  return Number(result.changes) === 1;
 }
 
 export function findLatestEntitlementByUserId(userId: string) {
@@ -261,59 +279,102 @@ export function findLatestEntitlementByUserId(userId: string) {
     .get(userId) as EntitlementRow | undefined;
 }
 
-export function redeemActivationCode(userId: string, code: string) {
-  const timestamp = nowIso();
-  const codeRow = findActivationCodeByCode(code);
+// Call only inside a transaction. Lock the code before the account consistently.
+function lockActivationCode(code: string) {
+  const row = findActivationCodeByCode(code) ?? findActivationCodeByCode(normalizeActivationCode(code));
+  if (!row || db.primary !== "postgres") return row;
+  db.prepare("SELECT id FROM activation_codes WHERE id = ? FOR UPDATE").get(row.id);
+  return findActivationCodeById(row.id);
+}
 
-  if (!codeRow) {
-    return { ok: false as const, reason: "not_found" };
+export function hasActivationCodeLogin(userId: string) {
+  return Boolean(db.prepare("SELECT id FROM activation_codes WHERE redeemed_by_user_id = ? AND login_enabled_at IS NOT NULL AND status = 'redeemed' LIMIT 1").get(userId));
+}
+
+function redeemInTransaction(userId: string, codeRow: ActivationCodeRow | undefined) {
+  if (!codeRow) return { ok: false as const, reason: "not_found" };
+  if (codeRow.status === "disabled") return { ok: false as const, reason: "disabled" };
+  if (codeRow.status === "redeemed" && codeRow.redeemed_by_user_id === userId) {
+    const entitlement = db.prepare("SELECT id, user_id, activation_code_id, starts_at, ends_at, created_at FROM user_entitlements WHERE activation_code_id = ? AND user_id = ?").get(codeRow.id, userId) as EntitlementRow | undefined;
+    if (entitlement) return { ok: true as const, entitlement, alreadyRedeemed: true };
   }
-
-  if (codeRow.status !== "available") {
-    return { ok: false as const, reason: "unavailable" };
-  }
-
-  if (codeRow.expires_at && new Date(codeRow.expires_at) <= new Date()) {
-    return { ok: false as const, reason: "expired" };
-  }
-
-  const latestEntitlement = findLatestEntitlementByUserId(userId);
+  if (codeRow.status !== "available") return { ok: false as const, reason: "unavailable" };
+  if (codeRow.expires_at && new Date(codeRow.expires_at) <= new Date()) return { ok: false as const, reason: "expired" };
+  if (db.primary === "postgres") db.prepare("SELECT id FROM users WHERE id = ? FOR UPDATE").get(userId);
+  if (findUserById(userId)?.account_status !== "active") return { ok: false as const, reason: "account_unavailable" };
+  const timestamp = nowIso(), entitlementId = createId();
+  const tier = codeRow.plan_code?.startsWith("converter-pro") ? "converter-pro" : "starter";
+  const latestEntitlement = db.prepare(`SELECT e.ends_at FROM user_entitlements e
+    JOIN activation_codes c ON c.id = e.activation_code_id
+    WHERE e.user_id = ? AND (CASE WHEN c.plan_code LIKE 'converter-pro-%' THEN 'converter-pro' ELSE 'starter' END) = ?
+    ORDER BY datetime(e.ends_at) DESC LIMIT 1`).get(userId, tier) as { ends_at: string } | undefined;
   const now = new Date();
-  const startsAt =
-    latestEntitlement && new Date(latestEntitlement.ends_at) > now ? new Date(latestEntitlement.ends_at) : now;
-  const endsAt = addDays(startsAt, codeRow.entitlement_days).toISOString();
-  const entitlementId = createId();
+  const startsAt = latestEntitlement && new Date(latestEntitlement.ends_at) > now ? new Date(latestEntitlement.ends_at) : now;
+  const endsAt = codeRow.plan_code
+    ? addPurchaseMonths(startsAt.toISOString(), codeRow.plan_code.endsWith("annual") ? 12 : 1)
+    : addDays(startsAt, codeRow.entitlement_days).toISOString();
+  const claimed = db.prepare(`UPDATE activation_codes SET status = 'redeemed', redeemed_at = ?, redeemed_by_user_id = ?
+    WHERE id = ? AND status = 'available'`).run(timestamp, userId, codeRow.id);
+  if (Number(claimed.changes) !== 1) return { ok: false as const, reason: "unavailable" };
+  db.prepare(`INSERT INTO user_entitlements (id, user_id, activation_code_id, starts_at, ends_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)`).run(entitlementId, userId, codeRow.id, startsAt.toISOString(), endsAt, timestamp);
+  return { ok: true as const, entitlement: db.prepare("SELECT id, user_id, activation_code_id, starts_at, ends_at, created_at FROM user_entitlements WHERE id = ?").get(entitlementId) as EntitlementRow, alreadyRedeemed: false };
+}
 
+export function redeemActivationCode(userId: string, code: string) {
   db.exec("BEGIN");
-
   try {
-    db.prepare(
-      `
-        UPDATE activation_codes
-        SET status = 'redeemed',
-            redeemed_at = ?,
-            redeemed_by_user_id = ?
-        WHERE id = ?
-      `,
-    ).run(timestamp, userId, codeRow.id);
-
-    db.prepare(
-      `
-        INSERT INTO user_entitlements (id, user_id, activation_code_id, starts_at, ends_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `,
-    ).run(entitlementId, userId, codeRow.id, startsAt.toISOString(), endsAt, timestamp);
-
+    const row = lockActivationCode(code);
+    const result = redeemInTransaction(userId, row);
+    // Renewal codes add time to the same account, but do not become additional
+    // login credentials automatically. The buyer continues using the original key.
     db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
+    return result;
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+}
 
-  return {
-    ok: true as const,
-    entitlement: findLatestEntitlementByUserId(userId),
-  };
+export function signInWithActivationCode(code: string) {
+  db.exec("BEGIN");
+  try {
+    const row = lockActivationCode(code);
+    if (!row || row.status === "disabled") {
+      db.exec("ROLLBACK");
+      return { ok: false as const, reason: row ? "disabled" : "not_found" };
+    }
+    if (row.status === "redeemed") {
+      const user = row.redeemed_by_user_id ? findUserById(row.redeemed_by_user_id) : undefined;
+      db.exec("COMMIT");
+      if (!row.login_enabled_at) return { ok: false as const, reason: "login_not_enabled" };
+      if (!user || user.account_status !== "active") return { ok: false as const, reason: "account_unavailable" };
+      return { ok: true as const, userId: user.id, isNewUser: false };
+    }
+    if (row.status !== "available" || (row.expires_at && new Date(row.expires_at) <= new Date())) {
+      db.exec("ROLLBACK");
+      return { ok: false as const, reason: "expired" };
+    }
+    // The internal address is never a customer prerequisite or a deliverable mailbox.
+    const salt = createSalt();
+    const user = createUser(`${createId()}@activation.scoretransposer.invalid`, hashPassword(createToken(), salt), salt)!;
+    const result = redeemInTransaction(user.id, row);
+    if (!result.ok) { db.exec("ROLLBACK"); return result; }
+    db.prepare("UPDATE activation_codes SET login_enabled_at = ? WHERE id = ?").run(nowIso(), row.id);
+    db.exec("COMMIT");
+    return { ok: true as const, userId: user.id, isNewUser: true };
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+}
+
+export function enableActivationCodeLogin(userId: string, code: string) {
+  db.exec("BEGIN");
+  try {
+    const row = lockActivationCode(code);
+    if (!row || row.status !== "redeemed" || row.redeemed_by_user_id !== userId || findUserById(userId)?.account_status !== "active") {
+      db.exec("ROLLBACK");
+      return false;
+    }
+    db.prepare("UPDATE activation_codes SET login_enabled_at = COALESCE(login_enabled_at, ?) WHERE id = ?").run(nowIso(), row.id);
+    db.exec("COMMIT");
+    return true;
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
 }
 
 export function getUserProfile(userId: string) {
@@ -324,10 +385,11 @@ export function getUserProfile(userId: string) {
 
   const entitlement = findLatestEntitlementByUserId(userId);
   const subscriptionEntitlement = findActiveSubscriptionEntitlement(db, userId);
+  const purchase = findActiveOneTimePurchase(db, userId);
   const now = new Date();
   let entitlementStatus: EntitlementStatus = "inactive";
 
-  if (subscriptionEntitlement) {
+  if (subscriptionEntitlement || purchase) {
     entitlementStatus = "active";
   } else if (entitlement) {
     entitlementStatus = new Date(entitlement.ends_at) > now ? "active" : "expired";
@@ -342,6 +404,8 @@ export function getUserProfile(userId: string) {
         provider: subscriptionEntitlement.provider,
         organizationId: subscriptionEntitlement.organizationId,
       }
+    : purchase
+      ? { status: entitlementStatus, startsAt: purchase.starts_at, endsAt: purchase.ends_at, source: "one_time" as const, provider: "stripe" as const, organizationId: null }
     : entitlement
       ? {
           status: entitlementStatus,
@@ -363,12 +427,14 @@ export function getUserProfile(userId: string) {
   return {
     id: user.id,
     email: user.email,
+    codeLoginEnabled: hasActivationCodeLogin(user.id),
     createdAt: user.created_at,
     accountStatus: user.account_status,
     deletionRequestedAt: user.deletion_requested_at,
     scheduledDeletionAt: user.scheduled_deletion_at,
     entitlement: effectiveEntitlement,
     freeTrial: getFreeTrialAccess(user.id),
+    scorePasses: listScorePasses(db, user.id),
   };
 }
 
@@ -471,6 +537,7 @@ export function completePasswordReset(input: {
 
 export function mapActivationCodeForAdmin(codeRow: ActivationCodeRow) {
   return {
+    planCode: codeRow.plan_code,
     id: codeRow.id,
     code: codeRow.code,
     status: codeRow.status,
@@ -504,8 +571,8 @@ function buildActivationCode(prefix?: string) {
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 8);
 
-  const random = randomBytes(5).toString("hex").toUpperCase();
-  const segments = [random.slice(0, 4), random.slice(4, 8), random.slice(8, 10)];
+  const random = randomBytes(16).toString("hex").toUpperCase();
+  const segments = random.match(/.{4}/g)!;
 
   return sanitizedPrefix ? `${sanitizedPrefix}-${segments.join("-")}` : segments.join("-");
 }

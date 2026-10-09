@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { config } from "../config.js";
 import { createSalt, createToken, hashPassword, verifyPassword } from "../lib/auth.js";
-import { buildPasswordResetEmail, sendTransactionalEmail } from "../lib/email.js";
+import { buildPasswordResetEmail, buildPasswordResetUrl, sendTransactionalEmail } from "../lib/email.js";
 import { verifyGoogleCredential } from "../lib/google-auth.js";
 import { buildExpiredSessionCookie, buildSessionCookie } from "../lib/session-cookie.js";
 import {
@@ -13,6 +13,8 @@ import {
   findUserByEmail,
   getUserProfile,
   revokeSession,
+  signInWithActivationCode,
+  enableActivationCodeLogin,
 } from "../repositories/auth-repository.js";
 
 function normalizeEmail(value: string) {
@@ -44,6 +46,39 @@ function attachSessionCookie(reply: FastifyReply, token: string) {
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  app.post("/auth/activation-code", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const body = (request.body ?? {}) as { code?: unknown };
+    if (typeof body.code !== "string" || !body.code.trim() || body.code.length > 128) {
+      return reply.code(400).send({ error: "Activation code is required." });
+    }
+    const result = signInWithActivationCode(body.code.trim());
+    if (!result.ok) {
+      const errors: Record<string, string> = {
+        not_found: "Activation code not found.", disabled: "Activation code has been disabled.",
+        expired: "Activation code has expired.", login_not_enabled: "Code login must be enabled by the existing account.",
+        account_unavailable: "This code account is unavailable.",
+      };
+      return reply.code(401).send({ error: errors[result.reason] ?? "Activation code already used.", code: `ACTIVATION_${result.reason.toUpperCase()}` });
+    }
+    const token = createToken();
+    createSession(result.userId, token, config.sessionDays);
+    attachSessionCookie(reply, token);
+    return reply.send({ token, user: getUserProfile(result.userId), isNewUser: result.isNewUser });
+  });
+
+  app.post("/auth/enable-code-login", { preHandler: app.requireAuth }, async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const body = (request.body ?? {}) as { code?: unknown };
+    if (typeof body.code !== "string" || !body.code.trim() || body.code.length > 128) {
+      return reply.code(400).send({ error: "Activation code is required." });
+    }
+    if (!enableActivationCodeLogin(request.authUserId!, body.code.trim())) {
+      return reply.code(409).send({ error: "Only a code redeemed by this account can enable login." });
+    }
+    return reply.send({ ok: true, user: getUserProfile(request.authUserId!) });
+  });
+
   app.post("/auth/register", async (request, reply) => {
     const body = (request.body ?? {}) as { email?: string; password?: string };
     const validationError = validateCredentials(body.email, body.password);
@@ -186,7 +221,7 @@ export async function authRoutes(app: FastifyInstance) {
       });
 
       if (resetToken) {
-        const resetUrl = `${config.resetPasswordUrlBase}?token=${encodeURIComponent(resetToken.token)}`;
+        const resetUrl = buildPasswordResetUrl(config.resetPasswordUrlBase, resetToken.token, body.locale);
         const emailContent = buildPasswordResetEmail({
           email,
           locale: body.locale ?? null,

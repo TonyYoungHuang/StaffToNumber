@@ -4,6 +4,7 @@ import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
 import { findActivationCodeById, findUserByEmail, issueActivationCode, redeemActivationCode } from "./auth-repository.js";
+import { findOneTimePurchase } from "./one-time-purchase-repository.js";
 
 export type PaymentOrderRow = {
   id: string;
@@ -117,6 +118,7 @@ export function findPaymentOrderByTransactionId(transactionId: string) {
 }
 
 export function attachStripeCheckoutSession(orderId: string, sessionId: string, checkoutUrl: string | null) {
+  db.prepare("UPDATE billing_one_time_purchases SET checkout_session_id = ? WHERE id = ? AND checkout_session_id IS NULL").run(sessionId, orderId);
   db.prepare(
     `
       UPDATE payment_orders
@@ -180,7 +182,9 @@ export function completePaymentOrder(input: {
     return existing;
   }
 
-  if (existing.billing_kind === "subscription") {
+  const purchase = existing.billing_kind === "one_time" ? findOneTimePurchase(db, existing.id) : undefined;
+  if (purchase && !purchase.paid_at) throw new Error("One-time access must be fulfilled before marking payment complete.");
+  if (existing.billing_kind === "subscription" || purchase) {
     const timestamp = nowIso();
     db.prepare(`
       UPDATE payment_orders
@@ -237,6 +241,7 @@ export function completePaymentOrder(input: {
 }
 
 export function mapPaymentOrderForPublic(order: PaymentOrderRow) {
+  const purchase = order.billing_kind === "one_time" ? findOneTimePurchase(db, order.id) : undefined;
   return {
     id: order.id,
     provider: order.provider,
@@ -255,6 +260,10 @@ export function mapPaymentOrderForPublic(order: PaymentOrderRow) {
       currency: order.currency,
       activationCode: order.user_id ? null : order.activation_code,
     paidAt: order.paid_at,
+    accessStartsAt: purchase?.starts_at ?? null,
+    accessEndsAt: purchase?.ends_at ?? null,
+    purchaseStatus: purchase?.status ?? null,
+    planCode: purchase?.plan_code ?? null,
     cancelledAt: order.cancelled_at,
     createdAt: order.created_at,
     updatedAt: order.updated_at,

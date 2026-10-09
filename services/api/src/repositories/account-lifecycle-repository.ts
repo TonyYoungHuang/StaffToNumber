@@ -135,6 +135,10 @@ export function buildAccountDataExport(userId: string) {
        FROM payment_orders WHERE user_id = ? ORDER BY created_at`,
       userId,
     ),
+    oneTimePurchases: rows(
+      `SELECT id, plan_code, status, starts_at, ends_at, paid_at, amount_minor, currency, amount_refunded_minor
+       FROM billing_one_time_purchases WHERE user_id = ? ORDER BY created_at`, userId,
+    ),
     billingSubscriptions: rows(
       `SELECT provider, provider_subscription_id, status, plan_ref, seat_quantity, current_period_start,
               current_period_end, cancel_at_period_end, canceled_at, ended_at, last_payment_failed_at, created_at, updated_at

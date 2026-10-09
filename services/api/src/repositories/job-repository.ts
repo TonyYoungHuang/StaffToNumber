@@ -4,6 +4,7 @@ import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
 import { assertProcessingQuota } from "../lib/plan-quotas.js";
+import { lockScorePassAccount } from "../lib/score-passes.js";
 
 type JobRow = {
   id: string;
@@ -25,20 +26,28 @@ type JobRow = {
 };
 
 export function createJob(input: { userId: string; inputFileId: string; direction: ConversionDirection }) {
-  assertProcessingQuota(input.userId);
   const timestamp = nowIso();
   const id = createId();
   const context = currentRequestContext();
 
-  db.prepare(
-    `
-      INSERT INTO jobs (
-        id, user_id, input_file_id, direction, status, result_kind, error_message,
-        request_id, trace_id, created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
-      )
-      VALUES (?, ?, ?, ?, 'queued', 'none', NULL, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)
-    `,
-  ).run(id, input.userId, input.inputFileId, input.direction, context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    lockScorePassAccount(db, input.userId);
+    assertProcessingQuota(input.userId);
+    db.prepare(
+      `
+        INSERT INTO jobs (
+          id, user_id, input_file_id, direction, status, result_kind, error_message,
+          request_id, trace_id, created_at, updated_at, started_at, completed_at, output_file_id, draft_bundle_file_id, preview_text
+        )
+        VALUES (?, ?, ?, ?, 'queued', 'none', NULL, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)
+      `,
+    ).run(id, input.userId, input.inputFileId, input.direction, context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 
   return findJobById(id);
 }

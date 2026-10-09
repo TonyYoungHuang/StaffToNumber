@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
+import { isSupportedLocale } from "@score/i18n";
 import { config } from "../config.js";
 import { db } from "../db.js";
 import {
@@ -881,8 +882,8 @@ export async function educationRoutes(app: FastifyInstance) {
     if (typeof body.emailClassroomAnnouncements !== "boolean") {
       return reply.code(400).send({ error: "Email classroom announcement preference must be true or false." });
     }
-    if (body.locale !== "zh-CN" && body.locale !== "en") {
-      return reply.code(400).send({ error: "Notification locale must be zh-CN or en." });
+    if (typeof body.locale !== "string" || !isSupportedLocale(body.locale)) {
+      return reply.code(400).send({ error: "Select a supported notification language." });
     }
     const preferences = updateNotificationPreferences(db, {
       userId: request.authUserId!,

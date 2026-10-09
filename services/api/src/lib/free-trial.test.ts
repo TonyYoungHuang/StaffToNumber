@@ -8,6 +8,7 @@ import { parseJianpuToScoreJson } from "./jianpu-score-parser.js";
 import { authPlugin } from "../plugins/auth.js";
 import { scoreRoutes } from "../routes/scores.js";
 import { createSession } from "../repositories/auth-repository.js";
+import { retryScoreJob } from "../repositories/score-repository.js";
 import {
   assertFreeTrialOmrAvailable,
   FreeTrialLimitError,
@@ -23,6 +24,27 @@ function insertUser(id: string, email: string) {
     VALUES (?, ?, 'hash', 'salt', ?, ?, 'active')
   `).run(id, email, now, now);
 }
+
+test("failed recognition releases the free allowance but retrying reserves it again", () => {
+  initDb();
+  const userId=crypto.randomUUID(),documentId=crypto.randomUUID(),jobId=crypto.randomUUID(),fileId=crypto.randomUUID(),now=new Date().toISOString();
+  insertUser(userId,`${userId}@retry.test`);
+  db.prepare("INSERT INTO score_documents (id,user_id,title,status,created_at,updated_at) VALUES (?,?,'Retry test','candidate',?,?)").run(documentId,userId,now,now);
+  db.prepare("INSERT INTO files (id,user_id,original_name,stored_name,storage_path,mime_type,size_bytes,file_kind,created_at) VALUES (?,?,'score.png','score.png','/unused/score.png','image/png',100,'source_image',?)").run(fileId,userId,now);
+  db.prepare("INSERT INTO score_jobs (id,user_id,document_id,input_file_id,job_type,status,params_json,created_at,updated_at) VALUES (?,?,?,?,'omr_import','failed',?,?,?)").run(jobId,userId,documentId,fileId,JSON.stringify({freeTrial:true}),now,now);
+  assert.equal(getFreeTrialAccess(userId).available,true);
+  const retry = retryScoreJob({jobId,userId,documentId})!;
+  assert.equal(retry.status,"queued");
+  assert.notEqual(retry.id, jobId);
+  assert.equal(JSON.parse(retry.params_json!).recoveryOfJobId, jobId);
+  assert.equal(retryScoreJob({jobId,userId,documentId})?.id, retry.id, "duplicate retry must not reserve twice");
+  assert.equal((db.prepare("SELECT status FROM score_jobs WHERE id=?").get(jobId) as {status:string}).status,"failed");
+  assert.equal(getFreeTrialAccess(userId).available,false);
+  db.prepare("UPDATE score_jobs SET status='failed' WHERE id=?").run(retry.id);
+  db.prepare("INSERT INTO score_jobs (id,user_id,document_id,job_type,status,params_json,created_at,updated_at) VALUES (?,?,?,'omr_import','processing',?,?,?)").run(crypto.randomUUID(),userId,documentId,JSON.stringify({freeTrial:true}),now,now);
+  assert.throws(()=>retryScoreJob({jobId,userId,documentId}),FreeTrialLimitError);
+  assert.equal((db.prepare("SELECT status FROM score_jobs WHERE id=?").get(jobId) as {status:string}).status,"failed");
+});
 
 test("a new account receives exactly one OMR preview before upgrade", () => {
   initDb();
@@ -135,6 +157,7 @@ test("the lifetime free project can use an endpoint that was previously paid-onl
       headers: { authorization: `Bearer ${token}` },
     });
     assert.equal(playback.statusCode, 200, playback.body);
+    assert.equal(playback.json<{ revisionId: string }>().revisionId, revisionId);
     assert.ok(playback.json<{ playback: { events: unknown[] } }>().playback.events.length > 0);
   } finally {
     await app.close();

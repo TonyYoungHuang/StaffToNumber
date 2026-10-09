@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { PaymentProvider } from "@score/shared";
 import { createId } from "../lib/auth.js";
+import { listOneTimePurchases } from "./one-time-purchase-repository.js";
 
 export type BillingSubscriptionStatus =
   | "trialing"
@@ -397,5 +398,5 @@ export function listBillingForUser(database: RuntimeDatabaseLike, userId: string
     JOIN billing_subscriptions subscriptions ON subscriptions.id = seats.subscription_id
     WHERE subscriptions.user_id = ? ORDER BY datetime(seats.assigned_at) DESC
   `).all(userId);
-  return { subscriptions, invoices, seatAssignments };
+  return { subscriptions, invoices, seatAssignments, purchases: listOneTimePurchases(database, userId) };
 }

@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { getTransactionalCopy } from "@score/i18n";
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
@@ -158,7 +159,7 @@ export function createCopyrightComplaint(input: {
       fromStatus: null,
       toStatus: "received",
       actorType: "claimant",
-      publicMessage: input.locale === "zh-CN" ? "投诉材料已收到，等待完整性核验。" : "Complaint received and awaiting completeness review.",
+      publicMessage: getTransactionalCopy(input.locale).copyrightReceived,
       createdAt,
     });
     db.exec("COMMIT");
