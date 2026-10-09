@@ -1,0 +1,96 @@
+{
+  "checkedAtUtc": "2026-10-07T12:24:06.281341+00:00",
+  "status": "passed",
+  "disk": {
+    "totalBytes": 39956590592,
+    "availableBeforeBytes": 6577778688,
+    "availableAfterBytes": 11876311040,
+    "spaceReleasedBytes": 5298532352
+  },
+  "workerCapacity": {
+    "freeBytes": 11876311040,
+    "safetyFloorBytes": 6442450944,
+    "jobReserveBytes": 104857600,
+    "marginAboveJobStartThresholdBytes": 5329002496,
+    "capacityCheckPassed": true
+  },
+  "removedImageAndBuildLayerCount": 98,
+  "removedFailedTemporaryBuildContainerCount": 1,
+  "preservedRunningContainerCount": 16,
+  "preservedStoppedContainerCount": 3,
+  "runtimeIdentityAndMountsUnchanged": true,
+  "healthAndRestartStatesPreserved": true,
+  "rollbackChecks": [
+    {
+      "release": "20261007-progress2",
+      "allBackupImageReferencesExist": true,
+      "scriptsParse": true,
+      "manifestSha256": "310ef079cd414aa59ebe98e596d718f98e96483c555881e2c42840d34cd7ddb9"
+    },
+    {
+      "release": "20261007-progress1",
+      "allBackupImageReferencesExist": true,
+      "scriptsParse": true,
+      "manifestSha256": "fa15525d42f1f51117e23046b2a1382f0c1b116a159b0960f3b1f1f65d95eaac"
+    },
+    {
+      "release": "20261007-recovery1",
+      "allBackupImageReferencesExist": true,
+      "scriptsParse": true,
+      "manifestSha256": "499b206070c332e7ea580edd01ee8306d435ff22b7ec6b92e6e0f2dc7fa6b53d"
+    }
+  ],
+  "publicHealth": {
+    "checkedAtUtc": "2026-10-07T12:25:17.864606+00:00",
+    "checks": [
+      {
+        "url": "https://scoretransposer.com/",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/",
+        "tlsVerified": true
+      },
+      {
+        "url": "https://app.scoretransposer.com/",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/",
+        "tlsVerified": true
+      },
+      {
+        "url": "https://api.scoretransposer.com/health",
+        "status": 200,
+        "finalUrl": "https://api.scoretransposer.com/health",
+        "tlsVerified": true
+      },
+      {
+        "url": "https://ctcsolteacher.com/",
+        "status": 200,
+        "finalUrl": "https://ctcsolteacher.com/",
+        "tlsVerified": true
+      },
+      {
+        "url": "https://adiostv.com/",
+        "status": 200,
+        "finalUrl": "https://adiostv.com/en",
+        "tlsVerified": true
+      },
+      {
+        "url": "https://polyoddstools.com/",
+        "status": 200,
+        "finalUrl": "https://polyoddstools.com/en",
+        "tlsVerified": true
+      },
+      {
+        "url": "https://app.scoretransposer.com/login",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/login",
+        "tlsVerified": true
+      }
+    ],
+    "passed": true
+  },
+  "customerDataOrBillingModified": false,
+  "newOmrTaskCreated": false,
+  "globalPruneOrForcedDeletionUsed": false,
+  "serverAuditDirectory": "/srv/sites/scoretransposer/operations/storage-cleanup-20261007-1208/",
+  "limitation": "Available headroom changes with builds, uploads and temporary files; this is not a guarantee for unlimited page sizes or concurrency."
+}

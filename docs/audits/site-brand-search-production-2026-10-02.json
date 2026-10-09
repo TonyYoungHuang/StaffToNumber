@@ -1,0 +1,952 @@
+{
+  "release": "20261002-brand1",
+  "baseCommit": "4920c45773569ac5acba0899af07a79bedf44b10",
+  "workingTreeRelease": true,
+  "changedSources": [
+    "apps/www/scripts/generate-site-icons.mjs",
+    "apps/www/src/app/favicon.ico",
+    "apps/www/src/app/icon1.png",
+    "apps/www/src/app/icon2.png",
+    "apps/www/src/app/page.tsx"
+  ],
+  "local": {
+    "phase": "local",
+    "startedAt": "2026-10-02T07:18:54.505Z",
+    "pages": [
+      {
+        "path": "/",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/zh-cn",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/zh-tw",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/ja",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/ko",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/fr",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/es",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/de",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/ru",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/transpose-score",
+        "websiteSchemas": 0,
+        "existingSeoUnchanged": false,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/pricing",
+        "websiteSchemas": 0,
+        "existingSeoUnchanged": false,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      }
+    ],
+    "assets": [
+      {
+        "path": "/favicon.ico",
+        "status": 200,
+        "type": "image/x-icon",
+        "bytes": 5952,
+        "sha256": "246a33e660c06fc20131c8321742e565590a044858995f7402a3186fee7415b6",
+        "sizes": [
+          16,
+          32,
+          48,
+          64
+        ]
+      },
+      {
+        "path": "/icon.svg",
+        "status": 200,
+        "type": "image/svg+xml",
+        "bytes": 803,
+        "sha256": "6c1d60e7ff6db2f9dd7ebab020b9c5b7e07d542a5230be20434cf2b05c600778"
+      },
+      {
+        "path": "/icon1.png",
+        "status": 200,
+        "type": "image/png",
+        "bytes": 3001,
+        "sha256": "8c9a61c8db4fa39bcb04b9d629e0c3b9dfdf89309eda50a19a7e0f7b33b2ceb8",
+        "size": 96
+      },
+      {
+        "path": "/icon2.png",
+        "status": 200,
+        "type": "image/png",
+        "bytes": 6026,
+        "sha256": "218e5242a9264ead76ffb3e769a62952bf6737985ed7de741eab5d655731c277",
+        "size": 192
+      }
+    ],
+    "errors": [],
+    "finishedAt": "2026-10-02T07:19:06.342Z"
+  },
+  "production": {
+    "phase": "production",
+    "startedAt": "2026-10-02T07:24:55.299Z",
+    "pages": [
+      {
+        "path": "/",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/zh-cn",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/zh-tw",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/ja",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/ko",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/fr",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/es",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/de",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/ru",
+        "websiteSchemas": 1,
+        "existingSeoUnchanged": true,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/transpose-score",
+        "websiteSchemas": 0,
+        "existingSeoUnchanged": false,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      },
+      {
+        "path": "/pricing",
+        "websiteSchemas": 0,
+        "existingSeoUnchanged": false,
+        "icons": [
+          {
+            "href": "/favicon.ico?favicon.2se4sv4ug-igv.ico",
+            "type": "image/x-icon",
+            "sizes": "64x64"
+          },
+          {
+            "href": "/icon.svg?icon.0em7t3odezlz-.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+          },
+          {
+            "href": "/icon1.png?icon1.2v76xp4_gvxmd.png",
+            "type": "image/png",
+            "sizes": "96x96"
+          },
+          {
+            "href": "/icon2.png?icon2.2_1jy84a2ys0_.png",
+            "type": "image/png",
+            "sizes": "192x192"
+          }
+        ]
+      }
+    ],
+    "assets": [
+      {
+        "path": "/favicon.ico",
+        "status": 200,
+        "type": "image/x-icon",
+        "bytes": 5952,
+        "sha256": "246a33e660c06fc20131c8321742e565590a044858995f7402a3186fee7415b6",
+        "sizes": [
+          16,
+          32,
+          48,
+          64
+        ]
+      },
+      {
+        "path": "/icon.svg",
+        "status": 200,
+        "type": "image/svg+xml",
+        "bytes": 803,
+        "sha256": "6c1d60e7ff6db2f9dd7ebab020b9c5b7e07d542a5230be20434cf2b05c600778"
+      },
+      {
+        "path": "/icon1.png",
+        "status": 200,
+        "type": "image/png",
+        "bytes": 3001,
+        "sha256": "8c9a61c8db4fa39bcb04b9d629e0c3b9dfdf89309eda50a19a7e0f7b33b2ceb8",
+        "size": 96
+      },
+      {
+        "path": "/icon2.png",
+        "status": 200,
+        "type": "image/png",
+        "bytes": 6026,
+        "sha256": "218e5242a9264ead76ffb3e769a62952bf6737985ed7de741eab5d655731c277",
+        "size": 192
+      }
+    ],
+    "errors": [],
+    "finishedAt": "2026-10-02T07:25:10.445Z"
+  },
+  "seoLocal": {
+    "version": "1.0.0",
+    "generatedAt": "2026-10-02T07:22:46.556Z",
+    "baseUrl": "http://localhost:44650/",
+    "canonicalOrigin": "https://scoretransposer.com",
+    "complete": true,
+    "automatedGatePassed": true,
+    "manualReviewRequired": true,
+    "publishReady": false,
+    "config": {
+      "baseUrl": "http://localhost:44650/",
+      "canonicalOrigin": "https://scoretransposer.com",
+      "sitemapUrl": "http://localhost:44650/sitemap.xml",
+      "maxPages": 500,
+      "maxSitemaps": 25,
+      "maxLinks": 1000,
+      "maxIssues": 200,
+      "maxHtmlBytes": 5000000,
+      "maxXmlBytes": 10000000,
+      "concurrency": 4,
+      "timeoutMs": 15000,
+      "retries": 1,
+      "mapSitemapToBase": true,
+      "requiredPaths": [],
+      "requiredHreflang": [
+        "en",
+        "zh-CN",
+        "zh-TW",
+        "ja",
+        "ko",
+        "fr",
+        "es",
+        "de",
+        "ru",
+        "x-default"
+      ],
+      "matchSitemapHreflang": false,
+      "requireLastmod": false,
+      "requireJsonLd": true,
+      "requireSchema": [
+        "/=WebSite"
+      ],
+      "requireSocial": true,
+      "requireDescription": true,
+      "requireH1": true,
+      "strictDuplicates": false,
+      "redirects": [],
+      "expectedRootRedirect": null,
+      "checkHostRedirects": false,
+      "allowSitewideDisallow": false,
+      "manualReviewComplete": false,
+      "requirePublishReady": false,
+      "failOnWarning": false,
+      "checkLinks": false,
+      "checkImages": false,
+      "ignoreLink": [],
+      "userAgent": "WebsiteSEOEngineerAudit/1.0.0",
+      "outputFile": "seo-local.json"
+    },
+    "metrics": {
+      "sitemapDocuments": 1,
+      "sitemapUrls": 297,
+      "auditedPages": 297,
+      "errors": 0,
+      "warnings": 0
+    },
+    "issues": [],
+    "notes": [
+      "This report verifies rendered HTTP invariants, not rankings, indexing, originality, authorization, factual accuracy, or rich-result eligibility.",
+      "Manual intent, factual, rights, visible-schema, and originality review is still required before release.",
+      "robots.txt was fetched and inspected."
+    ],
+    "pageCount": 297
+  },
+  "seoProduction": {
+    "version": "1.0.0",
+    "generatedAt": "2026-10-02T07:25:32.462Z",
+    "baseUrl": "https://scoretransposer.com/",
+    "canonicalOrigin": "https://scoretransposer.com",
+    "complete": true,
+    "automatedGatePassed": true,
+    "manualReviewRequired": true,
+    "publishReady": false,
+    "config": {
+      "baseUrl": "https://scoretransposer.com/",
+      "canonicalOrigin": "https://scoretransposer.com",
+      "sitemapUrl": "https://scoretransposer.com/sitemap.xml",
+      "maxPages": 500,
+      "maxSitemaps": 25,
+      "maxLinks": 1000,
+      "maxIssues": 200,
+      "maxHtmlBytes": 5000000,
+      "maxXmlBytes": 10000000,
+      "concurrency": 2,
+      "timeoutMs": 15000,
+      "retries": 1,
+      "mapSitemapToBase": false,
+      "requiredPaths": [],
+      "requiredHreflang": [
+        "en",
+        "zh-CN",
+        "zh-TW",
+        "ja",
+        "ko",
+        "fr",
+        "es",
+        "de",
+        "ru",
+        "x-default"
+      ],
+      "matchSitemapHreflang": false,
+      "requireLastmod": false,
+      "requireJsonLd": true,
+      "requireSchema": [
+        "/=WebSite"
+      ],
+      "requireSocial": true,
+      "requireDescription": true,
+      "requireH1": true,
+      "strictDuplicates": false,
+      "redirects": [],
+      "expectedRootRedirect": null,
+      "checkHostRedirects": true,
+      "allowSitewideDisallow": false,
+      "manualReviewComplete": false,
+      "requirePublishReady": false,
+      "failOnWarning": false,
+      "checkLinks": false,
+      "checkImages": false,
+      "ignoreLink": [],
+      "userAgent": "WebsiteSEOEngineerAudit/1.0.0",
+      "outputFile": "seo-production.json"
+    },
+    "metrics": {
+      "sitemapDocuments": 1,
+      "sitemapUrls": 297,
+      "auditedPages": 297,
+      "errors": 0,
+      "warnings": 0
+    },
+    "issues": [],
+    "notes": [
+      "This report verifies rendered HTTP invariants, not rankings, indexing, originality, authorization, factual accuracy, or rich-result eligibility.",
+      "Manual intent, factual, rights, visible-schema, and originality review is still required before release.",
+      "robots.txt was fetched and inspected."
+    ],
+    "pageCount": 297
+  },
+  "runtime": {
+    "activation": {
+      "release": "20261002-brand1",
+      "activatedAt": "2026-10-02T07:24:45.100542+00:00",
+      "image": "scoretransposer-www:20261002-brand1",
+      "imageId": "sha256:f18da0700726e8989ea5aa0f8bf79da3b1eb3fc20a803a7d851f7d61ec94593f",
+      "health": "healthy",
+      "protectedContainersUnchanged": 16,
+      "freeDiskBytes": 8331096064,
+      "databaseChanges": false,
+      "apiUnchanged": true
+    },
+    "verifiedRuntimeFiles": 489,
+    "protectedContainersUnchanged": 16,
+    "healthyContainerCount": 15,
+    "runningContainerCount": 17,
+    "freeDiskBytes": 8330928128,
+    "websiteErrorLogs": false
+  },
+  "siteHealth": [
+    {
+      "url": "https://scoretransposer.com",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://app.scoretransposer.com/login",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://api.scoretransposer.com/health",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://api.scoretransposer.com/ready",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://collab.scoretransposer.com/health",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://polyoddstools.com",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://api.polyoddstools.com/health",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://adiostv.com",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://ctcsolteacher.com",
+      "status": 200,
+      "attempt": 1
+    }
+  ],
+  "backup": {
+    "backup": "/srv/sites/scoretransposer/backups/pre-brand1-20261002",
+    "files": [
+      {
+        "name": "database.dump",
+        "bytes": 3118152,
+        "sha256": "d6296142d6efedc4c81996768db76b577f427b537d13711f466644c01a8f74b1"
+      },
+      {
+        "name": "compose.env",
+        "bytes": 148,
+        "sha256": "1776068d7ed053d194e710197549ebf6bb1aa61235343365ac65e214aae0e6a1"
+      },
+      {
+        "name": "compose.yaml",
+        "bytes": 6500,
+        "sha256": "514f06cc2ed3edd1ed7e647a4cb658975bd5ba583d6e2c4a3bca2741d146ef09"
+      },
+      {
+        "name": "runtime.env",
+        "bytes": 4126,
+        "sha256": "4273771c64ced5583af4657c89f9384784993c06317b4227d659d1e4c86dc57e"
+      }
+    ],
+    "containerCount": 17
+  },
+  "build": {
+    "archives": {
+      "www-patch.tar.gz": "902af18ab51db6a024f03027590482d25ed192b08400ccd844a6266531982898"
+    },
+    "buildImages": {
+      "www": "sha256:a4f42799479f9e0ea2c231d3f58ccc765f566a49d29ab71695bdec336b559b0e"
+    },
+    "sourceManifestSha256": "520b9eeb5a46099cf65be6d456708d00165b53521b1501220b8e975dd7414a10"
+  },
+  "existingTests": {
+    "passed": 93,
+    "failed": 0
+  },
+  "searchConsoleChanges": false
+}

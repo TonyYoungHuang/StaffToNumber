@@ -1,0 +1,62 @@
+scoretransposer.com {
+    tls {
+        ca https://acme-v02.api.letsencrypt.org/directory
+    }
+    encode zstd gzip
+    # Keep crawl diagnostics without client addresses, cookies, or query strings.
+    log scoretransposer_www {
+        output file /data/scoretransposer-access.json {
+            roll_size 5MiB
+            roll_keep 3
+            roll_keep_for 168h
+        }
+        format filter {
+            request delete
+            resp_headers delete
+            user_id delete
+            wrap json
+        }
+    }
+    log_append path {http.request.uri.path}
+    log_append user_agent {http.request.header.User-Agent}
+    reverse_proxy scoretransposer-www:3000 {
+        # Absorb short disconnects while the single website container starts.
+        lb_try_duration 5s
+        lb_try_interval 250ms
+        lb_retry_match {
+            method GET HEAD
+        }
+    }
+}
+www.scoretransposer.com {
+    tls {
+        ca https://acme-v02.api.letsencrypt.org/directory
+    }
+    redir https://scoretransposer.com{uri} permanent
+}
+app.scoretransposer.com {
+    tls {
+        ca https://acme-v02.api.letsencrypt.org/directory
+    }
+    encode zstd gzip
+    reverse_proxy scoretransposer-app:3000
+}
+api.scoretransposer.com {
+    tls {
+        ca https://acme-v02.api.letsencrypt.org/directory
+    }
+    request_body {
+        max_size 22MB
+    }
+    reverse_proxy scoretransposer-api:4000
+}
+collab.scoretransposer.com {
+    tls {
+        ca https://acme-v02.api.letsencrypt.org/directory
+    }
+    reverse_proxy scoretransposer-collaboration:4001
+}
+
+http://www.scoretransposer.com {
+    redir https://scoretransposer.com{uri} permanent
+}

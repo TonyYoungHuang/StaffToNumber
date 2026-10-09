@@ -1,0 +1,1052 @@
+{
+  "release": "20261001-background2",
+  "metrics": {
+    "source": "Explicit owner-provided figures in this task; not realtime telemetry",
+    "users": "2K",
+    "countries": "97",
+    "scoresCorrected": "65K"
+  },
+  "browser": {
+    "phase": "after",
+    "startedAt": "2026-10-01T10:09:57.019Z",
+    "pages": [
+      {
+        "path": "/",
+        "title": "Sheet Music Scanner & Transposer \u2014 Scan PDF to MusicXML Online | ScoreTransposer",
+        "description": "Scan sheet music from a PDF or photo, fix OMR mistakes in the editor, transpose to any key, and export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "canonical": "https://scoretransposer.com/",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Sheet Music Scanner, Transposer & Editor",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/",
+            "inLanguage": "en",
+            "description": "Use a sheet music scanner to turn a PDF or photo into editable notes. Correct scanning mistakes, transpose, play, and export MusicXML, MIDI, PDF or Jianpu online.",
+            "featureList": [
+              "Edit online",
+              "Create Jianpu",
+              "Transpose sheet music",
+              "Playback and audio",
+              "PDF to MusicXML"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/zh-cn",
+        "title": "\u4e94\u7ebf\u8c31\u8bc6\u522b\u4e0e\u79fb\u8c03 \u2014 \u5728\u7ebf\u626b\u63cf PDF \u8f6c MusicXML | ScoreTransposer",
+        "description": "\u4ece PDF \u6216\u7167\u7247\u8bc6\u522b\u4e94\u7ebf\u8c31\uff0c\u5728\u7f16\u8f91\u5668\u4e2d\u6821\u6b63 OMR \u9519\u8bef\uff0c\u79fb\u8c03\u81f3\u6240\u9700\u8c03\u6027\uff0c\u5e76\u5bfc\u51fa MusicXML\u3001MIDI\u3001PDF \u6216\u7b80\u8c31\u3002\u4e00\u4e2a\u5b8c\u6574\u4e50\u8c31\u9879\u76ee\u514d\u8d39\uff0c\u65e0\u9700\u5b89\u88c5\u3002",
+        "canonical": "https://scoretransposer.com/zh-cn",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "\u4e94\u7ebf\u8c31\u8bc6\u522b\u3001 \u79fb\u8c03\u4e0e\u7f16\u8f91",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/zh-cn",
+            "inLanguage": "zh-CN",
+            "description": "\u4ece PDF \u6216\u7167\u7247\u8bc6\u522b\u4e94\u7ebf\u8c31\uff0c\u5728\u7f16\u8f91\u5668\u4e2d\u6821\u6b63 OMR \u9519\u8bef\uff0c\u79fb\u8c03\u81f3\u6240\u9700\u8c03\u6027\uff0c\u5e76\u5bfc\u51fa MusicXML\u3001MIDI\u3001PDF \u6216\u7b80\u8c31\u3002\u4e00\u4e2a\u5b8c\u6574\u4e50\u8c31\u9879\u76ee\u514d\u8d39\uff0c\u65e0\u9700\u5b89\u88c5\u3002",
+            "featureList": [
+              "\u5728\u7ebf\u7f16\u8f91",
+              "\u751f\u6210\u7b80\u8c31",
+              "\u6574\u8c31\u79fb\u8c03",
+              "\u64ad\u653e\u4e0e\u97f3\u9891",
+              "\u97f3\u89c6\u9891\u8f6c\u8c31"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/zh-tw",
+        "title": "\u4e94\u7dda\u8b5c\u8fa8\u8b58\u8207\u8f49\u8abf \u2014 \u7dda\u4e0a\u6383\u63cf PDF \u8f49 MusicXML | ScoreTransposer",
+        "description": "\u5f9e PDF \u6216\u7167\u7247\u8fa8\u8b58\u4e94\u7dda\u8b5c\uff0c\u5728\u7de8\u8f2f\u5668\u4e2d\u4fee\u6b63 OMR \u932f\u8aa4\uff0c\u8f49\u8abf\u81f3\u6240\u9700\u8abf\u6027\uff0c\u4e26\u532f\u51fa MusicXML\u3001MIDI\u3001PDF \u6216\u7c21\u8b5c\u3002\u4e00\u500b\u5b8c\u6574\u6a02\u8b5c\u5c08\u6848\u514d\u8cbb\uff0c\u7121\u9700\u5b89\u88dd\u3002",
+        "canonical": "https://scoretransposer.com/zh-tw",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "\u4e94\u7dda\u8b5c\u8fa8\u8b58\u3001 \u8f49\u8abf\u8207\u7de8\u8f2f",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/zh-tw",
+            "inLanguage": "zh-TW",
+            "description": "\u5f9e PDF \u6216\u7167\u7247\u8fa8\u8b58\u4e94\u7dda\u8b5c\uff0c\u5728\u7de8\u8f2f\u5668\u4e2d\u4fee\u6b63 OMR \u932f\u8aa4\uff0c\u8f49\u8abf\u81f3\u6240\u9700\u8abf\u6027\uff0c\u4e26\u532f\u51fa MusicXML\u3001MIDI\u3001PDF \u6216\u7c21\u8b5c\u3002\u4e00\u500b\u5b8c\u6574\u6a02\u8b5c\u5c08\u6848\u514d\u8cbb\uff0c\u7121\u9700\u5b89\u88dd\u3002",
+            "featureList": [
+              "\u7dda\u4e0a\u7de8\u8f2f",
+              "\u5efa\u7acb\u7c21\u8b5c",
+              "\u79fb\u8abf",
+              "\u64ad\u653e\u8207\u97f3\u8a0a",
+              "\u97f3\u8a0a\u8f49\u6a02\u8b5c"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/ja",
+        "title": "\u697d\u8b5c\u30b9\u30ad\u30e3\u30f3\u30fb\u79fb\u8abf \u2014 PDF \u3092 MusicXML \u306b\u30aa\u30f3\u30e9\u30a4\u30f3\u5909\u63db | ScoreTransposer",
+        "description": "PDF \u3084\u5199\u771f\u306e\u697d\u8b5c\u3092\u8aad\u307f\u53d6\u308a\u3001\u30a8\u30c7\u30a3\u30bf\u30fc\u3067 OMR \u306e\u8aa4\u8a8d\u8b58\u3092\u4fee\u6b63\u3002\u597d\u304d\u306a\u8abf\u306b\u79fb\u8abf\u3057\u3066 MusicXML\u3001MIDI\u3001PDF\u3001\u6570\u5b57\u8b5c\u306b\u66f8\u304d\u51fa\u305b\u307e\u3059\u3002\u697d\u8b5c\u30d7\u30ed\u30b8\u30a7\u30af\u30c8 1 \u4ef6\u7121\u6599\u3001\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb\u4e0d\u8981\u3002",
+        "canonical": "https://scoretransposer.com/ja",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "\u697d\u8b5c\u30b9\u30ad\u30e3\u30f3\u30fb \u79fb\u8abf\u30fb\u7de8\u96c6",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/ja",
+            "inLanguage": "ja",
+            "description": "PDF \u3084\u5199\u771f\u306e\u697d\u8b5c\u3092\u8aad\u307f\u53d6\u308a\u3001\u30a8\u30c7\u30a3\u30bf\u30fc\u3067 OMR \u306e\u8aa4\u8a8d\u8b58\u3092\u4fee\u6b63\u3002\u597d\u304d\u306a\u8abf\u306b\u79fb\u8abf\u3057\u3066 MusicXML\u3001MIDI\u3001PDF\u3001\u6570\u5b57\u8b5c\u306b\u66f8\u304d\u51fa\u305b\u307e\u3059\u3002\u697d\u8b5c\u30d7\u30ed\u30b8\u30a7\u30af\u30c8 1 \u4ef6\u7121\u6599\u3001\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb\u4e0d\u8981\u3002",
+            "featureList": [
+              "\u30aa\u30f3\u30e9\u30a4\u30f3\u7de8\u96c6",
+              "Jianpu \u3092\u4f5c\u6210",
+              "\u79fb\u8abf",
+              "\u518d\u751f\u3068\u97f3\u58f0",
+              "\u97f3\u58f0\u304b\u3089\u697d\u8b5c\u3078"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/ko",
+        "title": "\uc545\ubcf4 \uc2a4\uce94\uacfc \uc870\uc62e\uae40 \u2014 PDF\ub97c MusicXML\ub85c \uc628\ub77c\uc778 \ubcc0\ud658 | ScoreTransposer",
+        "description": "PDF\ub098 \uc0ac\uc9c4\uc5d0\uc11c \uc545\ubcf4\ub97c \uc77d\uace0 \ud3b8\uc9d1\uae30\uc5d0\uc11c OMR \uc624\ub958\ub97c \uc218\uc815\ud558\uc138\uc694. \uc6d0\ud558\ub294 \uc870\uc131\uc73c\ub85c \ubc14\uafbc \ub4a4 MusicXML, MIDI, PDF, \uc22b\uc790\uc545\ubcf4\ub85c \ub0b4\ubcf4\ub0bc \uc218 \uc788\uc2b5\ub2c8\ub2e4. \uc545\ubcf4 \ud504\ub85c\uc81d\ud2b8 1\uac1c \ubb34\ub8cc, \uc124\uce58 \ubd88\ud544\uc694.",
+        "canonical": "https://scoretransposer.com/ko",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "\uc545\ubcf4 \uc2a4\uce94, \uc870\uc62e\uae40\uacfc \ud3b8\uc9d1",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/ko",
+            "inLanguage": "ko",
+            "description": "PDF\ub098 \uc0ac\uc9c4\uc5d0\uc11c \uc545\ubcf4\ub97c \uc77d\uace0 \ud3b8\uc9d1\uae30\uc5d0\uc11c OMR \uc624\ub958\ub97c \uc218\uc815\ud558\uc138\uc694. \uc6d0\ud558\ub294 \uc870\uc131\uc73c\ub85c \ubc14\uafbc \ub4a4 MusicXML, MIDI, PDF, \uc22b\uc790\uc545\ubcf4\ub85c \ub0b4\ubcf4\ub0bc \uc218 \uc788\uc2b5\ub2c8\ub2e4. \uc545\ubcf4 \ud504\ub85c\uc81d\ud2b8 1\uac1c \ubb34\ub8cc, \uc124\uce58 \ubd88\ud544\uc694.",
+            "featureList": [
+              "\uc628\ub77c\uc778 \ud3b8\uc9d1",
+              "Jianpu \uc0dd\uc131",
+              "\uc870\uc62e\uae40",
+              "\uc7ac\uc0dd \ubc0f \uc624\ub514\uc624",
+              "\uc624\ub514\uc624\ub97c \uc545\ubcf4\ub85c"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/fr",
+        "title": "Scanner de partitions et transposition \u2014 PDF vers MusicXML en ligne | ScoreTransposer",
+        "description": "Scannez un PDF ou une photo de partition, corrigez les erreurs OMR dans l\u2019\u00e9diteur, transposez dans la tonalit\u00e9 voulue et exportez MusicXML, MIDI, PDF ou Jianpu. Un projet complet gratuit, sans installation.",
+        "canonical": "https://scoretransposer.com/fr",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Scanner de partitions, transposition et \u00e9dition",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/fr",
+            "inLanguage": "fr",
+            "description": "Scannez un PDF ou une photo de partition, corrigez les erreurs OMR dans l\u2019\u00e9diteur, transposez dans la tonalit\u00e9 voulue et exportez MusicXML, MIDI, PDF ou Jianpu. Un projet complet gratuit, sans installation.",
+            "featureList": [
+              "\u00c9diter en ligne",
+              "Cr\u00e9er du Jianpu",
+              "Transposer",
+              "Lecture et audio",
+              "Audio vers partition"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/es",
+        "title": "Esc\u00e1ner de partituras y transpositor \u2014 Escanea PDF a MusicXML en l\u00ednea | ScoreTransposer",
+        "description": "Escanea partituras desde un PDF o una foto, corrige errores de OMR en el editor, transp\u00f3n a cualquier tonalidad y exporta MusicXML, MIDI, PDF o Jianpu. Un proyecto completo gratis, sin instalar nada.",
+        "canonical": "https://scoretransposer.com/es",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Esc\u00e1ner de partituras, transpositor y editor",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/es",
+            "inLanguage": "es",
+            "description": "Esc\u00e1ner de partituras en l\u00ednea: convierte PDF o fotos en notas editables, corrige errores, transp\u00f3n y exporta MusicXML, MIDI, PDF o Jianpu. Un proyecto completo gratis.",
+            "featureList": [
+              "Editar online",
+              "Crear Jianpu",
+              "Transponer",
+              "Reproducci\u00f3n y audio",
+              "PDF a MusicXML"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/de",
+        "title": "Notenscanner und Transposition \u2014 PDF online in MusicXML umwandeln | ScoreTransposer",
+        "description": "Scannen Sie Noten aus PDF oder Foto, korrigieren Sie OMR-Fehler im Editor, transponieren Sie in die gew\u00fcnschte Tonart und exportieren Sie MusicXML, MIDI, PDF oder Jianpu. Ein vollst\u00e4ndiges Projekt kostenlos, ohne Installation.",
+        "canonical": "https://scoretransposer.com/de",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Notenscanner, Transposition und Editor",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/de",
+            "inLanguage": "de",
+            "description": "Scannen Sie Noten aus PDF oder Foto, korrigieren Sie OMR-Fehler im Editor, transponieren Sie in die gew\u00fcnschte Tonart und exportieren Sie MusicXML, MIDI, PDF oder Jianpu. Ein vollst\u00e4ndiges Projekt kostenlos, ohne Installation.",
+            "featureList": [
+              "Online bearbeiten",
+              "Jianpu erstellen",
+              "Transponieren",
+              "Wiedergabe und Audio",
+              "PDF in MusicXML"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/ru",
+        "title": "\u0421\u043a\u0430\u043d\u0435\u0440 \u043d\u043e\u0442 \u0438 \u0442\u0440\u0430\u043d\u0441\u043f\u043e\u043d\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u2014 PDF \u0432 MusicXML \u043e\u043d\u043b\u0430\u0439\u043d | ScoreTransposer",
+        "description": "\u0421\u043a\u0430\u043d\u0438\u0440\u0443\u0439\u0442\u0435 \u043d\u043e\u0442\u044b \u0438\u0437 PDF \u0438\u043b\u0438 \u0444\u043e\u0442\u043e, \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u044f\u0439\u0442\u0435 \u043e\u0448\u0438\u0431\u043a\u0438 OMR \u0432 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440\u0435, \u0442\u0440\u0430\u043d\u0441\u043f\u043e\u043d\u0438\u0440\u0443\u0439\u0442\u0435 \u0432 \u043d\u0443\u0436\u043d\u0443\u044e \u0442\u043e\u043d\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0438 \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 MusicXML, MIDI, PDF \u0438\u043b\u0438 Jianpu. \u041e\u0434\u0438\u043d \u043f\u043e\u043b\u043d\u044b\u0439 \u043f\u0440\u043e\u0435\u043a\u0442 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e, \u0431\u0435\u0437 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0438.",
+        "canonical": "https://scoretransposer.com/ru",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "\u0421\u043a\u0430\u043d\u0435\u0440 \u043d\u043e\u0442, \u0442\u0440\u0430\u043d\u0441\u043f\u043e\u043d\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0438 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/ru",
+            "inLanguage": "ru",
+            "description": "\u0421\u043a\u0430\u043d\u0438\u0440\u0443\u0439\u0442\u0435 \u043d\u043e\u0442\u044b \u0438\u0437 PDF \u0438\u043b\u0438 \u0444\u043e\u0442\u043e, \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u044f\u0439\u0442\u0435 \u043e\u0448\u0438\u0431\u043a\u0438 OMR \u0432 \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440\u0435, \u0442\u0440\u0430\u043d\u0441\u043f\u043e\u043d\u0438\u0440\u0443\u0439\u0442\u0435 \u0432 \u043d\u0443\u0436\u043d\u0443\u044e \u0442\u043e\u043d\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0438 \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 MusicXML, MIDI, PDF \u0438\u043b\u0438 Jianpu. \u041e\u0434\u0438\u043d \u043f\u043e\u043b\u043d\u044b\u0439 \u043f\u0440\u043e\u0435\u043a\u0442 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e, \u0431\u0435\u0437 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0438.",
+            "featureList": [
+              "\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043e\u043d\u043b\u0430\u0439\u043d",
+              "\u0421\u043e\u0437\u0434\u0430\u0432\u0430\u0442\u044c Jianpu",
+              "\u0422\u0440\u0430\u043d\u0441\u043f\u043e\u043d\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+              "\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435 \u0438 \u0430\u0443\u0434\u0438\u043e",
+              "PDF \u0432 MusicXML"
+            ]
+          }
+        ]
+      }
+    ],
+    "checks": [
+      "/: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/zh-cn: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/zh-tw: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/ja: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/ko: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/fr: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/es: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/de: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/ru: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "All nine homepages retain exact SEO metadata, H1 and structured data",
+      "1440px: actual loop boundary, decoded audio, sound toggle, pause/resume, viewport behavior, no overflow",
+      "390px: actual loop boundary, decoded audio, sound toggle, pause/resume, viewport behavior, no overflow",
+      "Production media hashes match approved local background assets; MP4 Range=206",
+      "Stripe-first pricing login dialog still opens without navigation"
+    ],
+    "errors": [],
+    "media": {
+      "score-motion-30s.mp4": {
+        "bytes": 2985920,
+        "sha256": "d406411fee0638316fa55d21e2d73954d8c3d1c375d5ddc7dabafaee068695ce",
+        "contentType": "video/mp4"
+      },
+      "poster.webp": {
+        "bytes": 6632,
+        "sha256": "0d328a4809a598a7ee08c305b817e19e7e8635d8213845687b5b4aa756f89786",
+        "contentType": "image/webp"
+      }
+    },
+    "finishedAt": "2026-10-01T10:10:23.661Z"
+  },
+  "runtime": {
+    "activation": {
+      "release": "20261001-background2",
+      "activatedAt": "2026-10-01T10:09:51.480842+00:00",
+      "image": "scoretransposer-www:20261001-background2",
+      "imageId": "sha256:acc3ac499c7240934d78f50bf6305ccbf63bedf255c8ea90b023be909fe0173e",
+      "health": "healthy",
+      "protectedContainersUnchanged": 16,
+      "freeDiskBytes": 8268324864,
+      "databaseChanges": false,
+      "apiUnchanged": true
+    },
+    "verifiedRuntimeFiles": 459,
+    "protectedContainersUnchanged": 16,
+    "healthyContainerCount": 15,
+    "runningContainerCount": 17,
+    "freeDiskBytes": 8267997184,
+    "websiteErrorLogs": false
+  },
+  "siteHealth": [
+    {
+      "url": "https://scoretransposer.com",
+      "status": 200
+    },
+    {
+      "url": "https://app.scoretransposer.com/login",
+      "status": 200
+    },
+    {
+      "url": "https://api.scoretransposer.com/health",
+      "status": 200
+    },
+    {
+      "url": "https://api.scoretransposer.com/ready",
+      "status": 200
+    },
+    {
+      "url": "https://collab.scoretransposer.com/health",
+      "status": 200
+    },
+    {
+      "url": "https://polyoddstools.com",
+      "status": 200
+    },
+    {
+      "url": "https://api.polyoddstools.com/health",
+      "status": 200
+    },
+    {
+      "url": "https://adiostv.com",
+      "status": 200
+    },
+    {
+      "url": "https://ctcsolteacher.com",
+      "status": 200
+    }
+  ],
+  "localBrowser": {
+    "startedAt": "2026-10-01T09:58:04.672Z",
+    "origin": "http://127.0.0.1:44610",
+    "checks": [
+      "/: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/zh-cn: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/zh-tw: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/ja: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/ko: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/fr: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/es: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/de: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "/ru: one English background, visible autoplay/muted/loop/inline, correct position and CTAs",
+      "1440px: loop boundary, sound toggle, offscreen pause/resume, retained user pause and keyboard play",
+      "390px: loop boundary, sound toggle, offscreen pause/resume, retained user pause and keyboard play",
+      "{\"reduce\":true}: poster only until explicit playback",
+      "{\"saveData\":true}: poster only until explicit playback",
+      "Blocked autoplay retains poster, usable CTA and play control",
+      "Missing background falls back without breaking promotional content"
+    ],
+    "errors": [],
+    "finishedAt": "2026-10-01T09:58:26.951Z"
+  },
+  "media": {
+    "renderedAt": "2026-10-01T09:52:48.616Z",
+    "language": "en",
+    "duration": 30,
+    "websiteBackground": true,
+    "burnedPromotionalCopy": false,
+    "audio": "Same original FIRST LIGHT arrangement; default playback is muted",
+    "loop": "Last 1.5 seconds dissolve into the opening composition",
+    "probe": {
+      "streams": [
+        {
+          "index": 0,
+          "codec_name": "h264",
+          "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+          "profile": "High",
+          "codec_type": "video",
+          "codec_tag_string": "avc1",
+          "codec_tag": "0x31637661",
+          "mime_codec_string": "avc1.640028",
+          "width": 1920,
+          "height": 1080,
+          "coded_width": 1920,
+          "coded_height": 1080,
+          "has_b_frames": 2,
+          "pix_fmt": "yuv420p",
+          "level": 40,
+          "chroma_location": "left",
+          "field_order": "progressive",
+          "is_avc": "true",
+          "nal_length_size": "4",
+          "id": "0x1",
+          "r_frame_rate": "30/1",
+          "avg_frame_rate": "30/1",
+          "time_base": "1/15360",
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "duration_ts": 460800,
+          "duration": "30.000000",
+          "bit_rate": "662307",
+          "bits_per_raw_sample": "8",
+          "nb_frames": "900",
+          "extradata_size": 47,
+          "disposition": {
+            "default": 1,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          },
+          "tags": {
+            "language": "und",
+            "handler_name": "VideoHandler",
+            "encoder": "Lavc62.28.101 libx264"
+          }
+        },
+        {
+          "index": 1,
+          "codec_name": "aac",
+          "codec_long_name": "AAC (Advanced Audio Coding)",
+          "profile": "LC",
+          "codec_type": "audio",
+          "codec_tag_string": "mp4a",
+          "codec_tag": "0x6134706d",
+          "mime_codec_string": "mp4a.40.2",
+          "sample_fmt": "fltp",
+          "sample_rate": "48000",
+          "channels": 2,
+          "channel_layout": "stereo",
+          "bits_per_sample": 0,
+          "initial_padding": 0,
+          "id": "0x2",
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "time_base": "1/48000",
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "duration_ts": 1440000,
+          "duration": "30.000000",
+          "bit_rate": "124801",
+          "nb_frames": "1408",
+          "extradata_size": 5,
+          "disposition": {
+            "default": 1,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          },
+          "tags": {
+            "language": "und",
+            "handler_name": "SoundHandler"
+          }
+        }
+      ],
+      "format": {
+        "filename": "E:\\AI WEB\\21.wuxianpu\\apps\\www\\public\\product\\commercial\\v3\\score-motion-30s.mp4",
+        "nb_streams": 2,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "format_long_name": "QuickTime / MOV",
+        "start_time": "0.000000",
+        "duration": "30.000000",
+        "size": "2985920",
+        "bit_rate": "796245",
+        "probe_score": 100,
+        "tags": {
+          "major_brand": "isom",
+          "minor_version": "512",
+          "compatible_brands": "isomiso2avc1mp41",
+          "encoder": "Lavf62.12.101"
+        }
+      }
+    },
+    "files": {
+      "score-motion-30s.mp4": {
+        "bytes": 2985920,
+        "sha256": "d406411fee0638316fa55d21e2d73954d8c3d1c375d5ddc7dabafaee068695ce"
+      },
+      "poster.webp": {
+        "bytes": 6632,
+        "sha256": "0d328a4809a598a7ee08c305b817e19e7e8635d8213845687b5b4aa756f89786"
+      }
+    }
+  }
+}

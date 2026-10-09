@@ -1,0 +1,613 @@
+{
+  "release": "20261008-credits1",
+  "sourceRelease": "20261007-progress2",
+  "creditRule": "任务创建时预留积分；失败或取消后自动退回。",
+  "locales": [
+    "en",
+    "zh-CN",
+    "zh-TW",
+    "ja",
+    "ko",
+    "fr",
+    "es",
+    "de",
+    "ru"
+  ],
+  "changedSourceFiles": [
+    "apps/app/src/lib/billing-messages/locales/de.ts",
+    "apps/app/src/lib/billing-messages/locales/en.ts",
+    "apps/app/src/lib/billing-messages/locales/es.ts",
+    "apps/app/src/lib/billing-messages/locales/fr.ts",
+    "apps/app/src/lib/billing-messages/locales/ja.ts",
+    "apps/app/src/lib/billing-messages/locales/ko.ts",
+    "apps/app/src/lib/billing-messages/locales/ru.ts",
+    "apps/app/src/lib/billing-messages/locales/zh-CN.ts",
+    "apps/app/src/lib/billing-messages/locales/zh-TW.ts",
+    "apps/www/src/components/FrenchPricingPage.tsx",
+    "apps/www/src/lib/en-es-pricing.ts",
+    "apps/www/src/lib/homepage-localization/locales/de.ts",
+    "apps/www/src/lib/homepage-localization/locales/en.ts",
+    "apps/www/src/lib/homepage-localization/locales/es.ts",
+    "apps/www/src/lib/homepage-localization/locales/fr.ts",
+    "apps/www/src/lib/homepage-localization/locales/ja.ts",
+    "apps/www/src/lib/homepage-localization/locales/ko.ts",
+    "apps/www/src/lib/homepage-localization/locales/ru.ts",
+    "apps/www/src/lib/homepage-localization/locales/zh-CN.ts",
+    "apps/www/src/lib/homepage-localization/locales/zh-TW.ts",
+    "apps/www/src/lib/localized-pricing.ts"
+  ],
+  "sourceFilesCompared": 1184,
+  "sourceHashes": {
+    "apps/app/src/lib/billing-messages/locales/de.ts": {
+      "before": "e058457c53919a218560aa623bd094467b838cc3075debe848ee4b0f122b73de",
+      "after": "a6d5225cf6939dc98d4a41b744aebfc9c792626bd8adb06edf9ed2d037ee7cc9"
+    },
+    "apps/app/src/lib/billing-messages/locales/en.ts": {
+      "before": "d5db5b6b990a4e113af29767f2216a5962a76300e52e77a015356151afe24d24",
+      "after": "7722f5740ad7fdbf0f5af05abf67b27609b54bfaee5a990b112dd7160fd61104"
+    },
+    "apps/app/src/lib/billing-messages/locales/es.ts": {
+      "before": "504b294ebd3e230792ec2116ac8e413ecb65fe99b8ed1fb224af92bba1eabcb6",
+      "after": "04e082c1ed0067fed595d71d90c06b1956c878ddf03782edefb6b5a659540610"
+    },
+    "apps/app/src/lib/billing-messages/locales/fr.ts": {
+      "before": "c9aef83baa6834706a08556adda47fee3d933d5edbeb0e4769257c789bb3a147",
+      "after": "6d38c7dcb760086140d04d118e6e3bc709f79e7fb0e9cc4b44354af453297c47"
+    },
+    "apps/app/src/lib/billing-messages/locales/ja.ts": {
+      "before": "2b8a598577bf532b89b626901df07e32f584d7d5837e4f45a281c3732d54826b",
+      "after": "13a5450ad98cc5d385801c3a055865a91b4936aa72292f8f019bea986996c096"
+    },
+    "apps/app/src/lib/billing-messages/locales/ko.ts": {
+      "before": "92378c01147d0d06803cbc14c558f7862c8c097bb62b0990134bd9a4e5de63a2",
+      "after": "9577211a1193b52a5ef21bc4782800374257d400e40816bffb951f3709d74f0e"
+    },
+    "apps/app/src/lib/billing-messages/locales/ru.ts": {
+      "before": "f81982be218bebed6d5319b4627a73337128c220a73f8614d6a4719449b6f0de",
+      "after": "90ebe10dcfb1fd322c3c8c047769fa7c8951fe388bb711ba1803f216cb686714"
+    },
+    "apps/app/src/lib/billing-messages/locales/zh-CN.ts": {
+      "before": "cd77b39318fe2b15690d2abd5a9ab9c0540039d404402426910735c2630d8f14",
+      "after": "875c0348a8e66c5927dd1893340fe65c16bfd3f94b5ffaaa75da3797bad7f32f"
+    },
+    "apps/app/src/lib/billing-messages/locales/zh-TW.ts": {
+      "before": "cdc7008489b1e8eb27248adb7a495269966c2f6775db238a7faf3acd549fe1c0",
+      "after": "dbf28559ca7649d71f8fadc4b59028d4c103312df0168726ce977d15cc7b7b5b"
+    },
+    "apps/www/src/components/FrenchPricingPage.tsx": {
+      "before": "8dc64e9da5d38f85726c5eeb4f4c19ebd1231785fe4e92101417cd1fde29b672",
+      "after": "f94f46c33054dad6832431b2bd9549b581e1644f7891105d854e90ed70d2d5af"
+    },
+    "apps/www/src/lib/en-es-pricing.ts": {
+      "before": "c95adfdf0aa9c5072b3b6c521881ac7bc8c5a789d4e85671a532589b70ad0fbc",
+      "after": "9dd44c49d98eb0027a9e036353218a1a14eb72b658b076383b81bda29749565b"
+    },
+    "apps/www/src/lib/homepage-localization/locales/de.ts": {
+      "before": "1eccf2f5c6c3b64ba3b289af5c0ada1511bbcaeada29d1808ba50ae6db93763a",
+      "after": "450c42e04f225bb943ac3a51acfcd26d4a04f66032faa82e3038ecafa0954c77"
+    },
+    "apps/www/src/lib/homepage-localization/locales/en.ts": {
+      "before": "af56a2d2b8bcaf0da17dc972341f185981f45abce11333ed1711214a15b82e9a",
+      "after": "c607762c8f535d8effbc1be1ed3a87c1ed9ae0b1bf5a02666b6cbfe9dd5e7b1d"
+    },
+    "apps/www/src/lib/homepage-localization/locales/es.ts": {
+      "before": "e1cc529e6738725f7b1cc02efb81f5f1a18e0419d9f53d40989ca6918d7faecb",
+      "after": "a3a4b315f570b0f1b1019fd227431d5c797e0f47ed387e771da6a42da439ec6f"
+    },
+    "apps/www/src/lib/homepage-localization/locales/fr.ts": {
+      "before": "f24eb4a26b79906d08adb1c716fe31a47baf25cbf8cffa6059559ee9842af69a",
+      "after": "12d7cf7eb4226b24b955ae87dac7b19d69e55b7ef79301b4d5a58fdb2186124f"
+    },
+    "apps/www/src/lib/homepage-localization/locales/ja.ts": {
+      "before": "20a10ad5b705277c9a9b450088f7ba9fb7f9b11e9b92dba3fbfdca6fe0021acc",
+      "after": "c98e5075081c897060b3791f7dcd09b2539a9084d897729f34060a26017ecd89"
+    },
+    "apps/www/src/lib/homepage-localization/locales/ko.ts": {
+      "before": "1409c412339552b8c279244b581cf77b1220803da8c01f731e658d5568149af9",
+      "after": "8fb380c492f52c37ac68e33b6f8214bee9504aa5e70c2221bae28dd5ca49c7e1"
+    },
+    "apps/www/src/lib/homepage-localization/locales/ru.ts": {
+      "before": "d16479523ecd099f1171bb24b360c26f892828b69ff6a1474b8e1d33c2563cca",
+      "after": "7bf5e799ff8aaf87ecdb6ab437e7c2e7164367ad704c2b489a09e044b7ae0a98"
+    },
+    "apps/www/src/lib/homepage-localization/locales/zh-CN.ts": {
+      "before": "3a8a249a68ee142cfb6643861c12142eb7a403a54fade58ae9fe44a4bee33734",
+      "after": "c7af6ec740b1e553122933e5b9a101d707d1ba7de7a184b0bad355efcc53e958"
+    },
+    "apps/www/src/lib/homepage-localization/locales/zh-TW.ts": {
+      "before": "33fb31f0d2db05d765a09ff521ac990bd04395b350692cf5ee7dd5e90e534929",
+      "after": "a420fdf5b7bd1e19604e3b955990b95d2a76b92f5bfd3c6c067736ff2c9a713c"
+    },
+    "apps/www/src/lib/localized-pricing.ts": {
+      "before": "021b20394563017e0857509f7e52531b7f85e14b27b96c9cef141e1955eb86b3",
+      "after": "c9467f96cafdeafc4ee8a5d1a0e4dc41c19c1aff5f62cdbf1cdbaa6fa215355a"
+    }
+  },
+  "candidatePublicPages": {
+    "passed": 27,
+    "total": 27
+  },
+  "productionPublicPages": {
+    "checkedAtUtc": "2026-10-08T04:01:08.791Z",
+    "mode": "release-verification",
+    "wwwUrl": "https://scoretransposer.com",
+    "appUrl": "https://app.scoretransposer.com",
+    "total": 27,
+    "passed": 27,
+    "failed": 0,
+    "releaseVerified": true,
+    "results": [
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "en",
+        "url": "https://scoretransposer.com/",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/",
+        "lang": "en",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "en",
+        "url": "https://scoretransposer.com/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/pricing",
+        "lang": "en",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "en",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "en",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "zh-CN",
+        "url": "https://scoretransposer.com/zh-cn",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/zh-cn",
+        "lang": "zh-CN",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "zh-CN",
+        "url": "https://scoretransposer.com/zh-cn/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/zh-cn/pricing",
+        "lang": "zh-CN",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "zh-CN",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "zh-CN",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "zh-TW",
+        "url": "https://scoretransposer.com/zh-tw",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/zh-tw",
+        "lang": "zh-TW",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "zh-TW",
+        "url": "https://scoretransposer.com/zh-tw/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/zh-tw/pricing",
+        "lang": "zh-TW",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "zh-TW",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "zh-TW",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "ja",
+        "url": "https://scoretransposer.com/ja",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/ja",
+        "lang": "ja",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "ja",
+        "url": "https://scoretransposer.com/ja/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/ja/pricing",
+        "lang": "ja",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "ja",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "ja",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "ko",
+        "url": "https://scoretransposer.com/ko",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/ko",
+        "lang": "ko",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "ko",
+        "url": "https://scoretransposer.com/ko/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/ko/pricing",
+        "lang": "ko",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "ko",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "ko",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "fr",
+        "url": "https://scoretransposer.com/fr",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/fr",
+        "lang": "fr",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "fr",
+        "url": "https://scoretransposer.com/fr/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/fr/pricing",
+        "lang": "fr",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "fr",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "fr",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "es",
+        "url": "https://scoretransposer.com/es",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/es",
+        "lang": "es",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "es",
+        "url": "https://scoretransposer.com/es/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/es/pricing",
+        "lang": "es",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "es",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "es",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "de",
+        "url": "https://scoretransposer.com/de",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/de",
+        "lang": "de",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "de",
+        "url": "https://scoretransposer.com/de/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/de/pricing",
+        "lang": "de",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "de",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "de",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "homepage",
+        "locale": "ru",
+        "url": "https://scoretransposer.com/ru",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/ru",
+        "lang": "ru",
+        "bodyRuleOccurrences": 3,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "www",
+        "page": "pricing",
+        "locale": "ru",
+        "url": "https://scoretransposer.com/ru/pricing",
+        "status": 200,
+        "finalUrl": "https://scoretransposer.com/ru/pricing",
+        "lang": "ru",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": false,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      },
+      {
+        "site": "app",
+        "page": "checkout",
+        "locale": "ru",
+        "url": "https://app.scoretransposer.com/checkout",
+        "status": 200,
+        "finalUrl": "https://app.scoretransposer.com/checkout",
+        "lang": "ru",
+        "bodyRuleOccurrences": 1,
+        "descriptionRulePresent": true,
+        "obsoleteClaimMatches": [],
+        "passed": true,
+        "failures": []
+      }
+    ]
+  },
+  "productionRuntime": {
+    "release": "20261008-credits1",
+    "activatedAt": "2026-10-08T04:00:36.554805+00:00",
+    "services": {
+      "app": {
+        "imageId": "sha256:988a34cc182fefd0aab68228493e37ea8f78334455b52bbbe541406a2e7906b0",
+        "healthy": true,
+        "restarts": 0,
+        "oomKilled": false,
+        "runtimeFilesMatched": 1836
+      },
+      "www": {
+        "imageId": "sha256:c1a5d57796e9b10eae3243ebf11cf83fc493e42625f838a51a0e3be19f8200b6",
+        "healthy": true,
+        "restarts": 0,
+        "oomKilled": false,
+        "runtimeFilesMatched": 1996
+      }
+    },
+    "allOtherContainersUnchanged": 14,
+    "databaseMigration": false,
+    "freeDiskBytes": 11589189632,
+    "backup": "/srv/sites/scoretransposer/backups/pre-credits1-20261008",
+    "verifiedAt": "2026-10-08T04:01:02.914511+00:00",
+    "runtimeConfigUnchanged": true,
+    "rollback": "/srv/sites/scoretransposer/releases/20261008-credits1/rollback.py"
+  },
+  "publicHealth": {
+    "verifiedAt": "2026-10-08T04:00:58.935Z",
+    "results": [
+      {
+        "url": "https://api.scoretransposer.com/health",
+        "finalUrl": "https://api.scoretransposer.com/health",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "url": "https://api.scoretransposer.com/ready",
+        "finalUrl": "https://api.scoretransposer.com/ready",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "url": "https://polyoddstools.com/",
+        "finalUrl": "https://polyoddstools.com/en",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "url": "https://adiostv.com/",
+        "finalUrl": "https://adiostv.com/en",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "url": "https://ctcsolteacher.com/",
+        "finalUrl": "https://ctcsolteacher.com/",
+        "status": 200,
+        "passed": true
+      }
+    ],
+    "passed": 5,
+    "total": 5
+  },
+  "runtimeOverlays": {
+    "app": {
+      "bytes": 4456551,
+      "sha256": "70a78c02c105d9e2bff57a5b73631dfa02a322e7dc6d3bae7f98aec1038ee03d",
+      "changedFiles": 627,
+      "desiredFiles": 1836,
+      "changedDependencyFiles": 0,
+      "changedPublicFiles": 0
+    },
+    "www": {
+      "bytes": 2423682,
+      "sha256": "da36026bfe468396571addee583d29940f36c18d9606b9d0faeafba8b8827b78",
+      "changedFiles": 488,
+      "desiredFiles": 1996,
+      "changedDependencyFiles": 0,
+      "changedPublicFiles": 0
+    }
+  },
+  "validation": {
+    "wwwTypecheck": "passed",
+    "appTypecheck": "passed",
+    "linuxFrontendBuilds": "passed",
+    "homepageBudget": "passed",
+    "encodingAudit": "passed",
+    "targetedLocalizationTestsPassed": 21,
+    "preexistingFullSuiteFailures": 2,
+    "preexistingFullSuiteFailureContext": "Unchanged BillingManager.tsx source-structure localization assertions"
+  },
+  "databaseMigration": false
+}

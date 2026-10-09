@@ -1,0 +1,16 @@
+# Apply after compose.yaml and the existing shared-edge override.
+# API and worker use a qualified native image containing both isolated Python environments.
+services:
+  api:
+    environment:
+      OMR_SIMPLE_CREDIT_COST: "1"
+      OMR_COMPLEX_CREDIT_COST: "5"
+      SCORE_PREFLIGHT_PYTHON_COMMAND: /opt/score-preflight/bin/python
+      SCORE_PREFLIGHT_ADAPTER_PATH: /srv/scoretransposer/services/worker/python/score_structure_preflight.py
+      SCORE_PREFLIGHT_MAX_CONCURRENCY: "1"
+  worker:
+    environment:
+      HOMR_PYTHON_COMMAND: /usr/local/bin/score-complex-omr
+      HOMR_SOURCE_DIR: /srv/scoretransposer/third_party/music-engines/homr
+      COMPLEX_OMR_ADAPTER_PATH: /srv/scoretransposer/services/worker/python/complex_omr_adapter.py
+      JOB_BROKER_CONCURRENCY: "1"

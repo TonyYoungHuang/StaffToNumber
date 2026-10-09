@@ -1,0 +1,988 @@
+{
+  "release": "20261001-pass1",
+  "production": {
+    "activation": {
+      "release": "20261001-pass1",
+      "activatedAt": "2026-10-01T14:55:18.458483+00:00",
+      "images": {
+        "api": {
+          "image": "scoretransposer-api:20261001-pass1",
+          "imageId": "sha256:58d86e679d548869cf2b6db44bb7763ee7b4277ecf90e40ff2f1574fb28c7f55"
+        },
+        "app": {
+          "image": "scoretransposer-app:20261001-pass1",
+          "imageId": "sha256:e93ce80969c2508a8625b747dee27010a1fd436ecbd8435391c5bb68db4ef91f"
+        },
+        "www": {
+          "image": "scoretransposer-www:20261001-pass1",
+          "imageId": "sha256:00ee27f20fd2c5c92ecf48d4218e2213d3f6e7369e9eda29bab80040c7671ac4"
+        }
+      },
+      "health": "healthy",
+      "protectedContainersUnchanged": 14,
+      "freeDiskBytes": 8230584320,
+      "databaseChanges": "additive score_passes and score_pass_jobs",
+      "price": {
+        "id": "price_1ULkzJLCnXfyZDqLyDZXrlLj",
+        "productId": "prod_VMTxgAC1cnNme1",
+        "amountMinor": 299,
+        "currency": "usd",
+        "type": "one_time",
+        "livemode": true
+      }
+    },
+    "verifiedRuntimeFiles": {
+      "api": 143,
+      "app": 586,
+      "www": 458
+    },
+    "protectedContainersUnchanged": 14,
+    "healthyContainerCount": 15,
+    "runningContainerCount": 17,
+    "freeDiskBytes": 8230481920,
+    "runtimeErrors": false,
+    "newTablesVerified": 2
+  },
+  "payment": {
+    "priceId": "price_1ULkzJLCnXfyZDqLyDZXrlLj",
+    "live": true,
+    "amountMinor": 299,
+    "currency": "usd",
+    "mode": "payment",
+    "recurring": false,
+    "existingSubscriptionsConfigured": 8,
+    "realCharge": false
+  },
+  "public": {
+    "phase": "after",
+    "startedAt": "2026-10-01T14:54:53.540Z",
+    "pages": [
+      {
+        "path": "/",
+        "title": "Sheet Music Scanner & Transposer — Scan PDF to MusicXML Online | ScoreTransposer",
+        "description": "Scan sheet music from a PDF or photo, fix OMR mistakes in the editor, transpose to any key, and export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "canonical": "https://scoretransposer.com/",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Sheet Music Scanner, Transposer & Editor",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/",
+            "inLanguage": "en",
+            "description": "Use a sheet music scanner to turn a PDF or photo into editable notes. Correct scanning mistakes, transpose, play, and export MusicXML, MIDI, PDF or Jianpu online.",
+            "featureList": [
+              "Edit online",
+              "Create Jianpu",
+              "Transpose sheet music",
+              "Playback and audio",
+              "PDF to MusicXML"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/zh-cn",
+        "title": "五线谱识别与移调 — 在线扫描 PDF 转 MusicXML | ScoreTransposer",
+        "description": "从 PDF 或照片识别五线谱，在编辑器中校正 OMR 错误，移调至所需调性，并导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "canonical": "https://scoretransposer.com/zh-cn",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "五线谱识别、 移调与编辑",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/zh-cn",
+            "inLanguage": "zh-CN",
+            "description": "从 PDF 或照片识别五线谱，在编辑器中校正 OMR 错误，移调至所需调性，并导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+            "featureList": [
+              "在线编辑",
+              "生成简谱",
+              "整谱移调",
+              "播放与音频",
+              "音视频转谱"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/zh-tw",
+        "title": "五線譜辨識與轉調 — 線上掃描 PDF 轉 MusicXML | ScoreTransposer",
+        "description": "從 PDF 或照片辨識五線譜，在編輯器中修正 OMR 錯誤，轉調至所需調性，並匯出 MusicXML、MIDI、PDF 或簡譜。一個完整樂譜專案免費，無需安裝。",
+        "canonical": "https://scoretransposer.com/zh-tw",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "五線譜辨識、 轉調與編輯",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/zh-tw",
+            "inLanguage": "zh-TW",
+            "description": "從 PDF 或照片辨識五線譜，在編輯器中修正 OMR 錯誤，轉調至所需調性，並匯出 MusicXML、MIDI、PDF 或簡譜。一個完整樂譜專案免費，無需安裝。",
+            "featureList": [
+              "線上編輯",
+              "建立簡譜",
+              "移調",
+              "播放與音訊",
+              "音訊轉樂譜"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/ja",
+        "title": "楽譜スキャン・移調 — PDF を MusicXML にオンライン変換 | ScoreTransposer",
+        "description": "PDF や写真の楽譜を読み取り、エディターで OMR の誤認識を修正。好きな調に移調して MusicXML、MIDI、PDF、数字譜に書き出せます。楽譜プロジェクト 1 件無料、インストール不要。",
+        "canonical": "https://scoretransposer.com/ja",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "楽譜スキャン・ 移調・編集",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/ja",
+            "inLanguage": "ja",
+            "description": "PDF や写真の楽譜を読み取り、エディターで OMR の誤認識を修正。好きな調に移調して MusicXML、MIDI、PDF、数字譜に書き出せます。楽譜プロジェクト 1 件無料、インストール不要。",
+            "featureList": [
+              "オンライン編集",
+              "Jianpu を作成",
+              "移調",
+              "再生と音声",
+              "音声から楽譜へ"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/ko",
+        "title": "악보 스캔과 조옮김 — PDF를 MusicXML로 온라인 변환 | ScoreTransposer",
+        "description": "PDF나 사진에서 악보를 읽고 편집기에서 OMR 오류를 수정하세요. 원하는 조성으로 바꾼 뒤 MusicXML, MIDI, PDF, 숫자악보로 내보낼 수 있습니다. 악보 프로젝트 1개 무료, 설치 불필요.",
+        "canonical": "https://scoretransposer.com/ko",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "악보 스캔, 조옮김과 편집",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/ko",
+            "inLanguage": "ko",
+            "description": "PDF나 사진에서 악보를 읽고 편집기에서 OMR 오류를 수정하세요. 원하는 조성으로 바꾼 뒤 MusicXML, MIDI, PDF, 숫자악보로 내보낼 수 있습니다. 악보 프로젝트 1개 무료, 설치 불필요.",
+            "featureList": [
+              "온라인 편집",
+              "Jianpu 생성",
+              "조옮김",
+              "재생 및 오디오",
+              "오디오를 악보로"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/fr",
+        "title": "Scanner de partitions et transposition — PDF vers MusicXML en ligne | ScoreTransposer",
+        "description": "Scannez un PDF ou une photo de partition, corrigez les erreurs OMR dans l’éditeur, transposez dans la tonalité voulue et exportez MusicXML, MIDI, PDF ou Jianpu. Un projet complet gratuit, sans installation.",
+        "canonical": "https://scoretransposer.com/fr",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Scanner de partitions, transposition et édition",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/fr",
+            "inLanguage": "fr",
+            "description": "Scannez un PDF ou une photo de partition, corrigez les erreurs OMR dans l’éditeur, transposez dans la tonalité voulue et exportez MusicXML, MIDI, PDF ou Jianpu. Un projet complet gratuit, sans installation.",
+            "featureList": [
+              "Éditer en ligne",
+              "Créer du Jianpu",
+              "Transposer",
+              "Lecture et audio",
+              "Audio vers partition"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/es",
+        "title": "Escáner de partituras y transpositor — Escanea PDF a MusicXML en línea | ScoreTransposer",
+        "description": "Escanea partituras desde un PDF o una foto, corrige errores de OMR en el editor, transpón a cualquier tonalidad y exporta MusicXML, MIDI, PDF o Jianpu. Un proyecto completo gratis, sin instalar nada.",
+        "canonical": "https://scoretransposer.com/es",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Escáner de partituras, transpositor y editor",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/es",
+            "inLanguage": "es",
+            "description": "Escáner de partituras en línea: convierte PDF o fotos en notas editables, corrige errores, transpón y exporta MusicXML, MIDI, PDF o Jianpu. Un proyecto completo gratis.",
+            "featureList": [
+              "Editar online",
+              "Crear Jianpu",
+              "Transponer",
+              "Reproducción y audio",
+              "PDF a MusicXML"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/de",
+        "title": "Notenscanner und Transposition — PDF online in MusicXML umwandeln | ScoreTransposer",
+        "description": "Scannen Sie Noten aus PDF oder Foto, korrigieren Sie OMR-Fehler im Editor, transponieren Sie in die gewünschte Tonart und exportieren Sie MusicXML, MIDI, PDF oder Jianpu. Ein vollständiges Projekt kostenlos, ohne Installation.",
+        "canonical": "https://scoretransposer.com/de",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Notenscanner, Transposition und Editor",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/de",
+            "inLanguage": "de",
+            "description": "Scannen Sie Noten aus PDF oder Foto, korrigieren Sie OMR-Fehler im Editor, transponieren Sie in die gewünschte Tonart und exportieren Sie MusicXML, MIDI, PDF oder Jianpu. Ein vollständiges Projekt kostenlos, ohne Installation.",
+            "featureList": [
+              "Online bearbeiten",
+              "Jianpu erstellen",
+              "Transponieren",
+              "Wiedergabe und Audio",
+              "PDF in MusicXML"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "/ru",
+        "title": "Сканер нот и транспонирование — PDF в MusicXML онлайн | ScoreTransposer",
+        "description": "Сканируйте ноты из PDF или фото, исправляйте ошибки OMR в редакторе, транспонируйте в нужную тональность и экспортируйте MusicXML, MIDI, PDF или Jianpu. Один полный проект бесплатно, без установки.",
+        "canonical": "https://scoretransposer.com/ru",
+        "alternates": [
+          [
+            "en",
+            "https://scoretransposer.com/"
+          ],
+          [
+            "zh-CN",
+            "https://scoretransposer.com/zh-cn"
+          ],
+          [
+            "zh-TW",
+            "https://scoretransposer.com/zh-tw"
+          ],
+          [
+            "ja",
+            "https://scoretransposer.com/ja"
+          ],
+          [
+            "ko",
+            "https://scoretransposer.com/ko"
+          ],
+          [
+            "fr",
+            "https://scoretransposer.com/fr"
+          ],
+          [
+            "es",
+            "https://scoretransposer.com/es"
+          ],
+          [
+            "de",
+            "https://scoretransposer.com/de"
+          ],
+          [
+            "ru",
+            "https://scoretransposer.com/ru"
+          ],
+          [
+            "x-default",
+            "https://scoretransposer.com/"
+          ]
+        ],
+        "h1": "Сканер нот, транспонирование и редактор",
+        "schemas": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ScoreTransposer",
+            "url": "https://scoretransposer.com",
+            "email": "[redacted]",
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "email": "[redacted]",
+                "availableLanguage": [
+                  "English",
+                  "Chinese"
+                ]
+              }
+            ]
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "ScoreTransposer",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web",
+            "url": "https://scoretransposer.com/ru",
+            "inLanguage": "ru",
+            "description": "Сканируйте ноты из PDF или фото, исправляйте ошибки OMR в редакторе, транспонируйте в нужную тональность и экспортируйте MusicXML, MIDI, PDF или Jianpu. Один полный проект бесплатно, без установки.",
+            "featureList": [
+              "Редактировать онлайн",
+              "Создавать Jianpu",
+              "Транспонировать",
+              "Воспроизведение и аудио",
+              "PDF в MusicXML"
+            ]
+          }
+        ]
+      }
+    ],
+    "checks": [
+      "/: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/zh-cn: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/zh-tw: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/ja: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/ko: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/fr: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/es: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/de: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "/ru: English 30s background automatically plays muted and loops; correct metrics, position and links",
+      "All nine homepages retain exact SEO metadata, H1 and structured data",
+      "1440px: actual loop boundary, decoded audio, sound toggle, pause/resume, viewport behavior, no overflow",
+      "390px: actual loop boundary, decoded audio, sound toggle, pause/resume, viewport behavior, no overflow",
+      "Production media hashes match approved local background assets; MP4 Range=206",
+      "Stripe-first pricing login dialog still opens without navigation",
+      "Google One Tap intermediate endpoint trusts the homepage origin and rejects other origins"
+    ],
+    "errors": [],
+    "media": {
+      "score-motion-30s.mp4": {
+        "bytes": 2993664,
+        "sha256": "b0cac1bea57e344d3d40c8105428f8af45c217c83ae1b17c33a745a296bce94c",
+        "contentType": "video/mp4"
+      },
+      "poster.webp": {
+        "bytes": 7040,
+        "sha256": "c2b9492910134c4af52f81766d7041208f353ac623fedff8460d73b7f63b7a6b",
+        "contentType": "image/webp"
+      }
+    },
+    "finishedAt": "2026-10-01T14:55:15.942Z"
+  },
+  "browserFixtures": {
+    "fixtureOnly": true,
+    "realGoogleAccount": false,
+    "realCharge": false,
+    "checks": [
+      "9 locales: English white video above workbench; one existing H1; $2.99 offer",
+      "Register in modal → unchanged URL/scroll/selection → one click Stripe payment",
+      "One Tap completion refreshes account in place with no navigation or scroll change",
+      "Google button completes in the current-page modal",
+      "Desktop/mobile autoplay and responsive layout",
+      "Expired editor session signs in via modal on /scores",
+      "Dashboard sign-out and sign-in stay on the current page and refresh the account",
+      "Password reset opens sign-in modal without another login page"
+    ]
+  },
+  "originalPaymentRegression": {
+    "fixtureOnly": true,
+    "realGoogleLogin": false,
+    "realCharges": false,
+    "checks": [
+      "Pricing navigation opens a page with all four purchase cards in the first viewport",
+      "Google credential callback closes the modal in place, updates the account, preserves scroll/plan, and rejects forged messages",
+      "One click sends one authenticated Stripe checkout with the exact selected plan; browser Back restores an interactive selection",
+      "Paddle remains selectable and the provider selection survives a full reload",
+      "One-time purchases use Stripe; failed checkout stays on the plan and retries with the same idempotency key",
+      "An expired session prompts in-place email login without losing the one-time annual purchase",
+      "Mobile dialog fits the screen; Escape closes it and restores focus to the selected plan",
+      "All nine locale pricing pages render plan cards and open login without changing pages",
+      "No browser runtime errors"
+    ]
+  },
+  "postgresConcurrency": {
+    "backend": "PostgreSQL 16",
+    "simultaneousProjectClaims": [
+      true,
+      false
+    ],
+    "simultaneousLastCredit": [
+      true,
+      false
+    ],
+    "remaining": 0
+  },
+  "officialGoogleSdk": {
+    "loaded": [
+      {
+        "path": "/gsi/intermediate",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/google-one-tap",
+        "status": 200
+      },
+      {
+        "path": "/gsi/intermediatesupport",
+        "status": 200
+      },
+      {
+        "path": "/gsi/client",
+        "status": 200
+      }
+    ],
+    "realGoogleAccount": false,
+    "note": "Clean browser loaded the official Google SDK and trusted intermediate iframe; no account was authenticated.",
+    "issues": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Failed to load resource: the server responded with a status of 401 ()"
+    ]
+  },
+  "sites": [
+    {
+      "url": "https://scoretransposer.com",
+      "status": 200
+    },
+    {
+      "url": "https://app.scoretransposer.com/login",
+      "status": 200
+    },
+    {
+      "url": "https://api.scoretransposer.com/health",
+      "status": 200
+    },
+    {
+      "url": "https://api.scoretransposer.com/ready",
+      "status": 200
+    },
+    {
+      "url": "https://collab.scoretransposer.com/health",
+      "status": 200
+    },
+    {
+      "url": "https://polyoddstools.com",
+      "status": 200
+    },
+    {
+      "url": "https://api.polyoddstools.com/health",
+      "status": 200
+    },
+    {
+      "url": "https://adiostv.com",
+      "status": 200
+    },
+    {
+      "url": "https://ctcsolteacher.com",
+      "status": 200
+    }
+  ],
+  "artifacts": {
+    "archives": {
+      "www-patch.tar.gz": "3427cd0f6bc0905d8f29b7ada9086372e4187a81b1396eabc8d8dc60cf7a3764",
+      "app-patch.tar.gz": "a5721f7ac4f1ec0711335487ce8665b977d3c8ce13b1737b587bac87055c486a",
+      "api-patch.tar.gz": "9f492ff8608f4e1ffcd36e077793331e9f165f868b499122a77600d4fa957b96"
+    },
+    "buildImages": {
+      "www": "sha256:71f3ecb677f3c31d3ad109714fb56e0849df082d72fa7703f3f453f43595f4f9",
+      "app": "sha256:2fd069dc1c3916a3a4e8ac1dee13ac74e2dcc9abb1e1cf748eb100220eaeb077"
+    },
+    "sourceManifestSha256": "99f72631c158ce832d4dd28b50eeb7796dade1fab02ced1da07c929fd3d7ad91",
+    "migrationSha256": "7288d36787831a333822cbc85aeaf0661bd595e08d8944a651bc1e0260ac36cb"
+  }
+}

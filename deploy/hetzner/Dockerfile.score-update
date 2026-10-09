@@ -1,0 +1,20 @@
+# Assemble only from verified artifacts; no package/model downloads on the live host.
+# BASE_IMAGE must be the current qualified native worker image, retained for rollback.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+WORKDIR /srv/scoretransposer
+USER root
+COPY runtime/ /srv/scoretransposer/
+# The retained native image installs the parser under worker, while shared now imports it.
+# Reuse the exact locked package and its existing dependency tree without downloading.
+RUN node -e "const fs=require('fs'); const base='services/worker/node_modules/fast-xml-parser'; if(JSON.parse(fs.readFileSync(base+'/package.json')).version!=='5.10.1')throw Error('Unqualified XML parser'); fs.mkdirSync('packages/shared/node_modules',{recursive:true}); const dest='packages/shared/node_modules/fast-xml-parser'; if(!fs.existsSync(dest))fs.symlinkSync('../../../'+base,dest);" \
+    && node --input-type=module -e "await import('./packages/shared/dist/index.js')"
+# The archive has absolute-root-relative opt/, srv/ and usr/ paths and preserves Python symlinks.
+ADD engine-runtime.tar.gz /
+ADD engine-models.tar /
+USER node
+ENV SCORE_PREFLIGHT_PYTHON_COMMAND=/opt/score-preflight/bin/python \
+    SCORE_PREFLIGHT_ADAPTER_PATH=/srv/scoretransposer/services/worker/python/score_structure_preflight.py \
+    HOMR_PYTHON_COMMAND=/usr/local/bin/score-complex-omr \
+    HOMR_SOURCE_DIR=/srv/scoretransposer/third_party/music-engines/homr \
+    COMPLEX_OMR_ADAPTER_PATH=/srv/scoretransposer/services/worker/python/complex_omr_adapter.py

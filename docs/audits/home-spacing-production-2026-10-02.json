@@ -1,0 +1,424 @@
+{
+  "release": "20261002-spacing1",
+  "changedSources": [
+    "apps/www/src/app/home-page.module.css"
+  ],
+  "before": {
+    "phase": "before",
+    "startedAt": "2026-10-02T06:26:50.209Z",
+    "measurements": [
+      {
+        "path": "/",
+        "width": 2560,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 82,
+        "videoToWorkbench": 104,
+        "videoHeight": 800,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/",
+        "width": 1440,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 82,
+        "videoToWorkbench": 103.359375,
+        "videoHeight": 792,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/",
+        "width": 390,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 72,
+        "videoToWorkbench": 82,
+        "videoHeight": 688.875,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 2560,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 82,
+        "videoToWorkbench": 104,
+        "videoHeight": 800,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 1440,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 82,
+        "videoToWorkbench": 103.359375,
+        "videoHeight": 792,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 390,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 72,
+        "videoToWorkbench": 82,
+        "videoHeight": 687.875,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "finishedAt": "2026-10-02T06:27:03.883Z"
+  },
+  "local": {
+    "phase": "local",
+    "startedAt": "2026-10-02T06:27:43.451Z",
+    "measurements": [
+      {
+        "path": "/",
+        "width": 2560,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 800,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/",
+        "width": 1440,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 792,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/",
+        "width": 390,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 688.875,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 2560,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 800,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 1440,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 792,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 390,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 687.875,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "finishedAt": "2026-10-02T06:27:52.442Z"
+  },
+  "production": {
+    "phase": "production",
+    "startedAt": "2026-10-02T06:35:35.165Z",
+    "measurements": [
+      {
+        "path": "/",
+        "width": 2560,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 800,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/",
+        "width": 1440,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 792,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/",
+        "width": 390,
+        "title": "Sheet Music Scanner, Transposer & Editor",
+        "description": "Use our sheet music scanner to turn a PDF or photo into editable notes. Fix scanning mistakes, transpose to any key, and play your score. Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install.",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 688.875,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 2560,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 800,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 1440,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 792,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      },
+      {
+        "path": "/zh-cn",
+        "width": 390,
+        "title": "五线谱识别、 移调与编辑",
+        "description": "用五线谱识别工具将 PDF 或照片转为可编辑音符。 校正识别错误，移调至所需调性，并播放检查结果。 可导出 MusicXML、MIDI、PDF 或简谱。一个完整乐谱项目免费，无需安装。",
+        "titleToVideo": 28,
+        "videoToWorkbench": 32,
+        "videoHeight": 687.875,
+        "videoSource": "/product/commercial/v4/score-motion-30s.mp4",
+        "autoplayObserved": true,
+        "loop": true,
+        "muted": true,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "finishedAt": "2026-10-02T06:35:49.399Z"
+  },
+  "seo": {
+    "checkedAt": "2026-10-02T06:35:42.231Z",
+    "pages": [
+      {
+        "path": "/",
+        "unchanged": true
+      },
+      {
+        "path": "/zh-cn",
+        "unchanged": true
+      },
+      {
+        "path": "/zh-tw",
+        "unchanged": true
+      },
+      {
+        "path": "/ja",
+        "unchanged": true
+      },
+      {
+        "path": "/ko",
+        "unchanged": true
+      },
+      {
+        "path": "/fr",
+        "unchanged": true
+      },
+      {
+        "path": "/es",
+        "unchanged": true
+      },
+      {
+        "path": "/de",
+        "unchanged": true
+      },
+      {
+        "path": "/ru",
+        "unchanged": true
+      }
+    ]
+  },
+  "runtime": {
+    "activation": {
+      "release": "20261002-spacing1",
+      "activatedAt": "2026-10-02T06:34:38.614703+00:00",
+      "image": "scoretransposer-www:20261002-spacing1",
+      "imageId": "sha256:1c23e33a9957b39f63b5d2fa59805a674896e275e2f7eaee885d5e2e03dcb9d8",
+      "health": "healthy",
+      "protectedContainersUnchanged": 16,
+      "freeDiskBytes": 8006250496,
+      "databaseChanges": false,
+      "apiUnchanged": true
+    },
+    "verifiedRuntimeFiles": 458,
+    "protectedContainersUnchanged": 16,
+    "healthyContainerCount": 15,
+    "runningContainerCount": 17,
+    "freeDiskBytes": 8006033408,
+    "websiteErrorLogs": false
+  },
+  "siteHealth": [
+    {
+      "url": "https://scoretransposer.com",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://app.scoretransposer.com/login",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://api.scoretransposer.com/health",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://api.scoretransposer.com/ready",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://collab.scoretransposer.com/health",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://polyoddstools.com",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://api.polyoddstools.com/health",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://adiostv.com",
+      "status": 200,
+      "attempt": 1
+    },
+    {
+      "url": "https://ctcsolteacher.com",
+      "status": 200,
+      "attempt": 1
+    }
+  ],
+  "backup": {
+    "backup": "/srv/sites/scoretransposer/backups/pre-spacing1-20261002",
+    "files": [
+      {
+        "name": "database.dump",
+        "bytes": 3118152,
+        "sha256": "49c093a0d7e7457c94105a12dc45817235c765ffae18166158df74eb1551ddbb"
+      },
+      {
+        "name": "compose.env",
+        "bytes": 147,
+        "sha256": "d4296f288dea212383adc9e113fe4ea25a7aa2b4bfde382983879d74c4eb2282"
+      },
+      {
+        "name": "compose.yaml",
+        "bytes": 6500,
+        "sha256": "514f06cc2ed3edd1ed7e647a4cb658975bd5ba583d6e2c4a3bca2741d146ef09"
+      },
+      {
+        "name": "runtime.env",
+        "bytes": 4126,
+        "sha256": "4273771c64ced5583af4657c89f9384784993c06317b4227d659d1e4c86dc57e"
+      }
+    ],
+    "containerCount": 17
+  },
+  "build": {
+    "archives": {
+      "www-patch.tar.gz": "2e52d9bb90373f81050a10bf498b785abab9e8c1b021164e41d8bbb2966a921b"
+    },
+    "buildImages": {
+      "www": "sha256:1d1b44cea01e2cc2bec043e9b6d0e3b418a13721602ea42dda45a5a73837a563"
+    },
+    "sourceManifestSha256": "c68fe92c7a68a127e46313decd02ef3b8ab48eb90d5d59bb403f336f3981d00a"
+  }
+}

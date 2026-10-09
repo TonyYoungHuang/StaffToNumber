@@ -1,0 +1,135 @@
+{
+  "frontendRelease": "20261007-progress2",
+  "backendRelease": "20261007-progress1",
+  "status": "passed",
+  "checkedAt": "2026-10-07T11:44:21.079646+00:00",
+  "scope": {
+    "sourceAllowlist": [
+      "packages/ui/src/index.ts",
+      "packages/ui/src/score-processing-panel.tsx",
+      "packages/i18n/src/score-preflight-messages.ts",
+      "apps/app/src/components/ScoreImportStatus.tsx",
+      "apps/app/src/components/ScoreDetailClient.tsx",
+      "apps/app/src/components/TrialScorePreview.tsx",
+      "apps/app/src/components/ScoreRecognitionPreflight.tsx",
+      "apps/app/src/components/ScoreLibraryManager.tsx",
+      "apps/www/src/components/HomeHeroWorkbench.tsx",
+      "services/worker/src/index.ts",
+      "services/worker/src/complex-omr.ts",
+      "services/worker/src/simple-pdf-omr.ts",
+      "services/worker/src/audiveris-runner.ts",
+      "services/worker/src/omr-job-progress.ts",
+      "apps/app/src/lib/score-readiness-messages.ts"
+    ],
+    "databaseMigration": false,
+    "billingChanges": false,
+    "otherUnreleasedWorkExcluded": true
+  },
+  "runtime": {
+    "release": "20261007-progress2",
+    "backendRelease": "20261007-progress1",
+    "checkedAt": "2026-10-07T11:44:21.079646+00:00",
+    "services": {
+      "worker": {
+        "imageId": "sha256:f73025135106145b8cd4a5d53d0e1c24fe58e9c6b65a0f39c8659d47032bfcc2",
+        "healthy": true,
+        "restarts": 0,
+        "oomKilled": false
+      },
+      "api": {
+        "imageId": "sha256:f73025135106145b8cd4a5d53d0e1c24fe58e9c6b65a0f39c8659d47032bfcc2",
+        "healthy": true,
+        "restarts": 0,
+        "oomKilled": false
+      },
+      "app": {
+        "imageId": "sha256:4b492e32e2e79b79e93c7fc5fe99233fda313814239d936f7ead9830189b03e8",
+        "healthy": true,
+        "restarts": 0,
+        "oomKilled": false
+      },
+      "www": {
+        "imageId": "sha256:f5f7ae57793204013ee26865f24aa5aa7309f37e8dfed92bd8b0e55abf2ec08c",
+        "healthy": true,
+        "restarts": 0,
+        "oomKilled": false
+      }
+    },
+    "protectedOriginalContainersUnchanged": 12,
+    "configurationPreserved": true,
+    "databaseMigration": false,
+    "postgresReady": true,
+    "activeJobs": 0,
+    "freeDiskBytes": 6570143744,
+    "recognitionMinimumFreeBytes": 6442450944,
+    "recognitionWorkingReserveBytes": 104857600,
+    "workingReserveAvailable": true,
+    "rollbackScriptSha256": "ea97ba71864763594103c591caa3e59f5665499b844580d0919e179304b22db7"
+  },
+  "verification": {
+    "workerTargetedTestsPassed": 25,
+    "browserScenarioExecutions": {
+      "preflightApp": 25,
+      "preflightHome": 12,
+      "progressRecovery": 15,
+      "progressCapacity": 15
+    },
+    "actualProductionPipeline": {
+      "savedOriginalRetryWithoutAnotherUpload": true,
+      "oldFailedAttemptRetained": true,
+      "freeTrialParamsPreserved": true,
+      "observedStages": [
+        "recognize",
+        "restore-image",
+        "save"
+      ],
+      "heartbeatUpdates": 6,
+      "browserPhases": [
+        "loading",
+        "recognize",
+        "restore-image"
+      ],
+      "candidateSavedBeforeExport": true,
+      "candidateRenderedForInactiveAccount": true,
+      "pageErrors": []
+    },
+    "actualFailureCauseVisible": {
+      "release": "20261007-progress2",
+      "realFailedJobCauseVisible": true,
+      "savedOriginalRetryVisible": true,
+      "darkRedFailureCauseVerified": true,
+      "pageErrors": []
+    },
+    "customerStatePreserved": {
+      "user": true,
+      "sessions": true,
+      "orders": true,
+      "purchases": true,
+      "files": true,
+      "uploads": true,
+      "documents": true,
+      "jobs": true,
+      "legacyJobs": true,
+      "revisions": true,
+      "assets": true,
+      "commands": true,
+      "audit": true,
+      "support": true
+    },
+    "temporaryQaSessionRevoked": true,
+    "homepageGzipBudgetsKiB": {
+      "javascript": 96.8,
+      "javascriptBudget": 110,
+      "css": 30.9,
+      "cssBudget": 42
+    }
+  },
+  "storage": {
+    "existingSafetyFloorUnchanged": true,
+    "ownSupersededBuildImagesAndLayersRemoved": true,
+    "obsoleteSiteImageArchivedWithConfigurationAndLayerVerification": true,
+    "customerFilesDeleted": false,
+    "currentAndPreviousReleaseImagesPreserved": true,
+    "materialLimit": "Free disk remains close to the 6 GiB storage safety floor plus the 100 MiB per-job working reserve. Further releases require the recognition reserve check."
+  }
+}

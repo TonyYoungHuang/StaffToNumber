@@ -1,0 +1,80 @@
+{
+  "release": "20261007-recovery1",
+  "status": "deployed-and-verified",
+  "checkedAt": "2026-10-07T09:58:21.317088+00:00",
+  "services": {
+    "worker": {
+      "imageId": "sha256:5165b520d13f7c262d194e03ebee0a5a13d0d3d69c5d48fb61d051cc7b07a7b9",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    },
+    "api": {
+      "imageId": "sha256:5165b520d13f7c262d194e03ebee0a5a13d0d3d69c5d48fb61d051cc7b07a7b9",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    },
+    "app": {
+      "imageId": "sha256:291c2b96136b22589f201fa4ad604332915f879b70695f669d84a1cd9aaf85f7",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    },
+    "www": {
+      "imageId": "sha256:053eb6b4761de49598d663298d2c4fb032e4ca042807d78f322b4a8cc34b158c",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    }
+  },
+  "protectedContainersUnchanged": 12,
+  "databaseMigration": false,
+  "rollbackScriptVerified": true,
+  "backendScopeFiles": 14,
+  "privateCustomerRecovery": {
+    "jobStatus": "completed",
+    "documentStatus": "needs_review",
+    "revisionStatus": "candidate",
+    "measures": 62,
+    "notes": 229,
+    "rests": 16,
+    "lyrics": 109,
+    "freePreviewAccess": true,
+    "oldAttemptPreserved": true,
+    "sourceHashUnchanged": true,
+    "customerSessionAndBillingUnchanged": true
+  },
+  "complexBudget": {
+    "elapsedMs": 228260,
+    "staffs": 10,
+    "tabStaffs": 0,
+    "systems": 10,
+    "coverageStatus": "incomplete",
+    "explicitReviewRequired": true
+  },
+  "pdf": {
+    "sourcePages": 2,
+    "pageDpi": [
+      253,
+      253
+    ],
+    "measures": 124,
+    "originalCustomerPdf": false
+  },
+  "browser": {
+    "actualCandidateRendered": true,
+    "inactiveEntitlementPreview": true,
+    "pageErrors": 0
+  },
+  "tests": {
+    "apiPassed": 46,
+    "apiOptionalSkipped": 1,
+    "workerSuitePassed": 34,
+    "latestComplexPassed": 11,
+    "pythonPassed": 44,
+    "appBrowserPassed": 25,
+    "homeBrowserPassed": 12
+  },
+  "privateEvidenceInPublicRepository": false
+}

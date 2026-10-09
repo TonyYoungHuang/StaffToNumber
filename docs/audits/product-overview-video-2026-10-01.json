@@ -1,0 +1,347 @@
+{
+  "durationSeconds": 80,
+  "locales": [
+    {
+      "locale": "en",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2499734,
+          "sha256": "e54067e5bc8bf089fb48f9099c3142ab0a80913bfff0ef77a60725a789ba8628"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 16130,
+          "sha256": "9e4fa615dcc851bd67e85c4035b75148aae209e7306cc20eb72d2a56fd3880b9"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 839,
+          "sha256": "397a4e483b9bc895e9d4f272bc5e7d6519b7f66eacfd8be14d75fb92a5959f98"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2442183,
+          "sha256": "493025ed9551ac87c33ff66bd5684a74bda36bd473b0e2a76cd88aa401db4b9a"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 16568,
+          "sha256": "cec7a7d5d9b2437f6b3e8f663dff0ed1c5f096684997af3a8abd638c1859c97a"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 847,
+          "sha256": "6e36f93693d71bfe2459519d2aa54a0126829e9f703798f08248ddbc8c24f1a5"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "zh-TW",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2498447,
+          "sha256": "e09fbf1452a9289f926996d0bab83b9061d4097ab3d7d6112229ed12a90e63a2"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 16442,
+          "sha256": "f2edce2c632357dc547c34cdb74834e2b235baedfc8f46e6923517794841db82"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 850,
+          "sha256": "552c9cb7396e25027568482c9216b5cca19ef36c82988e760e1aae7723b2770a"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "ja",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2521788,
+          "sha256": "bd8e5cbca688ff9bfd27aa47228a22c18968be50ea36ca1c3e0a7c2ab00f340d"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 17642,
+          "sha256": "badd48c4714cdf519ea5bb7cb7dc025c3e4e3192835d20470e0ca28010611162"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 994,
+          "sha256": "63da5665da3bfcf732bf991cb201197287856dddb2d8d262e8f9ed2f18fdbdcf"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "ko",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2524258,
+          "sha256": "c05b2b833adc42c8d468ee7e502f883e837738217b0ca3ccb8dd255eb548cecc"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 15528,
+          "sha256": "6912974cfe2cb6449af3030f6a0c5ca580e6c677bca52226319550f1f1b3b805"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 1012,
+          "sha256": "07b00fd4fe76e682ff9fba3af46288b8e9c003e0cddb36598880e340a0227e20"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "fr",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2615133,
+          "sha256": "2b2c19e552759924997ed64261e473caf87d74cda3b612840e95a9f83ffd2b6d"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 17444,
+          "sha256": "b9a3b846cb899d8b9e4603336499eb8daef3380ae19dc6c7b3ec7f71e576987d"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 958,
+          "sha256": "7c509ff658efeccd9735b583a0193e99ea5adfae3bbdf2f42791436954f2f1b9"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "es",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2632765,
+          "sha256": "818314b66f440b7e640b2fc4c6d5990c5204e808ce60fb2761cdccfaf0749840"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 16630,
+          "sha256": "31e56ae5b5db5b9c8eb3f9186be52c4758ef098e7d62bf8e8fb14a3ef685eb0f"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 885,
+          "sha256": "35e26dd63dfd954815434242339a553684a9b7f38a80588327082ba9d512f9c5"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "de",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2566725,
+          "sha256": "4ef5c35908a5736211b454fc9914b1c60eaadb59cca4a2c974377b208d4a9957"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 16580,
+          "sha256": "b6fe8d32289ccf92f04bf74193c04e0577c85d6c451bb4b59080609e6c080d8a"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 937,
+          "sha256": "bd96774cf0d66c82ad93e025c36c102bca852b872c761a14d8ba9253f7e2e8b7"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    },
+    {
+      "locale": "ru",
+      "files": [
+        {
+          "name": "overview.mp4",
+          "bytes": 2636793,
+          "sha256": "4ccab720dcd21921134efad976fb09ffbb47c055cb7850403eee52ab542566be"
+        },
+        {
+          "name": "poster.webp",
+          "bytes": 18212,
+          "sha256": "f7080219b45f85b767b8c82f0caf8100be51746ede977d02b7fd059ed228c6dc"
+        },
+        {
+          "name": "captions.vtt",
+          "bytes": 1278,
+          "sha256": "5e6a7ab5063e44dc0cdca6b691b53b05d374507e92366e9bed7601fcd4cfc00d"
+        }
+      ],
+      "video": {
+        "codec": "h264",
+        "width": 1600,
+        "height": 900
+      },
+      "audio": {
+        "codec": "aac",
+        "sampleRate": 44100
+      },
+      "verifiedOperations": {
+        "pitchShiftSemitones": 2,
+        "tempoBpm": 80,
+        "directExports": [
+          "midi",
+          "musicxml",
+          "wav"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# Patch only the payment modules on the verified native API image.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY services/api/dist/lib/payments.js /srv/scoretransposer/services/api/dist/lib/payments.js
+COPY services/api/dist/lib/billing-events.js /srv/scoretransposer/services/api/dist/lib/billing-events.js
+COPY services/api/dist/routes/payment-webhooks.js /srv/scoretransposer/services/api/dist/routes/payment-webhooks.js

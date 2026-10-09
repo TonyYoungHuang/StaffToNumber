@@ -1,0 +1,519 @@
+{
+  "date": "2026-10-01",
+  "status": "local-preview-verified",
+  "deployed": false,
+  "media": {
+    "renderedAt": "2026-10-01T09:02:39.805Z",
+    "language": "en",
+    "sharedAcrossAllLocales": true,
+    "kind": "advertising motion design with semantic music notation",
+    "duration": 30,
+    "tempo": 112,
+    "chapters": [
+      [
+        0,
+        4.285714285714286,
+        "Your score. In motion."
+      ],
+      [
+        4.285714285714286,
+        8.571428571428571,
+        "Make every note yours."
+      ],
+      [
+        8.571428571428571,
+        12.857142857142858,
+        "Find your perfect key."
+      ],
+      [
+        12.857142857142858,
+        17.142857142857142,
+        "Hear it come alive."
+      ],
+      [
+        17.142857142857142,
+        25.714285714285715,
+        "One score. More voices. Piano. Violin. Flute."
+      ],
+      [
+        25.714285714285715,
+        30,
+        "ScoreTransposer. Bring your music to life. Start with your score."
+      ]
+    ],
+    "soundtrack": "Original advertising arrangement, not an application playback recording",
+    "audioToScoreDepicted": false,
+    "probe": {
+      "streams": [
+        {
+          "index": 0,
+          "codec_name": "h264",
+          "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+          "profile": "High",
+          "codec_type": "video",
+          "codec_tag_string": "avc1",
+          "codec_tag": "0x31637661",
+          "mime_codec_string": "avc1.640028",
+          "width": 1920,
+          "height": 1080,
+          "coded_width": 1920,
+          "coded_height": 1080,
+          "has_b_frames": 2,
+          "pix_fmt": "yuv420p",
+          "level": 40,
+          "chroma_location": "left",
+          "field_order": "progressive",
+          "is_avc": "true",
+          "nal_length_size": "4",
+          "id": "0x1",
+          "r_frame_rate": "30/1",
+          "avg_frame_rate": "30/1",
+          "time_base": "1/15360",
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "duration_ts": 460800,
+          "duration": "30.000000",
+          "bit_rate": "782570",
+          "bits_per_raw_sample": "8",
+          "nb_frames": "900",
+          "extradata_size": 47,
+          "disposition": {
+            "default": 1,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          },
+          "tags": {
+            "language": "und",
+            "handler_name": "VideoHandler",
+            "encoder": "Lavc62.28.101 libx264"
+          }
+        },
+        {
+          "index": 1,
+          "codec_name": "aac",
+          "codec_long_name": "AAC (Advanced Audio Coding)",
+          "profile": "LC",
+          "codec_type": "audio",
+          "codec_tag_string": "mp4a",
+          "codec_tag": "0x6134706d",
+          "mime_codec_string": "mp4a.40.2",
+          "sample_fmt": "fltp",
+          "sample_rate": "48000",
+          "channels": 2,
+          "channel_layout": "stereo",
+          "bits_per_sample": 0,
+          "initial_padding": 0,
+          "id": "0x2",
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "time_base": "1/48000",
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "duration_ts": 1440000,
+          "duration": "30.000000",
+          "bit_rate": "155993",
+          "nb_frames": "1408",
+          "extradata_size": 5,
+          "disposition": {
+            "default": 1,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          },
+          "tags": {
+            "language": "und",
+            "handler_name": "SoundHandler"
+          }
+        }
+      ],
+      "format": {
+        "filename": "E:\\AI WEB\\21.wuxianpu\\apps\\www\\public\\product\\commercial\\v2\\scoretransposer-30s.mp4",
+        "nb_streams": 2,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "format_long_name": "QuickTime / MOV",
+        "start_time": "0.000000",
+        "duration": "30.000000",
+        "size": "3554211",
+        "bit_rate": "947789",
+        "probe_score": 100,
+        "tags": {
+          "major_brand": "isom",
+          "minor_version": "512",
+          "compatible_brands": "isomiso2avc1mp41",
+          "encoder": "Lavf62.12.101"
+        }
+      }
+    },
+    "files": {
+      "scoretransposer-30s.mp4": {
+        "bytes": 3554211,
+        "sha256": "b710b191f7a12f7a96303d71e2a74b237e5dab4fcc9b75d2527c4b06a0b8d32e"
+      },
+      "poster.webp": {
+        "bytes": 17266,
+        "sha256": "98c59d6b5a7196e259f294ca33b3d2db9dfe86abb4792315c29f16c8c474d967"
+      },
+      "captions-en.vtt": {
+        "bytes": 394,
+        "sha256": "df488f7b117eb10049959f9e07885976ad717e8f41c686ef2b59e3e4f4fd4d35"
+      }
+    }
+  },
+  "semanticScore": {
+    "ok": true,
+    "semanticChecks": [
+      {
+        "variant": "original-C",
+        "noteCount": 30,
+        "totalBeats": 32,
+        "tempoBpm": 112,
+        "programs": [
+          1
+        ],
+        "productParserRoundTrip": true
+      },
+      {
+        "variant": "edited-C",
+        "noteCount": 30,
+        "totalBeats": 32,
+        "tempoBpm": 112,
+        "programs": [
+          1
+        ],
+        "productParserRoundTrip": true
+      },
+      {
+        "variant": "original-D",
+        "noteCount": 30,
+        "totalBeats": 32,
+        "tempoBpm": 112,
+        "programs": [
+          1
+        ],
+        "productParserRoundTrip": true
+      },
+      {
+        "variant": "edited-D",
+        "noteCount": 30,
+        "totalBeats": 32,
+        "tempoBpm": 112,
+        "programs": [
+          1
+        ],
+        "productParserRoundTrip": true
+      },
+      {
+        "variant": "ensemble-D",
+        "noteCount": 39,
+        "totalBeats": 16,
+        "tempoBpm": 112,
+        "programs": [
+          74,
+          41,
+          1
+        ],
+        "productParserRoundTrip": true
+      }
+    ],
+    "svgAssets": [
+      "original-C",
+      "original-C-strip",
+      "edited-C",
+      "edited-C-strip",
+      "original-D",
+      "original-D-strip",
+      "edited-D",
+      "edited-D-strip",
+      "ensemble-D",
+      "ensemble-D-flute",
+      "ensemble-D-violin",
+      "ensemble-D-piano"
+    ],
+    "notesHaveStableIndices": true,
+    "englishOnlyText": true,
+    "standaloneFontsEmbedded": true,
+    "coordinatesIn1600PixelSpace": true
+  },
+  "audio": {
+    "ok": true,
+    "matchedScoreEvents": 87,
+    "totalEvents": 95,
+    "pitchChecks": [
+      {
+        "instrument": "piano",
+        "section": "intro",
+        "expectedMidi": 64,
+        "expectedHz": 329.628,
+        "measuredHz": 329.59,
+        "differenceCents": -0.2
+      },
+      {
+        "instrument": "piano",
+        "section": "transpose",
+        "expectedMidi": 66,
+        "expectedHz": 369.994,
+        "measuredHz": 370.239,
+        "differenceCents": 1.15
+      },
+      {
+        "instrument": "violin",
+        "section": "ensemble",
+        "expectedMidi": 66,
+        "expectedHz": 369.994,
+        "measuredHz": 369.873,
+        "differenceCents": -0.57
+      },
+      {
+        "instrument": "flute",
+        "section": "ensemble",
+        "expectedMidi": 81,
+        "expectedHz": 880,
+        "measuredHz": 879.639,
+        "differenceCents": -0.71
+      }
+    ],
+    "durationSeconds": 30,
+    "sampleRate": 48000,
+    "channels": 2,
+    "peakDbfs": -6.087,
+    "endingPeakLast10ms": 0
+  },
+  "visual": {
+    "reviewedAt": "2026-10-01T09:01:34.3417036Z",
+    "reviewer": "video_feature_audit",
+    "status": "pass",
+    "scope": "Independent review of 12 rendered still frames and animation source; corrected 9s and 10.5s frames rechecked. This is not a claim of watching the final encoded video.",
+    "language": "en",
+    "advertisingStyle": true,
+    "websiteTutorialAppearance": false,
+    "englishCopy": "Natural and readable; no visible Chinese text.",
+    "notation": "Correct C/D major notation, note edits and separate Piano/Violin/Flute parts. Corrected transpose transition keeps complete valid notation layers intact.",
+    "layout": "No actionable text overflow or unwanted coverage. Cropped introductory/outro paper edges are intentional composition.",
+    "functionalClaims": "Matches supported editing, transposition, score-to-audio and multiple parts. No audio-to-score or realtime sampled-instrument switching claim.",
+    "resolvedFinding": {
+      "id": "transpose-detached-beams",
+      "originalFrame": "frames/9.png",
+      "cause": "Per-note transforms moved stems and heads without their independently rendered beams.",
+      "correction": "0.72 second crossfade and 12px movement of complete C/D score layers.",
+      "recheck": "No detached or floating beams in corrected 9s frame; 10.5s final D-major score remains correct. Faint duplicated notation during the dissolve is intentional."
+    },
+    "actionableFindings": [],
+    "reviewedFrames": [
+      "1-6.png",
+      "3-6.png",
+      "4-7.png",
+      "6-5.png",
+      "9.png",
+      "10-5.png",
+      "14-5.png",
+      "18-3.png",
+      "21-3.png",
+      "25-1.png",
+      "27-8.png",
+      "29-8.png"
+    ],
+    "correctedFrameHashes": [
+      {
+        "name": "9.png",
+        "sha256": "CEB9F7E3C0B8ABC56B6863D599BD94C3690DA06974EF404B1E0ED3897F45CEE0"
+      },
+      {
+        "name": "10-5.png",
+        "sha256": "2DDE7DEB353BA414B894E462670BD2842F7B55EC5F6AFFBD8908E185DC21755E"
+      }
+    ]
+  },
+  "browser": {
+    "origin": "http://127.0.0.1:44610",
+    "realMediaPlayback": true,
+    "startedAt": "2026-10-01T09:03:14.662Z",
+    "checks": [
+      "en: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "zh-CN: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "zh-TW: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "ja: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "ko: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "fr: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "es: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "de: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "ru: same English film/copy, no old 80-second section or chapters, no preload, original demos and SEO retained",
+      "The shared MP4, WebP poster and English WebVTT respond with valid file signatures",
+      "en 1440px: 30-second unmuted playback, decoded audio, English captions, keyboard/native controls and no horizontal overflow",
+      "The film reaches its ending through native playback",
+      "Changing the site language preserves the single English film and resets playback",
+      "en 390px: 30-second unmuted playback, decoded audio, English captions, keyboard/native controls and no horizontal overflow",
+      "zh-CN 1440px: 30-second unmuted playback, decoded audio, English captions, keyboard/native controls and no horizontal overflow",
+      "zh-CN 390px: 30-second unmuted playback, decoded audio, English captions, keyboard/native controls and no horizontal overflow",
+      "A missing MP4 displays the direct fallback without a stuck play overlay",
+      "No browser runtime errors"
+    ],
+    "locales": {
+      "en": {
+        "title": "Sheet Music Scanner & Transposer — Scan PDF to MusicXML Online | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "zh-CN": {
+        "title": "五线谱识别与移调 — 在线扫描 PDF 转 MusicXML | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/zh-cn",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "zh-TW": {
+        "title": "五線譜辨識與轉調 — 線上掃描 PDF 轉 MusicXML | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/zh-tw",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "ja": {
+        "title": "楽譜スキャン・移調 — PDF を MusicXML にオンライン変換 | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/ja",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "ko": {
+        "title": "악보 스캔과 조옮김 — PDF를 MusicXML로 온라인 변환 | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/ko",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "fr": {
+        "title": "Scanner de partitions et transposition — PDF vers MusicXML en ligne | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/fr",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "es": {
+        "title": "Escáner de partituras y transpositor — Escanea PDF a MusicXML en línea | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/es",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "de": {
+        "title": "Notenscanner und Transposition — PDF online in MusicXML umwandeln | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/de",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "ru": {
+        "title": "Сканер нот и транспонирование — PDF в MusicXML онлайн | ScoreTransposer",
+        "canonical": "https://scoretransposer.com/ru",
+        "alternates": 10,
+        "videoSrc": "/product/commercial/v2/scoretransposer-30s.mp4",
+        "captionsLanguage": "en"
+      },
+      "en-1440": {
+        "duration": 30,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "trackCount": 1,
+        "captionLanguage": "en",
+        "decodedAudioBytes": 9829
+      },
+      "en-390": {
+        "duration": 30,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "trackCount": 1,
+        "captionLanguage": "en",
+        "decodedAudioBytes": 12901
+      },
+      "zh-CN-1440": {
+        "duration": 30,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "trackCount": 1,
+        "captionLanguage": "en",
+        "decodedAudioBytes": 13321
+      },
+      "zh-CN-390": {
+        "duration": 30,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "trackCount": 1,
+        "captionLanguage": "en",
+        "decodedAudioBytes": 13321
+      }
+    },
+    "errors": [],
+    "assets": {
+      "/product/commercial/v2/scoretransposer-30s.mp4": {
+        "status": 206,
+        "bytes": 1024,
+        "contentType": "video/mp4"
+      },
+      "/product/commercial/v2/poster.webp": {
+        "status": 200,
+        "bytes": 17266,
+        "contentType": "image/webp"
+      },
+      "/product/commercial/v2/captions-en.vtt": {
+        "status": 200,
+        "bytes": 394,
+        "contentType": "text/vtt; charset=UTF-8"
+      }
+    },
+    "finishedAt": "2026-10-01T09:03:45.700Z"
+  },
+  "budgetLog": "\r\n> @score/www@0.1.0 budget:homepage\r\n> node scripts/check-homepage-budget.mjs\r\n\r\nHomepage JavaScript: 135.5 KiB raw / 45.2 KiB gzip\r\nHomepage CSS: 162.4 KiB raw / 30.9 KiB gzip\r\nPASS Homepage JavaScript (gzip): 45.2 KiB / 110.0 KiB\r\nPASS Homepage CSS (gzip): 30.9 KiB / 42.0 KiB\r\nPASS Product image repository: 12281.0 KiB / 12288.0 KiB\r\nPASS Largest product image (localized\\ru\\feature-score-editor-real.png): 145.6 KiB / 300.0 KiB\r\nPASS Localized product-media registry: 17395.1 KiB / 24576.0 KiB\r\nPASS Homepage product media requested for en: 1258.8 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for zh-CN: 1089.9 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for zh-TW: 1341.6 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for ja: 1258.0 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for ko: 1106.9 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for fr: 1355.1 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for es: 1184.5 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for de: 1257.9 KiB / 1536.0 KiB\r\nPASS Homepage product media requested for ru: 1200.9 KiB / 1536.0 KiB\r\n",
+  "additionalChecks": {
+    "fullMp4Decode": "pass",
+    "h2641080p30fps900frames": "pass",
+    "aacStereo": "pass",
+    "durationSeconds": 30,
+    "fastStart": "pass",
+    "visibleChineseText": "none"
+  },
+  "scope": {
+    "sameEnglishFilmAllNineLanguages": true,
+    "originalHomepageCopyAndSeoRetained": true,
+    "audioTranscriptionAdvertised": false,
+    "soundtrack": "Original advertising arrangement, not recorded application playback"
+  }
+}

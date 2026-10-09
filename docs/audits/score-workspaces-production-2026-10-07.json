@@ -1,0 +1,109 @@
+{
+  "release": "20261007-score1",
+  "status": "deployed-and-verified",
+  "activatedAt": "2026-10-07T06:33:28.611021+00:00",
+  "verifiedAt": "2026-10-07T06:52:13.696766+00:00",
+  "credits": {
+    "structurePreflight": 0,
+    "simpleRecognition": 1,
+    "complexRecognition": 5
+  },
+  "productionChecks": [
+    "Production server quotes simple 1 / complex 5",
+    "Production free PDF check analyzes all 20 pages and writes no billable storage or credits",
+    "Stale 1-credit quote for complex score is rejected without charge",
+    "simple: real preflight preserves complete source and creates no paid job",
+    "simple: explicit confirmation reserves exactly 1 credits",
+    "Simple score candidate accepted; note edit persists after reload",
+    "simple: edited score re-exports and downloads MusicXML",
+    "Simple exported MusicXML retains all 8 notes / 2 measures and matches edited pitches",
+    "complex: real preflight preserves complete source and creates no paid job",
+    "complex: explicit confirmation reserves exactly 5 credits",
+    "Complex recognition completes and opens layered ensemble workspace",
+    "Complex full preview selects note with Enter, links to editor, and saves actual note change",
+    "complex: edited score re-exports and downloads MusicXML",
+    "Nine public languages, pricing, robots and sitemap return 200",
+    "Production browser has zero page errors",
+    "complex exported MusicXML retains all 8 notes / 2 measures and matches edited pitches"
+  ],
+  "productionBrowserPageErrors": 0,
+  "originalFixture": {
+    "filename": "original-simple-300dpi.png",
+    "sha256": "76544306ec19a6666476193762d06ffea5a71e86c67cb47107968474d0ab3e04",
+    "pixels": [
+      2480,
+      3508
+    ],
+    "dpi": 300,
+    "notes": 8,
+    "measures": 2
+  },
+  "recognitionResults": [
+    {
+      "mode": "simple",
+      "notes": 8,
+      "measures": 2,
+      "exportVerified": true,
+      "coverageWarnings": 0
+    },
+    {
+      "mode": "complex",
+      "notes": 8,
+      "measures": 2,
+      "exportVerified": true,
+      "coverageWarnings": 3
+    }
+  ],
+  "services": {
+    "worker": {
+      "imageId": "sha256:34b829519677279fa8d7f48382d94f1ee9d5d195da0288976855f4fe8eee3d5b",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    },
+    "api": {
+      "imageId": "sha256:34b829519677279fa8d7f48382d94f1ee9d5d195da0288976855f4fe8eee3d5b",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    },
+    "app": {
+      "imageId": "sha256:e94b9d958dee85a82b3387c138cb5cf89e740ae8a3546ca18d6fcd043105ee92",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    },
+    "www": {
+      "imageId": "sha256:a6df97bf74b3567548993b90e9982417d8a28868a6294ad289826ebc317f9ebe",
+      "healthy": true,
+      "restarts": 0,
+      "oomKilled": false
+    }
+  },
+  "databaseMigration": false,
+  "protectedContainersDuringActivation": 16,
+  "originalRunningContainersRechecked": 12,
+  "configurationPreserved": true,
+  "qaCreditsUsed": 8,
+  "failedLowResolutionSampleCreditsRefunded": 1,
+  "qaCleanup": {
+    "ok": true,
+    "qaIdentityVerified": true,
+    "sessionsDeleted": 1,
+    "codesDisabled": 1,
+    "entitlementsExpired": 1,
+    "remainingSessions": 0,
+    "remainingQaEntitlements": 0,
+    "retainedScoreCount": 3,
+    "retainedScoreJobCount": 5,
+    "usersDeleted": 0,
+    "scoresDeleted": 0,
+    "jobsDeleted": 0,
+    "objectsDeleted": 0,
+    "messagesSent": 0,
+    "temporaryScriptRemoved": true
+  },
+  "freeDiskBytes": 6620815360,
+  "rollbackScriptVerified": true,
+  "complexAccuracyScope": "Single-melody production fixture verifies the workflow; layered multi-instrument completeness relies on the prior isolated qualification and remains subject to explicit review."
+}

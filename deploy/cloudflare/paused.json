@@ -1,0 +1,7 @@
+{
+  "paused": true,
+  "since": "2026-09-12",
+  "scope": ["staging", "production"],
+  "reason": "Owner requested a temporary shutdown to stop Cloudflare compute costs until migration to an overseas server.",
+  "runbook": "docs/operations/cloudflare-pause-2026-09-12.md"
+}

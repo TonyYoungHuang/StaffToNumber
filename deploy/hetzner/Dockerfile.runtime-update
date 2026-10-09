@@ -1,0 +1,13 @@
+# Application-only update when the previous release's native dependencies are unchanged.
+# Build the TypeScript workspaces before creating the sanitized context.
+# Free structure preflight requires a backend base rebuilt with /opt/score-preflight.
+# An older runtime base cannot install that dependency through this application-only update.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+WORKDIR /srv/scoretransposer
+COPY packages/runtime-database/dist ./packages/runtime-database/dist
+COPY packages/storage/dist ./packages/storage/dist
+COPY packages/shared/dist ./packages/shared/dist
+COPY services/api/dist ./services/api/dist
+COPY services/worker/dist ./services/worker/dist
+COPY services/worker/python/score_structure_preflight.py services/worker/python/complex_omr_adapter.py ./services/worker/python/

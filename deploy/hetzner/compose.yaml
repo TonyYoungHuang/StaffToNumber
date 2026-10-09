@@ -1,0 +1,185 @@
+name: scoretransposer-prod
+
+x-engines: &engines
+  AUDIVERIS_COMMAND: /usr/local/bin/score-audiveris
+  BASIC_PITCH_COMMAND: /usr/local/bin/score-basic-pitch
+  MUSESCORE_COMMAND: /usr/local/bin/score-musescore
+  FLUIDSYNTH_COMMAND: /usr/local/bin/score-fluidsynth
+  MUSIC21_COMMAND: /usr/local/bin/score-music21
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  TF_NUM_INTRAOP_THREADS: "1"
+  TF_NUM_INTEROP_THREADS: "1"
+
+x-engine-volumes: &engine-volumes
+  - scratch:/data
+  - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-audiveris:ro
+  - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-basic-pitch:ro
+  - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-musescore:ro
+  - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-fluidsynth:ro
+  - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-music21:ro
+
+x-service: &service
+  restart: unless-stopped
+  networks: [private]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+
+services:
+  postgres:
+    <<: *service
+    image: postgres:17-alpine
+    env_file: ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/postgres.env
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40"]
+    mem_limit: 256m
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scoretransposer_owner -d scoretransposer"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    <<: *service
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    mem_limit: 96m
+    volumes: ["redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  storage:
+    <<: *service
+    image: dxflrs/garage:v2.3.0
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    env_file: ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/garage.env
+    mem_limit: 192m
+    volumes:
+      - ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  www:
+    <<: *service
+    profiles: [runtime]
+    image: scoretransposer-www:${FRONTEND_RELEASE:-${RELEASE:?Set RELEASE}}
+    mem_limit: 288m
+    ports: ["127.0.0.1:21800:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  app:
+    <<: *service
+    profiles: [runtime]
+    image: scoretransposer-app:${APP_RELEASE:-${FRONTEND_RELEASE:-${RELEASE:?Set RELEASE}}}
+    mem_limit: 288m
+    ports: ["127.0.0.1:21801:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api:
+    <<: *service
+    profiles: [runtime]
+    image: ${API_IMAGE:-scoretransposer-worker}:${API_RELEASE:-${RELEASE:?Set RELEASE}}
+    command: ["node", "services/api/dist/index.js"]
+    env_file: ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/runtime.env
+    environment:
+      <<: *engines
+      CLAMAV_COMMAND: /usr/local/bin/score-clamscan
+    mem_limit: 1536m
+    cpus: 0.75
+    ports: ["127.0.0.1:21802:4000"]
+    volumes:
+      - scratch:/data
+      - clamav:/var/lib/clamav
+      - ./releases/${RELEASE}/deploy/hetzner/clamscan-serial.sh:/usr/local/bin/score-clamscan:ro
+      - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-audiveris:ro
+      - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-basic-pitch:ro
+      - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-musescore:ro
+      - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-fluidsynth:ro
+      - ./releases/${RELEASE}/deploy/hetzner/music-engine-serial.sh:/usr/local/bin/score-music21:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      storage: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  collaboration:
+    <<: *service
+    profiles: [runtime]
+    image: scoretransposer-backend:${RELEASE:?Set RELEASE}
+    command: ["node", "services/collaboration/dist/index.js"]
+    env_file: ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/runtime.env
+    mem_limit: 192m
+    ports: ["127.0.0.1:21803:4001"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    <<: *service
+    profiles: [jobs]
+    image: scoretransposer-worker:${WORKER_RELEASE:-${RELEASE:?Set RELEASE}}
+    command: ["node", "services/worker/dist/index.js"]
+    env_file: ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/runtime.env
+    environment:
+      <<: *engines
+      JOB_BROKER_CONCURRENCY: "1"
+      AUDIVERIS_MAX_HEAP_MB: "768"
+      NODE_OPTIONS: --max-old-space-size=192
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      TF_NUM_INTRAOP_THREADS: "1"
+      TF_NUM_INTEROP_THREADS: "1"
+      WORKER_RUNTIME_READY_FILE: /tmp/score-worker-ready.json
+    mem_limit: 1536m
+    memswap_limit: 2g
+    cpus: 0.75
+    pids_limit: 192
+    volumes: *engine-volumes
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(require('fs').existsSync('/tmp/score-worker-ready.json') ? 0 : 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      storage: {condition: service_healthy}
+
+networks:
+  private:
+    name: scoretransposer-private
+
+volumes:
+  postgres:
+  redis:
+  garage-meta:
+  garage-data:
+  scratch:
+  clamav:

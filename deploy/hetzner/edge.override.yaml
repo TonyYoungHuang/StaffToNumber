@@ -1,0 +1,18 @@
+# Owner authorized public cutover on 2026-09-27 without importing the original score library.
+services:
+  www:
+    networks:
+      edge: {aliases: [scoretransposer-www]}
+  app:
+    networks:
+      edge: {aliases: [scoretransposer-app]}
+  api:
+    networks:
+      edge: {aliases: [scoretransposer-api]}
+  collaboration:
+    networks:
+      edge: {aliases: [scoretransposer-collaboration]}
+networks:
+  edge:
+    external: true
+    name: edge
