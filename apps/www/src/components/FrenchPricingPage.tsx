@@ -21,7 +21,7 @@ export function FrenchPricingPage() {
     <PricingOffers locale="fr" title="Abonnement ou achat unique : choisissez votre accès" description="Un projet gratuit pour commencer, puis Starter ou Converter Pro pour traiter davantage de partitions. Tous les prix ci-dessous sont en dollars américains ($US)." />
     <Panel className="stack-md">
       <h2 className="section-title">Commencez gratuitement, sans carte bancaire</h2>
-      <p className="body-copy">Créez un projet complet à partir d’un PDF multipage ou d’une image de partition, avec 25 crédits par mois et 50 Mo de stockage. Corrigez, transposez, écoutez et exportez votre partition avec les outils disponibles.</p>
+      <p className="body-copy">Le compte gratuit inclut un seul projet de numérisation gratuit à vie, 25 crédits par mois pour les exports et les outils, ainsi que 50 Mo de stockage. Numérisez un PDF multipage complet ou une image de partition ; pour numériser une nouvelle partition, il vous faut un Pass une partition (One Score Pass) ou une offre.</p>
       <div className="button-row"><a className="public-button secondary" href={getAppStartConversionUrl("fr")}>Créer ma partition gratuite</a></div>
     </Panel>
     <Panel className="stack-md"><h2 className="section-title">Comment les crédits sont-ils utilisés ?</h2>

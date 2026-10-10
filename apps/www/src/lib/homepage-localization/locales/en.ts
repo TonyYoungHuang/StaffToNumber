@@ -82,7 +82,7 @@ export const enHomepage = {
     creditRulesTitle: "How credits are counted today",
     creditRulesBody: "Credits are reserved when a job is created; they are automatically returned if it fails or is cancelled. Monthly credits reset at the start of each UTC calendar month and do not roll over.",
     creditRules: [
-      ["$0", "One complete free project", "Use one complete multi-page PDF or score image with all current project-level tools for life, with 25 credits monthly."],
+      ["$0", "One complete free project", "Your free account includes 1 lifetime free scan project, 25 credits / month for exports & tools, and 50 MB of storage. Scan a complete multi-page PDF or score image; scanning a new score requires a One Score Pass or plan."],
       ["Reserved credits", "Reservation and return", "Credits are reserved when a job is created; they are automatically returned if it fails or is cancelled. Synchronous transposition and Jianpu previews do not automatically use a credit."],
       ["Monthly reset", "Plan allowance", "Starter includes 50 credits per month and Converter Pro includes 200. Allowances reset at the start of each UTC calendar month; unused credits do not roll over."],
     ],

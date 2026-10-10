@@ -78,7 +78,7 @@ export const frHomepage = {
     creditRulesTitle: "Comment les crédits sont comptés aujourd’hui",
     creditRulesBody: "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation.",
     creditRules: [
-      ["0 $US", "Un projet complet gratuit", "Utilisez à vie un PDF multipage complet ou une image de partition avec tous les outils de projet actuels, plus 25 crédits par mois."],
+      ["0 $US", "Un projet complet gratuit", "Le compte gratuit inclut un seul projet de numérisation gratuit à vie, 25 crédits par mois pour les exports et les outils, ainsi que 50 Mo de stockage. Numérisez un PDF multipage complet ou une image de partition ; pour numériser une nouvelle partition, il vous faut un Pass une partition (One Score Pass) ou une offre."],
       ["Crédits réservés", "Réservation et restitution", "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation. La transposition directe et l’aperçu Jianpu n’en consomment pas."],
       ["Réinitialisation mensuelle", "Crédits de la formule", "Starter comprend 50 crédits par mois et Converter Pro 200. Les crédits inutilisés ne sont pas reportés."],
     ],
