@@ -69,6 +69,8 @@ type QuotaUsage = {
   periodStart: string;
   periodEnd: string;
   jobs: { used: number; limit: number; remaining: number };
+  creditMode?: "monthly" | "prepaid";
+  prepaid?: { total: number; used: number; remaining: number };
   storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
 };
 
@@ -311,14 +313,14 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
         <section className="surface-panel credit-balance-panel stack-lg">
           <div className="stack-xs">
             <p className="eyebrow">{copy.creditEyebrow}</p>
-            <h2 className="card-title">{`${copy.quotaTiers[normalizeQuotaTier(quota.tier)]} · ${copy.availableCredits}`}</h2>
+            <h2 className="card-title">{quota.creditMode === "prepaid" ? copy.prepaidTitle : `${copy.quotaTiers[normalizeQuotaTier(quota.tier)]} · ${copy.availableCredits}`}</h2>
           </div>
           <div className="credit-balance-summary">
             <div className="credit-balance-value">
               <strong>{formatNumber(quota.jobs.remaining, locale)}</strong>
               <span>{copy.creditUnit}</span>
             </div>
-            <p>{formatMessage(copy.creditSummaryTemplate, {
+            <p>{formatMessage(quota.creditMode === "prepaid" ? copy.prepaidSummaryTemplate : copy.creditSummaryTemplate, {
               limit: formatNumber(quota.jobs.limit, locale),
               used: formatNumber(quota.jobs.used, locale),
             })}</p>
@@ -337,7 +339,11 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
               value={`${formatBillingBytes(quota.storage.usedBytes, locale)} / ${formatBillingBytes(quota.storage.limitBytes, locale)}`}
             />
           </div>
-          <p className="helper-copy">{copy.quotaNote}</p>
+          <p className="helper-copy">{quota.creditMode === "prepaid" ? copy.prepaidNote : copy.quotaNote}</p>
+          {quota.creditMode !== "prepaid" && quota.prepaid?.total ? <p className="helper-copy">{formatMessage(copy.additionalPrepaidTemplate, {
+            remaining: formatNumber(quota.prepaid.remaining, locale),
+            total: formatNumber(quota.prepaid.total, locale),
+          })}</p> : null}
         </section>
       ) : null}
 

@@ -13,7 +13,7 @@ export type ActivationPayload = {
   ok: true;
   entitlement: {
     starts_at: string;
-    ends_at: string;
+    ends_at: string | null;
   } | null;
   alreadyRedeemed?: boolean;
 };

@@ -84,6 +84,10 @@ export const authPlugin = fp(async (app) => {
     if (reply.sent || !request.authUserId) return;
 
     const profile = getUserProfile(request.authUserId);
+    if (profile?.entitlement.source === "prepaid_credits" && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
+      reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "PREPAID_QUEUED_EXPORT_REQUIRED" });
+      return;
+    }
     if (profile?.entitlement.status === "active") return;
 
     const documentId = (request.params as { id?: unknown } | null)?.id;

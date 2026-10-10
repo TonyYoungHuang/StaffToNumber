@@ -279,6 +279,8 @@ export type ConversionDirection = "staff_pdf_to_numbered" | "numbered_pdf_to_sta
 export type ActivationCodeStatus = "available" | "redeemed" | "disabled";
 
 export type EntitlementStatus = "inactive" | "active" | "expired";
+export { SHOP_CREDIT_PACKS, isShopCreditPackCode, isShopActivationPlanCode } from "./shop-credit-packs.ts";
+export type { ShopCreditPackCode, ShopActivationPlanCode } from "./shop-credit-packs.ts";
 
 export type StoredFileKind =
   | "input_pdf"

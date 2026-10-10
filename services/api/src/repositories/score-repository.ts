@@ -35,7 +35,7 @@ import {
 } from "../lib/score-collaboration-history.js";
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
-import { assertProcessingQuota, processingJobCreditCost, processingJobParams, recognitionCreditCost } from "../lib/plan-quotas.js";
+import { assertProcessingQuota, getPlanQuotaUsage, recordProcessingCredit, processingJobCreditCost, processingJobParams, recognitionCreditCost } from "../lib/plan-quotas.js";
 import { assertRecognitionQuote, normalizeRecognitionMode, RecognitionAccessError } from "../lib/recognition-options.js";
 import { assertFreeTrialOmrAvailable } from "../lib/free-trial.js";
 import { getUserProfile } from "./auth-repository.js";
@@ -643,9 +643,10 @@ export function createOmrImportScoreDocument(input: {
     if (recognitionMode === "complex" && !isPaid && (!input.scorePass || input.freeTrial)) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
-    const usePass = !isPaid && Boolean(input.scorePass);
+    const allowance = getPlanQuotaUsage(input.userId);
+    const usePass = Boolean(input.scorePass) && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
     const freeTrial = !isPaid && !usePass;
-    assertProcessingQuota(input.userId, usePass, creditCost);
+    const quota = assertProcessingQuota(input.userId, usePass, creditCost);
     const passId = usePass ? bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
     if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
     db.prepare(
@@ -714,6 +715,7 @@ export function createOmrImportScoreDocument(input: {
     );
 
     if (passId) recordScorePassJob(db, passId, jobId);
+    else recordProcessingCredit(input.userId, "score", jobId, quota, creditCost);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -741,7 +743,7 @@ export function createAudioTranscribeScoreDocument(input: {
 
   try {
     lockScorePassAccount(db, input.userId);
-    assertProcessingQuota(input.userId);
+    const quota = assertProcessingQuota(input.userId);
     db.prepare(
       `
         INSERT INTO score_documents (
@@ -784,6 +786,7 @@ export function createAudioTranscribeScoreDocument(input: {
       timestamp,
     );
 
+    recordProcessingCredit(input.userId, "score", jobId, quota);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -813,7 +816,7 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
 
   try {
     lockScorePassAccount(db, input.userId);
-    assertProcessingQuota(input.userId);
+    const quota = assertProcessingQuota(input.userId);
     db.prepare(
       `
         INSERT INTO score_documents (
@@ -853,6 +856,7 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
       timestamp,
     );
 
+    recordProcessingCredit(input.userId, "score", jobId, quota);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -2413,9 +2417,10 @@ export function createScoreExportJob(input: {
   db.exec("BEGIN IMMEDIATE");
   try {
   lockScorePassAccount(db, input.userId);
-  const usePass = getUserProfile(input.userId)?.entitlement.status !== "active" && Boolean(scorePassForDocument(db, input.userId, input.documentId));
+  const allowance = getPlanQuotaUsage(input.userId);
+  const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (getUserProfile(input.userId)?.entitlement.status !== "active" || (allowance.monthly.remaining < 1 && allowance.prepaid.remaining < 1));
   const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId) : null;
-  assertProcessingQuota(input.userId, Boolean(passId));
+  const quota = assertProcessingQuota(input.userId, Boolean(passId));
   const timestamp = nowIso();
   const jobId = createId();
   const context = currentRequestContext();
@@ -2430,6 +2435,7 @@ export function createScoreExportJob(input: {
     `,
   ).run(jobId, input.userId, input.documentId, JSON.stringify({ ...input.params, creditReservedAt: timestamp }), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
   if (passId) recordScorePassJob(db, passId, jobId);
+  else recordProcessingCredit(input.userId, "score", jobId, quota);
   db.exec("COMMIT");
   return findScoreJobById(jobId);
   } catch (error) { db.exec("ROLLBACK"); throw error; }
@@ -2486,8 +2492,9 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
     const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
-    assertProcessingQuota(input.userId, Boolean(passId), creditCost);
+    const quota = assertProcessingQuota(input.userId, Boolean(passId), creditCost);
     if (passId) recordScorePassJob(db, passId, retryJobId);
+    else recordProcessingCredit(input.userId, "score", retryJobId, quota, creditCost);
     const timestamp = nowIso();
     const nextParams = JSON.stringify({ ...params, creditReservedAt: timestamp,
       ...(newOmrAttempt ? { recognitionMode, creditCost, recoveryOfJobId: existing.id } : {}) });

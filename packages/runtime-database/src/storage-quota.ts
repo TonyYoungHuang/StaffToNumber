@@ -24,7 +24,7 @@ export function storageQuotaPolicyFromEnv(env = process.env): StorageQuotaPolicy
   };
 }
 
-export function resolveStorageQuotaTier(db: RuntimeDatabaseLike, userId: string, policy: StorageQuotaPolicy): StorageQuotaTier {
+export function resolveStorageQuotaTier(db: RuntimeDatabaseLike, userId: string, policy: StorageQuotaPolicy, includePrepaid = true): StorageQuotaTier {
   const subscriptions = db.prepare(`
     SELECT subscriptions.plan_ref AS planRef, subscriptions.organization_id AS organizationId,
            subscriptions.seat_quantity AS seatQuantity
@@ -48,6 +48,10 @@ export function resolveStorageQuotaTier(db: RuntimeDatabaseLike, userId: string,
     JOIN activation_codes c ON c.id = e.activation_code_id
     WHERE e.user_id = ? AND datetime(e.starts_at) <= datetime('now') AND datetime(e.ends_at) > datetime('now')`).all(userId) as Array<{ planCode: string | null }>;
   tiers.push(...activations.map(code => code.planCode?.startsWith("converter-pro-") ? "converter-pro" as const : "starter" as const));
+  if (includePrepaid && db.prepare("PRAGMA table_info(prepaid_credit_grants)").all().length > 0) {
+    const prepaid = db.prepare("SELECT storage_tier AS tier FROM prepaid_credit_grants WHERE user_id = ?").all(userId) as Array<{ tier: StorageQuotaTier }>;
+    tiers.push(...prepaid.map(grant => grant.tier));
+  }
   if (tiers.includes("converter-pro")) return "converter-pro";
   if (tiers.includes("starter")) return "starter";
   return "free";

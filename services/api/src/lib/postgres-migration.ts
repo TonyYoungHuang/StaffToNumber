@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { PoolClient } from "pg";
+import { prepaidPostgresTriggers } from "./prepaid-schema.js";
 
 type SqliteColumn = {
   cid: number;
@@ -256,6 +257,7 @@ async function createForeignKeys(client: PoolClient, db: DatabaseSync, table: st
 }
 
 async function createRuntimeTriggers(client: PoolClient, targetSchema: string, tables: Set<string>) {
+  if (tables.has("prepaid_credit_charges")) await client.query(prepaidPostgresTriggers(targetSchema));
   const required = ["job_dispatch_outbox", "jobs", "score_jobs"];
   const present = required.filter((table) => tables.has(table));
   if (present.length === 0) return 0;

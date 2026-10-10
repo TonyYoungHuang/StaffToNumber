@@ -1,6 +1,7 @@
 import { listScorePasses } from "../lib/score-passes.js";
 import { randomBytes } from "node:crypto";
-import type { ActivationCodeStatus, EntitlementStatus, CheckoutPlanCode } from "@score/shared";
+import { isShopCreditPackCode, type ActivationCodeStatus, type EntitlementStatus, type ShopActivationPlanCode } from "@score/shared";
+import { grantPrepaidCredits, prepaidCreditBalance } from "../lib/prepaid-credits.js";
 import { db } from "../db.js";
 import { createId, createSalt, createToken, hashPassword } from "../lib/auth.js";
 import { addDays, nowIso } from "../lib/time.js";
@@ -32,7 +33,7 @@ type SessionRow = {
 
 type ActivationCodeRow = {
   login_enabled_at: string | null;
-  plan_code: CheckoutPlanCode | null;
+  plan_code: ShopActivationPlanCode | null;
   id: string;
   code: string;
   status: ActivationCodeStatus;
@@ -131,7 +132,7 @@ export function findActiveSessionByToken(token: string) {
 }
 
 export function createActivationCode(input: {
-  planCode?: CheckoutPlanCode | null;
+  planCode?: ShopActivationPlanCode | null;
   code: string;
   entitlementDays: number;
   batchId?: string | null;
@@ -149,7 +150,7 @@ export function createActivationCode(input: {
       )
       VALUES (?, ?, 'available', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
     `,
-  ).run(id, input.code, input.entitlementDays, timestamp, input.batchId ?? null, input.note ?? null, input.expiresAt ?? null, input.createdBy ?? null, input.planCode ?? null);
+  ).run(id, input.code, input.planCode === "single-score" || isShopCreditPackCode(input.planCode) ? 0 : input.entitlementDays, timestamp, input.batchId ?? null, input.note ?? null, input.expiresAt ?? null, input.createdBy ?? null, input.planCode ?? null);
 }
 
 export function findActivationCodeByCode(code: string) {
@@ -186,7 +187,7 @@ export function ensureActivationCode(code: string, entitlementDays: number) {
 }
 
 export function generateActivationCodes(input: {
-  planCode?: CheckoutPlanCode;
+  planCode?: ShopActivationPlanCode;
   quantity: number;
   entitlementDays: number;
   prefix?: string;
@@ -295,6 +296,9 @@ function redeemInTransaction(userId: string, codeRow: ActivationCodeRow | undefi
   if (!codeRow) return { ok: false as const, reason: "not_found" };
   if (codeRow.status === "disabled") return { ok: false as const, reason: "disabled" };
   if (codeRow.status === "redeemed" && codeRow.redeemed_by_user_id === userId) {
+    if (codeRow.plan_code === "single-score" || isShopCreditPackCode(codeRow.plan_code)) {
+      return { ok: true as const, entitlement: shopCreditEntitlement(userId, codeRow), alreadyRedeemed: true };
+    }
     const entitlement = db.prepare("SELECT id, user_id, activation_code_id, starts_at, ends_at, created_at FROM user_entitlements WHERE activation_code_id = ? AND user_id = ?").get(codeRow.id, userId) as EntitlementRow | undefined;
     if (entitlement) return { ok: true as const, entitlement, alreadyRedeemed: true };
   }
@@ -303,6 +307,22 @@ function redeemInTransaction(userId: string, codeRow: ActivationCodeRow | undefi
   if (db.primary === "postgres") db.prepare("SELECT id FROM users WHERE id = ? FOR UPDATE").get(userId);
   if (findUserById(userId)?.account_status !== "active") return { ok: false as const, reason: "account_unavailable" };
   const timestamp = nowIso(), entitlementId = createId();
+  if (codeRow.plan_code === "single-score" || isShopCreditPackCode(codeRow.plan_code)) {
+    const claimed = db.prepare(`UPDATE activation_codes SET status = 'redeemed', redeemed_at = ?, redeemed_by_user_id = ?
+      WHERE id = ? AND status = 'available'`).run(timestamp, userId, codeRow.id);
+    if (Number(claimed.changes) !== 1) return { ok: false as const, reason: "unavailable" };
+    if (isShopCreditPackCode(codeRow.plan_code)) {
+      grantPrepaidCredits(userId, codeRow.id, codeRow.plan_code, timestamp);
+    } else {
+      const purchaseId = `activation:${codeRow.id}`;
+      db.prepare(`INSERT INTO billing_one_time_purchases (id, user_id, plan_code, plan_ref, status, starts_at, paid_at, created_at, updated_at)
+        VALUES (?, ?, 'single-score', 'shop-activation', 'active', ?, ?, ?, ?)`)
+        .run(purchaseId, userId, timestamp, timestamp, timestamp, timestamp);
+      db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, max_pages, created_at)
+        VALUES (?, NULL, 10, 5, ?)`).run(purchaseId, timestamp);
+    }
+    return { ok: true as const, entitlement: shopCreditEntitlement(userId, { ...codeRow, redeemed_at: timestamp }), alreadyRedeemed: false };
+  }
   const tier = codeRow.plan_code?.startsWith("converter-pro") ? "converter-pro" : "starter";
   const latestEntitlement = db.prepare(`SELECT e.ends_at FROM user_entitlements e
     JOIN activation_codes c ON c.id = e.activation_code_id
@@ -319,6 +339,10 @@ function redeemInTransaction(userId: string, codeRow: ActivationCodeRow | undefi
   db.prepare(`INSERT INTO user_entitlements (id, user_id, activation_code_id, starts_at, ends_at, created_at)
     VALUES (?, ?, ?, ?, ?, ?)`).run(entitlementId, userId, codeRow.id, startsAt.toISOString(), endsAt, timestamp);
   return { ok: true as const, entitlement: db.prepare("SELECT id, user_id, activation_code_id, starts_at, ends_at, created_at FROM user_entitlements WHERE id = ?").get(entitlementId) as EntitlementRow, alreadyRedeemed: false };
+}
+
+function shopCreditEntitlement(userId: string, codeRow: ActivationCodeRow) {
+  return { id: codeRow.id, user_id: userId, activation_code_id: codeRow.id, starts_at: codeRow.redeemed_at!, ends_at: null, created_at: codeRow.redeemed_at!, plan_code: codeRow.plan_code };
 }
 
 export function redeemActivationCode(userId: string, code: string) {
@@ -386,6 +410,7 @@ export function getUserProfile(userId: string) {
   const entitlement = findLatestEntitlementByUserId(userId);
   const subscriptionEntitlement = findActiveSubscriptionEntitlement(db, userId);
   const purchase = findActiveOneTimePurchase(db, userId);
+  const prepaid = prepaidCreditBalance(userId);
   const now = new Date();
   let entitlementStatus: EntitlementStatus = "inactive";
 
@@ -395,7 +420,9 @@ export function getUserProfile(userId: string) {
     entitlementStatus = new Date(entitlement.ends_at) > now ? "active" : "expired";
   }
 
-  const effectiveEntitlement = subscriptionEntitlement
+  const effectiveEntitlement = prepaid.total > 0 && entitlementStatus !== "active"
+    ? { status: "active" as const, startsAt: prepaid.startsAt, endsAt: null, source: "prepaid_credits" as const, provider: null, organizationId: null }
+    : subscriptionEntitlement
     ? {
         status: entitlementStatus,
         startsAt: subscriptionEntitlement.startsAt,
@@ -435,6 +462,7 @@ export function getUserProfile(userId: string) {
     entitlement: effectiveEntitlement,
     freeTrial: getFreeTrialAccess(user.id),
     scorePasses: listScorePasses(db, user.id),
+    prepaidCredits: prepaid,
   };
 }
 

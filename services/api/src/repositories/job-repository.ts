@@ -3,7 +3,7 @@ import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
-import { assertProcessingQuota } from "../lib/plan-quotas.js";
+import { assertProcessingQuota, recordProcessingCredit } from "../lib/plan-quotas.js";
 import { lockScorePassAccount } from "../lib/score-passes.js";
 
 type JobRow = {
@@ -33,7 +33,7 @@ export function createJob(input: { userId: string; inputFileId: string; directio
   db.exec("BEGIN IMMEDIATE");
   try {
     lockScorePassAccount(db, input.userId);
-    assertProcessingQuota(input.userId);
+    const quota = assertProcessingQuota(input.userId);
     db.prepare(
       `
         INSERT INTO jobs (
@@ -43,6 +43,7 @@ export function createJob(input: { userId: string; inputFileId: string; directio
         VALUES (?, ?, ?, ?, 'queued', 'none', NULL, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)
       `,
     ).run(id, input.userId, input.inputFileId, input.direction, context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
+    recordProcessingCredit(input.userId, "legacy", id, quota);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

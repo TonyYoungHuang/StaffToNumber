@@ -3,6 +3,7 @@ import path from "node:path";
 import { createRuntimeDatabase } from "@score/runtime-database";
 import { config } from "./config.js";
 import { DATABASE_SCHEMA_VERSION } from "./schema-version.js";
+import { PREPAID_TABLES_SQL, PREPAID_SQLITE_TRIGGERS } from "./lib/prepaid-schema.js";
 
 if (config.runtimeDatabasePrimary === "sqlite") fs.mkdirSync(path.dirname(config.dbFile), { recursive: true });
 fs.mkdirSync(config.storageDir, { recursive: true });
@@ -1370,6 +1371,7 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_score_assets_stale_at ON score_assets(stale_at);
     CREATE INDEX IF NOT EXISTS idx_users_account_status_deletion ON users(account_status, scheduled_deletion_at);
   `);
+  db.exec(PREPAID_TABLES_SQL + PREPAID_SQLITE_TRIGGERS);
   db.exec(`PRAGMA user_version = ${DATABASE_SCHEMA_VERSION};`);
 }
 
@@ -1385,6 +1387,8 @@ function validatePostgresSchema() {
     "billing_one_time_purchases",
     "score_passes",
     "score_pass_jobs",
+    "prepaid_credit_grants",
+    "prepaid_credit_charges",
     "job_dispatch_outbox",
     "service_runtime",
   ];

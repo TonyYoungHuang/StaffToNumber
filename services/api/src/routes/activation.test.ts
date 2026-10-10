@@ -40,6 +40,7 @@ test("pasted codes normalize; same-account retry never grants extra time; other 
 test("legacy duration stays intact, same tier extends and higher tier starts immediately", () => {
   const id = user(), legacy = code(), first = redeemActivationCode(id, legacy.code);
   assert.ok(first.ok); assert.ok(first.entitlement);
+  assert.ok(first.entitlement.ends_at, "Legacy day-based plans retain an expiry.");
   assert.equal(Date.parse(first.entitlement.ends_at) - Date.parse(first.entitlement.starts_at), 7 * 86400000);
   const renewal = redeemActivationCode(id, code("starter-annual").code);
   assert.ok(renewal.ok); assert.equal(renewal.entitlement?.starts_at, first.entitlement.ends_at);
@@ -70,6 +71,11 @@ test("admin protection, request validation, generation, redeem and disable route
       assert.equal((await app.inject({ method: "POST", url: "/api/admin/activation-codes/generate", headers: admin, payload })).statusCode, 400);
     }
     assert.equal((await app.inject({ method: "POST", url: "/api/activation/redeem", headers: auth, payload: { code: {} } })).statusCode, 400);
+    for (const planCode of ["single-score", "credits-50", "credits-200"]) {
+      const generated = await app.inject({ method: "POST", url: "/api/admin/activation-codes/generate", headers: admin, payload: { quantity: 1, planCode } });
+      assert.equal(generated.statusCode, 201);
+      assert.equal(generated.json().codes[0].planCode, planCode);
+    }
     const created = await app.inject({ method: "POST", url: "/api/admin/activation-codes/generate", headers: admin, payload: { quantity: 2, planCode: "converter-pro-annual", note: "小红书 QA订单" } });
     assert.equal(created.statusCode, 201); const items = created.json().codes;
     assert.equal(items[0].planCode, "converter-pro-annual");

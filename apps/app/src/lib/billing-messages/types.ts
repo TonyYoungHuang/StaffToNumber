@@ -42,6 +42,7 @@ export type BillingPlanMessages = {
   resources: {
     monthlyCredits: string;
     monthlyCreditsReset: string;
+    /** Free plan: monthly credits are for exports/tools; new scans need a pass or plan. */
     freeMonthlyCredits: string;
     storage: string;
     personalLibrary: string;
@@ -116,6 +117,10 @@ export type BillingManagerCopy = {
   availableCredits: string;
   creditUnit: string;
   creditSummaryTemplate: string;
+  prepaidTitle: string;
+  prepaidSummaryTemplate: string;
+  prepaidNote: string;
+  additionalPrepaidTemplate: string;
   creditUsage: string;
   storage: string;
   quotaNote: string;

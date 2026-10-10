@@ -129,6 +129,8 @@ export function buildAccountDataExport(userId: string) {
       `SELECT id, starts_at, ends_at, created_at FROM user_entitlements WHERE user_id = ? ORDER BY created_at`,
       userId,
     ),
+    prepaidCreditGrants: rows("SELECT plan_code, credits, storage_tier, created_at FROM prepaid_credit_grants WHERE user_id = ? ORDER BY created_at", userId),
+    prepaidCreditCharges: rows("SELECT job_family, job_id, credit_cost, status, created_at FROM prepaid_credit_charges WHERE user_id = ? ORDER BY created_at", userId),
     payments: rows(
       `SELECT id, provider, status, customer_email, locale, entitlement_days, amount_minor, currency,
               paid_at, cancelled_at, failure_reason, created_at, updated_at

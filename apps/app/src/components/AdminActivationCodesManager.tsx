@@ -51,7 +51,7 @@ export function AdminActivationCodesManager() {
 
   const [adminKey, setAdminKey] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [planCode, setPlanCode] = useState("starter-monthly");
+  const [planCode, setPlanCode] = useState("credits-50");
   const [channel, setChannel] = useState("淘宝");
   const [shop, setShop] = useState("");
   const [order, setOrder] = useState("");
@@ -251,7 +251,8 @@ export function AdminActivationCodesManager() {
           </label>
           <label className="field-group">
             <span className="field-label">{locale === "zh-CN" ? "店铺 SKU / 网站套餐" : adminText(locale, "Website plan")}</span>
-            <select className="field-control" value={planCode} onChange={event => setPlanCode(event.target.value)}>{Object.entries(shopPlanNames).map(([value, label]) => <option key={value} value={value}>{locale === "zh-CN" ? label : adminPlanName(locale, value)}</option>)}</select>
+            <select className="field-control" value={planCode} onChange={event => setPlanCode(event.target.value)}>{Object.entries(shopPlanNames).map(([value, label]) => <option key={value} value={value}>{locale === "zh-CN" ? label : value.startsWith("credits-") || value === "single-score" ? label : adminPlanName(locale, value)}</option>)}</select>
+            <span className="micro-copy">{locale === "zh-CN" ? "店铺现售三档：单谱10积分、一次性50积分、一次性200积分。旧月卡/年卡保留供历史订单；积分包不要选择月卡。" : "Shop packs: one score / 10 credits, prepaid 50, prepaid 200. Legacy term plans remain available."}</span>
           </label>
           <label className="field-group"><span className="field-label">{locale === "zh-CN" ? "销售平台" : adminText(locale, "Sales channel")}</span><select className="field-control" value={channel} onChange={event => setChannel(event.target.value)}>{["淘宝", "小红书", "其他"].map(value => <option key={value} value={value}>{locale === "zh-CN" ? value : adminText(locale, value === "淘宝" ? "Taobao" : value === "小红书" ? "Xiaohongshu" : "Other")}</option>)}</select></label>
           <label className="field-group"><span className="field-label">{locale === "zh-CN" ? "店铺名称（可选）" : adminText(locale, "Shop (optional)")}</span><input className="field-control" value={shop} maxLength={60} onChange={event => setShop(event.target.value)} /></label>
@@ -302,7 +303,7 @@ export function AdminActivationCodesManager() {
                 <div className="list-item-content">
                   <p className="item-title">{item.code}</p>
                   <p className="item-meta">
-                    {copy.status}: {translateStatus(item.status === "available" && item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now() ? "expired" : item.status, locale)} | {item.planCode ? (locale === "zh-CN" ? shopPlanNames[item.planCode] : adminPlanName(locale, item.planCode)) : `${item.entitlementDays} ${copy.daysColumn}`}
+                    {copy.status}: {translateStatus(item.status === "available" && item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now() ? "expired" : item.status, locale)} | {item.planCode ? (locale === "zh-CN" || item.planCode.startsWith("credits-") || item.planCode === "single-score" ? shopPlanNames[item.planCode] : adminPlanName(locale, item.planCode)) : `${item.entitlementDays} ${copy.daysColumn}`}
                   </p>
                   {item.redeemedAt ? <p className="item-meta">{locale === "zh-CN" ? "兑换时间" : adminText(locale, "Redeemed")}：{formatLocal(item.redeemedAt, locale)}</p> : null}
                   {item.status === "available" ? <div className="button-row">

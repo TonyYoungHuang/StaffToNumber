@@ -49,6 +49,10 @@ export const deBillingMessages = {
     manager: {
       loading: "Abrechnungsdaten werden geladen...", fallbackError: "Abrechnungsdaten konnten nicht geladen werden. Versuchen Sie es erneut.", signIn: "Melden Sie sich an, um die Abrechnung zu sehen.",
       creditEyebrow: "Credit-Guthaben", availableCredits: "Diesen Monat verfügbare Credits", creditUnit: "Credits", creditSummaryTemplate: "{limit} Credits in diesem Monat, davon {used} verbraucht.", creditUsage: "Diesen Monat verwendete Credits", storage: "Dateispeicher",
+      prepaidTitle: "Vorausbezahlte Credits",
+      prepaidSummaryTemplate: "{limit} vorausbezahlte Credits; {used} verwendet oder reserviert. Keine monatliche Zurücksetzung und kein Ablauf.",
+      prepaidNote: "Verarbeitung und Exportaufträge verbrauchen Credits. Bearbeitung, Transponieren und Wiedergabe nicht. Bei Fehlern oder Abbruch werden reservierte Credits freigegeben.",
+      additionalPrepaidTemplate: "Zusätzliche vorausbezahlte Credits: {remaining} / {total}. Sie werden bei unzureichenden monatlichen Credits verwendet. Ungenutzte Credits bleiben erhalten.",
       quotaNote: "Credits werden beim Erstellen eines Auftrags reserviert und bei einem Fehlschlag oder einer Stornierung automatisch zurückgegeben. Monatliche Credits werden zu Beginn jedes UTC-Kalendermonats zurückgesetzt und nicht übertragen.",
       freeEyebrow: "Kostenloser Zugriffsstatus", noPaidTitle: "Kein aktiver Bezahl-Tarif", freeBody: "Ein kostenloses Konto behält ein dauerhaftes Projekt aus einem vollständigen mehrseitigen PDF oder Notenbild – mit Korrektur, Wiedergabe, Transposition, Jianpu, Teilen und Export; das kostenlose Kontingent beträgt {credits}.", unlock: "Vollzugriff freischalten",
       subscriptionsEyebrow: "Abonnements", subscriptionsTitle: "Zugriff und Verlängerungsstatus", manageStripe: "Stripe-Zahlungsmethode verwalten", managingStripe: "Stripe wird geöffnet...", noSubscriptions: "Mit diesem Konto sind keine Abonnements verknüpft.",

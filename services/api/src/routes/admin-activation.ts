@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { isCheckoutPlanCode, type CheckoutPlanCode } from "@score/shared";
+import { isShopActivationPlanCode, type ShopActivationPlanCode } from "@score/shared";
 import { config } from "../config.js";
 import { disableUnusedActivationCode, generateActivationCodes, listActivationCodes, mapActivationCodeForAdmin } from "../repositories/auth-repository.js";
 
@@ -44,7 +44,7 @@ export async function adminActivationRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const body = (request.body ?? {}) as {
-        planCode?: CheckoutPlanCode;
+        planCode?: ShopActivationPlanCode;
         quantity?: number;
         entitlementDays?: number;
         prefix?: string;
@@ -53,10 +53,11 @@ export async function adminActivationRoutes(app: FastifyInstance) {
       };
 
       const quantity = Number(body.quantity ?? 1);
-      if (body.planCode != null && !isCheckoutPlanCode(body.planCode)) {
+      if (body.planCode != null && !isShopActivationPlanCode(body.planCode)) {
         return reply.code(400).send({ error: "Unknown activation plan." });
       }
-      const entitlementDays = body.planCode ? (body.planCode.endsWith("annual") ? 365 : 30) : Number(body.entitlementDays ?? config.entitlementDays);
+      const creditPack = body.planCode === "single-score" || body.planCode?.startsWith("credits-");
+      const entitlementDays = creditPack ? 0 : body.planCode ? (body.planCode.endsWith("annual") ? 365 : 30) : Number(body.entitlementDays ?? config.entitlementDays);
       const expiresAt = parseExpiresAt(body.expiresAt);
 
       if ((body.prefix != null && (typeof body.prefix !== "string" || !/^[A-Za-z0-9]{0,8}$/.test(body.prefix))) ||
@@ -68,7 +69,7 @@ export async function adminActivationRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "Quantity must be an integer between 1 and 200." });
       }
 
-      if (!Number.isInteger(entitlementDays) || entitlementDays < 1 || entitlementDays > 3650) {
+      if (!Number.isInteger(entitlementDays) || entitlementDays < (creditPack ? 0 : 1) || entitlementDays > 3650) {
         return reply.code(400).send({ error: "Entitlement days must be an integer between 1 and 3650." });
       }
 

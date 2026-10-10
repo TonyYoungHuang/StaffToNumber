@@ -3,6 +3,7 @@ import { db } from "../db.js";
 import { resolveStorageQuotaTier } from "@score/runtime-database";
 import { assertMinimumFreeSpace } from "@score/storage";
 import type { ScoreRecognitionMode } from "@score/shared";
+import { prepaidCreditBalance, reservePrepaidCredits } from "./prepaid-credits.js";
 
 export function recognitionCreditCost(mode: ScoreRecognitionMode) {
   return mode === "complex" ? config.omrComplexCreditCost : config.omrSimpleCreditCost;
@@ -32,6 +33,9 @@ export type PlanQuotaUsage = {
   periodStart: string;
   periodEnd: string;
   jobs: { used: number; limit: number; remaining: number };
+  creditMode: "monthly" | "prepaid";
+  prepaid: { total: number; used: number; remaining: number; startsAt: string | null };
+  monthly: { used: number; limit: number; remaining: number };
   storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
 };
 
@@ -42,7 +46,7 @@ export class PlanQuotaExceededError extends Error {
 
   constructor(code: PlanQuotaExceededError["code"], quota: PlanQuotaUsage) {
     super(code === "PLAN_JOB_QUOTA_EXCEEDED"
-      ? "The monthly credit balance for this plan has been used up."
+      ? "The processing credit balance is insufficient."
       : "The storage quota for this plan has been reached.");
     this.name = "PlanQuotaExceededError";
     this.code = code;
@@ -56,14 +60,14 @@ function utcMonthBounds(now = new Date()) {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-function quotaTier(userId: string): PlanQuotaTier {
+function quotaTier(userId: string, includePrepaid = true): PlanQuotaTier {
   return resolveStorageQuotaTier(db, userId, {
     free: config.quotaFreeStorageBytes,
     starter: config.quotaStarterStorageBytes,
     converterPro: config.quotaConverterProStorageBytes,
     starterPlanRefs: [config.stripeStarterMonthlyPriceId, config.stripeStarterAnnualPriceId, config.paddleStarterMonthlyPriceId, config.paddleStarterAnnualPriceId].filter(Boolean),
     converterProPlanRefs: [config.stripeConverterProMonthlyPriceId, config.stripeConverterProAnnualPriceId, config.paddleConverterProMonthlyPriceId, config.paddleConverterProAnnualPriceId].filter(Boolean),
-  });
+  }, includePrepaid);
 }
 
 function limitsForTier(tier: PlanQuotaTier) {
@@ -79,15 +83,21 @@ function limitsForTier(tier: PlanQuotaTier) {
 export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUsage {
   const tier = quotaTier(userId);
   const limits = limitsForTier(tier);
+  const monthlyTier = quotaTier(userId, false);
+  const prepaid = prepaidCreditBalance(userId);
+  const creditMode = prepaid.total > 0 && monthlyTier === "free" ? "prepaid" as const : "monthly" as const;
+  const monthlyLimit = creditMode === "prepaid" ? 0 : limitsForTier(monthlyTier).jobs;
   const period = utcMonthBounds(now);
   const legacyJobs = db.prepare(`
     SELECT COUNT(*) AS count FROM jobs
     WHERE user_id = ? AND datetime(created_at) >= datetime(?) AND datetime(created_at) < datetime(?)
       AND status NOT IN ('failed', 'cancelled')
+      AND NOT EXISTS (SELECT 1 FROM prepaid_credit_charges p WHERE p.job_family = 'legacy' AND p.job_id = jobs.id)
   `).get(userId, period.start, period.end) as { count: number } | undefined;
   const scoreJobs = db.prepare(`
     SELECT job_type, params_json, created_at FROM score_jobs
     WHERE NOT EXISTS (SELECT 1 FROM score_pass_jobs p WHERE p.job_id = score_jobs.id)
+      AND NOT EXISTS (SELECT 1 FROM prepaid_credit_charges p WHERE p.job_family = 'score' AND p.job_id = score_jobs.id)
       AND user_id = ? AND status NOT IN ('failed', 'cancelled')
   `).all(userId) as Array<{ job_type: string; params_json: string | null; created_at: string }>;
   const storage = db.prepare(`
@@ -101,15 +111,15 @@ export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUs
   }, 0);
   const jobsUsed = Number(legacyJobs?.count ?? 0) + scoreCredits;
   const storageUsed = Number(storage?.bytes ?? 0);
+  const monthly = { used: jobsUsed, limit: monthlyLimit, remaining: Math.max(0, monthlyLimit - jobsUsed) };
   return {
     tier,
     periodStart: period.start,
     periodEnd: period.end,
-    jobs: {
-      used: jobsUsed,
-      limit: limits.jobs,
-      remaining: Math.max(0, limits.jobs - jobsUsed),
-    },
+    creditMode,
+    prepaid,
+    monthly,
+    jobs: creditMode === "prepaid" ? { used: prepaid.used, limit: prepaid.total, remaining: prepaid.remaining } : monthly,
     storage: {
       usedBytes: storageUsed,
       limitBytes: limits.storageBytes,
@@ -122,10 +132,17 @@ export function assertProcessingQuota(userId: string, dedicatedScorePass = false
   if (!Number.isSafeInteger(creditCost) || creditCost < 1) throw new Error("Processing credit cost must be a positive integer.");
   assertMinimumFreeSpace(config.storageDir, config.storageMinFreeBytes, config.uploadMaxBytes * 2);
   const quota = getPlanQuotaUsage(userId);
-  if (!dedicatedScorePass && creditCost > quota.jobs.remaining) {
+  if (!dedicatedScorePass && creditCost > quota.monthly.remaining && creditCost > quota.prepaid.remaining) {
     throw new PlanQuotaExceededError("PLAN_JOB_QUOTA_EXCEEDED", quota);
   }
   return quota;
+}
+
+// Use monthly credits first when a legacy plan coexists with a prepaid pack.
+// A job is charged to exactly one pool. Caller keeps the account locked.
+export function recordProcessingCredit(userId: string, family: "score" | "legacy", jobId: string, quota: PlanQuotaUsage, cost = 1) {
+  const previous = db.prepare("SELECT job_id FROM prepaid_credit_charges WHERE job_family = ? AND job_id = ?").get(family, jobId);
+  if (previous || quota.monthly.remaining < cost) reservePrepaidCredits(userId, family, jobId, cost);
 }
 
 export function assertStorageQuota(userId: string, incomingBytes: number) {

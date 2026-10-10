@@ -49,6 +49,10 @@ export const jaBillingMessages = {
     manager: {
       loading: "請求情報を読み込んでいます...", fallbackError: "請求情報を読み込めませんでした。もう一度お試しください。", signIn: "請求情報を見るにはログインしてください。",
       creditEyebrow: "クレジット残高", availableCredits: "今月利用できるクレジット", creditUnit: "クレジット", creditSummaryTemplate: "今月は {limit} クレジット、{used} 使用済みです。", creditUsage: "今月のクレジット使用量", storage: "ファイル保存容量",
+      prepaidTitle: "前払いクレジット",
+      prepaidSummaryTemplate: "前払い {limit} クレジットのうち {used} を使用または予約済みです。毎月のリセットや有効期限はありません。",
+      prepaidNote: "処理と書き出しジョブにクレジットを使用します。編集、移調、再生には使用しません。失敗またはキャンセル時は予約分を返還します。",
+      additionalPrepaidTemplate: "追加の前払いクレジット：{remaining} / {total}。月間クレジットが不足する場合に使用し、未使用分は保持されます。",
       quotaNote: "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。月間クレジットは毎月リセットされ、繰り越されません。",
       freeEyebrow: "無料利用状況", noPaidTitle: "有効な有料プランはありません", freeBody: "無料アカウントでは、完全な複数ページ PDF または楽譜画像から生涯利用できるプロジェクトを1件作成し、修正、再生、移調、数字譜、共有、書き出しを利用できます。無料枠は {credits} です。", unlock: "フルアクセスを有効化",
       subscriptionsEyebrow: "サブスクリプション", subscriptionsTitle: "アクセス権と更新状況", manageStripe: "Stripe の支払い方法を管理", managingStripe: "Stripe を開いています...", noSubscriptions: "このアカウントに紐付くサブスクリプションはありません。",

@@ -11,8 +11,8 @@ import { shopError } from "../lib/shop-activation";
 import { ActivationForm } from "./ActivationForm";
 import { AuthForm } from "./AuthForm";
 
-type Account = { id: string; email: string; codeLoginEnabled: boolean; entitlement: { status: string; endsAt: string | null } };
-type Usage = { tier: string; jobs: { remaining: number; limit: number }; storage: { limitBytes: number } };
+type Account = { id: string; email: string; codeLoginEnabled: boolean; entitlement: { status: string; endsAt: string | null }; scorePasses?: Array<{ documentId: string | null; remaining: number; credits: number; maxPages: number }> };
+type Usage = { tier: string; creditMode?: "monthly" | "prepaid"; prepaid?: { total: number; remaining: number }; jobs: { remaining: number; limit: number }; storage: { limitBytes: number } };
 type LoginPayload = { token: string; user: Account; isNewUser: boolean };
 
 export function ShopActivation({ authCopy, activationCopy, returnTo }: { authCopy: AuthMessageCatalog["form"]; activationCopy: ActivationFormCopy; returnTo?: string }) {
@@ -70,7 +70,7 @@ export function ShopActivation({ authCopy, activationCopy, returnTo }: { authCop
     await load(); setSubmitting(false);
   }
 
-  const usable = account?.entitlement.status === "active";
+  const usable = account?.entitlement.status === "active" || Boolean(account?.scorePasses?.length);
   const audioAvailable = process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE === "true";
   const codeForm = <form onSubmit={submitCode} className="form-grid">
     <label className="field-group">
@@ -104,7 +104,8 @@ export function ShopActivation({ authCopy, activationCopy, returnTo }: { authCop
         <div className="surface-panel stack-sm">
           <p className="item-title">当前账户：{account.codeLoginEnabled ? `激活码账户 ${account.id.slice(-8).toUpperCase()}` : account.email}</p>
           <p className="body-copy">{usable ? `使用权限已开通${account.entitlement.endsAt ? `，到期时间：${new Date(account.entitlement.endsAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}（北京时间）` : ""}。` : "当前没有有效套餐，可查看已有乐谱或兑换新码续期。"}</p>
-          {usage && usable ? <p className="micro-copy">当前额度：{usage.tier === "converter-pro" ? "Converter Pro" : "Starter"} · 本月剩余 {usage.jobs.remaining} / {usage.jobs.limit} 积分 · 存储上限 {Math.round(usage.storage.limitBytes / 1024 / 1024)} MB</p> : null}
+          {usage && account.entitlement.status === "active" ? <p className="micro-copy">{usage.creditMode === "prepaid" ? `一次性积分包 · 剩余 ${usage.jobs.remaining} / ${usage.jobs.limit} 积分 · 不按月清零，未用积分保留` : `本月剩余 ${usage.jobs.remaining} / ${usage.jobs.limit} 积分${usage.prepaid?.total ? ` · 另有一次性积分 ${usage.prepaid.remaining} / ${usage.prepaid.total}` : ""}`} · 存储上限 {Math.round(usage.storage.limitBytes / 1024 / 1024)} MiB</p> : null}
+          {account.scorePasses?.map((pass, index) => <p key={index} className="micro-copy">单谱体验：剩余 {pass.remaining} / {pass.credits} 积分 · 仅限1份乐谱，最多{pass.maxPages}页 · 未用积分不设到期日{pass.documentId ? "（已绑定乐谱）" : "（待导入乐谱）"}</p>)}
           <button type="button" className="button button-tertiary" disabled={submitting} onClick={() => void changeAccount()}>退出 / 换一个激活码登录</button>
         </div>
         {!account.codeLoginEnabled ? <div className="surface-panel stack-lg">
@@ -125,9 +126,9 @@ export function ShopActivation({ authCopy, activationCopy, returnTo }: { authCop
         </div> : null}
         {!usable ? <Link className="button button-secondary" href="/scores">查看已有乐谱</Link> : null}
         <details className="surface-panel stack-lg">
-          <summary className="item-title">续期当前账户</summary>
-          <p className="micro-copy">在这里兑换新码，会把权限加到当前账户，同档套餐顺延。之后仍使用原登录码进入，新码不会自动成为登录码。</p>
-          <ActivationForm copy={activationCopy} errorMessage={shopError} returnTo={returnTo} onActivated={payload => { setSuccess(payload.alreadyRedeemed ? "这个码已经兑换过，期限没有变化" : "续期成功"); void load(); }} />
+          <summary className="item-title">补充积分 / 续期当前账户</summary>
+          <p className="micro-copy">在这里兑换新码：一次性积分包加到当前账户，旧月卡/年卡按原规则顺延。之后仍使用原登录码进入，新码不会自动成为登录码。</p>
+          <ActivationForm copy={activationCopy} errorMessage={shopError} returnTo={returnTo} onActivated={payload => { setSuccess(payload.alreadyRedeemed ? "这个码已经兑换过，权益没有重复增加" : "权益已添加到当前账户"); void load(); }} />
         </details>
       </>}
       <div className="mini-card stack-sm">
