@@ -2,7 +2,7 @@
 
 以 `446b825`（`codex/commercial-mvp-seo-production` 的生产源码补录基线）为起点，在项目 `.tmp/prepaid-credits-2026-10-10/candidate-fast` 的隔离 Git worktree 中整理、修复和验证预付套餐。前次归档范围见 [Git 补录回执](git-backfill-2026-10-09.md)。此次没有部署、迁移生产数据库或创建真实付款。
 
-本地审阅分支：`codex/prepaid-credits-test-20261010`。用户消息第 5 条存在乱码，无法确定合入及 push 的准确要求；已询问补发。本轮仅制作可审阅的本地提交，原目标分支及远端保持 `446b825`。收到明确要求后可继续合入、普通推送；不使用 force push。
+首轮本地审阅分支：`codex/prepaid-credits-test-20261010`，功能提交 `87a5b3c`，父提交 `446b825`。首轮只制作本地提交；随后用户明确授权将其快进合入 `codex/commercial-mvp-seo-production` 并普通推送，本次补全发布与回滚说明。合并和快速复验使用独立 worktree，主工作区未提交内容保留；不使用 force push，不部署，不接触生产。
 
 ## 套餐与已验证行为
 
@@ -61,13 +61,27 @@
 
 `schema-version.ts` 更新为 26。SQLite 用 `PRAGMA user_version=26`；PostgreSQL 启动通过新增表检查确认已完成结构迁移，不把 PostgreSQL 写成持有 SQLite 的 user_version。
 
-将来发布时应先由数据库 owner 执行增量 SQL，再更新 API／Worker。示例参数（连接串由既有私有配置提供）：
+## 将来上线顺序（本次仅记录，未执行）
+
+1. **备份生产库。** 在独立发布任务中，先暂停预付码发放／兑换及新任务受理，记录旧 API、Worker、前端版本和待处理任务；按既有备份流程生成一致性备份，核对备份可读取、恢复路径及时间点。备份验收通过后才进入迁移。
+2. **用数据库 owner 跑 `deploy/hetzner/prepaid-credit-packs.sql`，将结构从 schema 25 升到 26。** 设置实际 `runtime_schema` 和应用 `runtime_role`，使用 `ON_ERROR_STOP=1`。核对旧行保留、新表／触发器存在、运行角色授权正确；确认失败时事务未部分提交。PostgreSQL 按结构检查确认 schema 26，SQLite 版本号为 `user_version=26`。
+3. **更新 API＋Worker＋前端。** 先切换 API 和 Worker 到同一新版本，再更新 WWW／App；用发布任务的健康检查核对登录、余额、兑换幂等、任务预留及完成／失败状态、旧会员期限与导出、存储额度，最后恢复入口和任务受理。
+
+顺序必须是：**备份生产库 → owner 执行 SQL 升 26 → 更新 API＋Worker＋前端**。示例迁移参数（连接串由既有私有配置提供）：
 
 ```powershell
 psql --dbname "$env:POSTGRES_OWNER_URL" -v ON_ERROR_STOP=1 -v runtime_schema=scoretransposer -v runtime_role=scoretransposer_app -f deploy/hetzner/prepaid-credit-packs.sql
 ```
 
 `runtime_role` 必须是实际运行角色，SQL 的授权不能省略。新表为增量结构；回滚应用时保留已发放及已消费账本，不删除积分表来“回滚”，以免丢失余额或恢复消费额度。新源码也可从 schema 26 SQLite 生成 PostgreSQL 触发器；此次同时验证该安装路径。
+
+## 将来回滚步骤（本次仅记录，未执行）
+
+1. 关闭预付码发放／兑换入口并暂停新计费任务，停止新版本 Worker 拉取新任务；记录已预留、已消费及处理中任务，保留故障日志和回滚前备份，避免状态并发变化。
+2. 若 SQL 执行失败，先核对 `BEGIN`／`COMMIT` 事务结果；未提交时保持旧应用版本，修复迁移原因后另行重跑，不带着半迁移结构切换应用。
+3. 若已完成迁移而应用需回滚，将 API、Worker、WWW／App 一起恢复为上线前记录的版本。保留 schema 26 新增积分表、账本、授权和触发器，不执行删表、不把 `spent`／`released` 改回 `reserved`，不将 SQLite `user_version` 强降到 25。旧版本没有钱包扣费逻辑，预付账户及新计费任务入口继续暂停，直至新版本修复并复验。
+4. 核对旧会员登录、原套餐期限、旧导出和后台任务健康，并核对预付账本与回滚前快照；由任务原始状态核实处理中任务，禁止凭重启或删除任务重新发放／退款。
+5. 仅在数据库损坏、且已停止写入并确认恢复时间点及迁移后发放／消费处理方案的独立恢复任务中，才考虑恢复上线前备份。先将备份恢复到隔离库验收，再决定生产恢复；不得直接覆盖已产生新积分交易的生产库。本次没有执行任何备份、迁移、部署或回滚。
 
 ## 复跑与证据
 
