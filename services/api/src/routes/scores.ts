@@ -5285,7 +5285,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const useScorePass = recognition.creditSource === "score_pass";
 
-      const pageCount = verified.pdfRasterInspection?.pageCount ?? (useScorePass && verified.detectedKind === "tiff"
+      const pageCount = verified.pdfRasterInspection?.pageCount ?? (verified.detectedKind === "tiff"
         ? countTiffPages(await fs.promises.readFile(targetPath)) : 1);
       if (useScorePass && (pageCount < 1 || pageCount > 5)) {
         await fs.promises.rm(targetPath, { force: true });
@@ -5321,8 +5321,6 @@ export async function scoreRoutes(app: FastifyInstance) {
         sourceFileId: storedFile.id,
         sourceFileKind: fileKind,
         sourceOriginalName: storedFile.original_name,
-        freeTrial: recognition.creditSource === "free_trial",
-        scorePass: useScorePass,
         pageCount,
         recognitionMode,
         expectedCreditCost,

@@ -9,6 +9,8 @@ import { createOmrImportScoreDocument, createScoreExportJob, retryScoreJob } fro
 import { getPlanQuotaUsage } from "./plan-quotas.js";
 import { listScorePasses, scorePassForDocument } from "./score-passes.js";
 import { countTiffPages } from "./score-pass-pages.js";
+import { getRecognitionOptions } from "./recognition-options.js";
+import { getFreeTrialAccess } from "./free-trial.js";
 import { buildStripeCheckoutSessionParams, getCheckoutPriceId } from "./payments.js";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
@@ -107,9 +109,11 @@ test("multi-page TIFF cannot bypass the page limit; malformed and cyclic directo
   view.setUint16(2, 43, true); assert.equal(countTiffPages(bytes), 0);
 });
 
-test("HTTP import uses the purchased pass after the free score, enforces page count, and scopes editing to its owner", async () => {
+for (const hasFreeScore of [false, true]) test(`HTTP import binds the paid pass with free score used=${hasFreeScore}, enforces page count, and scopes editing`, async () => {
   const { user, session, create } = fixture();
-  create(1, true); fulfillOneTimePurchase(db, session);
+  if (hasFreeScore) create(1, true);
+  fulfillOneTimePurchase(db, session);
+  assert.equal(getRecognitionOptions(user.id).options[0].creditSource, "score_pass");
   const token = randomUUID(); createSession(user.id, token, 1);
   const app = Fastify();
   await app.register(multipart); await app.register(authPlugin); await app.register(scoreRoutes, { prefix: "/api" });
@@ -120,16 +124,38 @@ test("HTTP import uses the purchased pass after the free score, enforces page co
     return app.inject({ method: "POST", url: "/api/scores/import/omr", headers: { authorization: `Bearer ${token}`, "content-type": `multipart/form-data; boundary=${boundary}` }, payload });
   };
   try {
-    const large = await upload(6); assert.equal(large.statusCode, 403, large.body); assert.equal(large.json().code, "SCORE_PASS_PAGE_LIMIT");
+    const large = await upload(11); assert.equal(large.statusCode, 403, large.body); assert.equal(large.json().code, "SCORE_PASS_PAGE_LIMIT");
     assert.equal(listScorePasses(db, user.id)[0].remaining, 10);
+    assert.equal(listScorePasses(db, user.id)[0].documentId, null);
+    assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, hasFreeScore ? 1 : 0);
     const accepted = await upload(5); assert.equal(accepted.statusCode, 201, accepted.body);
     const id = accepted.json().score.id;
     assert.equal(listScorePasses(db, user.id)[0].documentId, id);
-    assert.equal((await upload(1)).statusCode, 403);
+    assert.equal(listScorePasses(db, user.id)[0].remaining, 9);
+    assert.equal(accepted.json().recognition.creditSource, "score_pass");
+    assert.equal(accepted.json().job.params.freeTrial, false);
+    assert.ok(db.prepare("SELECT job_id FROM score_pass_jobs WHERE job_id = ?").get(accepted.json().job.id));
+    assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, hasFreeScore ? 1 : 0);
+    assert.equal((await upload(1)).statusCode, hasFreeScore ? 403 : 201);
     const jobs = await app.inject({ method: "GET", url: `/api/scores/${id}/jobs`, headers: { authorization: `Bearer ${token}` } });
     assert.equal(jobs.statusCode, 200, jobs.body);
     assert.equal((await app.inject({ method: "POST", url: `/api/scores/${id}/export/pdf`, headers: { authorization: `Bearer ${token}` }, payload: {} })).statusCode, 409);
     applyOneTimeRefund(db, { payment_intent: session.payment_intent, amount: 299, amount_refunded: 299, metadata: session.metadata });
     assert.equal((await app.inject({ method: "POST", url: `/api/scores/${id}/exports`, headers: { authorization: `Bearer ${token}` }, payload: {} })).statusCode, 403);
   } finally { await app.close(); }
+});
+
+test("reservation resolves a pass bought after a free-trial quote and still enforces its page limit", () => {
+  const { user, session } = fixture();
+  assert.equal(getRecognitionOptions(user.id).options[0].creditSource, "free_trial");
+  fulfillOneTimePurchase(db, session);
+  const file = db.prepare("SELECT id FROM files WHERE user_id = ?").get(user.id) as { id: string };
+  const input = { userId: user.id, title: "Synthetic score", sourceFileId: file.id,
+    sourceFileKind: "source_pdf" as const, sourceOriginalName: "score.pdf" };
+  assert.throws(() => createOmrImportScoreDocument({ ...input, pageCount: 11 }), /up to 5 pages/);
+  assert.equal(listScorePasses(db, user.id)[0].documentId, null);
+  const result = createOmrImportScoreDocument({ ...input, pageCount: 1 });
+  assert.equal(JSON.parse(result.job!.params_json!).creditSource, "score_pass");
+  assert.equal(listScorePasses(db, user.id)[0].documentId, result.document!.id);
+  assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, 0);
 });
