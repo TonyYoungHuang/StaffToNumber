@@ -1,4 +1,4 @@
-import { runSimplePdfOmr, type SimplePdfResult } from "./simple-pdf-omr.js";
+import { runSimplePdfOmr, SimplePdfOmrFailure, type SimplePdfResult } from "./simple-pdf-omr.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -3160,6 +3160,11 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
       insertOmrDiagnostic({ jobId: job.id, documentId: job.document_id, sourcePageCount: error.coverage.sourcePageCount,
         diagnostics: { status: "failed", engine: "hybrid", recognitionMode, message: error.message, coverage: error.coverage } });
     }
+    if (error instanceof SimplePdfOmrFailure) {
+      insertOmrDiagnostic({ jobId: job.id, documentId: job.document_id, sourcePageCount: error.skippedPages.length,
+        diagnostics: { status: "failed", engine: "audiveris", recognitionMode,
+          message: error.message, skippedPages: error.skippedPages } });
+    }
     throw error;
   }
   if (isScoreJobCancelled(job.id)) {
@@ -3331,7 +3336,8 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
       engine: complexResult ? "hybrid" : "audiveris",
       recognitionMode,
       ...(complexResult ? { coverage: complexResult.coverage } : {}),
-      ...(simplePdfResult ? { pdfRenderPlan: simplePdfResult.pages.map(({ page, renderDpi }) => ({ page, renderDpi })), issues: simplePdfResult.issues } : {}),
+      ...(simplePdfResult ? { pdfRenderPlan: simplePdfResult.pages.map(({ page, renderDpi }) => ({ page, renderDpi })),
+        recognizedPages: simplePdfResult.recognizedPages, skippedPages: simplePdfResult.skippedPages, issues: simplePdfResult.issues } : {}),
       message: complexResult ? "Layered recognition produced an ensemble candidate; source coverage and musical content require explicit review." : "Audiveris MusicXML was imported as a candidate revision awaiting explicit review.",
       musicXmlFileId,
       omrBundleFileId,

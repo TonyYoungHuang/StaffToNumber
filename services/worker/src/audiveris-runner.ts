@@ -16,6 +16,9 @@ export class AudiverisProcessError extends Error {
   }
 }
 
+/** All bounded orientation attempts exited without recognizing this image. */
+export class AudiverisRecognitionError extends AudiverisProcessError {}
+
 export type RunAudiverisInput = {
   command: string;
   commandArgsPrefix?: string[];
@@ -259,7 +262,7 @@ export async function runAudiverisWithRotationFallback(
       }
     }
   }
-  throw new AudiverisProcessError(
+  throw new AudiverisRecognitionError(
     `Audiveris could not recognize the raster score after orientation attempts at 0, 90, 180, and 270 degrees. ${lastError?.message ?? ""}`.trim(),
     "exit",
     lastError?.exitCode ?? null,
