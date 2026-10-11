@@ -1,6 +1,24 @@
 import type { ScoreEntryMessages } from "../types";
 
 export const koScoreEntryMessages = {
+  reviewEntry: {
+    "label": "스캔 악보 확인",
+    "titles": {
+      "one": "확인을 기다리는 스캔 악보가 1개 있어요",
+      "few": "확인을 기다리는 스캔 악보가 {count}개 있어요",
+      "many": "확인을 기다리는 스캔 악보가 {count}개 있어요",
+      "other": "확인을 기다리는 스캔 악보가 {count}개 있어요"
+    },
+    "body": "원본 이미지와 비교해 내용을 확인한 뒤 확정해 주세요.",
+    "continue": "계속 확인하기",
+    "all": "확인할 스캔 악보 모두 보기",
+    "emptyTitle": "확인을 기다리는 스캔 악보가 없어요",
+    "emptyBody": "다음 스캔 악보는 처리가 끝나면 여기에 표시돼요. 저장한 악보도 계속 편집할 수 있어요.",
+    "upload": "악보 업로드",
+    "loading": "확인할 스캔 악보를 찾고 있어요…",
+    "failed": "확인할 스캔 악보를 불러오지 못했어요. 다시 시도해 주세요.",
+    "retry": "다시 시도"
+  },
   pages: {
     library: { eyebrow: "악보 작업 공간", title: "악보를 인식하고 관리하며 작업을 이어가세요", body: "PDF나 악보 이미지를 업로드해 인식을 시작하거나 저장된 악보를 열어 편집을 계속하세요. 업로드, 후보 결과 및 라이브러리를 한 작업 공간에서 관리할 수 있습니다." },
     newScore: {
@@ -68,15 +86,26 @@ export const koScoreEntryMessages = {
     failedTitle: "인식을 완료하지 못했습니다. 아래 안내에 따라 파일을 확인하세요.", failedBody: "페이지 방향이 올바르고 선명하며 큰 그림자나 잘린 부분이 없는지 확인하세요. 실패한 무료 작업은 할당량 수동 검토가 필요하므로 다시 결제하지 마세요.", technicalDetails: "기술 세부 정보", reportIssue: "인식 문제 신고", diagnosticsEyebrow: "인식 진단", diagnosticsTitle: "업그레이드하기 전에 신뢰도와 경고를 검토하세요.", diagnosticsWarning: "인식 엔진이 수동 검토가 필요한 경고를 반환했습니다.", confidenceLabel: "전체 신뢰도", confidenceHelp: "신뢰도가 낮으면 마디별 검토가 필요합니다.", pagesLabel: "인식된 페이지", pagesHelp: "무료 프로젝트는 완전한 여러 페이지 PDF 하나를 지원합니다.", warningsLabel: "경고", engineFallback: "인식 엔진 진단", previewEyebrow: "오선보 미리보기", previewTitle: "Audiveris 인식 후보", previewEmpty: "처리가 끝나면 후보 오선보가 여기에 표시됩니다.", previewLoading: "오선보를 렌더링하는 중...", previewError: "인식 결과가 불완전하여 표시할 수 없습니다. 더 선명하고 방향이 올바르며 잘리지 않은 페이지를 사용하거나 지원팀에 문의하세요.", previewRetry: "다시 렌더링",
   },
   candidate: {
+    compareSource: "원본 이미지와 비교",
+    confirmationHelp: "원본 이미지와 비교하고 필요한 수정을 마친 뒤 악보 전체를 확정해 확인한 버전을 사용해 주세요.",
     notationRetry: "다시 렌더링",
     notationTechnicalDetails: "기술 세부 정보",
     notationEventLabel: "{part} · {measure}마디 · {number}번째 {type}",
     notationNote: "음표",
     notationRest: "쉼표",
-    freeEyebrow: "무료 편집", reviewEyebrow: "후보 악보 검토", freeDescription: "평생 무료 악보 프로젝트를 사용 중입니다. 인식 결과 v{revision}을 지금 교정할 수 있으며 변경 사항은 후보 버전으로 저장됩니다.", reviewDescription: "인식 결과 v{revision}은 아직 공식 버전이 아닙니다. 수락하기 전에 원본과 비교하세요.", back: "악보로 돌아가기", processMore: "악보 더 처리하기", rejecting: "거부하는 중...", reject: "후보 거부", accepting: "수락하는 중...", accept: "공식 버전으로 수락", safetyEyebrow: "안전 상태", safetyTitle: "후보 버전은 기존 공식 버전을 덮어쓸 수 없습니다", freeSafetyBody: "무료 계정도 전체 악보를 교정하고 재생, 조옮김, 숫자보, 버전, 공유 및 사용 가능한 내보내기를 계속할 수 있습니다. 더 많은 악보 프로젝트를 만들려면 업그레이드하세요.", reviewSafetyBody: "교정은 공식 악보를 변경하지 않고 새 후보 버전을 만듭니다. 수락하면 최신 후보가 공식 버전으로 복사되고 조옮김, 재생 및 내보내기가 활성화됩니다.", historyGroupLabel: "후보 교정 실행 취소 및 다시 실행", undo: "교정 실행 취소", redo: "교정 다시 실행", viewportLabel: "검토 화면", syncScroll: "스크롤 동기화", zoomGroupLabel: "검토 확대/축소", zoomOut: "축소", zoomIn: "확대", fitWidth: "너비에 맞춤", notationEyebrow: "후보 악보", notationTitle: "MusicXML 오선보 미리보기", notationBody: "악보의 음표 또는 진단을 선택하여 후보 이벤트를 확인하세요.", notationEmpty: "렌더링 가능한 후보 MusicXML이 아직 없습니다.", notationLoading: "후보 악보를 렌더링하는 중...", notationError: "후보 MusicXML을 렌더링할 수 없습니다.", notationDeferred: "큰 악보입니다. 비교 화면이 필요할 때 전체 OSMD 미리보기를 불러오세요. 그래픽 편집기는 계속 사용할 수 있습니다.", notationRender: "전체 OSMD 미리보기 불러오기",
+    freeEyebrow: "무료 편집", reviewEyebrow: "후보 악보 검토", freeDescription: "평생 무료 악보 프로젝트를 사용 중입니다. 인식 결과 v{revision}을 지금 교정할 수 있으며 변경 사항은 후보 버전으로 저장됩니다.", reviewDescription: "인식 결과 v{revision}은 아직 공식 버전이 아닙니다. 수락하기 전에 원본과 비교하세요.", back: "악보로 돌아가기", processMore: "악보 더 처리하기", rejecting: "거부하는 중...", reject: "후보 거부", accepting: "수락하는 중...", accept: "이 악보 확정", safetyEyebrow: "안전 상태", safetyTitle: "후보 버전은 기존 공식 버전을 덮어쓸 수 없습니다", freeSafetyBody: "무료 계정도 전체 악보를 교정하고 재생, 조옮김, 숫자보, 버전, 공유 및 사용 가능한 내보내기를 계속할 수 있습니다. 더 많은 악보 프로젝트를 만들려면 업그레이드하세요.", reviewSafetyBody: "교정은 공식 악보를 변경하지 않고 새 후보 버전을 만듭니다. 수락하면 최신 후보가 공식 버전으로 복사되고 조옮김, 재생 및 내보내기가 활성화됩니다.", historyGroupLabel: "후보 교정 실행 취소 및 다시 실행", undo: "교정 실행 취소", redo: "교정 다시 실행", viewportLabel: "검토 화면", syncScroll: "스크롤 동기화", zoomGroupLabel: "검토 확대/축소", zoomOut: "축소", zoomIn: "확대", fitWidth: "너비에 맞춤", notationEyebrow: "후보 악보", notationTitle: "MusicXML 오선보 미리보기", notationBody: "악보의 음표 또는 진단을 선택하여 후보 이벤트를 확인하세요.", notationEmpty: "렌더링 가능한 후보 MusicXML이 아직 없습니다.", notationLoading: "후보 악보를 렌더링하는 중...", notationError: "후보 MusicXML을 렌더링할 수 없습니다.", notationDeferred: "큰 악보입니다. 비교 화면이 필요할 때 전체 OSMD 미리보기를 불러오세요. 그래픽 편집기는 계속 사용할 수 있습니다.", notationRender: "전체 OSMD 미리보기 불러오기",
   },
   omr: {
+    symbolLabel: "기호",
+    summary: "{count}곳을 확인해 주세요. 원본 이미지와 비교한 뒤 악보 전체를 확정해 주세요.",
+    noIssues: "표시된 의심 지점은 없지만 원본 이미지와 몇 군데를 비교해 주세요.",
+    checkLabel: "확인해 주세요",
+    noFlagLabel: "의심 지점 없음",
+    noLocation: "해당 음표나 영역을 정확히 표시할 수 없어요. 표시된 페이지나 마디를 확인해 주세요.",
+    technicalDetails: "기술 정보",
+    technicalHelp: "인식 점수는 참고용이며 정확도를 뜻하는 비율이 아니에요. 문제 확인을 위해 원래 진단 내용을 여기에 보관해요.",
+    reasons: {"uncertainSymbol":"이 기호를 잘못 읽었을 수 있어요. 원본 이미지와 비교해 주세요.","rhythm":"이 마디의 박 수가 맞지 않을 수 있어요. 음표와 쉼표를 확인해 주세요.","duration":"이 음표나 쉼표의 길이가 불확실해요. 몇 박인지 확인해 주세요.","durationType":"음표나 쉼표의 길이를 읽지 못했어요. 원본 이미지의 모양을 확인해 주세요.","timeSignature":"박자표가 불확실해요. 악보 시작 부분의 박자표를 확인해 주세요.","unknown":"이 부분을 다시 살펴봐 주세요. 원본 이미지와 비교해 주세요."},
     sources: { "omr-engine": "인식 엔진", structural: "구조 검증" },
-    sourcePreviewFailed: "스캔 원본을 불러올 수 없습니다.", pageTemplate: "{page}페이지", measureTemplate: "{measure}마디", scanAltTemplate: "{name} 스캔 원본", eyebrow: "OMR 비교", title: "스캔 원본 및 인식 진단", body: "빨간 상자는 Audiveris 기호 좌표를 사용합니다. structural 점수는 리듬 완전성을 검증하며 모델 확률이 아닙니다.", issueNavigation: "문제 탐색", previous: "이전", next: "다음", sourceMode: "원본 표시 모드", original: "원본", overlay: "진단 오버레이", issuesOnly: "문제 기호만", scanPages: "스캔 페이지", noSource: "이 프로젝트에는 미리 볼 PDF/이미지 원본이 없습니다.", loadingSource: "스캔 원본을 불러오는 중...", geometryWarning: "페이지 이미지 픽셀 크기가 인식 기록과 다릅니다. 수락하기 전에 파일을 다시 인식하세요.", symbolLayer: "신뢰도가 낮은 기호 위치", pageSymbols: "페이지 기호", issueSymbols: "문제 기호", problemMeasures: "문제 마디", gradeLabel: "평가", contextGradeLabel: "문맥 평가", noDiagnostics: "이 페이지와 필터에 맞는 진단이 없습니다.",
+    sourcePreviewFailed: "스캔 원본을 불러올 수 없습니다.", pageTemplate: "{page}페이지", measureTemplate: "{measure}마디", scanAltTemplate: "{name} 스캔 원본", eyebrow: "OMR 비교", title: "원본 이미지와 비교", body: "불확실한 부분은 원본 이미지로 확인해 주세요. 표시는 확인이 필요하다는 뜻이며 틀렸다고 확정한 것은 아니에요.", issueNavigation: "문제 탐색", previous: "이전", next: "다음", sourceMode: "원본 표시 모드", original: "원본 이미지 보기", overlay: "의심 지점 표시", issuesOnly: "문제 기호만", scanPages: "스캔 페이지", noSource: "이 프로젝트에는 미리 볼 PDF/이미지 원본이 없습니다.", loadingSource: "스캔 원본을 불러오는 중...", geometryWarning: "페이지 이미지 픽셀 크기가 인식 기록과 다릅니다. 수락하기 전에 파일을 다시 인식하세요.", symbolLayer: "신뢰도가 낮은 기호 위치", pageSymbols: "페이지 기호", issueSymbols: "문제 기호", problemMeasures: "문제 마디", gradeLabel: "평가", contextGradeLabel: "문맥 평가", noDiagnostics: "현재 페이지와 필터에는 표시된 의심 지점이 없어요. 원본 이미지와 비교할 수 있어요.",
   },
 } satisfies ScoreEntryMessages;

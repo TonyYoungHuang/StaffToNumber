@@ -7,6 +7,7 @@ import { ScoreImportStatus } from "./ScoreImportStatus";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { trackFunnelEvent } from "../lib/analytics";
+import { notifyScoreReviewsChanged } from "../lib/pending-omr-reviews";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeApiError, type SupportedLocale } from "@score/i18n";
@@ -959,6 +960,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     }
 
     setPayload(result.data);
+    notifyScoreReviewsChanged();
     if (result.data.score.currentRevision) {
       await refreshJianpu();
     } else {
@@ -2352,6 +2354,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     }
 
     setPayload(result.data);
+    notifyScoreReviewsChanged();
     setGeneratedPreviewMusicXml(null);
     setSelectedScoreEventId(null);
     applyScoreProjectSettings(result.data.score.settings, result.data.score.currentRevision?.scoreJson);

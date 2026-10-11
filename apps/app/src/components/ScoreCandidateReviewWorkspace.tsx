@@ -125,7 +125,7 @@ export function ScoreCandidateReviewWorkspace({
   }, [reviewZoom, syncScroll]);
 
   return (
-    <div className="page-stack">
+    <div className="page-stack candidate-review-workspace" id="scan-review">
       <div className="page-banner split">
         <div className="stack-md">
           <p className="eyebrow">
@@ -139,6 +139,7 @@ export function ScoreCandidateReviewWorkspace({
           </p>
         </div>
         <div className="page-banner-actions">
+          <a href="#scan-comparison" className="button button-secondary review-compare-action">{copy.compareSource}</a>
           <Link href={APP_ROUTES.scores} className="button button-secondary">
             {copy.back}
           </Link>
@@ -157,6 +158,7 @@ export function ScoreCandidateReviewWorkspace({
           )}
         </div>
       </div>
+      {!freeEditing ? <p className="review-confirmation-help">{copy.confirmationHelp}</p> : null}
 
       {actionError ? <p className="form-status error" role="alert">{actionError}</p> : null}
       {revisionStatus && revisionStatusKind ? <p className={`form-status ${revisionStatusKind}`} role={revisionStatusKind === "error" ? "alert" : "status"}>{revisionStatus}</p> : null}
@@ -192,7 +194,7 @@ export function ScoreCandidateReviewWorkspace({
         </div>
       </div>
 
-      <div ref={comparisonRef} className="score-comparison-grid" data-review-zoom={reviewZoom}>
+      <div ref={comparisonRef} className="score-comparison-grid" id="scan-comparison" data-review-zoom={reviewZoom}>
         <ScoreOmrReviewPanel
           scoreId={scoreId}
           sourceFile={sourceFile}

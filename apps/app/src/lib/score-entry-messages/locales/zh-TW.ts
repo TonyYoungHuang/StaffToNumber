@@ -1,6 +1,24 @@
 import type { ScoreEntryMessages } from "../types";
 
 export const zhTWScoreEntryMessages = {
+  reviewEntry: {
+    "label": "掃譜校對",
+    "titles": {
+      "one": "有一份掃譜待你校對",
+      "few": "有 {count} 份掃譜待你校對",
+      "many": "有 {count} 份掃譜待你校對",
+      "other": "有 {count} 份掃譜待你校對"
+    },
+    "body": "對照原圖看看辨識結果，檢查妥當後再確認。",
+    "continue": "繼續校對",
+    "all": "查看所有待校對掃譜",
+    "emptyTitle": "暫時沒有待校對的掃譜",
+    "emptyBody": "下一份掃譜處理好後會出現在這裡。你也可以繼續處理已儲存的樂譜。",
+    "upload": "上傳樂譜",
+    "loading": "正在查看有沒有待校對的掃譜…",
+    "failed": "暫時無法查看待校對的掃譜，請重試。",
+    "retry": "重試"
+  },
   pages: {
     library: { eyebrow: "樂譜工作台", title: "辨識、管理並繼續處理你的樂譜", body: "直接上傳 PDF 或樂譜圖片開始辨識，也可開啟已儲存的樂譜繼續編輯。上傳、候選結果與樂譜庫都在同一個工作台。" },
     newScore: {
@@ -68,15 +86,26 @@ export const zhTWScoreEntryMessages = {
     failedTitle: "辨識任務未完成，請依下方建議檢查檔案。", failedBody: "請確認頁面方向正確、影像清晰，且沒有大面積陰影或裁切。免費任務失敗需要人工檢查額度，請勿重複付款。", technicalDetails: "技術詳情", reportIssue: "回報辨識問題", diagnosticsEyebrow: "辨識診斷", diagnosticsTitle: "升級前先檢查置信度與警告。", diagnosticsWarning: "辨識引擎傳回需要人工檢查的警告。", confidenceLabel: "整體置信度", confidenceHelp: "置信度較低時必須逐小節檢查。", pagesLabel: "已辨識頁數", pagesHelp: "免費專案支援一份完整多頁 PDF。", warningsLabel: "警告數量", engineFallback: "辨識引擎診斷", previewEyebrow: "五線譜預覽", previewTitle: "Audiveris 辨識候選", previewEmpty: "處理完成後，候選五線譜會顯示在這裡。", previewLoading: "正在繪製五線譜...", previewError: "辨識結果不完整，暫時無法顯示。請改用更清晰、方向正確且邊緣完整的頁面，或聯絡支援。", previewRetry: "重新繪製",
   },
   candidate: {
+    compareSource: "對照原圖校對",
+    confirmationHelp: "對照原圖並完成修改後，點擊「確認這份樂譜」，把檢查好的結果設為正式版本。",
     notationRetry: "重新嘗試繪製",
     notationTechnicalDetails: "技術詳情",
     notationEventLabel: "{part} · 第 {measure} 小節 · 第 {number} 個{type}",
     notationNote: "音符",
     notationRest: "休止符",
-    freeEyebrow: "免費編輯", reviewEyebrow: "候選樂譜審核", freeDescription: "你正在使用永久免費樂譜專案。辨識結果 v{revision} 現在可直接校正，修改會儲存為候選版本。", reviewDescription: "辨識結果 v{revision} 尚未成為正式版本。接受前請與原件比對。", back: "返回樂譜庫", processMore: "處理更多樂譜", rejecting: "正在拒絕...", reject: "拒絕候選", accepting: "正在接受...", accept: "接受為正式版本", safetyEyebrow: "安全狀態", safetyTitle: "候選版本不會覆蓋現有正式版本", freeSafetyBody: "免費帳戶可校正完整樂譜，並繼續使用播放、移調、簡譜、版本、分享與已開放的匯出功能；升級可建立更多樂譜專案。", reviewSafetyBody: "校正會建立新的候選版本，不會修改正式樂譜。接受後會將最新候選複製為正式版本，並開放移調、播放與匯出。", historyGroupLabel: "候選校正的復原與重做", undo: "復原校正", redo: "重做校正", viewportLabel: "校對檢視", syncScroll: "同步捲動", zoomGroupLabel: "校對縮放", zoomOut: "縮小", zoomIn: "放大", fitWidth: "符合寬度", notationEyebrow: "候選譜面", notationTitle: "MusicXML 五線譜預覽", notationBody: "選取譜面音符或左側診斷，以檢查候選事件。", notationEmpty: "目前沒有可繪製的候選 MusicXML。", notationLoading: "正在繪製候選五線譜...", notationError: "無法繪製候選 MusicXML。", notationDeferred: "這是一份大型樂譜。需要逐頁比對時再載入完整 OSMD 預覽；圖形編輯器仍可直接使用。", notationRender: "載入完整 OSMD 預覽",
+    freeEyebrow: "免費編輯", reviewEyebrow: "候選樂譜審核", freeDescription: "你正在使用永久免費樂譜專案。辨識結果 v{revision} 現在可直接校正，修改會儲存為候選版本。", reviewDescription: "辨識結果 v{revision} 尚未成為正式版本。接受前請與原件比對。", back: "返回樂譜庫", processMore: "處理更多樂譜", rejecting: "正在拒絕...", reject: "拒絕候選", accepting: "正在接受...", accept: "確認這份樂譜", safetyEyebrow: "安全狀態", safetyTitle: "候選版本不會覆蓋現有正式版本", freeSafetyBody: "免費帳戶可校正完整樂譜，並繼續使用播放、移調、簡譜、版本、分享與已開放的匯出功能；升級可建立更多樂譜專案。", reviewSafetyBody: "校正會建立新的候選版本，不會修改正式樂譜。接受後會將最新候選複製為正式版本，並開放移調、播放與匯出。", historyGroupLabel: "候選校正的復原與重做", undo: "復原校正", redo: "重做校正", viewportLabel: "校對檢視", syncScroll: "同步捲動", zoomGroupLabel: "校對縮放", zoomOut: "縮小", zoomIn: "放大", fitWidth: "符合寬度", notationEyebrow: "候選譜面", notationTitle: "MusicXML 五線譜預覽", notationBody: "選取譜面音符或左側診斷，以檢查候選事件。", notationEmpty: "目前沒有可繪製的候選 MusicXML。", notationLoading: "正在繪製候選五線譜...", notationError: "無法繪製候選 MusicXML。", notationDeferred: "這是一份大型樂譜。需要逐頁比對時再載入完整 OSMD 預覽；圖形編輯器仍可直接使用。", notationRender: "載入完整 OSMD 預覽",
   },
   omr: {
+    symbolLabel: "符號",
+    summary: "有 {count} 處需要你看看。請對照原圖檢查，再確認整份樂譜。",
+    noIssues: "暫時沒發現疑點，也請抽查一下原圖和辨識結果。",
+    checkLabel: "請檢查",
+    noFlagLabel: "未標出疑點",
+    noLocation: "暫時無法精確對應到某個音符或框，請檢查這裡顯示的頁面或小節。",
+    technicalDetails: "技術詳情",
+    technicalHelp: "辨識分數僅供參考，不代表準確率。原始診斷保留在這裡，方便排查問題。",
+    reasons: {"uncertainSymbol":"這裡的符號可能認錯了，請對照原圖看看。","rhythm":"這個小節的拍數可能對不上，請檢查音符和休止符。","duration":"這個音符或休止符的時值不確定，請核對它應佔幾拍。","durationType":"沒讀清音符或休止符的時值，請對照原圖檢查形狀。","timeSignature":"拍號不太確定，請檢查樂譜開頭標的是幾拍。","unknown":"這裡需要再看一眼，請對照原圖檢查這一處。"},
     sources: { "omr-engine": "辨識引擎", structural: "結構驗證" },
-    sourcePreviewFailed: "無法載入掃描原件。", pageTemplate: "第 {page} 頁", measureTemplate: "小節 {measure}", scanAltTemplate: "{name} 掃描原件", eyebrow: "OMR 對照校對", title: "掃描原件與辨識診斷", body: "紅框使用 Audiveris 符號座標；structural 分數只驗證節奏完整性，並非模型機率。", issueNavigation: "問題定位", previous: "上一項", next: "下一項", sourceMode: "原件顯示模式", original: "原始檔案", overlay: "診斷座標圖", issuesOnly: "只看問題符號", scanPages: "掃描頁面", noSource: "此專案沒有可預覽的 PDF／圖片原件。", loadingSource: "正在載入掃描原件...", geometryWarning: "頁面像素尺寸與辨識記錄不一致，座標框可能偏移；接受前請重新辨識該檔案。", symbolLayer: "低置信度符號位置", pageSymbols: "本頁符號", issueSymbols: "問題符號", problemMeasures: "異常小節", gradeLabel: "評分", contextGradeLabel: "上下文評分", noDiagnostics: "本頁沒有符合篩選條件的診斷。",
+    sourcePreviewFailed: "無法載入掃描原件。", pageTemplate: "第 {page} 頁", measureTemplate: "小節 {measure}", scanAltTemplate: "{name} 掃描原件", eyebrow: "OMR 對照校對", title: "對照原圖校對", body: "對照原圖檢查拿不準的地方。標出疑點是請你檢查，不代表一定認錯了。", issueNavigation: "問題定位", previous: "上一項", next: "下一項", sourceMode: "原件顯示模式", original: "查看原圖", overlay: "顯示疑點標記", issuesOnly: "只看問題符號", scanPages: "掃描頁面", noSource: "此專案沒有可預覽的 PDF／圖片原件。", loadingSource: "正在載入掃描原件...", geometryWarning: "頁面像素尺寸與辨識記錄不一致，座標框可能偏移；接受前請重新辨識該檔案。", symbolLayer: "低置信度符號位置", pageSymbols: "本頁符號", issueSymbols: "問題符號", problemMeasures: "異常小節", gradeLabel: "評分", contextGradeLabel: "上下文評分", noDiagnostics: "目前頁面和篩選條件下沒有標出的疑點，仍可對照原圖抽查。",
   },
 } satisfies ScoreEntryMessages;

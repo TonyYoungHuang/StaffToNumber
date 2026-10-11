@@ -97,13 +97,30 @@ test("client score entry components avoid binary branches and the nine-locale va
   assert.match(omr, /typeof payload\?\.error === "string" \? payload\.error/u);
   assert.match(omr, /copy\.sources\[item\.source\]/u);
   assert.doesNotMatch(omr, /<small>\{item\.source\}/u);
-  assert.match(omr, /item\.issues\[0\]/u);
+  assert.match(omr, /plainOmrWarnings\(item\.issues, copy\.reasons\)/u);
+  assert.doesNotMatch(omr, /<small>[^\n]*item\.issues\[0\]/u);
 
   const candidate = readFileSync(new URL("../../components/ScoreCandidateReviewWorkspace.tsx", import.meta.url), "utf8");
   for (const prop of ["retryLabel", "technicalDetailsLabel", "deferredLabel", "renderLabel", "eventLabelTemplate", "noteLabel", "restLabel"]) {
     assert.match(candidate, new RegExp(`\\b${prop}=`, "u"), `candidate preview ${prop}`);
     assert.match(trial, new RegExp(`\\b${prop}=`, "u"), `trial preview ${prop}`);
   }
+});
+
+test("scan reminders and review guidance have complete nine-language templates", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getScoreEntryMessages(locale);
+    for (const key of ["few", "many", "other"] as const) assert.match(copy.reviewEntry.titles[key], /\{count\}/u, locale);
+    assert.match(copy.omr.summary, /\{count\}/u, locale);
+    if (locale !== "en") {
+      const english = getScoreEntryMessages("en");
+      for (const key of ["emptyTitle", "loading", "failed", "continue"] as const) assert.notEqual(copy.reviewEntry[key], english.reviewEntry[key], locale);
+      assert.notEqual(copy.candidate.compareSource, english.candidate.compareSource, locale);
+      assert.notEqual(copy.omr.noIssues, english.omr.noIssues, locale);
+    }
+  }
+  assert.equal(getScoreEntryMessages("zh-CN").reviewEntry.titles.one, "有一份扫谱待你校对");
+  assert.match(getScoreEntryMessages("ru").reviewEntry.titles.one, /\{count\}/u);
 });
 
 test("score entry formatting uses shared Intl helpers and source-local build artifacts are absent", () => {

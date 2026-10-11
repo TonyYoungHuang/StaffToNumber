@@ -1,6 +1,24 @@
 import type { ScoreEntryMessages } from "../types";
 
 export const jaScoreEntryMessages = {
+  reviewEntry: {
+    "label": "スキャン譜の確認",
+    "titles": {
+      "one": "確認を待っているスキャン譜が1件あります",
+      "few": "確認を待っているスキャン譜が{count}件あります",
+      "many": "確認を待っているスキャン譜が{count}件あります",
+      "other": "確認を待っているスキャン譜が{count}件あります"
+    },
+    "body": "元の画像と見比べ、内容を確認してから確定してください。",
+    "continue": "確認を続ける",
+    "all": "確認待ちのスキャン譜をすべて見る",
+    "emptyTitle": "確認待ちのスキャン譜はありません",
+    "emptyBody": "次のスキャン譜は処理が終わるとここに表示されます。保存済みの楽譜も引き続き編集できます。",
+    "upload": "楽譜をアップロード",
+    "loading": "確認待ちのスキャン譜を調べています…",
+    "failed": "確認待ちのスキャン譜を読み込めませんでした。もう一度お試しください。",
+    "retry": "再試行"
+  },
   pages: {
     library: { eyebrow: "楽譜ワークスペース", title: "楽譜を認識、管理し、作業を続ける", body: "PDF や楽譜画像の構造を無料で確認します。無料プロジェクトが残っていれば、シンプル認識はワンタップで開始できます。保存済みの楽譜を開いて編集を続けることもできます。" },
     newScore: {
@@ -68,15 +86,26 @@ export const jaScoreEntryMessages = {
     failedTitle: "認識を完了できませんでした。以下の案内に沿ってファイルを確認してください。", failedBody: "ページが正しい向きで鮮明に写り、大きな影や切り落としがないことを確認してください。無料ジョブの失敗は利用枠の手動確認が必要です。再度支払わないでください。", technicalDetails: "技術情報", reportIssue: "認識の問題を報告", diagnosticsEyebrow: "認識診断", diagnosticsTitle: "アップグレード前に信頼度と警告を確認してください。", diagnosticsWarning: "認識エンジンから手動確認が必要な警告が返されました。", confidenceLabel: "全体の信頼度", confidenceHelp: "信頼度が低い場合は小節ごとの確認が必要です。", pagesLabel: "認識したページ数", pagesHelp: "無料プロジェクトは完全な複数ページ PDF 1 件に対応します。", warningsLabel: "警告", engineFallback: "認識エンジン診断", previewEyebrow: "五線譜プレビュー", previewTitle: "Audiveris 認識候補", previewEmpty: "処理が完了すると、候補の五線譜がここに表示されます。", previewLoading: "五線譜を描画しています...", previewError: "認識結果が不完全なため表示できません。より鮮明で向きが正しく、端が切れていないページを試すか、サポートへお問い合わせください。", previewRetry: "もう一度描画",
   },
   candidate: {
+    compareSource: "元の画像と見比べる",
+    confirmationHelp: "元の画像と比較して必要な修正を終えたら、楽譜全体を確定して確認済みの版を使ってください。",
     notationRetry: "もう一度描画する",
     notationTechnicalDetails: "技術情報",
     notationEventLabel: "{part} · 第 {measure} 小節 · {number} 番目の{type}",
     notationNote: "音符",
     notationRest: "休符",
-    freeEyebrow: "無料編集", reviewEyebrow: "候補楽譜の確認", freeDescription: "生涯無料の楽譜プロジェクトを利用中です。認識結果 v{revision} を修正でき、変更は候補版として保存されます。", reviewDescription: "認識結果 v{revision} はまだ正式版ではありません。承認前に原稿と比較してください。", back: "楽譜一覧へ戻る", processMore: "さらに楽譜を処理", rejecting: "却下しています...", reject: "候補を却下", accepting: "承認しています...", accept: "正式版として承認", safetyEyebrow: "安全な状態", safetyTitle: "候補版が既存の正式版を上書きすることはありません", freeSafetyBody: "無料アカウントでも楽譜全体を修正し、再生、移調、数字譜、版管理、共有、利用可能な書き出しを続けられます。さらにプロジェクトを作成する場合はアップグレードしてください。", reviewSafetyBody: "修正は正式な楽譜を変更せず、新しい候補版を作成します。承認すると最新の候補を正式版へ複製し、移調、再生、書き出しが利用可能になります。", historyGroupLabel: "候補修正の元に戻す・やり直し", undo: "修正を元に戻す", redo: "修正をやり直す", viewportLabel: "確認表示", syncScroll: "スクロールを同期", zoomGroupLabel: "確認表示の拡大縮小", zoomOut: "縮小", zoomIn: "拡大", fitWidth: "幅に合わせる", notationEyebrow: "候補譜面", notationTitle: "MusicXML 五線譜プレビュー", notationBody: "譜面の音符または診断を選択して、候補イベントを確認します。", notationEmpty: "描画可能な候補 MusicXML はまだありません。", notationLoading: "候補の五線譜を描画しています...", notationError: "候補 MusicXML を描画できませんでした。", notationDeferred: "大きな楽譜です。比較表示が必要なときに完全な OSMD プレビューを読み込んでください。グラフィカルエディターはそのまま利用できます。", notationRender: "完全な OSMD プレビューを読み込む",
+    freeEyebrow: "無料編集", reviewEyebrow: "候補楽譜の確認", freeDescription: "生涯無料の楽譜プロジェクトを利用中です。認識結果 v{revision} を修正でき、変更は候補版として保存されます。", reviewDescription: "認識結果 v{revision} はまだ正式版ではありません。承認前に原稿と比較してください。", back: "楽譜一覧へ戻る", processMore: "さらに楽譜を処理", rejecting: "却下しています...", reject: "候補を却下", accepting: "承認しています...", accept: "この楽譜を確定", safetyEyebrow: "安全な状態", safetyTitle: "候補版が既存の正式版を上書きすることはありません", freeSafetyBody: "無料アカウントでも楽譜全体を修正し、再生、移調、数字譜、版管理、共有、利用可能な書き出しを続けられます。さらにプロジェクトを作成する場合はアップグレードしてください。", reviewSafetyBody: "修正は正式な楽譜を変更せず、新しい候補版を作成します。承認すると最新の候補を正式版へ複製し、移調、再生、書き出しが利用可能になります。", historyGroupLabel: "候補修正の元に戻す・やり直し", undo: "修正を元に戻す", redo: "修正をやり直す", viewportLabel: "確認表示", syncScroll: "スクロールを同期", zoomGroupLabel: "確認表示の拡大縮小", zoomOut: "縮小", zoomIn: "拡大", fitWidth: "幅に合わせる", notationEyebrow: "候補譜面", notationTitle: "MusicXML 五線譜プレビュー", notationBody: "譜面の音符または診断を選択して、候補イベントを確認します。", notationEmpty: "描画可能な候補 MusicXML はまだありません。", notationLoading: "候補の五線譜を描画しています...", notationError: "候補 MusicXML を描画できませんでした。", notationDeferred: "大きな楽譜です。比較表示が必要なときに完全な OSMD プレビューを読み込んでください。グラフィカルエディターはそのまま利用できます。", notationRender: "完全な OSMD プレビューを読み込む",
   },
   omr: {
+    symbolLabel: "記号",
+    summary: "{count}か所を確認してください。元の画像と見比べてから楽譜全体を確定してください。",
+    noIssues: "注意箇所は見つかりませんでしたが、元の画像といくつかの箇所を見比べてください。",
+    checkLabel: "要確認",
+    noFlagLabel: "注意箇所なし",
+    noLocation: "対応する音符や枠を正確に示せません。表示されたページや小節を確認してください。",
+    technicalDetails: "技術情報",
+    technicalHelp: "認識の点数は目安で、正確さを示す割合ではありません。調査用に元の診断内容をここに残しています。",
+    reasons: {"uncertainSymbol":"この記号は読み違えている可能性があります。元の画像と見比べてください。","rhythm":"この小節の拍数が合わない可能性があります。音符と休符を確認してください。","duration":"この音符や休符の長さが不確かです。何拍分か確認してください。","durationType":"音符や休符の長さを読み取れませんでした。元の画像の形を確認してください。","timeSignature":"拍子が不確かです。楽譜の先頭の拍子記号を確認してください。","unknown":"この箇所は確認が必要です。元の画像と見比べてください。"},
     sources: { "omr-engine": "認識エンジン", structural: "構造検証" },
-    sourcePreviewFailed: "スキャン原稿を読み込めませんでした。", pageTemplate: "{page} ページ", measureTemplate: "第 {measure} 小節", scanAltTemplate: "{name} のスキャン原稿", eyebrow: "OMR 比較", title: "スキャン原稿と認識診断", body: "赤枠は Audiveris の記号座標を使用します。structural スコアはリズムの完全性を検証するもので、モデルの確率ではありません。", issueNavigation: "問題間を移動", previous: "前へ", next: "次へ", sourceMode: "原稿の表示方法", original: "原本", overlay: "診断オーバーレイ", issuesOnly: "問題のある記号のみ", scanPages: "スキャンページ", noSource: "このプロジェクトにはプレビュー可能な PDF／画像原稿がありません。", loadingSource: "スキャン原稿を読み込んでいます...", geometryWarning: "ページ画像のピクセル寸法が認識記録と一致しません。承認前にこのファイルを再認識してください。", symbolLayer: "信頼度の低い記号の位置", pageSymbols: "ページの記号", issueSymbols: "問題のある記号", problemMeasures: "問題のある小節", gradeLabel: "評価", contextGradeLabel: "文脈評価", noDiagnostics: "このページとフィルターに一致する診断はありません。",
+    sourcePreviewFailed: "スキャン原稿を読み込めませんでした。", pageTemplate: "{page} ページ", measureTemplate: "第 {measure} 小節", scanAltTemplate: "{name} のスキャン原稿", eyebrow: "OMR 比較", title: "元の画像と見比べる", body: "不確かな箇所を元の画像で確認してください。印は確認をお願いするもので、誤りが確定したわけではありません。", issueNavigation: "問題間を移動", previous: "前へ", next: "次へ", sourceMode: "原稿の表示方法", original: "元の画像を見る", overlay: "注意箇所を表示", issuesOnly: "問題のある記号のみ", scanPages: "スキャンページ", noSource: "このプロジェクトにはプレビュー可能な PDF／画像原稿がありません。", loadingSource: "スキャン原稿を読み込んでいます...", geometryWarning: "ページ画像のピクセル寸法が認識記録と一致しません。承認前にこのファイルを再認識してください。", symbolLayer: "信頼度の低い記号の位置", pageSymbols: "ページの記号", issueSymbols: "問題のある記号", problemMeasures: "問題のある小節", gradeLabel: "評価", contextGradeLabel: "文脈評価", noDiagnostics: "このページと絞り込み条件では注意箇所がありません。元の画像との比較はできます。",
   },
 } satisfies ScoreEntryMessages;

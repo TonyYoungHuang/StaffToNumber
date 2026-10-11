@@ -1,6 +1,24 @@
 import type { ScoreEntryMessages } from "../types";
 
 export const zhCNScoreEntryMessages = {
+  reviewEntry: {
+    "label": "扫谱校对",
+    "titles": {
+      "one": "有一份扫谱待你校对",
+      "few": "有 {count} 份扫谱待你校对",
+      "many": "有 {count} 份扫谱待你校对",
+      "other": "有 {count} 份扫谱待你校对"
+    },
+    "body": "对照原图看看识别结果，检查妥当后再确认。",
+    "continue": "继续校对",
+    "all": "查看所有待校对扫谱",
+    "emptyTitle": "暂时没有待校对的扫谱",
+    "emptyBody": "下一份扫谱处理好后会出现在这里。你也可以继续处理已保存的乐谱。",
+    "upload": "上传乐谱",
+    "loading": "正在查看有没有待校对的扫谱…",
+    "failed": "暂时没能查看待校对的扫谱，请重试。",
+    "retry": "重试"
+  },
   pages: {
     library: {
       eyebrow: "乐谱工作台",
@@ -179,6 +197,8 @@ export const zhCNScoreEntryMessages = {
     previewRetry: "重新渲染",
   },
   candidate: {
+    compareSource: "对照原图校对",
+    confirmationHelp: "对照原图并完成修改后，点击「确认这份乐谱」，把检查好的结果设为正式版本。",
     notationRetry: "重新尝试渲染",
     notationTechnicalDetails: "技术详情",
     notationEventLabel: "{part} · 第 {measure} 小节 · 第 {number} 个{type}",
@@ -193,7 +213,7 @@ export const zhCNScoreEntryMessages = {
     rejecting: "正在拒绝...",
     reject: "拒绝候选",
     accepting: "正在接受...",
-    accept: "接受为正式版本",
+    accept: "确认这份乐谱",
     safetyEyebrow: "安全状态",
     safetyTitle: "候选版本不会覆盖已有正式版本",
     freeSafetyBody: "免费账户可校对整份乐谱的音符、节奏、小节属性和标记，并继续使用播放、移调、简谱、版本、分享和已开放导出；升级用于创建更多乐谱。",
@@ -217,20 +237,29 @@ export const zhCNScoreEntryMessages = {
     notationRender: "加载完整 OSMD 预览",
   },
   omr: {
+    symbolLabel: "符号",
+    summary: "有 {count} 处需要你看看。请对照原图检查，再确认整份乐谱。",
+    noIssues: "暂时没发现疑点，也请抽查一下原图和识别结果。",
+    checkLabel: "请检查",
+    noFlagLabel: "未标出疑点",
+    noLocation: "暂时不能精确对应到某个音符或框，请检查这里显示的页面或小节。",
+    technicalDetails: "技术详情",
+    technicalHelp: "识别分数只供参考，不代表准确率。原始诊断保留在这里，方便排查问题。",
+    reasons: {"uncertainSymbol":"这里的符号可能认错了，请对照原图看看。","rhythm":"这个小节的拍数可能对不上，请检查音符和休止符。","duration":"这个音符或休止符的时长不确定，请核对它应占几拍。","durationType":"没读清音符或休止符的时长，请对照原图检查形状。","timeSignature":"拍号不太确定，请检查乐谱开头标的是几拍。","unknown":"这里需要再看一眼，请对照原图检查这一处。"},
     sources: { "omr-engine": "识别引擎", structural: "结构校验" },
     sourcePreviewFailed: "无法加载扫描原件。",
     pageTemplate: "第 {page} 页",
     measureTemplate: "小节 {measure}",
     scanAltTemplate: "{name} 扫描原件",
     eyebrow: "OMR 对照校对",
-    title: "扫描原件与识别诊断",
-    body: "红框来自 Audiveris 符号坐标；structural 仅表示节奏完整性诊断，不作为模型概率。",
+    title: "对照原图校对",
+    body: "对照原图检查拿不准的地方。标出疑点是请你检查，不代表一定认错了。",
     issueNavigation: "错误定位",
     previous: "上一项",
     next: "下一项",
     sourceMode: "原件显示模式",
-    original: "原始文件",
-    overlay: "坐标校对图",
+    original: "查看原图",
+    overlay: "显示疑点标记",
     issuesOnly: "只看问题符号",
     scanPages: "扫描页",
     noSource: "这个工程没有可预览的 PDF/图片原件。",
@@ -242,6 +271,6 @@ export const zhCNScoreEntryMessages = {
     problemMeasures: "异常小节",
     gradeLabel: "评分",
     contextGradeLabel: "上下文评分",
-    noDiagnostics: "本页没有符合筛选条件的诊断。",
+    noDiagnostics: "当前页面和筛选条件下没有标出的疑点，仍可对照原图抽查。",
   },
 } satisfies ScoreEntryMessages;

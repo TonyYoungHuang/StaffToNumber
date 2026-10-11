@@ -14,6 +14,7 @@ import { AppLocaleProvider } from "../components/AppLocaleProvider";
 import { ProductAnalytics } from "../components/ProductAnalytics";
 import { getAppMessages } from "../lib/app-messages";
 import { readAppLocale } from "../lib/locale";
+import { getScoreEntryMessages } from "../lib/score-entry-messages";
 
 const geist = Geist({
   display: "swap",
@@ -81,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body>
         <AppLocaleProvider locale={locale}>
-          <FlowMessagesProvider messages={getFlowMessages(locale)}><SessionBootstrap><AppAuthModalProvider messages={getAuthMessages(locale)}><AppChrome copy={shellCopy}>{children}</AppChrome></AppAuthModalProvider></SessionBootstrap></FlowMessagesProvider>
+          <FlowMessagesProvider messages={getFlowMessages(locale)}><SessionBootstrap><AppAuthModalProvider messages={getAuthMessages(locale)}><AppChrome copy={shellCopy} reviewEntryCopy={getScoreEntryMessages(locale).reviewEntry}>{children}</AppChrome></AppAuthModalProvider></SessionBootstrap></FlowMessagesProvider>
           <ProductAnalytics copy={analyticsCopy} />
         </AppLocaleProvider>
       </body>

@@ -6,6 +6,7 @@ import type { ScoreJson } from "@score/shared";
 import { API_BASE_URL } from "../lib/api";
 import { hasMatchingOmrImageDimensions, projectOmrBbox } from "../lib/omr-overlay-geometry";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
+import { plainOmrWarnings } from "../lib/omr-warning-copy";
 
 type SourceFile = {
   id: string;
@@ -117,7 +118,7 @@ export function ScoreOmrReviewPanel({
           id: symbol.id,
           eventId: symbol.eventId,
           measureId: symbol.measureId,
-          label: `${symbol.shape} · ${formatMessage(copy.pageTemplate, { page: formatNumber(symbol.page, locale) })}${symbol.measureId ? ` · ${formatMessage(copy.measureTemplate, { measure: formatMaybeNumber(measureLabels.get(symbol.measureId) ?? symbol.measureId, locale) })}` : ""}`,
+          label: `${copy.symbolLabel} · ${formatMessage(copy.pageTemplate, { page: formatNumber(symbol.page, locale) })}${symbol.measureId ? ` · ${formatMessage(copy.measureTemplate, { measure: formatMaybeNumber(measureLabels.get(symbol.measureId) ?? symbol.measureId, locale) })}` : ""}`,
           confidence: symbol.confidence,
           source: "omr-engine" as const,
           issues: symbol.issues,
@@ -148,7 +149,7 @@ export function ScoreOmrReviewPanel({
           })),
       )
       .sort((left, right) => (left.confidence ?? 1) - (right.confidence ?? 1));
-  }, [copy.measureTemplate, copy.pageTemplate, locale, scoreJson]);
+  }, [copy.measureTemplate, copy.pageTemplate, copy.symbolLabel, locale, scoreJson]);
 
   const availablePages = useMemo(() => {
     const pages = new Set<number>([
@@ -217,11 +218,12 @@ export function ScoreOmrReviewPanel({
   }
 
   return (
-    <section className="surface-panel stack-lg">
+    <section className="surface-panel stack-lg omr-review-panel" data-omr-review-panel>
       <div className="stack-sm">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 className="card-title">{copy.title}</h2>
         <p className="body-copy">{copy.body}</p>
+        <p className="omr-review-summary" role="status">{issueDiagnostics.length ? formatMessage(copy.summary, { count: formatNumber(issueDiagnostics.length, locale) }) : copy.noIssues}</p>
       </div>
 
       <div className="score-review-toolbar">
@@ -234,10 +236,10 @@ export function ScoreOmrReviewPanel({
           </button>
         </div>
         <div className="button-row" role="group" aria-label={copy.sourceMode}>
-          <button type="button" className={`button button-secondary button-ghost${sourceMode === "original" ? " is-active" : ""}`} onClick={() => setSourceMode("original")} disabled={!sourceFile}>
+          <button type="button" aria-pressed={sourceMode === "original"} className={`button button-secondary${sourceMode === "original" ? " is-active" : ""}`} onClick={() => setSourceMode("original")} disabled={!sourceFile}>
             {copy.original}
           </button>
-          <button type="button" className={`button button-secondary button-ghost${sourceMode === "overlay" ? " is-active" : ""}`} onClick={() => setSourceMode("overlay")} disabled={!hasOverlayPages}>
+          <button type="button" aria-pressed={sourceMode === "overlay"} className={`button button-secondary${sourceMode === "overlay" ? " is-active" : ""}`} onClick={() => setSourceMode("overlay")} disabled={!hasOverlayPages}>
             {copy.overlay}
           </button>
         </div>
@@ -295,7 +297,7 @@ export function ScoreOmrReviewPanel({
                           width: `${projected.widthPercent}%`,
                           height: `${projected.heightPercent}%`,
                         }}
-                        title={`${item.label} · ${formatConfidence(item.confidence, locale)}`}
+                        title={`${item.label} · ${plainOmrWarnings(item.issues, copy.reasons).join(" ")}`}
                         onClick={() => selectDiagnostic(item)}
                       />
                     );
@@ -322,32 +324,27 @@ export function ScoreOmrReviewPanel({
               onClick={() => selectDiagnostic(item)}
             >
               <span>{item.label}</span>
-              <strong>{formatConfidence(item.confidence, locale)}</strong>
-              <small>{copy.sources[item.source]}{item.issues.length ? ` · ${item.issues[0]}` : ""}</small>
-              {item.bbox ? (
-                <small>
-                  x {formatNumber(item.bbox.x, locale, { maximumFractionDigits: 0 })}, y {formatNumber(item.bbox.y, locale, { maximumFractionDigits: 0 })},{" "}
-                  {formatNumber(item.bbox.width, locale, { maximumFractionDigits: 0 })} × {formatNumber(item.bbox.height, locale, { maximumFractionDigits: 0 })}
-                  {item.grade !== null ? ` · ${copy.gradeLabel} ${formatNumber(item.grade, locale, { maximumFractionDigits: 3 })}` : ""}
-                  {item.contextualGrade !== null ? ` · ${copy.contextGradeLabel} ${formatNumber(item.contextualGrade, locale, { maximumFractionDigits: 3 })}` : ""}
-                </small>
-              ) : null}
+              <strong>{item.issues.length ? copy.checkLabel : copy.noFlagLabel}</strong>
+              <small>{copy.sources[item.source]}</small>
+              {plainOmrWarnings(item.issues, copy.reasons).map(reason => <small className="omr-plain-reason" key={reason}>{reason}</small>)}
+              {item.issues.length > 0 && (!item.eventId || !item.bbox) ? <small>{copy.noLocation}</small> : null}
             </button>
           ))}
         </div>
       ) : (
         <div className="empty-state">{copy.noDiagnostics}</div>
       )}
+      {diagnostics.length > 0 ? <details className="flow-details omr-technical-details">
+        <summary>{copy.technicalDetails}</summary>
+        <p className="helper-copy">{copy.technicalHelp}</p>
+        <pre>{JSON.stringify(visibleDiagnostics.slice(0, 100), null, 2)}</pre>
+      </details> : null}
     </section>
   );
 }
 
 function formatMaybeNumber(value: string, locale: SupportedLocale): string {
   return /^\d+(?:\.\d+)?$/u.test(value) ? formatNumber(Number(value), locale) : value;
-}
-
-function formatConfidence(value: number | null, locale: SupportedLocale): string {
-  return value === null ? "—" : formatNumber(value, locale, { style: "percent", maximumFractionDigits: 0 });
 }
 
 function cssEscape(value: string) {

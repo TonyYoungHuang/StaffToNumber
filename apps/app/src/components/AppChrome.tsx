@@ -21,8 +21,10 @@ import { trackFunnelEvent } from "../lib/analytics";
 import { PUBLIC_SITE_URL } from "../lib/support";
 import { AppLocaleSwitcher } from "./AppLocaleSwitcher";
 import { useAppLocale } from "./AppLocaleProvider";
+import { PendingOmrReviewBanner } from "./PendingOmrReviewBanner";
+import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
 
-export function AppChrome({ children, copy }: { children: ReactNode; copy: AppShellCopy }) {
+export function AppChrome({ children, copy, reviewEntryCopy }: { children: ReactNode; copy: AppShellCopy; reviewEntryCopy: ScoreEntryMessages["reviewEntry"] }) {
   const pathname = usePathname();
   const [returnPath, setReturnPath] = useState(pathname);
   useEffect(() => {
@@ -126,7 +128,7 @@ export function AppChrome({ children, copy }: { children: ReactNode; copy: AppSh
         closeMenuLabel={copy.closeMenu}
         linkComponent={Link}
       />
-      <main className="app-main">{children}</main>
+      <main className="app-main"><PendingOmrReviewBanner copy={reviewEntryCopy} pathname={pathname} />{children}</main>
       <SiteShellFooter
         title="ScoreTransposer"
         description={copy.footerDescription}

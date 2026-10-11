@@ -8,6 +8,7 @@ import { formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES, type ScoreJson } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEventOnce } from "../lib/analytics";
+import { notifyScoreReviewsChanged } from "../lib/pending-omr-reviews";
 import { getStoredToken } from "../lib/auth-storage";
 import { buildSupportTemplates } from "../lib/support";
 import {
@@ -134,6 +135,9 @@ export function TrialScorePreview({
   }, [job?.status, score?.pendingRevision, score?.currentRevision, refresh]);
 
   const scoreJson = score?.pendingRevision?.scoreJson ?? score?.currentRevision?.scoreJson ?? null;
+  useEffect(() => {
+    if (job?.status === "completed" || score?.pendingRevisionId) notifyScoreReviewsChanged();
+  }, [job?.status, score?.pendingRevisionId]);
   const latestDiagnostic = diagnostics[0] ?? null;
   const diagnosticSummary = latestDiagnostic ? summarizeTrialDiagnostic(latestDiagnostic, locale, copy) : null;
   const supportHref = useMemo(
