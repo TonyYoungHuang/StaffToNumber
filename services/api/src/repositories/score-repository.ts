@@ -36,7 +36,7 @@ import {
 import { nowIso } from "../lib/time.js";
 import { currentRequestContext } from "../lib/request-context.js";
 import { assertProcessingQuota, getPlanQuotaUsage, recordProcessingCredit, processingJobCreditCost, processingJobParams, recognitionCreditCost } from "../lib/plan-quotas.js";
-import { assertRecognitionQuote, normalizeRecognitionMode, RecognitionAccessError } from "../lib/recognition-options.js";
+import { assertRecognitionQuote, normalizeRecognitionMode, RecognitionAccessError, resolveRecognitionAccess } from "../lib/recognition-options.js";
 import { assertFreeTrialOmrAvailable } from "../lib/free-trial.js";
 import { getUserProfile } from "./auth-repository.js";
 
@@ -640,11 +640,14 @@ export function createOmrImportScoreDocument(input: {
   try {
     lockScorePassAccount(db, input.userId);
     const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
-    if (recognitionMode === "complex" && !isPaid && (!input.scorePass || input.freeTrial)) {
+    const allowance = getPlanQuotaUsage(input.userId);
+    // HTTP callers do not select a credit source. Re-resolve after locking the
+    // account: a purchase or another upload may have changed access meanwhile.
+    const requestedPass = input.scorePass ?? (input.freeTrial === undefined && resolveRecognitionAccess(input.userId, recognitionMode).creditSource === "score_pass");
+    const usePass = requestedPass && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
+    if (recognitionMode === "complex" && !isPaid && (!usePass || input.freeTrial)) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
-    const allowance = getPlanQuotaUsage(input.userId);
-    const usePass = Boolean(input.scorePass) && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
     const freeTrial = !isPaid && !usePass;
     const quota = assertProcessingQuota(input.userId, usePass, creditCost);
     const passId = usePass ? bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
