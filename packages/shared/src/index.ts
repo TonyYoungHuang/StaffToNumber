@@ -1568,4 +1568,4 @@ export function isPurchasePlanCode(value: unknown): value is PurchasePlanCode {
 }
 
 export { getSingleScorePassCopy } from "./single-score-copy.ts";
-export { normalizeScoreTransposeTitle } from "./score-title.js";
+export { normalizeScoreTransposeTitle } from "./score-title.ts";
