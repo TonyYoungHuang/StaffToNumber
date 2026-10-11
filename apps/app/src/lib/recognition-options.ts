@@ -10,7 +10,7 @@ export type RecognitionOptions = {
   defaultMode: RecognitionMode;
   quota: { jobs: { used: number; limit: number; remaining: number } };
   freeTrial: { available: boolean; omrJobsRemaining: number };
-  scorePasses: Array<{ id: string; documentId: string | null; credits: number; remaining: number; maxPages: number }>;
+  scorePasses: Array<{ id: string; documentId: string | null; credits: number; remaining: number }>;
   options: RecognitionOption[];
 };
 

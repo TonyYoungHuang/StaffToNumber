@@ -20,7 +20,7 @@ export type OneScoreUpsellCopy = {
 const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   en: {
     passCta: "Process another score · US$2.99",
-    passNote: "One Score Pass · one-time payment, no subscription · 1 new PDF or image score, up to 5 pages",
+    passNote: "One Score Pass · one-time payment, no subscription · 1 new PDF or image score, unlimited pages",
     subscriptionCta: "Or compare subscription plans",
     activationCta: "Redeem activation code",
     activationNote: "",
@@ -31,7 +31,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   "zh-CN": {
     passCta: "银行卡支付：单曲处理包 US$2.99",
-    passNote: "国际银行卡在线支付（Stripe）· 一次付费、无订阅 · 1 首新的 PDF 或图片乐谱，最多 5 页",
+    passNote: "国际银行卡在线支付（Stripe）· 一次付费、无订阅 · 1 首新的 PDF 或图片乐谱，页数不限",
     subscriptionCta: "银行卡订阅套餐（Starter / Converter Pro）",
     activationCta: "已有激活码？去兑换",
     activationNote: "通过店铺购买的激活码请在兑换页输入，无需再在线付款。",
@@ -42,7 +42,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   "zh-TW": {
     passCta: "信用卡付款：單曲處理包 US$2.99",
-    passNote: "國際信用卡線上付款（Stripe）· 一次付費、無訂閱 · 1 首新的 PDF 或圖片樂譜，最多 5 頁",
+    passNote: "國際信用卡線上付款（Stripe）· 一次付費、無訂閱 · 1 首新的 PDF 或圖片樂譜，頁數不限",
     subscriptionCta: "信用卡訂閱方案（Starter / Converter Pro）",
     activationCta: "已有啟用碼？前往兌換",
     activationNote: "透過商店購買的啟用碼請在兌換頁輸入，無需再線上付款。",
@@ -53,7 +53,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   ja: {
     passCta: "別の楽譜を処理する · US$2.99",
-    passNote: "1曲パス · 1回払い・定期購入なし · 新しいPDF・画像の楽譜1曲（最大5ページ）",
+    passNote: "1曲パス · 1回払い・定期購入なし · 新しいPDF・画像の楽譜1曲（ページ数無制限）",
     subscriptionCta: "サブスクリプションプランを比較",
     activationCta: "アクティベーションコードを利用",
     activationNote: "",
@@ -64,7 +64,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   ko: {
     passCta: "다른 악보 처리 · US$2.99",
-    passNote: "한 곡 이용권 · 일회성 결제, 구독 없음 · 새 PDF 또는 이미지 악보 1곡(최대 5페이지)",
+    passNote: "한 곡 이용권 · 일회성 결제, 구독 없음 · 새 PDF 또는 이미지 악보 1곡(페이지 수 제한 없음)",
     subscriptionCta: "구독 요금제 비교",
     activationCta: "활성화 코드 사용",
     activationNote: "",
@@ -75,7 +75,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   fr: {
     passCta: "Traiter une autre partition · US$2.99",
-    passNote: "Pass une partition · paiement unique, sans abonnement · 1 nouvelle partition PDF ou image, 5 pages max.",
+    passNote: "Pass une partition · paiement unique, sans abonnement · 1 nouvelle partition PDF ou image, nombre de pages illimité",
     subscriptionCta: "Ou comparer les abonnements",
     activationCta: "Utiliser un code d’activation",
     activationNote: "",
@@ -86,7 +86,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   es: {
     passCta: "Procesar otra partitura · US$2.99",
-    passNote: "Pase para una partitura · pago único, sin suscripción · 1 nueva partitura PDF o imagen, hasta 5 páginas",
+    passNote: "Pase para una partitura · pago único, sin suscripción · 1 nueva partitura PDF o imagen, páginas ilimitadas",
     subscriptionCta: "O comparar planes de suscripción",
     activationCta: "Canjear código de activación",
     activationNote: "",
@@ -97,7 +97,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   de: {
     passCta: "Weitere Partitur verarbeiten · US$2.99",
-    passNote: "Einzelpartitur-Pass · Einmalzahlung, kein Abo · 1 neue Partitur als PDF oder Bild, bis zu 5 Seiten",
+    passNote: "Einzelpartitur-Pass · Einmalzahlung, kein Abo · 1 neue Partitur als PDF oder Bild, unbegrenzte Seitenzahl",
     subscriptionCta: "Oder Abo-Pläne vergleichen",
     activationCta: "Aktivierungscode einlösen",
     activationNote: "",
@@ -108,7 +108,7 @@ const catalog: Record<SupportedLocale, OneScoreUpsellCopy> = {
   },
   ru: {
     passCta: "Обработать ещё одну партитуру · US$2.99",
-    passNote: "Пакет для одной партитуры · разовая оплата, без подписки · 1 новая партитура PDF или изображение, до 5 страниц",
+    passNote: "Пакет для одной партитуры · разовая оплата, без подписки · 1 новая партитура PDF или изображение, без ограничений по числу страниц",
     subscriptionCta: "Или сравнить подписки",
     activationCta: "Активировать код",
     activationNote: "",

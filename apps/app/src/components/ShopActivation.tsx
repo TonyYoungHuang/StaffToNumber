@@ -11,7 +11,7 @@ import { shopError } from "../lib/shop-activation";
 import { ActivationForm } from "./ActivationForm";
 import { AuthForm } from "./AuthForm";
 
-type Account = { id: string; email: string; codeLoginEnabled: boolean; entitlement: { status: string; endsAt: string | null }; scorePasses?: Array<{ documentId: string | null; remaining: number; credits: number; maxPages: number }> };
+type Account = { id: string; email: string; codeLoginEnabled: boolean; entitlement: { status: string; endsAt: string | null }; scorePasses?: Array<{ documentId: string | null; remaining: number; credits: number }> };
 type Usage = { tier: string; creditMode?: "monthly" | "prepaid"; prepaid?: { total: number; remaining: number }; jobs: { remaining: number; limit: number }; storage: { limitBytes: number } };
 type LoginPayload = { token: string; user: Account; isNewUser: boolean };
 
@@ -105,7 +105,7 @@ export function ShopActivation({ authCopy, activationCopy, returnTo }: { authCop
           <p className="item-title">当前账户：{account.codeLoginEnabled ? `激活码账户 ${account.id.slice(-8).toUpperCase()}` : account.email}</p>
           <p className="body-copy">{usable ? `使用权限已开通${account.entitlement.endsAt ? `，到期时间：${new Date(account.entitlement.endsAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}（北京时间）` : ""}。` : "当前没有有效套餐，可查看已有乐谱或兑换新码续期。"}</p>
           {usage && account.entitlement.status === "active" ? <p className="micro-copy">{usage.creditMode === "prepaid" ? `一次性积分包 · 剩余 ${usage.jobs.remaining} / ${usage.jobs.limit} 积分 · 不按月清零，未用积分保留` : `本月剩余 ${usage.jobs.remaining} / ${usage.jobs.limit} 积分${usage.prepaid?.total ? ` · 另有一次性积分 ${usage.prepaid.remaining} / ${usage.prepaid.total}` : ""}`} · 存储上限 {Math.round(usage.storage.limitBytes / 1024 / 1024)} MiB</p> : null}
-          {account.scorePasses?.map((pass, index) => <p key={index} className="micro-copy">单谱体验：剩余 {pass.remaining} / {pass.credits} 积分 · 仅限1份乐谱，最多{pass.maxPages}页 · 未用积分不设到期日{pass.documentId ? "（已绑定乐谱）" : "（待导入乐谱）"}</p>)}
+          {account.scorePasses?.map((pass, index) => <p key={index} className="micro-copy">单谱体验：剩余 {pass.remaining} / {pass.credits} 积分 · 仅限1份乐谱，页数不限 · 未用积分不设到期日{pass.documentId ? "（已绑定乐谱）" : "（待导入乐谱）"}</p>)}
           <button type="button" className="button button-tertiary" disabled={submitting} onClick={() => void changeAccount()}>退出 / 换一个激活码登录</button>
         </div>
         {!account.codeLoginEnabled ? <div className="surface-panel stack-lg">
