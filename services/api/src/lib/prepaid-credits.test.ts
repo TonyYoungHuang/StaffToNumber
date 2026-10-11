@@ -77,13 +77,16 @@ test("exhaustion blocks more jobs atomically, top-ups add to same account and ca
   assert.ok(signInWithActivationCode(f.code.code).ok);
 });
 
-test("single-score shop codes grant exactly one existing 10-credit/5-page pass, never a monthly plan", () => {
+test("single-score shop codes grant exactly one 10-credit document pass regardless of page count, never a monthly plan", () => {
   const f = fixture("single-score");
   assert.equal(getUserProfile(f.userId)!.entitlement.status,"inactive");
   assert.equal(prepaidCreditBalance(f.userId).total,0);
   assert.equal(listScorePasses(db,f.userId).length,1);
-  assert.throws(()=>f.create("simple",6),/up to 5 pages/);
-  f.create("simple",5);assert.equal(listScorePasses(db,f.userId)[0].remaining,9);
+  const imported = f.create("simple",11);
+  assert.equal(listScorePasses(db,f.userId)[0].remaining,9);
+  assert.equal(listScorePasses(db,f.userId)[0].documentId, imported.document!.id);
+  assert.equal(JSON.parse(imported.job!.params_json!).freeTrial, false);
+  assert.ok(db.prepare("SELECT job_id FROM score_pass_jobs WHERE job_id = ?").get(imported.job!.id));
   assert.throws(()=>f.create(),/Buy a One Score Pass/);
   assert.ok(redeemActivationCode(f.userId,f.code.code).ok);
   assert.equal(listScorePasses(db,f.userId).length,1);

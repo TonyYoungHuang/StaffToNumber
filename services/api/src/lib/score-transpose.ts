@@ -1,4 +1,5 @@
 import type { ScoreJson, ScorePitch, ScoreKeySignature, ScorePitchStep, TransposePitchMode, TransposeSpellingPolicy } from "@score/shared";
+import { normalizeScoreTransposeTitle } from "@score/shared";
 import { synchronizeEditedTabViews } from "./score-tab-linkage.js";
 
 export type ScoreRangeProfile = {
@@ -375,7 +376,7 @@ export function transposeScoreJson(input: {
 
   let transposed: ScoreJson = {
     ...input.score,
-    title: `${input.score.title} (${direction} semitones${targetLabel}${operationLabel})`,
+    title: normalizeScoreTransposeTitle(input.score.title, input.semitones, `${targetLabel}${operationLabel}`),
     metadata: {
       ...input.score.metadata,
       warnings: [

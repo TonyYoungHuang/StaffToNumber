@@ -84,8 +84,9 @@ export function fulfillOneTimePurchase(db: RuntimeDatabaseLike, session: PaidSes
       amount_minor = ?, currency = ?, updated_at = ? WHERE id = ?`)
       .run(session.id, intentId, startsAt, endsAt, now, session.amount_total, session.currency, now, orderId);
     if (planCode === "single-score") {
-      db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, max_pages, created_at)
-        VALUES (?, NULL, 10, 5, ?) ON CONFLICT(purchase_id) DO NOTHING`).run(orderId, now);
+      // max_pages is a legacy schema column; its default is no longer enforced.
+      db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, created_at)
+        VALUES (?, NULL, 10, ?) ON CONFLICT(purchase_id) DO NOTHING`).run(orderId, now);
     }
     db.exec("COMMIT");
     return findOneTimePurchase(db, orderId)!;

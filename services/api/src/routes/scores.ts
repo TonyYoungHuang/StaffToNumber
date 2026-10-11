@@ -1,4 +1,5 @@
-import { ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
+import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
+import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
 import { countTiffPages } from "../lib/score-pass-pages.js";
 import { assertRecognitionQuote, getRecognitionOptions, normalizeRecognitionMode, RecognitionAccessError, RecognitionPriceChangedError, resolveRecognitionAccess } from "../lib/recognition-options.js";
@@ -191,7 +192,7 @@ function deriveTitle(filename: string) {
 }
 
 function deriveExportBaseName(title: string) {
-  return sanitizeFilename(title.trim().replace(/\s+/g, "-") || "score");
+  return sanitizeFilename(normalizeScoreTransposeTitle(title).trim().replace(/\s+/g, "-") || "score");
 }
 
 const SCORE_EXPORT_FORMATS = new Set<ScoreExportFormat>(["musicxml", "midi", "pdf", "svg", "png", "wav", "mp3"]);
@@ -5256,7 +5257,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         });
       } catch (error) {
         const response = uploadErrorResponse(error);
-        request.log.warn({ error, uploadCode: response.body.code }, "OMR source upload rejected.");
+        request.log.warn({ uploadCode: response.body.code }, "OMR source upload rejected.");
         return reply.code(response.statusCode).send(response.body);
       }
       const fileKind = verified.detectedKind === "pdf" ? "source_pdf" : "source_image";
@@ -5283,13 +5284,13 @@ export async function scoreRoutes(app: FastifyInstance) {
         if (error instanceof RecognitionPriceChangedError) return priceChangedResponse();
         throw error;
       }
-      const useScorePass = recognition.creditSource === "score_pass";
-
-      const pageCount = verified.pdfRasterInspection?.pageCount ?? (useScorePass && verified.detectedKind === "tiff"
+      const pageCount = verified.pdfRasterInspection?.pageCount ?? (verified.detectedKind === "tiff"
         ? countTiffPages(await fs.promises.readFile(targetPath)) : 1);
-      if (useScorePass && (pageCount < 1 || pageCount > 5)) {
+      try {
+        assertScoreSourcePageCount(pageCount);
+      } catch (error) {
         await fs.promises.rm(targetPath, { force: true });
-        throw new ScorePassError("SCORE_PASS_PAGE_LIMIT", "A One Score Pass supports one score of up to 5 pages.");
+        throw error;
       }
 
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
@@ -5321,8 +5322,6 @@ export async function scoreRoutes(app: FastifyInstance) {
         sourceFileId: storedFile.id,
         sourceFileKind: fileKind,
         sourceOriginalName: storedFile.original_name,
-        freeTrial: recognition.creditSource === "free_trial",
-        scorePass: useScorePass,
         pageCount,
         recognitionMode,
         expectedCreditCost,

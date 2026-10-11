@@ -1,19 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { PdfRasterPageEstimate } from "@score/shared";
-import { AudiverisProcessError, runAudiverisWithRotationFallback, type AudiverisRunResult } from "./audiveris-runner.js";
+import { AudiverisProcessError, AudiverisRecognitionError, runAudiverisWithRotationFallback, type AudiverisRunResult } from "./audiveris-runner.js";
 import { findAudiverisMusicXmlOutput, readAudiverisMusicXml } from "./audiveris-output.js";
 import { runComplexAdapter, type ComplexOmrInput } from "./complex-omr.js";
 
 type AdapterInput = Pick<ComplexOmrInput, "pythonCommand" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled">;
 type Page = { page: number; imagePath: string; width: number; height: number; renderDpi: number };
+type SkippedPage = { page: number; reason: "NO_MUSIC_RECOGNIZED" };
 export type SimplePdfResult = AudiverisRunResult & {
   musicXml: string; musicXmlPath: string; pages: Page[]; issues: Array<{ kind: string; message: string }>;
+  recognizedPages: number[]; skippedPages: SkippedPage[];
 };
 
+export class SimplePdfOmrFailure extends Error {
+  constructor(readonly skippedPages: SkippedPage[]) {
+    super("No music could be recognized on any PDF page. The original PDF is retained; check the score and retry recognition.");
+    this.name = "SimplePdfOmrFailure";
+  }
+}
+
 /** A PDF never reaches Audiveris's unbounded internal renderer. Render and
- * recognize sequential pages under one deadline, then assemble ALL pages.
- * A failed page fails the job, retaining its source and refunding the attempt.
+ * recognize sequential pages under one deadline, then assemble recognized pages.
+ * Content failures (including text-only covers) are recorded for review. Process
+ * failures such as timeout, cancellation and missing tools still fail the job.
  */
 export async function runSimplePdfOmr(input: AdapterInput & {
   inputPath: string; renderPlan: PdfRasterPageEstimate[]; dpi: number;
@@ -41,25 +51,42 @@ export async function runSimplePdfOmr(input: AdapterInput & {
     throw new Error("PDF renderer did not preserve the admitted page plan.");
   }
   const chunks = [];
+  const skippedPages: SkippedPage[] = [];
   const recognize = input.recognize ?? runAudiverisWithRotationFallback;
   for (const page of prepared.pages) {
     input.onProgress?.({ stage: "recognize", page: page.page, totalPages: prepared.sourcePageCount });
     const outputDir = path.join(input.outputDir, `page-${page.page}`);
     fs.mkdirSync(outputDir, { recursive: true });
-    const result = await recognize({ ...input.audiveris, inputPath: page.imagePath, outputDir,
-      imageMagickCommand: input.imageMagickCommand, timeoutMs: remaining(), isCancelled: input.isCancelled,
-      onProgress: stage => input.onProgress?.({ stage, page: page.page, totalPages: prepared.sourcePageCount }) });
+    let result: AudiverisRunResult;
+    try {
+      result = await recognize({ ...input.audiveris, inputPath: page.imagePath, outputDir,
+        imageMagickCommand: input.imageMagickCommand, timeoutMs: remaining(), isCancelled: input.isCancelled,
+        onProgress: stage => input.onProgress?.({ stage, page: page.page, totalPages: prepared.sourcePageCount }) });
+    } catch (error) {
+      if (!(error instanceof AudiverisRecognitionError)) throw error;
+      skippedPages.push({ page: page.page, reason: "NO_MUSIC_RECOGNIZED" });
+      continue;
+    }
     const selected = findAudiverisMusicXmlOutput(result.recognitionOutputDir ?? outputDir,
       { rotationDegrees: result.recognitionOutputDir ? 0 : result.appliedRotationDegrees });
-    if (!selected) throw new Error(`PDF page ${page.page} could not produce musical content. The original PDF is retained; retry recognition.`);
+    const musicXml = selected ? readAudiverisMusicXml(selected) : "";
+    if (!/<note\b/u.test(musicXml)) {
+      skippedPages.push({ page: page.page, reason: "NO_MUSIC_RECOGNIZED" });
+      continue;
+    }
     const musicXmlPath = path.join(outputDir, "candidate.musicxml");
-    fs.writeFileSync(musicXmlPath, readAudiverisMusicXml(selected), "utf8");
+    fs.writeFileSync(musicXmlPath, musicXml, "utf8");
     chunks.push({ page: page.page, systemOrder: 0, scope: "page", musicXmlPath });
   }
+  remaining();
+  if (!chunks.length) throw new SimplePdfOmrFailure(skippedPages);
   input.onProgress?.({ stage: "verify", totalPages: prepared.sourcePageCount });
   const merged = await call<{ musicXmlPath: string; issues: SimplePdfResult["issues"] }>("merge", {
     chunks, outputPath: path.join(input.outputDir, "candidate.musicxml"),
   }, remaining());
   return { musicXml: fs.readFileSync(merged.musicXmlPath, "utf8"), musicXmlPath: merged.musicXmlPath,
-    pages: prepared.pages, issues: merged.issues, stdout: "", stderr: "", appliedRotationDegrees: 0 };
+    pages: prepared.pages, recognizedPages: chunks.map(chunk => chunk.page), skippedPages,
+    issues: [...merged.issues, ...skippedPages.map(({ page }) => ({ kind: "skipped-page",
+      message: `Source page ${page} was skipped because no music could be recognized. Review the original page; it may be a cover or require another recognition attempt.` }))],
+    stdout: "", stderr: "", appliedRotationDegrees: 0 };
 }

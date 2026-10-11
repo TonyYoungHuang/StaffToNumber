@@ -1,4 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { registerOmrErrorLogging } from "./omr-error-logging.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../config.js";
 import { runWithRequestContext } from "./request-context.js";
@@ -185,6 +186,7 @@ function persistRequestAudit(request: FastifyRequest, statusCode: number, eventT
 }
 
 export async function registerApiObservability(app: FastifyInstance) {
+  registerOmrErrorLogging(app);
   app.addHook("onRequest", (request, reply, done) => {
     request.observabilityStartedAtNs = process.hrtime.bigint();
     request.traceId = traceIdFromRequest(request);

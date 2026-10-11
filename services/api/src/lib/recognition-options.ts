@@ -39,12 +39,12 @@ export function resolveRecognitionAccess(userId: string, mode: ScoreRecognitionM
   if (paid && (quota.monthly.remaining >= creditCost || quota.prepaid.remaining >= creditCost)) {
     return { mode, creditCost, creditSource: "plan" };
   }
-  if (mode === "simple" && getFreeTrialAccess(userId).available && quota.jobs.remaining >= creditCost) {
-    return { mode, creditCost, creditSource: "free_trial" };
-  }
   const passes = listScorePasses(db, userId).filter(pass => !pass.documentId);
   if (passes.some(pass => pass.remaining >= creditCost)) return { mode, creditCost, creditSource: "score_pass" };
   if (passes.length) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "This score pass does not have enough processing credits.");
+  if (mode === "simple" && getFreeTrialAccess(userId).available && quota.jobs.remaining >= creditCost) {
+    return { mode, creditCost, creditSource: "free_trial" };
+  }
   if (paid) throw new PlanQuotaExceededError("PLAN_JOB_QUOTA_EXCEEDED", quota);
   if (mode === "complex") throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
   assertFreeTrialOmrAvailable(userId);

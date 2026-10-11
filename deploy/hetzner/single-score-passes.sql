@@ -6,6 +6,7 @@ SET LOCAL search_path TO :"runtime_schema", public;
       purchase_id TEXT PRIMARY KEY REFERENCES billing_one_time_purchases(id) ON DELETE CASCADE,
       document_id TEXT UNIQUE,
       credit_limit INTEGER NOT NULL DEFAULT 10 CHECK (credit_limit > 0),
+      -- Legacy column retained for compatibility; no longer a pass page limit.
       max_pages INTEGER NOT NULL DEFAULT 5 CHECK (max_pages > 0),
       created_at TEXT NOT NULL
     );

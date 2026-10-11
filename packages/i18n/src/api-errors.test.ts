@@ -12,7 +12,7 @@ test("checkout and quota errors retain translated recovery guidance without expo
     const unavailable = localizeApiError({ status: 503, error: "Internal trace: private /srv/config" }, locale);
     assert.doesNotMatch(unavailable, /private|\/srv|Internal trace/u);
     assert.notEqual(unavailable, localizeApiError({ status: 0 }, locale));
-    assert.notEqual(localizeApiError({ code: "SCORE_PASS_PAGE_LIMIT" }, locale), "Request failed.");
+    assert.notEqual(localizeApiError({ code: "SCORE_SOURCE_PAGE_COUNT_INVALID" }, locale), "Request failed.");
   }
 });
 

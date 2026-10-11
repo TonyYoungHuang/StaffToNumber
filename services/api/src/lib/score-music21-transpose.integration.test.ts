@@ -228,6 +228,10 @@ test("real music21 completes a chromatic transposition through the public adapte
   assert.equal(result.scoreJson.metadata.restCount, score.metadata.restCount);
   assert.match(result.scoreJson.metadata.warnings[0], /Transposed \+2 semitones with music21/u);
   assertChromaticShift(score, result.scoreJson, 2);
+  const repeated = await transposeScoreJsonWithMusic21({ score: result.scoreJson, semitones: 2,
+    music21Command, timeoutMs: 20_000, spellingPolicy: "prefer-sharps", generatedAt: importedAt });
+  assert.equal(repeated.scoreJson.title, `${score.title} (+4 semitones via music21)`);
+  assertChromaticShift(score, repeated.scoreJson, 4);
 });
 
 test("real music21 timeout is surfaced explicitly", { skip: realMatrixSkip }, async () => {
