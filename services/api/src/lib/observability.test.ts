@@ -12,6 +12,51 @@ import {
 import { authPlugin } from "../plugins/auth.js";
 import { adminSecurityRoutes } from "../routes/admin-security.js";
 import { registerApiObservability } from "./observability.js";
+import { registerOmrErrorLogging, sanitizedOmrResponseError } from "./omr-error-logging.js";
+
+test("OMR logging captures sanitized 4xx/5xx reasons including pre-handler denials, never response contents or credentials", async () => {
+  const logs: Array<Record<string, unknown>> = [];
+  const app = Fastify({ disableRequestLogging: true, logger: { stream: { write: (line: string) => { logs.push(JSON.parse(line)); } } } });
+  registerOmrErrorLogging(app);
+  let status = 422, body: Record<string, unknown> = { code: "SCORE_PREFLIGHT_INVALID_SOURCE", error: "private filename", token: "secret" };
+  app.post("/api/scores/import/omr/preflight", async (_request, reply) => reply.code(status).send(body));
+  app.post("/api/scores/import/omr", { preHandler: async (_request, reply) => { reply.code(status).send(body); } }, async () => ({}));
+  app.post("/other", async (_request, reply) => reply.code(503).send(body));
+  try {
+    for (const route of ["/api/scores/import/omr/preflight", "/api/scores/import/omr"]) {
+      for (const [nextStatus, nextBody, expectedCode] of [
+        [422, { code: "SCORE_PREFLIGHT_INVALID_SOURCE" }, "SCORE_PREFLIGHT_INVALID_SOURCE"],
+        [422, { code: "PDF_INVALID" }, "PDF_INVALID"],
+        [429, { code: "SCORE_PREFLIGHT_RATE_LIMIT" }, "SCORE_PREFLIGHT_RATE_LIMIT"],
+        [503, { code: "OBJECT_STORAGE_UNAVAILABLE" }, "OBJECT_STORAGE_UNAVAILABLE"],
+        [503, { code: "SCANNER_FAILED" }, "SCANNER_FAILED"],
+        [403, { code: "SCORE_PASS_PAGE_LIMIT" }, "SCORE_PASS_PAGE_LIMIT"],
+        [403, { error: "An active account is required." }, "ACCOUNT_INACTIVE"],
+        [401, { error: "Session expired" }, "SESSION_INVALID"],
+        [500, { code: "PRIVATE_TOKEN_VALUE", error: "secret customer@example.invalid /file.pdf" }, "UNCLASSIFIED_ERROR"],
+      ] as const) {
+        status = nextStatus; body = { ...nextBody, diagnostic: "private filename and file contents", token: "secret" };
+        const response = await app.inject({ method: "POST", url: `${route}?token=secret`, headers: { authorization: "Bearer secret" } });
+        const record = logs.at(-1)!;
+        assert.equal(response.statusCode, status);
+        assert.deepEqual(response.json(), body);
+        assert.equal(record.event, "omr.http_error"); assert.equal(record.statusCode, status);
+        assert.equal(record.errorCode, expectedCode); assert.equal(record.route, route);
+        assert.equal(record.reqId, record.requestId);
+        assert.equal(record.level, status >= 500 ? 50 : 40);
+      }
+    }
+    const count = logs.length;
+    status = 200;
+    await app.inject({ method: "POST", url: "/api/scores/import/omr/preflight" });
+    await app.inject({ method: "POST", url: "/other" });
+    assert.equal(logs.length, count);
+    assert.doesNotMatch(JSON.stringify(logs), /secret|customer@|file\.pdf|private filename|PRIVATE_TOKEN/u);
+    for (const value of ["null", "[]", "not json", "x".repeat(40_000), JSON.stringify({ code: "__proto__" })]) {
+      assert.equal(sanitizedOmrResponseError(value).errorCode, "UNCLASSIFIED_ERROR");
+    }
+  } finally { await app.close(); }
+});
 
 test("security audit metadata redacts credentials and hashes network identifiers", () => {
   const metadata = serializeSecurityAuditMetadata({
