@@ -1,4 +1,5 @@
 import { ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
+import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
 import { countTiffPages } from "../lib/score-pass-pages.js";
 import { assertRecognitionQuote, getRecognitionOptions, normalizeRecognitionMode, RecognitionAccessError, RecognitionPriceChangedError, resolveRecognitionAccess } from "../lib/recognition-options.js";
@@ -191,7 +192,7 @@ function deriveTitle(filename: string) {
 }
 
 function deriveExportBaseName(title: string) {
-  return sanitizeFilename(title.trim().replace(/\s+/g, "-") || "score");
+  return sanitizeFilename(normalizeScoreTransposeTitle(title).trim().replace(/\s+/g, "-") || "score");
 }
 
 const SCORE_EXPORT_FORMATS = new Set<ScoreExportFormat>(["musicxml", "midi", "pdf", "svg", "png", "wav", "mp3"]);

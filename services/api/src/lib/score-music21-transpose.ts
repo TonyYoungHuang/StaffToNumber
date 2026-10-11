@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import type { ScoreJson, TransposeSpellingPolicy } from "@score/shared";
+import { normalizeScoreTransposeTitle } from "@score/shared";
 import { parseMusicXmlToScoreJson } from "./musicxml-score-parser.js";
 import { scoreJsonToMusicXml } from "./score-musicxml-export.js";
 
@@ -75,9 +76,10 @@ export function transposeScoreJsonWithMusic21(input: {
 
         const musicXml = fs.readFileSync(outputPath, "utf8");
         const generatedAt = input.generatedAt ?? new Date().toISOString();
+        const transposedTitle = normalizeScoreTransposeTitle(input.score.title, input.semitones, " via music21");
         const scoreJson = parseMusicXmlToScoreJson({
           musicXml,
-          title: `${input.score.title} (${input.semitones > 0 ? `+${input.semitones}` : input.semitones} semitones via music21)`,
+          title: transposedTitle,
           sourceFileId: "music21-transpose",
           sourceOriginalName: "music21-transposed.musicxml",
           importedAt: generatedAt,
@@ -87,6 +89,9 @@ export function transposeScoreJsonWithMusic21(input: {
           musicXml,
           scoreJson: {
             ...scoreJson,
+            // The parser prefers the MusicXML movement title to its fallback.
+            // music21 retains that old title; the new revision needs this move.
+            title: transposedTitle,
             metadata: {
               ...scoreJson.metadata,
               warnings: [

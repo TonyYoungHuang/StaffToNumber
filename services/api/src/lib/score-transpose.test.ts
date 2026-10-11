@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
+import { TRANSPOSING_INSTRUMENT_PROFILES, normalizeScoreTransposeTitle } from "@score/shared";
 import { parseJianpuToScoreJson } from "./jianpu-score-parser.js";
 import { parseMusicXmlToScoreJson } from "./musicxml-score-parser.js";
 import { scoreJsonToMusicXml } from "./score-musicxml-export.js";
@@ -22,6 +22,23 @@ function firstPitch(score: ReturnType<typeof scoreFromJianpu>) {
   assert.ok(event && event.type === "note");
   return event.pitch;
 }
+
+test("transpose titles show the cumulative move once across repeated, reverse and legacy operations", () => {
+  const source = { ...scoreFromJianpu(), title: "Synthetic hymn" };
+  let score = source;
+  for (const move of [2, 2, 2]) score = transposeScoreJson({ score, semitones: move });
+  assert.equal(score.title, "Synthetic hymn (+6 semitones)");
+  const midi = (pitch: ReturnType<typeof firstPitch>) => (pitch.octave + 1) * 12
+    + ({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[pitch.step]) + pitch.alter;
+  assert.equal(midi(firstPitch(score)) - midi(firstPitch(source)), 6);
+  score = transposeScoreJson({ score, semitones: -6 });
+  assert.equal(score.title, source.title);
+  assert.deepEqual(firstPitch(score), firstPitch(source));
+  assert.equal(normalizeScoreTransposeTitle("Synthetic hymn (+2 semitones) (+2 semitones via music21)", 2), "Synthetic hymn (+6 semitones via music21)");
+  assert.equal(normalizeScoreTransposeTitle("Synthetic hymn (-2 semitones) (-2 semitones)", 1), "Synthetic hymn (-3 semitones)");
+  assert.equal(normalizeScoreTransposeTitle("Synthetic hymn (+2 semitones to D major for trumpet)", 1, " via music21"), "Synthetic hymn (+3 semitones via music21)");
+  assert.equal(normalizeScoreTransposeTitle("Suite (movement 2)"), "Suite (movement 2)");
+});
 
 test("professional transposer spells all 12 pitch classes with sharp and flat policies", () => {
   const source = scoreFromJianpu("1=C\nMeter: 4/4\n| 1 | ");
