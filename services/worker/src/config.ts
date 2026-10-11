@@ -43,7 +43,7 @@ export const workerConfig = {
   jobBrokerPrefix: (process.env.JOB_BROKER_PREFIX ?? "score-jobs").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "score-jobs",
   jobBrokerConcurrency: Math.max(1, Math.min(32, Number(process.env.JOB_BROKER_CONCURRENCY ?? 1))),
   audiverisCommand: process.env.AUDIVERIS_COMMAND ?? "",
-  audiverisTimeoutMs: positiveInteger(process.env.AUDIVERIS_TIMEOUT_MS, 180000),
+  audiverisTimeoutMs: positiveInteger(process.env.AUDIVERIS_TIMEOUT_MS, 900000),
   audiverisMaxHeapMb: Math.max(256, Math.min(32_768, positiveInteger(process.env.AUDIVERIS_MAX_HEAP_MB, 4096))),
   audiverisImageMagickCommand: process.env.AUDIVERIS_IMAGE_MAGICK_COMMAND ?? "convert",
   homrPythonCommand: process.env.HOMR_PYTHON_COMMAND ?? "python3",
