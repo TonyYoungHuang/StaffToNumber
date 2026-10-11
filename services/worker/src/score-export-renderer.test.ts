@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import type { PlaybackDocument } from "@score/shared";
 import { PDFDocument } from "pdf-lib";
-import { buildFfmpegAudioArgs, buildFluidSynthArgs, inspectRenderedScoreFile, parseFfmpegAudioQuality, playbackToMidiBuffer } from "./score-export-renderer.js";
+import { buildFfmpegAudioArgs, buildFluidSynthArgs, inspectRenderedScoreFile, parseFfmpegAudioQuality, playbackToMidiBuffer, renderScoreExport } from "./score-export-renderer.js";
 
 const playback: PlaybackDocument = {
   schemaVersion: 1,
@@ -50,6 +50,21 @@ const playback: PlaybackDocument = {
   ],
   metadata: { sourceRevisionParser: "musicxml-basic-v1", generatedAt: new Date(0).toISOString(), eventCount: 2, warnings: [] },
 };
+
+test("legacy repeated transpositions export one cumulative suffix and the requested revision number", async () => {
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "score-export-title-"));
+  try {
+    const rendered = await renderScoreExport({ workDir,
+      snapshot: { schemaVersion: 1, format: "midi", revisionId: "synthetic", revisionNumber: 7,
+        title: "Synthetic hymn (+2 semitones) (+2 semitones) (+2 semitones)", playback, options: {} },
+      config: { museScoreCommand: "unused", museScoreTimeoutMs: 1, fluidSynthCommand: "unused", fluidSynthTimeoutMs: 1,
+        soundFontPath: "unused", ffmpegCommand: "unused", ffmpegTimeoutMs: 1 },
+      isCancelled: () => false, onProgress: () => {},
+    });
+    assert.equal(rendered.files[0].originalName, "Synthetic-hymn-6-semitones-v7.mid");
+    assert.equal(fs.readFileSync(rendered.files[0].path).subarray(0, 4).toString("ascii"), "MThd");
+  } finally { fs.rmSync(workDir, { recursive: true, force: true }); }
+});
 
 test("percussion MIDI exports use mapped drums on channel 10 and omit unknown instruments", () => {
   const drums: PlaybackDocument = {

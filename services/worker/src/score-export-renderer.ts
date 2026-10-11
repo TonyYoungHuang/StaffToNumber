@@ -3,6 +3,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import MidiWriter from "midi-writer-js";
 import { PDFDocument } from "pdf-lib";
+import { normalizeScoreTransposeTitle } from "@score/shared";
 import type {
   PlaybackDocument,
   PlaybackNoteEvent,
@@ -42,7 +43,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function safeBaseName(value: string) {
-  return value.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "score";
+  return normalizeScoreTransposeTitle(value).trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "score";
 }
 
 function channelForPart(index: number) {
