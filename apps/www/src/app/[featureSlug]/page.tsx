@@ -19,10 +19,13 @@ import type { FeatureProductMediaSlug } from "../../lib/product-media";
 import { FeaturePracticeDemo } from "../../components/FeaturePracticeDemo";
 import { FrenchPricingPage } from "../../components/FrenchPricingPage";
 import { LocalizedPricingPage } from "../../components/LocalizedPricingPage";
+import { PricingCreditGuide } from "../../components/PricingCreditGuide";
+import { getPurchaseFaqs } from "../../lib/pricing-body-copy";
 import { PricingOffers } from "../../components/PricingOffers";
 import { teachingFaq } from "../../lib/feature-localization/teaching-faq";
 import { getEnEsFeatureFaq } from "../../lib/feature-localization/en-es-faq";
 import { getFeatureOnPageContent } from "../../lib/feature-on-page";
+import scannerFaqStyles from "../../components/ScannerFaq.module.css";
 
 type FeatureRouteParams = {
   featureSlug: string;
@@ -175,7 +178,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
       question: ui.faqCheck,
       answer: page.guardrail,
     },
-  ]);
+  ]).concat(featureSlug === "pricing" ? getPurchaseFaqs(locale) : []);
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -222,6 +225,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
   if (featureSlug === "pricing") return <div className="public-container page-stack french-pricing-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData.filter(item => item["@type"] !== "HowTo")).replaceAll("<", "\\u003c") }} />
     <PricingOffers locale={locale} />
+    <PricingCreditGuide locale={locale} />
     <Panel className="stack-md"><p className="body-copy">{page.guardrail}</p>{page.details.map(item => <div key={item.title}><h2 className="section-title">{item.title}</h2><p className="body-copy">{item.body}</p></div>)}</Panel>
     <section className="surface-panel stack-lg">{faqItems.map(item => <details key={item.question} className="list-item"><summary className="item-title">{item.question}</summary><p className="body-copy">{item.answer}</p></details>)}</section>
   </div>;
@@ -346,7 +350,7 @@ export default async function PlatformFeaturePage({ params }: { params: Promise<
         <SectionIntro eyebrow={ui.faqEyebrow} title={onPage?.faqTitle ?? ui.faqTitle(heading)} body={ui.faqBody} />
         <div className="list-grid">
           {faqItems.map((item) => (
-            <details key={item.question} className="list-item">
+            <details key={item.question} className={`list-item${featureSlug === "sheet-music-scanner" ? ` ${scannerFaqStyles.item}` : ""}`}>
               <summary className="item-title">{item.question}</summary>
               <p className="body-copy">{item.answer}</p>
             </details>

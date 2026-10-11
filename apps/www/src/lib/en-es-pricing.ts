@@ -1,3 +1,4 @@
+import { getPurchaseFaqs } from "./pricing-body-copy";
 export const enEsPricingCopy = {
   en: {
     title: "Pricing: one-time access or subscription", description: "Start with one free score project. Compare Starter and Converter Pro, with monthly or annual access. All prices are in US dollars (USD).", home: "Home", pricing: "Pricing", freeTitle: "Start free, with no payment card", freeBody: "Your free account includes 1 lifetime free scan project, 25 credits / month for exports & tools, and 50 MB of storage. Scan a complete multi-page PDF or score image; scanning a new score requires a One Score Pass or plan.", freeAction: "Create a free score project", oneTimeTitle: "Buy one month or one year of access", subscriptionTitle: "Choose a monthly or annual subscription", oneTimeLabel: "One payment", subscriptionLabel: "Recurring payment", creditTitle: "When are credits used?", creditBody: "Credits are reserved when a job is created; they are automatically returned if it fails or is cancelled. Viewing, playback and unsent basic edits do not use credits. Monthly credits reset at the start of each UTC calendar month and do not roll over.", review: "Review recognized notes and rhythms before using the result. Source quality and complex notation may require corrections.", faqTitle: "Questions about purchasing and access", terms: "Terms of service", support: "Contact support",
@@ -7,6 +8,7 @@ export const enEsPricingCopy = {
       { question: "Which currency will I pay in?", answer: "Prices are in US dollars (USD). The payment provider shows the total and any applicable taxes before you confirm the purchase. Your bank may charge currency conversion fees." },
       { question: "What happens when access ends?", answer: "One-time access expires without another charge. Buying the same plan tier again extends access. For a subscription, you can stop future renewals in Billing. Paid access normally remains until the end of the paid period, subject to refunds and the terms of service." },
       { question: "How can I get help with a payment?", answer: "Contact support with your order reference. If you have paid but cannot access your plan, do not pay again before the order is checked. Do not send passwords or complete activation codes." },
+      ...getPurchaseFaqs("en"),
     ],
   },
   es: {
@@ -17,6 +19,7 @@ export const enEsPricingCopy = {
       { question: "¿En qué moneda se realiza el pago?", answer: "Los precios están en dólares estadounidenses (USD). El proveedor muestra el importe total y los impuestos aplicables antes de confirmar la compra. Tu banco puede cobrar una comisión por cambio de moneda." },
       { question: "¿Qué ocurre al finalizar el acceso?", answer: "La compra única finaliza sin nuevos cargos. Otra compra del mismo nivel de plan amplía el acceso. Si tienes una suscripción, puedes detener futuras renovaciones en Facturación. Normalmente conservas el acceso hasta el final del periodo pagado, sujeto a los reembolsos y las condiciones del servicio." },
       { question: "¿Cómo puedo obtener ayuda con un pago?", answer: "Contacta con soporte e indica la referencia del pedido. Si ya has pagado pero no tienes acceso, espera a que se revise el pedido antes de volver a pagar. No envíes contraseñas ni códigos de activación completos." },
+      ...getPurchaseFaqs("es"),
     ],
   },
 } as const;

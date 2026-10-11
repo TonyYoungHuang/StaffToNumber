@@ -1,4 +1,5 @@
 import { Panel } from "@score/ui";
+import { PricingCreditGuide } from "./PricingCreditGuide";
 import { PricingOffers } from "./PricingOffers";
 import { frenchPricingFaqs } from "../lib/french-pricing";
 import { getAppStartConversionUrl, siteConfig } from "../lib/site";
@@ -24,10 +25,7 @@ export function FrenchPricingPage() {
       <p className="body-copy">Le compte gratuit inclut un seul projet de numérisation gratuit à vie, 25 crédits par mois pour les exports et les outils, ainsi que 50 Mo de stockage. Numérisez un PDF multipage complet ou une image de partition ; pour numériser une nouvelle partition, il vous faut un Pass une partition (One Score Pass) ou une offre.</p>
       <div className="button-row"><a className="public-button secondary" href={getAppStartConversionUrl("fr")}>Créer ma partition gratuite</a></div>
     </Panel>
-    <Panel className="stack-md"><h2 className="section-title">Comment les crédits sont-ils utilisés ?</h2>
-      <p className="body-copy">Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation. La lecture et les modifications de base n’en consomment pas. Les crédits mensuels se réinitialisent chaque mois et ne se reportent pas au mois suivant.</p>
-      <p className="body-copy">Les sorties issues de la reconnaissance doivent être vérifiées : la qualité du scan et la complexité de la partition peuvent nécessiter des corrections.</p>
-    </Panel>
+    <PricingCreditGuide locale="fr" />
     <section className="surface-panel stack-lg"><h2 className="section-title">Questions sur l’achat et l’accès</h2>
       {frenchPricingFaqs.map(item => <details key={item.question} className="list-item"><summary className="item-title">{item.question}</summary><p className="body-copy">{item.answer}</p></details>)}
       <div className="button-row"><a className="public-button secondary" href="/fr/terms">Conditions d’utilisation</a><a className="public-button tertiary" href="/fr/support?category=payment">Contacter l’assistance</a></div>

@@ -1,0 +1,9 @@
+.item {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.item p {
+  margin-top: 12px;
+}

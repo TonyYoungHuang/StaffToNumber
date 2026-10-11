@@ -1,3 +1,4 @@
+import { getPurchaseFaqs } from "./pricing-body-copy";
 import { getPricingPlanCatalog, getPurchaseOptionsCopy, type CheckoutBillingKind } from "@score/shared";
 import { localizeHomepagePlans } from "./homepage-localization";
 import { enEsPricingCopy } from "./en-es-pricing";
@@ -12,6 +13,7 @@ export const pricingCopy = {
       { question: "In welcher Währung bezahle ich?", answer: "Die Preise sind in US-Dollar (USD) angegeben. Den Endbetrag und gegebenenfalls Steuern sehen Sie vor der Bestätigung beim Zahlungsanbieter. Ihre Bank kann Umrechnungsgebühren berechnen." },
       { question: "Was geschieht am Ende des Zugangs?", answer: "Ein Einmalkauf endet ohne weitere Abbuchung. Ein erneuter Kauf derselben Tarifstufe verlängert den Zugang. Bei einem Abonnement können Sie die nächsten Verlängerungen unter Abrechnung beenden. Der bereits bezahlte Zugang bleibt grundsätzlich bis zum Ende des Zeitraums bestehen, vorbehaltlich Erstattungen und der Nutzungsbedingungen." },
       { question: "Wie erhalte ich Hilfe zu einer Zahlung?", answer: "Kontaktieren Sie den Support mit Ihrer Bestellnummer. Wenn Sie bezahlt haben, der Zugang aber fehlt, bezahlen Sie nicht erneut. Übermitteln Sie keine Passwörter oder vollständigen Aktivierungscodes." },
+      ...getPurchaseFaqs("de"),
     ],
   },
   ru: {
@@ -22,6 +24,7 @@ export const pricingCopy = {
       { question: "В какой валюте производится оплата?", answer: "Цены указаны в долларах США (USD). Итоговую сумму и возможные налоги платёжный сервис покажет до подтверждения покупки. Банк может взимать комиссию за конвертацию валюты." },
       { question: "Что происходит после окончания доступа?", answer: "Разовая покупка заканчивается без нового списания. Повторная покупка того же тарифа продлевает доступ. Для подписки можно отключить следующие продления в разделе «Оплата». Оплаченный доступ обычно сохраняется до конца периода с учётом возвратов и условий использования." },
       { question: "Как получить помощь с оплатой?", answer: "Обратитесь в поддержку и укажите номер заказа. Если вы уже заплатили, но доступ не появился, не оплачивайте повторно. Не отправляйте пароли или полные коды активации." },
+      ...getPurchaseFaqs("ru"),
     ],
   },
 } as const;

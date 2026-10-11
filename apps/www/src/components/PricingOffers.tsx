@@ -4,6 +4,7 @@ import { getHomepageLocalization, localizeHomepagePlans } from "../lib/homepage-
 import { getLocalizedPaidPlans } from "../lib/localized-pricing";
 import { getFrenchPricingPlans } from "../lib/french-pricing";
 import { getPurchaseFlowCopy } from "../lib/purchase-copy";
+import { PricingIntro } from "./PricingIntro";
 import { PricingOffersClient } from "./PricingOffersClient";
 import styles from "./PurchaseFlow.module.css";
 
@@ -22,7 +23,7 @@ export function PricingOffers({ locale, title, description }: { locale: Supporte
     })];
   })) as { subscription: typeof localizedPlans; one_time: typeof localizedPlans };
   return <section id="pricing-plans" className={styles.offers} aria-labelledby="pricing-title">
-    <header className={styles.heading}><h1 id="pricing-title">{title ?? getPurchaseFlowCopy(locale).title}</h1><p>{description ?? home.pricingBody}</p></header>
+    <header className={styles.heading}><h1 id="pricing-title">{title ?? getPurchaseFlowCopy(locale).title}</h1><PricingIntro locale={locale} /><p>{description ?? home.pricingBody}</p></header>
     <PricingOffersClient locale={locale} plans={plans} labels={home.creditPlanCardLabels} purchase={purchase} />
     <p className="helper-copy">{home.priceNote}</p>
   </section>;
