@@ -1561,7 +1561,7 @@ export function planPdfRasterBudget(
 }
 
 /** A score pass is a one-off product, never a recurring plan. */
-export const SINGLE_SCORE_PASS = { code: "single-score", amountMinor: 299, currency: "usd", maxPages: 5, credits: 10 } as const;
+export const SINGLE_SCORE_PASS = { code: "single-score", amountMinor: 299, currency: "usd", credits: 10 } as const;
 export type PurchasePlanCode = CheckoutPlanCode | typeof SINGLE_SCORE_PASS.code;
 export function isPurchasePlanCode(value: unknown): value is PurchasePlanCode {
   return value === SINGLE_SCORE_PASS.code || isCheckoutPlanCode(value);

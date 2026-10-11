@@ -318,8 +318,9 @@ function redeemInTransaction(userId: string, codeRow: ActivationCodeRow | undefi
       db.prepare(`INSERT INTO billing_one_time_purchases (id, user_id, plan_code, plan_ref, status, starts_at, paid_at, created_at, updated_at)
         VALUES (?, ?, 'single-score', 'shop-activation', 'active', ?, ?, ?, ?)`)
         .run(purchaseId, userId, timestamp, timestamp, timestamp, timestamp);
-      db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, max_pages, created_at)
-        VALUES (?, NULL, 10, 5, ?)`).run(purchaseId, timestamp);
+      // max_pages is a legacy schema column; its default is no longer enforced.
+      db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, created_at)
+        VALUES (?, NULL, 10, ?)`).run(purchaseId, timestamp);
     }
     return { ok: true as const, entitlement: shopCreditEntitlement(userId, { ...codeRow, redeemed_at: timestamp }), alreadyRedeemed: false };
   }

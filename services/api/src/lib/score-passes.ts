@@ -2,17 +2,28 @@ import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import { processingJobCreditCost } from "./plan-quotas.js";
 
 export class ScorePassError extends Error {
-  readonly statusCode = 403;
-  constructor(readonly code: "SCORE_PASS_REQUIRED" | "SCORE_PASS_CREDITS_EXHAUSTED" | "SCORE_PASS_PAGE_LIMIT", message: string) { super(message); }
+  readonly statusCode: number;
+  constructor(readonly code: "SCORE_PASS_REQUIRED" | "SCORE_PASS_CREDITS_EXHAUSTED" | "SCORE_SOURCE_PAGE_COUNT_INVALID", message: string) {
+    super(message);
+    this.statusCode = code === "SCORE_SOURCE_PAGE_COUNT_INVALID" ? 422 : 403;
+  }
 }
 
-type Pass = { purchase_id: string; document_id: string | null; credit_limit: number; max_pages: number };
+export function assertScoreSourcePageCount(pageCount: number) {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1) {
+    throw new ScorePassError("SCORE_SOURCE_PAGE_COUNT_INVALID", "The uploaded score must contain at least one valid page.");
+  }
+}
+
+type Pass = { purchase_id: string; document_id: string | null; credit_limit: number };
 
 export function listScorePasses(db: RuntimeDatabaseLike, userId: string) {
-  const passes = db.prepare(`SELECT p.* FROM score_passes p JOIN billing_one_time_purchases b ON b.id = p.purchase_id
+  // Legacy max_pages values remain in storage for schema compatibility only.
+  // A pass covers one document regardless of its page count.
+  const passes = db.prepare(`SELECT p.purchase_id, p.document_id, p.credit_limit FROM score_passes p JOIN billing_one_time_purchases b ON b.id = p.purchase_id
     WHERE b.user_id = ? AND b.status = 'active' AND b.paid_at IS NOT NULL ORDER BY p.created_at, p.purchase_id`).all(userId) as Pass[];
   return passes.map(p => ({ id: p.purchase_id, documentId: p.document_id, credits: p.credit_limit,
-    remaining: Math.max(0, p.credit_limit - creditsUsed(db, p.purchase_id)), maxPages: p.max_pages }));
+    remaining: Math.max(0, p.credit_limit - creditsUsed(db, p.purchase_id)) }));
 }
 
 export function scorePassForDocument(db: RuntimeDatabaseLike, userId: string, documentId: string) {
@@ -38,9 +49,7 @@ export function bindScorePass(db: RuntimeDatabaseLike, userId: string, documentI
   const pass = available.find(p => p.remaining >= creditCost);
   if (!pass && available.length) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "This score pass does not have enough processing credits.");
   if (!pass) throw new ScorePassError("SCORE_PASS_REQUIRED", "Buy a One Score Pass or choose a subscription to process another score.");
-  if (!Number.isSafeInteger(pageCount) || pageCount < 1 || pageCount > pass.maxPages) {
-    throw new ScorePassError("SCORE_PASS_PAGE_LIMIT", "A One Score Pass supports one score of up to 5 pages.");
-  }
+  assertScoreSourcePageCount(pageCount);
   db.prepare("UPDATE score_passes SET document_id = ? WHERE purchase_id = ? AND document_id IS NULL").run(documentId, pass.id);
   return pass.id;
 }

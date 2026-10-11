@@ -14,7 +14,7 @@ export function countTiffPages(bytes: Uint8Array): number {
     const next = offset + 2 + view.getUint16(offset, little) * 12;
     if (next + 4 > bytes.length) return 0;
     offset = view.getUint32(next, little);
-    if (++pages > 5) return pages;
+    pages++;
   }
   return pages;
 }

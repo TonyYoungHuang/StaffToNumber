@@ -30,7 +30,7 @@ test("OMR logging captures sanitized 4xx/5xx reasons including pre-handler denia
         [429, { code: "SCORE_PREFLIGHT_RATE_LIMIT" }, "SCORE_PREFLIGHT_RATE_LIMIT"],
         [503, { code: "OBJECT_STORAGE_UNAVAILABLE" }, "OBJECT_STORAGE_UNAVAILABLE"],
         [503, { code: "SCANNER_FAILED" }, "SCANNER_FAILED"],
-        [403, { code: "SCORE_PASS_PAGE_LIMIT" }, "SCORE_PASS_PAGE_LIMIT"],
+        [422, { code: "SCORE_SOURCE_PAGE_COUNT_INVALID" }, "SCORE_SOURCE_PAGE_COUNT_INVALID"],
         [403, { error: "An active account is required." }, "ACCOUNT_INACTIVE"],
         [401, { error: "Session expired" }, "SESSION_INVALID"],
         [500, { code: "PRIVATE_TOKEN_VALUE", error: "secret customer@example.invalid /file.pdf" }, "UNCLASSIFIED_ERROR"],

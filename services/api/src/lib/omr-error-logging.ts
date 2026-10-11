@@ -15,7 +15,7 @@ const reasons: Record<string, string> = {
   SCORE_PREFLIGHT_RATE_LIMIT: "The preflight request rate limit was reached.",
   SCORE_PASS_REQUIRED: "No usable pass is available for this score.",
   SCORE_PASS_CREDITS_EXHAUSTED: "The pass has insufficient processing credits.",
-  SCORE_PASS_PAGE_LIMIT: "The source exceeds the pass page limit.",
+  SCORE_SOURCE_PAGE_COUNT_INVALID: "The source has no valid positive page count.",
   FREE_TRIAL_OMR_LIMIT_REACHED: "The lifetime free project is already in use.",
   COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED: "Complex recognition requires paid access.",
   PLAN_JOB_QUOTA_EXCEEDED: "The processing quota was exhausted.",
