@@ -5256,7 +5256,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         });
       } catch (error) {
         const response = uploadErrorResponse(error);
-        request.log.warn({ error, uploadCode: response.body.code }, "OMR source upload rejected.");
+        request.log.warn({ uploadCode: response.body.code }, "OMR source upload rejected.");
         return reply.code(response.statusCode).send(response.body);
       }
       const fileKind = verified.detectedKind === "pdf" ? "source_pdf" : "source_image";
