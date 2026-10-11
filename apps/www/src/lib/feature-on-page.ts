@@ -1,3 +1,4 @@
+import { getScannerFaq } from "./scanner-faq";
 import type { SupportedLocale } from "@score/i18n";
 import { spanishFeatureOnPage } from "./feature-on-page-es";
 import type { PlatformFeaturePage } from "./platform-feature-pages";
@@ -179,8 +180,9 @@ export const englishFeatureOnPage: Record<string, FeatureOnPageContent> = {
 
 export function getFeatureOnPageContent(slug: string, locale: SupportedLocale) {
   const content = locale === "en" ? englishFeatureOnPage[slug] : locale === "es" ? spanishFeatureOnPage[slug] : localizedFeatureOnPage[locale]?.[slug];
+  const augmented = content && slug === "sheet-music-scanner" ? { ...content, faq: [...(content.faq ?? []), ...getScannerFaq(locale)] } : content;
   // Keep the European Jianpu pages unchanged, including their existing FAQ heading.
   const coreTool = ["sheet-music-scanner", "pdf-to-musicxml", "score-editor", "musicxml-midi", "transpose-score"].includes(slug);
-  if (content && coreTool && (locale === "en" || locale === "es")) return { ...content, faqTitle: locale === "en" ? "FAQ" : "Preguntas frecuentes" };
-  return content;
+  if (augmented && coreTool && (locale === "en" || locale === "es")) return { ...augmented, faqTitle: locale === "en" ? "FAQ" : "Preguntas frecuentes" };
+  return augmented;
 }
