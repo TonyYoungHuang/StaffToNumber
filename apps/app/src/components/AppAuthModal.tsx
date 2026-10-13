@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createPortal } from "react-dom";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { AuthForm } from "./AuthForm";
+import { currentWorkPath } from "../lib/flow-return";
 
 type OpenAuth = (mode?: "login" | "register", onDone?: () => void) => void;
 const Context = createContext<OpenAuth | null>(null);
@@ -43,7 +44,7 @@ export function AppAuthModalProvider({ children, messages }: { children: ReactNo
     <dialog ref={dialog} className="app-auth-modal" aria-label={messages.routes[mode].title}
       onCancel={event => { event.preventDefault(); setMode(null); }} onClick={event => { if (event.target === event.currentTarget) setMode(null); }}>
       <div className="stack-lg"><button type="button" className="button button-tertiary" onClick={() => setMode(null)}>{messages.shell.back}</button>
-        <AuthForm key={mode} mode={mode} messages={messages.form} onAuthenticated={() => { setMode(null); callback.current?.(); callback.current = undefined; }} />
+        <AuthForm key={mode} mode={mode} redirectTo={currentWorkPath()} messages={messages.form} onAuthenticated={() => { setMode(null); callback.current?.(); callback.current = undefined; }} />
       </div>
     </dialog>, document.body) : null}</Context.Provider>;
 }

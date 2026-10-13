@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import type { SupportedLocale } from "@score/i18n";
+import type { HomeCommercialCopy } from "../lib/home-commercial-copy";
 import styles from "./ProductCommercialBackdrop.module.css";
 
 type Props = {
-  title: string;
-  description: string;
+  locale: SupportedLocale;
+  copy: HomeCommercialCopy;
   videoSrc: string;
   posterSrc: string;
   filmSrc: string;
   pricingHref: string;
 };
 
-export function ProductCommercialBackdrop({ title, description, videoSrc, posterSrc, filmSrc, pricingHref }: Props) {
+export function ProductCommercialBackdrop({ locale, copy, videoSrc, posterSrc, filmSrc, pricingHref }: Props) {
   const id = useId();
   const regionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -101,7 +103,7 @@ export function ProductCommercialBackdrop({ title, description, videoSrc, poster
   }
 
   return (
-    <section ref={regionRef} className={styles.section} aria-labelledby={`${id}-title`} lang="en">
+    <section ref={regionRef} className={styles.section} aria-labelledby={`${id}-title`} lang={locale}>
       <div className={styles.media} style={{ backgroundImage: `url("${posterSrc}")` }} aria-hidden="true">
         <video
           ref={videoRef}
@@ -123,29 +125,30 @@ export function ProductCommercialBackdrop({ title, description, videoSrc, poster
       </div>
       <div className={styles.shade} aria-hidden="true" />
       <div className={styles.copy}>
-        <p className={styles.eyebrow}>ScoreTransposer by the numbers</p>
-        <h2 id={`${id}-title`}>{title}</h2>
-        <p className={styles.description}>{description}</p>
-        <dl className={styles.metrics} aria-label="ScoreTransposer in numbers">
-          <div><dt>Users</dt><dd>2K</dd></div>
-          <div><dt>Countries</dt><dd>97</dd></div>
-          <div><dt>Scores corrected</dt><dd>65K</dd></div>
+        <p className={styles.eyebrow}>{copy.eyebrow}</p>
+        <h2 id={`${id}-title`}>{copy.title}</h2>
+        <p className={styles.description}>{copy.description}</p>
+        <p className={styles.caption}>{copy.caption}</p>
+        <dl className={styles.metrics} aria-label={copy.metricsLabel}>
+          <div><dt>{copy.users}</dt><dd>2K</dd></div>
+          <div><dt>{copy.countries}</dt><dd>97</dd></div>
+          <div><dt>{copy.scoresCorrected}</dt><dd>65K</dd></div>
         </dl>
         <div className={styles.actions}>
-          <a className={styles.primary} href="#home-workbench">Start with your score <span aria-hidden="true">↗</span></a>
-          <a className={styles.secondary} href={pricingHref}>Explore plans <span aria-hidden="true">→</span></a>
+          <a className={styles.primary} href="#home-workbench">{copy.startAction} <span aria-hidden="true">↗</span></a>
+          <a className={styles.secondary} href={pricingHref}>{copy.plansAction} <span aria-hidden="true">→</span></a>
         </div>
       </div>
       <div className={styles.controls}>
-        {failed ? <a className={styles.fallback} href={filmSrc}>Watch the film ↗</a> : <>
-          <button type="button" onClick={toggleSound} aria-controls={`${id}-video`} aria-label={muted ? "Enable sound" : "Mute sound"} className={styles.sound}>
+        {failed ? <a className={styles.fallback} href={filmSrc}>{copy.watchFilm} ↗</a> : <>
+          <button type="button" onClick={toggleSound} aria-controls={`${id}-video`} aria-label={muted ? copy.enableSound : copy.muteSound} className={styles.sound}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
               <path d="M11 4 6 8H3v8h3l5 4V4Z" />
               {muted ? <path d="m16 9 6 6m0-6-6 6" /> : <><path d="M15 8a6 6 0 0 1 0 8" /><path d="M18 5a10 10 0 0 1 0 14" /></>}
             </svg>
-            <span>{muted ? "Sound off" : "Sound on"}</span>
+            <span>{muted ? copy.soundOff : copy.soundOn}</span>
           </button>
-          <button type="button" onClick={togglePlayback} aria-controls={`${id}-video`} aria-label={playing ? "Pause animation" : "Play animation"} className={styles.play}>
+          <button type="button" onClick={togglePlayback} aria-controls={`${id}-video`} aria-label={playing ? copy.pause : copy.play} className={styles.play}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">{playing ? <path d="M6 4h4v16H6zM14 4h4v16h-4z" /> : <path d="m7 4 14 8-14 8z" />}</svg>
           </button>
         </>}

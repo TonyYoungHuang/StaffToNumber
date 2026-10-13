@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatNumber } from "@score/i18n";
-import type { ScoreJson } from "@score/shared";
+import { readScoreTaskIntent, scoreTaskDocumentPath, type ScoreJson, type ScoreTaskIntent } from "@score/shared";
 import { API_BASE_URL } from "../lib/api";
 import { collectEnsembleEvents, ensembleCoverage, neighboringEnsembleEvent, type EnsembleEvent } from "../lib/ensemble-score-selection";
 import { getEnsembleMessages } from "../lib/ensemble-messages";
@@ -34,6 +34,8 @@ export function ScoreEnsembleWorkspace({ scoreId, scoreJson, fileId, token, gene
   const copy = getEnsembleMessages(locale);
   const previewCopy = useScoreReviewMessages().detail.preview;
   const locked = useScoreNavigationLocked();
+  const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);
+  useEffect(() => { setTaskIntent(readScoreTaskIntent(new URLSearchParams(window.location.search))); }, [scoreId]);
   const rows = useMemo(() => collectEnsembleEvents(scoreJson), [scoreJson]);
   const coverage = ensembleCoverage(scoreJson);
   const [partId, setPartId] = useState("all");
@@ -118,7 +120,7 @@ export function ScoreEnsembleWorkspace({ scoreId, scoreJson, fileId, token, gene
     return `${row.partName} · ${copy.measure} ${row.measure.number} · ${copy.staff} ${event.staff ?? 1} · ${copy.voice} ${event.voice ?? "1"} · ${pitch}`;
   }
   return <section className={styles.workspace} data-ensemble-workspace>
-    <header className="workspace-heading"><h2 className="card-title">{copy.ensembleTitle}</h2><Link href={`/scores/${encodeURIComponent(scoreId)}`} className="button button-secondary" aria-disabled={locked} onClick={event => { if (locked) event.preventDefault(); }}>{copy.standardWorkbench}</Link></header>
+    <header className="workspace-heading"><h2 className="card-title">{copy.ensembleTitle}</h2><Link href={scoreTaskDocumentPath(scoreId, taskIntent)} className="button button-secondary" aria-disabled={locked} onClick={event => { if (locked) event.preventDefault(); }}>{copy.standardWorkbench}</Link></header>
     <section className="surface-panel stack-lg" data-ensemble-coverage={coverage?.status ?? "unverified"}>
       <h3 className="card-title">{copy.coverageTitle}</h3>
       <p className={styles.status}>{coverage ? coverage.status === "incomplete" ? copy.coverageIncomplete : copy.coveragePending : copy.coverageUnknown}</p>

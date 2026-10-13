@@ -1,4 +1,4 @@
-import { APP_ROUTES, type CheckoutPlanCode, type SupportedLocale } from "@score/shared";
+import { APP_ROUTES, scoreTaskEntryPath, scoreTaskForSource, type CheckoutPlanCode, type ScoreTaskTarget, type SupportedLocale } from "@score/shared";
 import { localizePathname } from "@score/i18n";
 
 const defaultSiteUrl = "https://scoretransposer.com";
@@ -204,6 +204,14 @@ export function getAppStartConversionUrl(locale?: SupportedLocale) {
 export function getAppScoreProjectsUrl(locale?: SupportedLocale) {
   const scorePath = APP_ROUTES.scores;
   return locale ? getAppLocaleHandoffUrl(scorePath, locale) : buildUrl(siteConfig.appUrl, scorePath);
+}
+
+/** Land on the existing import/library flow with the original tool and chosen target. */
+export function getAppTaskUrl(source: string, locale: SupportedLocale, target: ScoreTaskTarget = {}) {
+  const task = scoreTaskForSource(source);
+  if (!task) return getAppScoreProjectsUrl(locale);
+  if (!siteConfig.release.productAppAvailable) return getSupportUrl("general", `${source}-launch-access`, locale);
+  return getAppLocaleHandoffUrl(scoreTaskEntryPath({ task, source, locale, ...target }), locale);
 }
 
 export function getAppScoreUrl(scoreId: string, locale: SupportedLocale, workspace: "simple" | "complex" = "simple") {

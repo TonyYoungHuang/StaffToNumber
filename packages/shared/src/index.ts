@@ -17,6 +17,7 @@ export {
 } from "@score/i18n";
 
 export const PRODUCT_NAME = "ScoreTransposer";
+export { SCORE_TASKS, SCORE_TASK_MODES, scoreTaskForSource, readScoreTaskIntent, scoreTaskQuery, scoreTaskEntryPath, scoreTaskDocumentPath, type ScoreTask, type ScoreTaskTarget, type ScoreTaskIntent } from "./score-task-intent.ts";
 
 export const APP_ROUTES = {
   home: "/",

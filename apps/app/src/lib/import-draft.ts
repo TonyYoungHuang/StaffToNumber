@@ -1,3 +1,5 @@
+import type { ScoreTaskIntent } from "@score/shared";
+
 export type ImportKind = "omr" | "musicxml" | "midi" | "score-json" | "audio";
 export function detectScoreImport(name: string): ImportKind | null {
   const extension = name.split(".").at(-1)?.toLowerCase();
@@ -8,7 +10,7 @@ export function detectScoreImport(name: string): ImportKind | null {
   if (["wav", "mp3", "m4a", "aac", "flac", "ogg", "aif", "aiff"].includes(extension ?? "")) return "audio";
   return null;
 }
-export type ImportDraft = { ownerId: string; file: File | null; title: string; text: string; mode: "file" | "jianpu"; createdAt: number };
+export type ImportDraft = { ownerId: string; file: File | null; title: string; text: string; mode: "file" | "jianpu"; createdAt: number; intent?: ScoreTaskIntent };
 /** Local-only draft key used before sign-in so #free-scan can resume after auth. */
 export const GUEST_IMPORT_OWNER_ID = "__guest__";
 async function draftStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
@@ -18,10 +20,12 @@ async function draftStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectSto
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
       const db = open.result;
-      const tx = db.transaction("drafts", mode);
-      const request = run(tx.objectStore("drafts"));
-      tx.oncomplete = () => { resolve(request.result); db.close(); };
-      tx.onabort = tx.onerror = () => { reject(tx.error); db.close(); };
+      try {
+        const tx = db.transaction("drafts", mode);
+        const request = run(tx.objectStore("drafts"));
+        tx.oncomplete = () => { resolve(request.result); db.close(); };
+        tx.onabort = tx.onerror = () => { reject(tx.error); db.close(); };
+      } catch (error) { reject(error); db.close(); }
     };
   });
 }
@@ -46,4 +50,12 @@ export async function claimGuestImportDraft(userId: string): Promise<ImportDraft
   await saveImportDraft(claimed);
   await clearImportDraft(GUEST_IMPORT_OWNER_ID);
   return claimed;
+}
+
+/** A newly selected guest file takes precedence over an older signed-in draft. */
+export async function resumeImportDraft(userId: string): Promise<ImportDraft | null> {
+  const [owned, guest] = await Promise.all([loadImportDraft(userId), loadImportDraft(GUEST_IMPORT_OWNER_ID)]);
+  if (guest && (!owned || guest.createdAt >= owned.createdAt)) return claimGuestImportDraft(userId);
+  if (guest) await clearImportDraft(GUEST_IMPORT_OWNER_ID);
+  return owned;
 }

@@ -88,7 +88,11 @@
 
 .section.introduction { padding-bottom: 16px; }
 .section.overviewSection { padding-top: 12px; padding-bottom: 16px; }
-.overviewSection + .hero { padding-top: 16px; }
+.introduction + .hero { padding-top: 16px; }
+.entryActions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.entryActions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; max-width: 100%; padding: 12px 18px; border: 1px solid var(--home-brand); border-radius: 14px; color: var(--home-brand-strong); background: #fff; font-weight: 750; line-height: 1.4; text-decoration: none; }
+.entryActions a:first-child { color: #fff; background: var(--home-brand); }
+.entryActions a:focus-visible { outline: 3px solid var(--home-brand); outline-offset: 4px; }
 .workbenchIntro { text-align: center; }
 .workbenchIntro h2 { margin: 0 0 10px; font-size: clamp(24px, 2.3vw, 32px); letter-spacing: -.035em; }
 .workbenchIntro p { margin: 0; color: var(--home-copy); font-size: 16px; line-height: 1.65; }

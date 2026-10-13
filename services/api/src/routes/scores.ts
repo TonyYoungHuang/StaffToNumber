@@ -4,6 +4,7 @@ import { registerScoreStructurePreflightRoute } from "./score-structure-prefligh
 import { countTiffPages } from "../lib/score-pass-pages.js";
 import { assertRecognitionQuote, getRecognitionOptions, normalizeRecognitionMode, RecognitionAccessError, RecognitionPriceChangedError, resolveRecognitionAccess } from "../lib/recognition-options.js";
 import { PlanQuotaExceededError } from "../lib/plan-quotas.js";
+import { getScoreExportOptions, scoreExportPriceMatches } from "../lib/score-export-options.js";
 import fs from "node:fs";
 import path from "node:path";
 import { isIP } from "node:net";
@@ -3146,6 +3147,19 @@ export async function scoreRoutes(app: FastifyInstance) {
     },
   );
 
+  app.get(
+    "/scores/:id/export-options",
+    { preHandler: app.requireScoreEditingAccess },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const document = findScoreDocumentById(id);
+      if (!document || document.user_id !== request.authUserId) {
+        return reply.code(404).send({ error: "Score document not found." });
+      }
+      return reply.send(getScoreExportOptions(request.authUserId!, document.id));
+    },
+  );
+
   app.post(
     "/scores/:id/exports",
     {
@@ -3163,6 +3177,11 @@ export async function scoreRoutes(app: FastifyInstance) {
         exportRequest = normalizeScoreExportRequest(request.body);
       } catch (error) {
         return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid export request." });
+      }
+
+      const quote = getScoreExportOptions(request.authUserId!, document.id);
+      if (!scoreExportPriceMatches((request.body as { expectedCreditCost?: unknown })?.expectedCreditCost, exportRequest.format, quote)) {
+        return reply.code(409).send({ code: "EXPORT_PRICE_CHANGED", error: "The export price changed. Review the current price and confirm again.", ...quote });
       }
 
       const revision = findCurrentRevisionForDocument(document);

@@ -55,6 +55,7 @@ export function ScoreCandidateReviewWorkspace({
   revisionStatusKind,
   freeEditing = false,
   focusedSourceRegion,
+  returnTo = APP_ROUTES.scores,
 }: {
   title: string;
   scoreId: string;
@@ -80,6 +81,7 @@ export function ScoreCandidateReviewWorkspace({
   revisionStatusKind: "success" | "error" | null;
   freeEditing?: boolean;
   focusedSourceRegion?: ScoreSourceRegion | null;
+  returnTo?: string;
 }) {
   const copy = useScoreReviewMessages().candidate;
   const navigationLocked = useScoreNavigationLocked();
@@ -140,7 +142,7 @@ export function ScoreCandidateReviewWorkspace({
         </div>
         <div className="page-banner-actions">
           <a href="#scan-comparison" className="button button-secondary review-compare-action">{copy.compareSource}</a>
-          <Link href={APP_ROUTES.scores} className="button button-secondary">
+          <Link href={returnTo} className="button button-secondary">
             {copy.back}
           </Link>
           {freeEditing ? (

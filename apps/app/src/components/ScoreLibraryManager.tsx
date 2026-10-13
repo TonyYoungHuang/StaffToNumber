@@ -3,13 +3,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, getScorePreflightMessages, getScoreProcessingMessages, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, getSingleScorePassCopy } from "@score/shared";
+import { getSingleScorePassCopy, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
-import { claimGuestImportDraft, clearImportDraft, detectScoreImport, loadImportDraft, saveGuestImportDraft, saveImportDraft } from "../lib/import-draft";
+import { clearImportDraft, detectScoreImport, GUEST_IMPORT_OWNER_ID, loadImportDraft, resumeImportDraft, saveGuestImportDraft, saveImportDraft } from "../lib/import-draft";
+import { getScoreTaskMessages } from "../lib/score-task-messages";
 import { useAppAuthModal } from "./AppAuthModal";
 import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -53,6 +54,9 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const flow = useFlowMessages();
   const router = useRouter();
   const signIn = useAppAuthModal();
+  const taskCopy = getScoreTaskMessages(locale);
+  const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);
+  const taskIntentRef = useRef<ScoreTaskIntent | null>(null);
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
     const sync = () => setToken(getStoredToken());
@@ -85,6 +89,36 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const edited = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    const intent = readScoreTaskIntent(new URLSearchParams(window.location.search));
+    taskIntentRef.current = intent;
+    setTaskIntent(intent);
+    if (intent?.task === "jianpu-input") setMode("jianpu");
+  }, []);
+  function restoreDraft(draft: Awaited<ReturnType<typeof loadImportDraft>>) {
+    const draftKind = draft?.file ? detectScoreImport(draft.file.name) : null;
+    const supportedDraft = recognitionMode === "simple" || (draft?.mode === "file" && ["omr", "musicxml", "score-json"].includes(draftKind ?? ""));
+    if (!draft || !supportedDraft || edited.current) return;
+    setFile(draft.file); setTitle(draft.title); setJianpuText(draft.text); setMode(draft.mode);
+    if (!taskIntentRef.current && draft.intent) {
+      taskIntentRef.current = draft.intent;
+      setTaskIntent(draft.intent);
+      if (view === "library") window.history.replaceState(window.history.state, "", scoreTaskEntryPath(draft.intent));
+    }
+    setStatus(flow.savedFile); setFailed(false);
+  }
+  useEffect(() => {
+    // Signing in from the page header can remount the guest form before submit.
+    // Keep edits in the existing draft store so that path retains the file too.
+    if (token || access || !edited.current) return;
+    if ((mode === "file" && !file) || (mode === "jianpu" && !jianpuText.trim())) {
+      void clearImportDraft(GUEST_IMPORT_OWNER_ID);
+      return;
+    }
+    void saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined }).catch(() => {
+      setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
+    });
+  }, [token, access, file, title, jianpuText, mode, taskIntent, flow.fileLost]);
+  useEffect(() => {
     let active = true;
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
     void apiRequest<{ scores: ScoreDocument[] }>("/api/scores", { headers }).then(result => {
@@ -97,20 +131,24 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     void apiRequest<{ user: AccessUser }>("/api/auth/me", { headers }).then(async result => {
       if (!active) return;
       if (!result.ok) {
-        if (result.status === 401) { setAccess(null); setFailed(false); setStatus(null); return; }
+        if (result.status === 401) {
+          setAccess(null); setFailed(false); setStatus(null);
+          const guest = await loadImportDraft(GUEST_IMPORT_OWNER_ID);
+          if (active) restoreDraft(guest);
+          return;
+        }
         setStatus(result.error); setFailed(true); return;
       }
       setAccess(result.data.user);
-      const draft = (await loadImportDraft(result.data.user.id)) ?? (await claimGuestImportDraft(result.data.user.id));
-      const draftKind = draft?.file ? detectScoreImport(draft.file.name) : null;
-      const supportedDraft = recognitionMode === "simple" || (draft?.mode === "file" && ["omr", "musicxml", "score-json"].includes(draftKind ?? ""));
-      if (active && draft && supportedDraft && !edited.current) {
-        setFile(draft.file); setTitle(draft.title); setJianpuText(draft.text); setMode(draft.mode);
-        setStatus(flow.savedFile); setFailed(false);
+      try {
+        const draft = await resumeImportDraft(result.data.user.id);
+        if (active) restoreDraft(draft);
+      } catch {
+        if (active) { setDraftFailed(true); setStatus(flow.fileLost); setFailed(true); }
       }
     });
     return () => { active = false; };
-  }, [token, accessAttempt, flow.savedFile, recognitionMode]);
+  }, [token, accessAttempt, flow.savedFile, flow.fileLost, recognitionMode, view]);
   useEffect(() => {
     let active = true;
     setQuoteLoading(true); setQuoteError(null);
@@ -187,7 +225,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   async function saveDraftBeforePass() {
     if (!access) return false;
     try {
-      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now() });
+      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
       return true;
     } catch {
       setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
@@ -200,7 +238,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     // upgrade_click for this path is tracked by OneScorePassUpsell as score_import_subscription.
     submitLock.current = true; setBusy(true);
     try {
-      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now() });
+      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
       router.push(upgradePath(currentWorkPath()));
     } catch {
       setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
@@ -213,7 +251,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       if (mode === "file" && !file) return;
       if (mode === "jianpu" && !jianpuText.trim()) return;
       try {
-        await saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now() });
+        await saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
       } catch {
         setDraftFailed(true); setStatus(flow.fileLost); setFailed(true); return;
       }
@@ -272,7 +310,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       }
       await clearImportDraft(access.id);
       const targetMode = isRecognition ? selectedRecognitionMode : recognitionMode;
-      router.push(`${APP_ROUTES.scores}/${encodeURIComponent(imported.id)}${targetMode === "complex" ? "/ensemble" : ""}`);
+      router.push(scoreTaskDocumentPath(imported.id, taskIntent, targetMode === "complex"));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : copy.musicxml.importFailed); setFailed(true);
       submitLock.current = false; setBusy(false);
@@ -280,7 +318,15 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   }
   return <div className="page-stack flow-library">
     <section id="free-scan" className="surface-panel stack-lg flow-import">
-      <h2 className="card-title">{flow.importTitle}</h2>
+      <h2 className="card-title">{taskIntent ? taskCopy.tasks[taskIntent.task] : flow.importTitle}</h2>
+      {taskIntent ? <div className="stack-sm" data-score-task={taskIntent.task}>
+        <p className="body-copy">{taskCopy.body}</p>
+        {taskIntent.targetTonic ? <p className="helper-copy">{formatMessage(taskCopy.target, { target: taskIntent.targetTonic })}</p> : taskIntent.semitones !== undefined ? <p className="helper-copy">{formatMessage(taskCopy.shift, { value: formatNumber(taskIntent.semitones, locale) })}</p> : null}
+        <div className="button-row">
+          {mode === "file" ? <button type="button" className="button button-primary" disabled={busy} onClick={() => inputRef.current?.click()}>{taskCopy.chooseFile}</button> : <a className="button button-primary" href="#jianpu-input">{copy.jianpu.textLabel}</a>}
+          {view === "library" && access ? <a className="button button-secondary" href="#saved-scores">{taskCopy.existing}</a> : null}
+        </div>
+      </div> : null}
       <div className="button-row" role="group" aria-label={flow.importTitle}>
         <button type="button" disabled={busy} className={`button ${mode === "file" ? "button-primary" : "button-secondary"}`} aria-pressed={mode === "file"} onClick={() => { edited.current = true; if (mode !== "file") { preflightGuard.current.invalidate(); setPreflight({ status: "idle", file: null }); } setMode("file"); }}>{flow.chooseFile}</button>
         {recognitionMode === "simple" ? <button type="button" disabled={busy} className={`button ${mode === "jianpu" ? "button-primary" : "button-secondary"}`} aria-pressed={mode === "jianpu"} onClick={() => { edited.current = true; preflightGuard.current.invalidate(); setPreflight({ status: "idle", file: null }); setSelectedRecognitionMode(null); setMode("jianpu"); }}>{copy.jianpu.title}</button> : null}
@@ -299,7 +345,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
           <input ref={inputRef} id="score-file-input" className="sr-only" type="file" aria-label={flow.chooseFile} accept={recognitionMode === "complex" ? ".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.xml,.musicxml,.mxl,.json" : ".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.xml,.musicxml,.mxl,.mid,.midi,.json" + (audioAvailable ? ",.wav,.mp3,.m4a,.aac,.flac,.ogg,.aif,.aiff" : "")} disabled={busy} onChange={e => { chooseFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
         </> : <>
           <label className="field-group"><span>{copy.jianpu.titleLabel}</span><input className="field-control" value={title} disabled={busy} onChange={e => { edited.current = true; setTitle(e.target.value); }} /></label>
-          <label className="field-group"><span>{copy.jianpu.textLabel}</span><textarea className="field-control" rows={5} value={jianpuText} disabled={busy} onChange={e => { edited.current = true; setJianpuText(e.target.value); }} /></label>
+          <label id="jianpu-input" className="field-group"><span>{copy.jianpu.textLabel}</span><textarea className="field-control" rows={5} value={jianpuText} disabled={busy} onChange={e => { edited.current = true; setJianpuText(e.target.value); }} /></label>
         </>}
         {mode === "file" && kind === "omr" ? <>
           <ScoreRecognitionPreflight state={preflight} compact={freeSimplePath || (preflight.status === "checking" && Boolean(access?.freeTrial.available))} onRetry={() => setPreflightAttempt(n => n + 1)} />
@@ -346,10 +392,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
                       {formatNumber((score.pendingRevision ?? score.currentRevision)?.revisionNumber ?? 0, locale)} | {formatDateTime(score.updatedAt, locale)}
                     </p>
                   </div>
-                  <Link href={`${APP_ROUTES.scores}/${score.id}`} className="button button-secondary button-ghost">
-                    {copy.list.open}
+                  <Link href={scoreTaskDocumentPath(score.id, taskIntent)} className="button button-secondary button-ghost">
+                    {taskIntent ? taskCopy.tasks[taskIntent.task] : copy.list.open}
                   </Link>
-                  <Link href={`${APP_ROUTES.scores}/${score.id}/ensemble`} className="button button-secondary button-ghost">{recognitionCopy.ensembleTitle}</Link>
+                  <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary button-ghost">{recognitionCopy.ensembleTitle}</Link>
                 </div>
               ))}
             </div>

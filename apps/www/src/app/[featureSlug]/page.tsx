@@ -12,7 +12,8 @@ import {
   localizeFeaturePage,
 } from "../../lib/feature-page-localization";
 import { findPlatformFeaturePage, isFeatureAvailable, isFeatureIndexable, platformFeaturePages } from "../../lib/platform-feature-pages";
-import { getAppScoreProjectsUrl, getAppStartConversionUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
+import { getAppScoreProjectsUrl, getAppStartConversionUrl, getAppTaskUrl, getCheckoutUrl, getSupportUrl, siteConfig } from "../../lib/site";
+import { scoreTaskForSource } from "@score/shared";
 import { readSiteLocale } from "../../lib/locale";
 import { getLocalizedAbsoluteUrl, getLocalizedAlternates, localizePublicHref } from "../../lib/locale-routing";
 import type { FeatureProductMediaSlug } from "../../lib/product-media";
@@ -37,6 +38,7 @@ function actionUrl(page: NonNullable<ReturnType<typeof findPlatformFeaturePage>>
   }
 
   const action = page.primaryAction;
+  if (scoreTaskForSource(page.slug)) return getAppTaskUrl(page.slug, locale);
   if (action === "upload") {
     return localizePublicHref(getAppStartConversionUrl(locale), locale);
   }

@@ -120,7 +120,7 @@ test("detail formatting, endpoint invariants, and source-only imports remain int
   ]) {
     assert.ok(source.includes(endpoint), `missing unchanged endpoint ${endpoint}`);
   }
-  assert.match(source, /body: JSON\.stringify\(\{ format, options \}\)/u);
+  assert.match(source, /body: JSON\.stringify\(\{ format, options, expectedCreditCost: confirmedQuote\.creditCost \}\)/u);
   assert.match(source, /body: JSON\.stringify\(\{ pendingRevisionId, /u);
   assert.ok(source.includes('coverageReviewed === true ? { coverageReviewed: true } : {}'), 'coverage acknowledgement is explicit and is not sent when absent');
 

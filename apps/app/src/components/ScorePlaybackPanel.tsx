@@ -45,6 +45,7 @@ export const DEFAULT_PLAYBACK_PRACTICE_SETTINGS: PlaybackPracticeSettings = {
 export type PlaybackPracticeExportActions = {
   midi?: {
     label: string;
+    costHint?: string;
     loadingLabel: string;
     loading: boolean;
     disabled?: boolean;
@@ -52,6 +53,7 @@ export type PlaybackPracticeExportActions = {
   };
   wav?: {
     label: string;
+    costHint?: string;
     loadingLabel: string;
     loading: boolean;
     disabled?: boolean;
@@ -59,6 +61,7 @@ export type PlaybackPracticeExportActions = {
   };
   mp3?: {
     label: string;
+    costHint?: string;
     loadingLabel: string;
     loading: boolean;
     disabled?: boolean;
@@ -525,34 +528,43 @@ export function ScorePlaybackPanel({
             <div className="button-row" role="group" aria-label={copy.practiceExports}>
               <span className="item-meta">{copy.practiceExports}</span>
               {exportActions.midi ? (
-                <button
-                  type="button"
-                  className="button button-secondary button-ghost"
-                  onClick={exportActions.midi.onClick}
-                  disabled={exportActions.midi.loading || exportActions.midi.disabled}
-                >
-                  {exportActions.midi.loading ? exportActions.midi.loadingLabel : exportActions.midi.label}
-                </button>
+                <div className="stack-sm">
+                  <button
+                    type="button"
+                    className="button button-secondary button-ghost"
+                    onClick={exportActions.midi.onClick}
+                    disabled={exportActions.midi.loading || exportActions.midi.disabled}
+                  >
+                    {exportActions.midi.loading ? exportActions.midi.loadingLabel : exportActions.midi.label}
+                  </button>
+                  {exportActions.midi.costHint ? <p className="helper-copy">{exportActions.midi.costHint}</p> : null}
+                </div>
               ) : null}
               {exportActions.wav ? (
-                <button
-                  type="button"
-                  className="button button-secondary button-ghost"
-                  onClick={exportActions.wav.onClick}
-                  disabled={exportActions.wav.loading || exportActions.wav.disabled}
-                >
-                  {exportActions.wav.loading ? exportActions.wav.loadingLabel : exportActions.wav.label}
-                </button>
+                <div className="stack-sm">
+                  <button
+                    type="button"
+                    className="button button-secondary button-ghost"
+                    onClick={exportActions.wav.onClick}
+                    disabled={exportActions.wav.loading || exportActions.wav.disabled}
+                  >
+                    {exportActions.wav.loading ? exportActions.wav.loadingLabel : exportActions.wav.label}
+                  </button>
+                  {exportActions.wav.costHint ? <p className="helper-copy">{exportActions.wav.costHint}</p> : null}
+                </div>
               ) : null}
               {exportActions.mp3 ? (
-                <button
-                  type="button"
-                  className="button button-secondary button-ghost"
-                  onClick={exportActions.mp3.onClick}
-                  disabled={exportActions.mp3.loading || exportActions.mp3.disabled}
-                >
-                  {exportActions.mp3.loading ? exportActions.mp3.loadingLabel : exportActions.mp3.label}
-                </button>
+                <div className="stack-sm">
+                  <button
+                    type="button"
+                    className="button button-secondary button-ghost"
+                    onClick={exportActions.mp3.onClick}
+                    disabled={exportActions.mp3.loading || exportActions.mp3.disabled}
+                  >
+                    {exportActions.mp3.loading ? exportActions.mp3.loadingLabel : exportActions.mp3.label}
+                  </button>
+                  {exportActions.mp3.costHint ? <p className="helper-copy">{exportActions.mp3.costHint}</p> : null}
+                </div>
               ) : null}
             </div>
           ) : null}

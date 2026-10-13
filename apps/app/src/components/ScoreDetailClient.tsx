@@ -12,7 +12,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeApiError, type SupportedLocale } from "@score/i18n";
 import { pitchClassLabel, semitoneCount } from "../lib/music-labels";
-import { APP_ROUTES, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
+import { APP_ROUTES, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
 import type {
   AssignmentPracticeSettings,
   JianpuAccidentalStrategy,
@@ -22,6 +22,7 @@ import type {
   ScoreExportFormat,
   ScoreExportOptions,
   ScoreProjectSettings,
+  ScoreTaskIntent,
   TransposePitchMode,
   TransposeSpellingPolicy,
 } from "@score/shared";
@@ -45,6 +46,7 @@ import type { ScoreDetailMessages } from "../lib/score-detail-messages/types";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { ScoreEnsembleWorkspace } from "./ScoreEnsembleWorkspace";
 import { getEnsembleMessages } from "../lib/ensemble-messages";
+import { checkExportQuote, exportQuoteOption, type ScoreExportQuote } from "../lib/score-export-cost";
 
 type ScoreRevision = {
   id: string;
@@ -421,6 +423,8 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const { locale } = useAppLocale();
   const flow = useFlowMessages();
   const [exportFormat, setExportFormat] = useState("pdf");
+  const [exportQuote, setExportQuote] = useState<ScoreExportQuote | null>(null);
+  const [exportQuoteError, setExportQuoteError] = useState<string | null>(null);
   const navigationLocked = useScoreNavigationLocked();
   const submitLockRef = useRef(false);
   const [lastExportJobId, setLastExportJobId] = useState<string | null>(null);
@@ -441,6 +445,20 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const [transposeMode, setTransposeMode] = useState<"semitones" | "interval" | "targetKey" | "instrument">("semitones");
   const [targetTonic, setTargetTonic] = useState("G");
   const [targetMode, setTargetMode] = useState<(typeof TARGET_MODE_OPTIONS)[number]>("major");
+  const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);
+  useEffect(() => {
+    const intent = readScoreTaskIntent(new URLSearchParams(window.location.search));
+    setTaskIntent(intent);
+    if (!intent) return;
+    if (intent.targetTonic) {
+      setTransposeMode("targetKey");
+      setTargetTonic(intent.targetTonic);
+      if (intent.targetMode) setTargetMode(intent.targetMode);
+    } else if (intent.semitones !== undefined) {
+      setTransposeMode("semitones");
+      setTransposeSemitones(intent.semitones);
+    }
+  }, [scoreId]);
   const [instrumentProfileId, setInstrumentProfileId] = useState<string>(TRANSPOSING_INSTRUMENT_PROFILES[0].id);
   const [transposeSpellingPolicy, setTransposeSpellingPolicy] = useState<TransposeSpellingPolicy>("auto");
   const [transposePitchMode, setTransposePitchMode] = useState<TransposePitchMode>("concert-to-written");
@@ -590,6 +608,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const musicXmlExportCopy = detailCopy.exports.musicXml;
   const pdfExportCopy = detailCopy.exports.pdf;
   const renderedImageExportCopy = detailCopy.exports.image;
+  const exportCostCopy = detailCopy.exports.cost;
   const renderedExportOptionsCopy = detailCopy.renderedExportOptions;
   const audioExportOptionsCopy = detailCopy.audioExportOptions;
   const partExtractCopy = detailCopy.partExtract;
@@ -739,6 +758,46 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const activeExportJobs = scoreJobs.filter(job => job.jobType === "render_export" && (job.status === "queued" || job.status === "processing"));
   const isExportRunning = (format: string) => activeExportJobs.some(job => job.params?.format === format && job.params?.revisionId === payload?.score.currentRevisionId);
   const selectedExportRunning = isExportRunning(exportFormat);
+  const selectedExportQuote = exportQuoteOption(exportQuote, exportFormat);
+  const exportCreditState = scoreJobs.map(job => `${job.id}:${job.status}`).join("|");
+
+  const refreshExportQuote = useCallback(async () => {
+    if (!token || !scoreId) return null;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
+    try {
+      const result = await apiRequest<ScoreExportQuote>(`/api/scores/${scoreId}/export-options`, {
+        headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
+      });
+      if (!result.ok) { setExportQuote(null); setExportQuoteError(result.error); return null; }
+      setExportQuote(result.data); setExportQuoteError(null);
+      return result.data;
+    } finally { window.clearTimeout(timeout); }
+  }, [scoreId, token]);
+
+  useEffect(() => {
+    if (payload?.score.currentRevisionId) void refreshExportQuote();
+  }, [payload?.score.currentRevisionId, exportCreditState, refreshExportQuote]);
+
+  function exportCostHint(format: string) {
+    const option = exportQuoteOption(exportQuote, format);
+    if (!option || !exportQuote) return exportQuoteError ? exportCostCopy.unavailable : exportCostCopy.checking;
+    return `${formatMessage(option.creditCost === 1 ? exportCostCopy.costSingle : exportCostCopy.costMultiple, { count: formatNumber(option.creditCost, locale) })} · ${formatMessage(exportCostCopy.balance, {
+      source: exportCostCopy.sources[exportQuote.balance.creditSource], balance: formatNumber(exportQuote.balance.available, locale),
+    })}`;
+  }
+
+  async function confirmExportQuote(format: string) {
+    const shown = exportQuote;
+    const fresh = await refreshExportQuote();
+    const check = checkExportQuote(shown, fresh, format);
+    if (check !== "ready") {
+      setExportStatus(check === "changed" ? exportCostCopy.priceChanged : check === "restricted" ? exportCostCopy.passFormatUnavailable : check === "insufficient" ? exportCostCopy.insufficient : exportCostCopy.unavailable);
+      setExportStatusKind(check === "changed" ? "success" : "error");
+      return null;
+    }
+    return exportQuoteOption(fresh, format);
+  }
 
   useEffect(() => {
     const job = scoreJobs.find(item => item.id === lastExportJobId);
@@ -864,7 +923,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     return (
       <div className="surface-panel stack-lg">
         <p className="form-status error">{error ?? copy.missing}</p>
-        <Link href={APP_ROUTES.scores} className="button button-secondary">
+        <Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">
           {copy.back}
         </Link>
       </div>
@@ -879,7 +938,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       <h2 className="card-title">{flow.upgrade}</h2>
       <div className="button-row">
         <Link href={upgradePath(currentWorkPath())} className="button button-primary" onClick={() => trackFunnelEvent("upgrade_click", { source: "score_detail_locked" })}>{flow.upgrade}</Link>
-        <Link href={APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link>
+        <Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link>
       </div>
     </section>;
   }
@@ -2150,15 +2209,23 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     try {
     setExportStatus(null);
     setExportStatusKind(null);
+    const confirmedQuote = await confirmExportQuote(format);
+    if (!confirmedQuote) return;
     const result = await apiRequest<ScoreExportQueuePayload>(`/api/scores/${scoreId}/exports`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ format, options }),
+      body: JSON.stringify({ format, options, expectedCreditCost: confirmedQuote.creditCost }),
     });
     if (!result.ok) {
+      const changedQuote = result.data as unknown as ScoreExportQuote | undefined;
+      if (changedQuote?.code === "EXPORT_PRICE_CHANGED") {
+        setExportQuote(changedQuote); setExportQuoteError(null);
+        setExportStatus(exportCostCopy.priceChanged); setExportStatusKind("success"); return;
+      }
+      await refreshExportQuote();
       setExportStatus(result.error);
       setExportStatusKind("error");
       return;
@@ -2167,6 +2234,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     setScoreJobs((current) => [result.data.job, ...current.filter((job) => job.id !== result.data.job.id)]);
     setExportStatus(formatMessage(detailCopy.exports.queued, { format: format.toUpperCase() }));
     setExportStatusKind("success");
+    await refreshExportQuote();
     } catch { setExportStatus(failedMessage); setExportStatusKind("error"); }
     finally { submitLockRef.current = false; setLoading(false); }
   }
@@ -2211,6 +2279,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     setExportingJianpu(true);
     setExportStatus(null);
     setExportStatusKind(null);
+    if (!await confirmExportQuote("jianpu")) { setExportingJianpu(false); return; }
     const projectionQuery = new URLSearchParams({ pitchSystem: jianpuPitchSystem, accidentalStrategy: jianpuAccidentalStrategy });
     const result = await apiRequest<ExportWithAssetsPayload>(`/api/scores/${scoreId}/export/jianpu?${projectionQuery.toString()}`, {
       method: "POST",
@@ -2247,6 +2316,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     setExportingScoreJson(true);
     setExportStatus(null);
     setExportStatusKind(null);
+    if (!await confirmExportQuote("score-json")) { setExportingScoreJson(false); return; }
     const result = await apiRequest<ExportWithAssetsPayload>(`/api/scores/${scoreId}/export/score-json`, {
       method: "POST",
       headers: {
@@ -2369,8 +2439,9 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   if (score.pendingRevision) {
     return (
       <div className="page-stack">
-      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} fileId={score.pendingRevision.musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={`/scores/${encodeURIComponent(score.id)}/ensemble`} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link>}
+      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} fileId={score.pendingRevision.musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link>}
       <ScoreCandidateReviewWorkspace
+        returnTo={taskIntent ? scoreTaskEntryPath(taskIntent) : undefined}
         title={score.title}
         scoreId={score.id}
         revision={score.pendingRevision}
@@ -2408,7 +2479,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }
 
   return (
-    <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={`/scores/${encodeURIComponent(score.id)}/ensemble`} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link> : null}<Link href={APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
+    <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
 {downloadError ? <p className="form-status error">{downloadError}</p> : null}
 <WorkspacePanel name="edit">{currentScoreJson ? (
         <>
@@ -2828,23 +2899,26 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
               exportActions={{
                 midi: {
                   label: exportCopy.button,
+                  costHint: exportCostHint("midi"),
                   loadingLabel: exportCopy.exporting,
                   loading: exportingMidi || isExportRunning("midi"),
-                  disabled: !currentScoreJson || isExportRunning("midi"),
+                  disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "midi")?.canSubmit || isExportRunning("midi"),
                   onClick: () => void handleExportMidi(),
                 },
                 wav: {
                   label: wavExportCopy.button,
+                  costHint: exportCostHint("wav"),
                   loadingLabel: wavExportCopy.exporting,
                   loading: exportingWav || isExportRunning("wav"),
-                  disabled: !currentScoreJson || isExportRunning("wav"),
+                  disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "wav")?.canSubmit || isExportRunning("wav"),
                   onClick: () => void handleExportWav(),
                 },
                 mp3: {
                   label: mp3ExportCopy.button,
+                  costHint: exportCostHint("mp3"),
                   loadingLabel: mp3ExportCopy.exporting,
                   loading: exportingMp3 || isExportRunning("mp3"),
-                  disabled: !currentScoreJson || isExportRunning("mp3"),
+                  disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "mp3")?.canSubmit || isExportRunning("mp3"),
                   onClick: () => void handleExportMp3(),
                 },
               }}
@@ -2874,9 +2948,13 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
 <label className="field-group"><span>{flow.format}</span><select aria-label={flow.format} className="field-select" value={exportFormat} onChange={event => setExportFormat(event.target.value)}>
 {["pdf", "musicxml", "midi", "wav", "mp3", "svg", "png", "jianpu", "score-json"].map(format => <option key={format} value={format}>{format === "jianpu" ? flow.jianpu : format === "score-json" ? "Score JSON" : format.toUpperCase()}</option>)}
 </select></label>
-<button type="button" className="button button-primary" disabled={!currentScoreJson || requestingExport || selectedExportRunning} onClick={() => {
+<p className="helper-copy" aria-live="polite">{exportCostHint(exportFormat)}</p>
+{exportQuoteError ? <div className="stack-sm"><p className="form-status error">{exportCostCopy.unavailable}</p><button type="button" className="button button-secondary" onClick={() => void refreshExportQuote()}>{exportCostCopy.retryQuote}</button></div> : null}
+{selectedExportQuote && !selectedExportQuote.canSubmit ? <div className="stack-sm"><p className="form-status error">{selectedExportQuote.reason === "SCORE_PASS_QUEUED_EXPORT_REQUIRED" ? exportCostCopy.passFormatUnavailable : exportCostCopy.insufficient}</p><Link className="button button-secondary" href={upgradePath(currentWorkPath())}>{flow.upgrade}</Link></div> : null}
+<button type="button" className="button button-primary" disabled={!currentScoreJson || !selectedExportQuote?.canSubmit || requestingExport || selectedExportRunning} onClick={() => {
 const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMusicXml, midi: handleExportMidi, pdf: handleExportPdf, wav: handleExportWav, mp3: handleExportMp3, svg: () => handleExportRenderedImage("svg"), png: () => handleExportRenderedImage("png"), jianpu: handleExportJianpu, "score-json": handleExportScoreJson }; void actions[exportFormat]();
-}}>{requestingExport || selectedExportRunning ? flow.scoreOperations.exporting : flow.export} {exportFormat.toUpperCase()}</button>
+}}>{requestingExport || selectedExportRunning ? `${flow.scoreOperations.exporting} ${exportFormat.toUpperCase()}` : formatMessage(exportCostCopy.generate, { format: exportFormat === "jianpu" ? `${flow.jianpu} TXT` : exportFormat === "score-json" ? "Score JSON" : exportFormat.toUpperCase() })}</button>
+{!["jianpu", "score-json"].includes(exportFormat) ? <p className="helper-copy">{exportCostCopy.regeneration}</p> : null}
 {exportStatus && exportStatusKind ? <p role={exportStatusKind === "error" ? "alert" : "status"} className={`form-status ${exportStatusKind}`}>{exportStatus}</p> : null}
 {activeExportJobs.map(job => <div key={job.id} className="mini-card stack-sm" data-export-progress={job.id}>
   <p role="status">{flow.scoreOperations.exporting} {String(job.params?.format ?? "").toUpperCase()} · {omrCopy.statuses[job.status]}</p>
@@ -3023,7 +3101,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                   className="button button-secondary button-ghost"
                   onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
                 >
-                  {assetCopy.download}
+                  {formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) })}
                 </button>
               </div>
             ))}
@@ -3080,7 +3158,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                           key={`${job.id}-${asset.file.id}`}
                           onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
                         >
-                          {assetCopy.download} {formatAssetKind(asset.assetKind, assetCopy.kinds)}
+                          {formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) })} · {formatAssetKind(asset.assetKind, assetCopy.kinds)}
                         </button>
                       ))}
                       {(job.status === "queued" || job.status === "processing") ? (
@@ -3394,7 +3472,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                       className="button button-secondary button-ghost"
                       onClick={() => void handleDownload(revision.musicxmlFileId!, `${score.title}-v${revision.revisionNumber}.musicxml`)}
                     >
-                      {copy.download}
+                      {formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) })} · MusicXML
                     </button>
                   ) : null}
                   <button

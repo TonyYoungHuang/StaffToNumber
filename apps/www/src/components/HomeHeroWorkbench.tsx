@@ -14,6 +14,7 @@ import styles from "../app/home-page.module.css";
 import { HomeCandidatePreview } from "./HomeCandidatePreview";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { SESSION_CHANGED_EVENT } from "../lib/purchase-flow";
+import { homeCommercialCopy } from "../lib/home-commercial-copy";
 
 type WorkbenchMode = "recognize" | "process" | "transcribe";
 type SessionState = "checking" | "anonymous" | "authenticated";
@@ -67,6 +68,7 @@ function apiErrorOrFallback(error: string | undefined, fallback: string) {
 export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: HomeHeroWorkbenchProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<WorkbenchMode>("recognize");
+  const [pendingFileSelection, setPendingFileSelection] = useState(false);
   const [session, setSession] = useState<SessionState>("checking");
   const flow = usePurchaseFlow();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -112,9 +114,11 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     setMode("recognize");
     document.getElementById("home-workbench")?.scrollIntoView({ behavior: "smooth", block: "center" });
     if (session !== "authenticated") {
+      setPendingFileSelection(true);
       flow.signIn();
       return;
     }
+    setPendingFileSelection(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
     fileInputRef.current?.click();
   }, [session, flow.signIn]);
@@ -149,10 +153,10 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     const handleHashStart = () => {
       if (session !== "checking" && window.location.hash === "#home-workbench") beginFileSelection();
     };
-    handleHashStart();
+    if (!pendingFileSelection) handleHashStart();
     window.addEventListener("hashchange", handleHashStart);
     return () => window.removeEventListener("hashchange", handleHashStart);
-  }, [beginFileSelection, session]);
+  }, [beginFileSelection, session, pendingFileSelection]);
 
   const startPreflight = useCallback(async (file: File) => {
     preflightAbort.current?.abort();
@@ -405,7 +409,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
           <a className={styles.dropZone} href={localizePublicHref(activeMode.href, locale)}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span></a>
         )}
 
-        {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
+        {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
         {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking"}>
           <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span><p>{preflightCopy.freeBody}</p>

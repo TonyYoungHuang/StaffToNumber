@@ -5,6 +5,8 @@ import { getLocaleConfig } from "@score/i18n";
 import { getPricingPlanCatalog, getPurchaseOptionsCopy } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
+import { HomeEntryActions } from "../components/HomeEntryActions";
+import { GuestSampleDemo } from "../components/GuestSampleDemo";
 import { ProductCommercialBackdrop } from "../components/ProductCommercialBackdrop";
 import { PurchasePlanCard } from "../components/PurchasePlanCard";
 import { homeWorkflowLinks } from "../lib/home-on-page";
@@ -22,6 +24,7 @@ import {
   getProductMediaPresentation,
 } from "../lib/product-media";
 import { productCommercial } from "../lib/product-commercial";
+import { homeCommercialCopy } from "../lib/home-commercial-copy";
 import { getAppStartConversionUrl, getCheckoutUrl, siteConfig } from "../lib/site";
 import styles from "./home-page.module.css";
 
@@ -52,6 +55,7 @@ export default async function HomePage() {
   const localization = getHomepageLocalization(locale, siteConfig.release);
   const copy = localization.page;
   const presentation = getHomePresentationCopy(locale);
+  const commercialCopy = homeCommercialCopy[locale];
   const mediaCopy = localization.media;
   const startUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
   const plans = localizeHomepagePlans(locale, getPricingPlanCatalog("en"));
@@ -99,23 +103,10 @@ export default async function HomePage() {
               {copy.heroTitle.map((line, index) => <span className={styles.heroTitleLine} key={line}>{index > 0 ? " " : ""}{line}</span>)}
             </h1>
             <p className={styles.heroIntro}>{copy.heroIntro.join(" ")}</p>
+            <HomeEntryActions scanLabel={commercialCopy.scanAction} sampleLabel={commercialCopy.sampleAction} />
           </div>
         </div>
       </section>
-
-      <div id="product-overview" className={`${styles.section} ${styles.overviewSection}`} lang="en">
-        <div className={styles.container}>
-          <ProductCommercialBackdrop
-            key={locale}
-            title={productCommercial.title}
-            description={productCommercial.description}
-            videoSrc={productCommercial.backgroundVideoSrc}
-            posterSrc={productCommercial.backgroundPosterSrc}
-            filmSrc={productCommercial.videoSrc}
-            pricingHref={localizePublicHref("/pricing", locale)}
-          />
-        </div>
-      </div>
 
       <section className={`${styles.section} ${styles.hero}`} aria-labelledby="workbench-title">
         <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
@@ -133,6 +124,24 @@ export default async function HomePage() {
         </div>
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
       </section>
+
+      <section className={styles.section}>
+        <div className={styles.container}><GuestSampleDemo locale={locale} /></div>
+      </section>
+
+      <div id="product-overview" className={`${styles.section} ${styles.overviewSection}`}>
+        <div className={styles.container}>
+          <ProductCommercialBackdrop
+            key={locale}
+            locale={locale}
+            copy={commercialCopy}
+            videoSrc={productCommercial.backgroundVideoSrc}
+            posterSrc={productCommercial.backgroundPosterSrc}
+            filmSrc={productCommercial.videoSrc}
+            pricingHref={localizePublicHref("/pricing", locale)}
+          />
+        </div>
+      </div>
 
       <section id="demos" className={`${styles.section} ${styles.demoSection}`} aria-labelledby="demos-title">
         <div className={styles.container}>
