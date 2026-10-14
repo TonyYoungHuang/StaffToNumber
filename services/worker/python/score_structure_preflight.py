@@ -22,14 +22,14 @@ DEFAULT_LIMITS = {
     "maxTotalPixels": 30_000_000,
     "maxPages": 60,
     "dpi": 100,
-    "budgetMs": 15_000,
+    "budgetMs": 59_000,
 }
 HARD_LIMITS = {
     "maxPagePixels": 2_000_000,
     "maxTotalPixels": 60_000_000,
     "maxPages": 100,
     "dpi": 150,
-    "budgetMs": 20_000,
+    "budgetMs": 60_000,
 }
 # Reject pathological raster headers before decompression. PDF allocation is
 # independently bounded by maxPagePixels before page.render is invoked.

@@ -13,11 +13,11 @@ export class ScorePreflightError extends Error {
 }
 
 type PreflightQueueOptions = { maxConcurrency: number; queueWaitMs: number; requestsPerMinute: number };
-type PreflightWaiter = { userId: string; grant: () => void; cancel: () => void };
+type PreflightWaiter = { grant: () => void; cancel: () => void };
 
-/** Per-instance FIFO resource queue. One running check per user, no durable jobs or billing. */
+/** Per-instance FIFO resource queue. Capacity is shared across all users, without per-user serialization. */
 export class ScorePreflightQueue {
-  private readonly activeUsers = new Set<string>();
+  private activeCount = 0;
   private readonly attempts = new Map<string, number[]>();
   private readonly waiting: PreflightWaiter[] = [];
 
@@ -27,13 +27,16 @@ export class ScorePreflightQueue {
     if (signal?.aborted) throw this.cancelled();
     const now = Date.now();
     const options = this.options();
-    for (const [key, dates] of this.attempts) if (!dates.some(date => date > now - 60_000)) this.attempts.delete(key);
-    const recent = (this.attempts.get(userId) ?? []).filter(date => date > now - 60_000);
-    if (recent.length >= options.requestsPerMinute) {
-      throw new ScorePreflightError("SCORE_PREFLIGHT_RATE_LIMIT", "Too many free structure checks. Please retry in one minute.", 429);
+    if (options.requestsPerMinute > 0) {
+      for (const [key, dates] of this.attempts) if (!dates.some(date => date > now - 60_000)) this.attempts.delete(key);
+      const recent = (this.attempts.get(userId) ?? []).filter(date => date > now - 60_000);
+      if (recent.length >= options.requestsPerMinute) {
+        throw new ScorePreflightError("SCORE_PREFLIGHT_RATE_LIMIT", "Too many free structure checks. Please retry in one minute.", 429);
+      }
+      this.attempts.set(userId, [...recent, now]);
+    } else {
+      this.attempts.clear();
     }
-    // Count actual requests, including queued requests, to bound each user's waiters.
-    this.attempts.set(userId, [...recent, now]);
     return new Promise<() => void>((resolve, reject) => {
       let settled = false;
       const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", aborted); };
@@ -47,15 +50,14 @@ export class ScorePreflightQueue {
       };
       const aborted = () => fail(this.cancelled());
       const waiter: PreflightWaiter = {
-        userId,
         cancel: aborted,
         grant: () => {
           if (settled) return;
-          settled = true; cleanup(); remove(); this.activeUsers.add(userId);
+          settled = true; cleanup(); remove(); this.activeCount += 1;
           let released = false;
           resolve(() => {
             if (released) return;
-            released = true; this.activeUsers.delete(userId); this.drain();
+            released = true; this.activeCount -= 1; this.drain();
           });
         },
       };
@@ -71,9 +73,8 @@ export class ScorePreflightQueue {
 
   private drain() {
     const maxConcurrency = this.options().maxConcurrency;
-    while (this.activeUsers.size < maxConcurrency) {
-      // Skip a user's queued follow-up while that user's check runs, allowing other users through.
-      const next = this.waiting.find(waiter => !this.activeUsers.has(waiter.userId));
+    while (this.activeCount < maxConcurrency) {
+      const next = this.waiting[0];
       if (!next) return;
       next.grant();
     }
@@ -152,7 +153,7 @@ export async function runScoreStructurePreflight(input: { sourcePath: string; wo
   const responsePath = path.join(input.workspace, "response.json");
   await fs.writeFile(requestPath, JSON.stringify({ sourcePath: input.sourcePath, limits: {
     maxPagePixels: 1_000_000, maxTotalPixels: 30_000_000,
-    maxPages: config.scorePreflightMaxPages, dpi: 100, budgetMs: Math.min(15_000, Math.max(100, config.scorePreflightTimeoutMs - 1000)),
+    maxPages: config.scorePreflightMaxPages, dpi: 100, budgetMs: Math.max(100, config.scorePreflightTimeoutMs - 1000),
   } }), { flag: "wx" });
   await new Promise<void>((resolve, reject) => {
     let failure: ScorePreflightError | undefined;

@@ -15,6 +15,11 @@ function positiveInteger(value: string | undefined, fallback: number) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function nonNegativeInteger(value: string | undefined, fallback: number) {
+  const parsed = Number(value ?? fallback);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 function storageBackend(value: string | undefined) {
   return value?.trim().toLowerCase() === "s3" ? "s3" as const : "local" as const;
 }
@@ -71,7 +76,7 @@ export const config = {
   workerHeartbeatStaleMs: Number(process.env.WORKER_HEARTBEAT_STALE_MS ?? 120000),
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== "false",
-  rateLimitMax: positiveInteger(process.env.RATE_LIMIT_MAX, 300),
+  rateLimitMax: nonNegativeInteger(process.env.RATE_LIMIT_MAX, 0),
   rateLimitTimeWindowMs: positiveInteger(process.env.RATE_LIMIT_TIME_WINDOW_MS, 60000),
   redisUrl: process.env.RATE_LIMIT_REDIS_URL ?? process.env.REDIS_URL ?? "",
   redisConnectTimeoutMs: positiveInteger(process.env.REDIS_CONNECT_TIMEOUT_MS, 2000),
@@ -98,11 +103,11 @@ export const config = {
   omrPdfMaxTotalPixels: positiveInteger(process.env.OMR_PDF_MAX_TOTAL_PIXELS, 120_000_000),
   scorePreflightPythonCommand: process.env.SCORE_PREFLIGHT_PYTHON_COMMAND?.trim() || (process.platform === "win32" ? "python" : "python3"),
   scorePreflightAdapterPath: process.env.SCORE_PREFLIGHT_ADAPTER_PATH?.trim() || "",
-  scorePreflightTimeoutMs: positiveInteger(process.env.SCORE_PREFLIGHT_TIMEOUT_MS, 25_000),
+  scorePreflightTimeoutMs: positiveInteger(process.env.SCORE_PREFLIGHT_TIMEOUT_MS, 60_000),
   scorePreflightMaxPages: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_PAGES, 60),
-  scorePreflightRequestsPerMinute: positiveInteger(process.env.SCORE_PREFLIGHT_REQUESTS_PER_MINUTE, 6),
-  scorePreflightMaxConcurrency: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_CONCURRENCY, 1),
-  scorePreflightQueueWaitMs: positiveInteger(process.env.SCORE_PREFLIGHT_QUEUE_WAIT_MS, 30_000),
+  scorePreflightRequestsPerMinute: nonNegativeInteger(process.env.SCORE_PREFLIGHT_REQUESTS_PER_MINUTE, 0),
+  scorePreflightMaxConcurrency: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_CONCURRENCY, 3),
+  scorePreflightQueueWaitMs: positiveInteger(process.env.SCORE_PREFLIGHT_QUEUE_WAIT_MS, 120_000),
   uploadMalwareScan: (process.env.UPLOAD_MALWARE_SCAN?.trim().toLowerCase() || "off") as "on" | "off",
   clamAvCommand: process.env.CLAMAV_COMMAND ?? "",
   clamAvHost: process.env.CLAMAV_HOST ?? "",

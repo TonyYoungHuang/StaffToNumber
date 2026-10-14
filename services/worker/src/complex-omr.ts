@@ -5,7 +5,8 @@ import path from "node:path";
 import type { ScoreJson } from "@score/shared";
 import { AudiverisProcessError, runAudiverisWithRotationFallback, type RunAudiverisInput } from "./audiveris-runner.js";
 import { findAudiverisMusicXmlOutput, readAudiverisMusicXml } from "./audiveris-output.js";
-import { withOmrEngineSlot } from "./omr-engine-gate.js";
+import { homrEngineSlotWeight, withOmrEngineSlot } from "./omr-engine-gate.js";
+import { createEngineExecutionClock } from "./engine-execution-clock.js";
 
 export type RegionBox = { x: number; y: number; width: number; height: number };
 type PreparedPage = { page: number; width: number; height: number; imagePath: string };
@@ -57,6 +58,7 @@ export type ComplexOmrInput = {
   imageMagickCommand?: string;
   audiveris: Omit<RunAudiverisInput, "inputPath" | "outputDir" | "timeoutMs" | "isCancelled">;
   isCancelled?: () => boolean;
+  onQueueWait?: (elapsedMs: number) => void;
   onProgress?: (update: { message: string; attempts: number; page?: number; totalPages?: number; stage?: "prepare-pages" | "layout" | "recognize" | "restore-image" | "verify" }) => void;
   /** Injectable operations make scheduler/coverage tests independent of models. */
   adapter?: <T>(action: string, request: Record<string, unknown>, timeoutMs: number) => Promise<T>;
@@ -75,10 +77,10 @@ function containedPath(directory: string, filename: string) {
   return resolved;
 }
 
-export async function runComplexAdapter<T>(input: Pick<ComplexOmrInput, "pythonCommand" | "pythonArgsPrefix" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled">, action: string, request: Record<string, unknown>, timeoutMs: number): Promise<T> {
+export async function runComplexAdapter<T>(input: Pick<ComplexOmrInput, "pythonCommand" | "pythonArgsPrefix" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled" | "onQueueWait">, action: string, request: Record<string, unknown>, timeoutMs: number): Promise<T> {
   if (["orient", "inventory", "recognize"].includes(action)) {
     return withOmrEngineSlot({
-      timeoutMs, isCancelled: input.isCancelled,
+      timeoutMs, isCancelled: input.isCancelled, slots: homrEngineSlotWeight(), onQueueWait: input.onQueueWait,
       cancelledError: () => new AudiverisProcessError("Complex recognition was cancelled while waiting for the OMR engine.", "cancelled"),
       timeoutError: () => new AudiverisProcessError("Complex recognition budget was exhausted while waiting for the OMR engine.", "timeout"),
     }, (remaining) => runComplexAdapterWithSlot<T>(input, action, request, remaining));
@@ -86,16 +88,17 @@ export async function runComplexAdapter<T>(input: Pick<ComplexOmrInput, "pythonC
   return runComplexAdapterWithSlot<T>(input, action, request, timeoutMs);
 }
 
-async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "pythonCommand" | "pythonArgsPrefix" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled">, action: string, request: Record<string, unknown>, timeoutMs: number): Promise<T> {
+async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "pythonCommand" | "pythonArgsPrefix" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled" | "onQueueWait">, action: string, request: Record<string, unknown>, timeoutMs: number): Promise<T> {
   fs.mkdirSync(input.outputDir, { recursive: true });
   const requestPath = path.join(input.outputDir, `${action}-${randomUUID()}.request.json`);
   const resultPath = requestPath.replace(/\.request\.json$/u, ".result.json");
   fs.writeFileSync(requestPath, JSON.stringify({ ...request, homrSourceDir: input.homrSourceDir }), "utf8");
   if (input.isCancelled?.()) throw new AudiverisProcessError("Complex recognition was cancelled before launch.", "cancelled");
   await new Promise<void>((resolve, reject) => {
+    const clock = createEngineExecutionClock({ command: input.pythonCommand, timeoutMs, onQueueWait: input.onQueueWait, onTimeout: () => terminate("timeout") });
     const child = spawn(input.pythonCommand, [...(input.pythonArgsPrefix ?? []), input.adapterPath, action, requestPath, resultPath], {
       shell: false, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "ignore", "pipe"],
-      env: { ...process.env, PYTHONUTF8: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
+      env: { ...process.env, ...clock.environment, PYTHONUTF8: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
     });
     let stderr = "";
     let error: AudiverisProcessError | undefined;
@@ -110,15 +113,15 @@ async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "python
     const terminate = (reason: "timeout" | "cancelled") => {
       if (settled || error) return;
       error = new AudiverisProcessError(reason === "cancelled" ? "Complex recognition was cancelled." : `Complex ${action} exceeded its remaining execution budget.`, reason);
+      clock.stop();
       kill("SIGTERM");
       forceKill = setTimeout(() => kill("SIGKILL"), 2_000);
       forceKill.unref();
     };
-    const timer = setTimeout(() => terminate("timeout"), Math.max(1, timeoutMs));
     const poll = setInterval(() => { if (input.isCancelled?.()) terminate("cancelled"); }, 100);
     poll.unref();
-    const cleanup = () => { clearTimeout(timer); clearInterval(poll); if (forceKill) clearTimeout(forceKill); };
-    child.stderr.on("data", (chunk) => { stderr = (stderr + String(chunk)).slice(-16_000); });
+    const cleanup = () => { stderr = (stderr + clock.finish()).slice(-16_000); clearInterval(poll); if (forceKill) clearTimeout(forceKill); };
+    child.stderr.on("data", (chunk) => { stderr = (stderr + clock.stderr(chunk)).slice(-16_000); });
     child.on("error", (cause) => {
       if (settled) return;
       settled = true;
@@ -156,7 +159,8 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
   }
   fs.mkdirSync(input.outputDir, { recursive: true });
   const startedAt = Date.now();
-  const deadline = startedAt + input.timeoutMs;
+  let deadline = startedAt + input.timeoutMs;
+  const onQueueWait = (elapsedMs: number) => { deadline += elapsedMs; input.onQueueWait?.(elapsedMs); };
   const assemblyReserve = Math.min(30_000, Math.max(2_000, input.timeoutMs * .05));
   const attempts: ComplexAttempt[] = [];
   const gaps: CoverageGap[] = [];
@@ -167,7 +171,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
     if (input.isCancelled?.()) throw new AudiverisProcessError("Complex recognition was cancelled.", "cancelled");
     return Math.max(0, deadline - Date.now() - reserve);
   };
-  const call = input.adapter ?? (<T>(action: string, request: Record<string, unknown>, timeoutMs: number) => runComplexAdapter<T>(input, action, request, timeoutMs));
+  const call = input.adapter ?? (<T>(action: string, request: Record<string, unknown>, timeoutMs: number) => runComplexAdapter<T>({ ...input, onQueueWait }, action, request, timeoutMs));
   const addGap = (value: Omit<CoverageGap, "id">) => gaps.push({ ...value, id: `gap-${gaps.length + 1}` });
   const layoutPenalty = (analysis: XmlAnalysis, staffs: InventoryStaff[], systems: number, measures?: number | null, groups?: number[]) =>
     recognitionStructurePenalty(analysis, staffs, systems, measures, groups) - analysis.issues.length * 5;
@@ -221,7 +225,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
           if (engine === "homr") return call<{ musicXmlPath: string; analysis: XmlAnalysis }>("recognize", { imagePath }, budget);
           if (input.recognizeAudiveris) return input.recognizeAudiveris(imagePath, outputDir, budget);
           fs.mkdirSync(outputDir, { recursive: true });
-          const recognizedRun = await runAudiverisWithRotationFallback({ ...input.audiveris, imageMagickCommand: input.imageMagickCommand ?? "convert", allowedRotations: [0], inputPath: imagePath, outputDir, timeoutMs: budget, isCancelled: input.isCancelled,
+          const recognizedRun = await runAudiverisWithRotationFallback({ ...input.audiveris, imageMagickCommand: input.imageMagickCommand ?? "convert", allowedRotations: [0], inputPath: imagePath, outputDir, timeoutMs: budget, isCancelled: input.isCancelled, onQueueWait,
             onProgress: stage => input.onProgress?.({ stage, message: "Recognizing musical content.", attempts: attempts.length, page, totalPages: prepared.sourcePageCount }) });
           const exported = findAudiverisMusicXmlOutput(recognizedRun.recognitionOutputDir ?? outputDir, { rotationDegrees: recognizedRun.recognitionOutputDir ? 0 : recognizedRun.appliedRotationDegrees });
           if (!exported) throw new Error("Audiveris did not export a score for this region.");

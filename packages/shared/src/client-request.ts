@@ -48,7 +48,7 @@ export function sharedInFlightRequest<T>(key: string, request: (signal: AbortSig
   });
 }
 
-export const SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS = 120_000;
+export const SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS = 240_000;
 export const SCORE_READ_TIMEOUT_MS = 90_000;
 const fileDigests = new WeakMap<File, Promise<string>>();
 

@@ -45,18 +45,6 @@ export function resolveApiRateLimitPolicy(method: string, url: string): ApiRateL
   if (normalizedMethod === "POST" && path === "/api/copyright/complaints/lookup") {
     return { id: "copyright-lookup", max: 20, timeWindowMs: HOUR };
   }
-  if (normalizedMethod === "POST" && /^\/api\/files(?:\/|$)/u.test(path)) {
-    return { id: "upload", max: 20, timeWindowMs: HOUR };
-  }
-  if (normalizedMethod === "POST" && /^\/api\/jobs(?:\/|$)/u.test(path)) {
-    return { id: "job", max: 60, timeWindowMs: HOUR };
-  }
-  if (normalizedMethod === "POST" && /\/api\/scores\/shared\/[^/]+\/assignments\/[^/]+\/submissions(?:\/|$)/u.test(path)) {
-    return { id: "submission", max: 30, timeWindowMs: HOUR };
-  }
-  if (normalizedMethod === "POST" && /\/api\/scores\/[^/]+\/(shares|assignments)(?:\/|$)/u.test(path)) {
-    return { id: "score-sharing", max: 60, timeWindowMs: HOUR };
-  }
   if (normalizedMethod === "POST" && /^\/api\/payments\/(checkout|orders)/u.test(path)) {
     return { id: "payment", max: 20, timeWindowMs: 15 * MINUTE };
   }
@@ -104,7 +92,8 @@ export async function registerApiRateLimiting(app: FastifyInstance) {
     max: async (request) => resolveApiRateLimitPolicy(request.method, request.url).max,
     timeWindow: async (request) => resolveApiRateLimitPolicy(request.method, request.url).timeWindowMs,
     keyGenerator: createApiRateLimitKey,
-    allowList: (request) => request.method === "OPTIONS" || request.url === "/health" || request.url === "/metrics",
+    allowList: (request) => request.method === "OPTIONS" || request.url === "/health" || request.url === "/metrics"
+      || resolveApiRateLimitPolicy(request.method, request.url).max === 0,
     skipOnError: false,
     errorResponseBuilder: (_request, context) => ({
       statusCode: 429,

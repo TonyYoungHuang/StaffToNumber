@@ -201,7 +201,7 @@ class StructurePreflightTest(unittest.TestCase):
         filename = self.directory / "frames.tiff"
         sheet((1,)).save(filename, save_all=True, append_images=[sheet((1,))])
         with patch.object(preview.time, "monotonic", side_effect=[0, 0, 0, 16, 16]):
-            result = self.inspect(name="frames.tiff")
+            result = self.inspect(name="frames.tiff", limits={"budgetMs": 15_000})
         self.assertEqual(result["pagesAnalyzed"], 1)
         self.assertEqual(result["recommendation"], "uncertain")
         self.assertFalse(result["complete"])

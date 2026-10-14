@@ -19,8 +19,9 @@ test("sensitive API workflows receive separate production rate-limit policies", 
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/auth/forgot-password"), { id: "password", max: 5, timeWindowMs: 900_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("GET", "/api/account/data-export"), { id: "privacy-export", max: 5, timeWindowMs: 3_600_000 });
   assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/account/deletion"), { id: "account-deletion", max: 5, timeWindowMs: 3_600_000 });
-  assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/files"), { id: "upload", max: 20, timeWindowMs: 3_600_000 });
-  assert.equal(resolveApiRateLimitPolicy("POST", "/api/scores/shared/token/assignments/a/submissions").id, "submission");
+  assert.deepEqual(resolveApiRateLimitPolicy("POST", "/api/payments/orders"), { id: "payment", max: 20, timeWindowMs: 900_000 });
+  assert.equal(resolveApiRateLimitPolicy("POST", "/api/files").id, "default");
+  assert.equal(resolveApiRateLimitPolicy("POST", "/api/scores/shared/token/assignments/a/submissions").id, "default");
   assert.equal(resolveApiRateLimitPolicy("GET", "/api/scores").id, "default");
 });
 
@@ -65,6 +66,52 @@ test("the API limiter returns standard 429 metadata after the authentication bud
   assert.ok(blocked.headers["retry-after"]);
 
   await app.close();
+});
+
+test("uploads, legacy jobs, score sharing and polling pass their former throughput budgets", async () => {
+  const previous = config.rateLimitMax;
+  config.rateLimitMax = 0;
+  const app = Fastify({ logger: false });
+  try {
+    await registerApiRateLimiting(app);
+    const workflows = [
+      { method: "POST" as const, url: "/api/files", previousBudget: 20 },
+      { method: "POST" as const, url: "/api/jobs", previousBudget: 60 },
+      { method: "POST" as const, url: "/api/scores/shared/token/assignments/a/submissions", previousBudget: 30 },
+      { method: "POST" as const, url: "/api/scores/document/shares", previousBudget: 60 },
+      { method: "GET" as const, url: "/api/scores/jobs/poll", previousBudget: 300 },
+    ];
+    for (const workflow of workflows) app.route({ method: workflow.method, url: workflow.url, handler: async () => ({ ok: true }) });
+    await app.ready();
+    for (const workflow of workflows) {
+      for (let attempt = 0; attempt <= workflow.previousBudget; attempt += 1) {
+        const response = await app.inject({ method: workflow.method, url: workflow.url });
+        assert.equal(response.statusCode, 200, `${workflow.url}: ${response.body}`);
+      }
+    }
+  } finally {
+    config.rateLimitMax = previous;
+    await app.close();
+  }
+});
+
+test("an explicit general throughput budget remains configurable without changing security policies", async () => {
+  const previous = config.rateLimitMax;
+  config.rateLimitMax = 2;
+  const app = Fastify({ logger: false });
+  try {
+    await registerApiRateLimiting(app);
+    app.get("/api/scores", async () => ({ ok: true }));
+    await app.ready();
+    assert.equal((await app.inject("/api/scores")).statusCode, 200);
+    assert.equal((await app.inject("/api/scores")).statusCode, 200);
+    assert.equal((await app.inject("/api/scores")).statusCode, 429);
+    assert.equal(resolveApiRateLimitPolicy("POST", "/api/auth/login").max, 10);
+    assert.equal(resolveApiRateLimitPolicy("POST", "/api/payments/orders").max, 20);
+  } finally {
+    config.rateLimitMax = previous;
+    await app.close();
+  }
 });
 
 test("Redis rate limiting validates its protocol and fails closed when the configured store is unavailable", async () => {

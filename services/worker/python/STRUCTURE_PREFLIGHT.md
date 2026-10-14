@@ -116,10 +116,11 @@ same directory for the pure line detector import.
 ```dotenv
 SCORE_PREFLIGHT_PYTHON_COMMAND=/opt/score-preflight/bin/python
 SCORE_PREFLIGHT_ADAPTER_PATH=/app/services/worker/python/score_structure_preflight.py
-SCORE_PREFLIGHT_TIMEOUT_MS=25000
+SCORE_PREFLIGHT_TIMEOUT_MS=60000
 SCORE_PREFLIGHT_MAX_PAGES=60
-SCORE_PREFLIGHT_MAX_CONCURRENCY=2
-SCORE_PREFLIGHT_REQUESTS_PER_MINUTE=6
+SCORE_PREFLIGHT_MAX_CONCURRENCY=3
+SCORE_PREFLIGHT_REQUESTS_PER_MINUTE=0
+SCORE_PREFLIGHT_QUEUE_WAIT_MS=120000
 ```
 
 The API launches the configured interpreter with arguments and without a shell.

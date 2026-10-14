@@ -1,5 +1,5 @@
 import type { PlaybackDocument, PlaybackNoteEvent } from "@score/shared";
-import { spawn } from "node:child_process";
+import { runNativeEngine } from "./native-engine-runner.js";
 
 const DEFAULT_SAMPLE_RATE = 44100;
 const DEFAULT_TEMPO_BPM = 96;
@@ -190,35 +190,7 @@ export function convertWavToMp3File(input: {
 
     const bitrate = Math.min(320, Math.max(96, Math.round(input.bitrateKbps ?? 192)));
     const args = ["-y", "-i", input.sourceWavPath, "-codec:a", "libmp3lame", "-b:a", `${bitrate}k`, input.targetMp3Path];
-    const child = spawn(input.ffmpegCommand, args, {
-      shell: true,
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error(`ffmpeg timed out after ${input.timeoutMs} ms.`));
-    }, input.timeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-      reject(new Error(`ffmpeg exited with code ${code}. ${stderr || stdout}`.trim()));
-    });
+    void runNativeEngine({ command: input.ffmpegCommand, args, label: "ffmpeg", timeoutMs: input.timeoutMs, shell: true }).then(resolve, reject);
   });
 }
 
@@ -255,34 +227,6 @@ export function renderMidiToWavWithFluidSynth(input: {
       input.soundFontPath,
       input.sourceMidiPath,
     ];
-    const child = spawn(input.fluidSynthCommand, args, {
-      shell: true,
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error(`FluidSynth timed out after ${input.timeoutMs} ms.`));
-    }, input.timeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-      reject(new Error(`FluidSynth exited with code ${code}. ${stderr || stdout}`.trim()));
-    });
+    void runNativeEngine({ command: input.fluidSynthCommand, args, label: "FluidSynth", timeoutMs: input.timeoutMs, shell: true }).then(resolve, reject);
   });
 }

@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { runNativeEngine } from "./native-engine-runner.js";
 
 export async function renderMusicXmlWithMuseScore(input: {
   musicXmlPath: string;
@@ -16,52 +16,11 @@ export async function renderMusicXmlWithMuseScore(input: {
   }
 
   const args = buildMuseScoreRenderArgs(input);
-  const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn(input.museScoreCommand, args, {
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    const timeout = setTimeout(() => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      child.kill("SIGKILL");
-      reject(new Error(`MuseScore timed out after ${input.timeoutMs} ms.`));
-    }, input.timeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", (error) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      clearTimeout(timeout);
-      if (code !== 0) {
-        reject(new Error(`MuseScore exited with code ${code}. ${stderr || stdout}`.trim()));
-        return;
-      }
-
-      resolve({ stdout, stderr });
-    });
+  const result = await runNativeEngine({
+    command: input.museScoreCommand,
+    args,
+    label: "MuseScore",
+    timeoutMs: input.timeoutMs,
   });
 
   if (fs.existsSync(input.outputPath)) {

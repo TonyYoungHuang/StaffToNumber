@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { withOmrEngineSlot } from "./omr-engine-gate.js";
+import { createEngineExecutionClock } from "./engine-execution-clock.js";
 
 export type AudiverisFailureReason = "cancelled" | "timeout" | "spawn" | "exit";
 
@@ -28,6 +29,7 @@ export type RunAudiverisInput = {
   maxHeapMb?: number;
   isCancelled?: () => boolean;
   cancellationPollMs?: number;
+  onQueueWait?: (elapsedMs: number) => void;
 };
 
 type RunAudiverisWithRotationFallbackInput = RunAudiverisInput & {
@@ -76,6 +78,7 @@ export function runAudiverisCommand(input: RunAudiverisInput) {
   return withOmrEngineSlot({
     timeoutMs: input.timeoutMs,
     isCancelled: input.isCancelled,
+    onQueueWait: input.onQueueWait,
     cancelledError: () => new AudiverisProcessError("Audiveris processing was cancelled while waiting for the OMR engine.", "cancelled"),
     timeoutError: () => new AudiverisProcessError("Audiveris execution budget was exhausted while waiting for the OMR engine.", "timeout"),
   }, (remaining) => runAudiverisCommandWithSlot({ ...input, timeoutMs: remaining }));
@@ -93,8 +96,10 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
     }
 
     const args = [...(input.commandArgsPrefix ?? []), "-batch", "-export", "-output", input.outputDir, input.inputPath];
+    const clock = createEngineExecutionClock({ command: input.command, timeoutMs: input.timeoutMs, onQueueWait: input.onQueueWait,
+      onTimeout: () => terminate(new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout")) });
     const child = spawn(input.command, args, {
-      env: buildAudiverisEnvironment(input.maxHeapMb),
+      env: { ...buildAudiverisEnvironment(input.maxHeapMb), ...clock.environment },
       shell: false,
       detached: process.platform !== "win32",
       windowsHide: true,
@@ -107,7 +112,7 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
     let forceKillTimer: NodeJS.Timeout | undefined;
 
     const cleanup = () => {
-      clearTimeout(timeout);
+      stderr = appendOutput(stderr, clock.finish());
       clearInterval(cancellationPoll);
       if (forceKillTimer) clearTimeout(forceKillTimer);
     };
@@ -120,7 +125,7 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
     const terminate = (error: AudiverisProcessError) => {
       if (settled || terminationError) return;
       terminationError = error;
-      clearTimeout(timeout);
+      clock.stop();
       clearInterval(cancellationPoll);
       const kill = (signal: NodeJS.Signals) => {
         try {
@@ -134,9 +139,6 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
       }, 2_000);
       forceKillTimer.unref();
     };
-    const timeout = setTimeout(() => {
-      terminate(new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout"));
-    }, input.timeoutMs);
     const cancellationPoll = setInterval(() => {
       if (input.isCancelled?.()) {
         terminate(new AudiverisProcessError("Audiveris processing was cancelled.", "cancelled"));
@@ -148,7 +150,7 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
       stdout = appendOutput(stdout, chunk);
     });
     child.stderr?.on("data", (chunk) => {
-      stderr = appendOutput(stderr, chunk);
+      stderr = appendOutput(stderr, clock.stderr(chunk));
     });
     child.on("error", (error) => {
       fail(new AudiverisProcessError(`Audiveris could not start: ${error.message}`, "spawn"));
@@ -189,7 +191,8 @@ export async function runAudiverisWithRotationFallback(
     );
   }
 
-  const deadline = Date.now() + input.timeoutMs;
+  let deadline = Date.now() + input.timeoutMs;
+  const onQueueWait = (elapsedMs: number) => { deadline += elapsedMs; input.onQueueWait?.(elapsedMs); };
   let lastError: AudiverisProcessError | undefined;
   for (const rotation of input.allowedRotations ?? [0, 90, 180, 270] as const) {
     if (input.isCancelled?.()) {
@@ -224,6 +227,7 @@ export async function runAudiverisWithRotationFallback(
         inputPath: normalizedPath,
         outputDir: attemptDir,
         timeoutMs: remainingBeforeAudiveris,
+        onQueueWait,
       });
       return { ...result, appliedRotationDegrees: rotation };
     } catch (error) {
@@ -253,7 +257,7 @@ export async function runAudiverisWithRotationFallback(
       if (remainingAfterRecovery <= 0) throw new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout");
       try {
         const result = await runAudiverisCommand({
-          ...input, inputPath: recoveryPath, outputDir: recoveryDir, timeoutMs: remainingAfterRecovery,
+          ...input, inputPath: recoveryPath, outputDir: recoveryDir, timeoutMs: remainingAfterRecovery, onQueueWait,
         });
         return { ...result, appliedRotationDegrees: rotation, recognitionOutputDir: recoveryDir, rasterScale: 2 };
       } catch (recoveryError) {

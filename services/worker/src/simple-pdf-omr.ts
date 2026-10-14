@@ -5,7 +5,7 @@ import { AudiverisProcessError, AudiverisRecognitionError, runAudiverisWithRotat
 import { findAudiverisMusicXmlOutput, readAudiverisMusicXml } from "./audiveris-output.js";
 import { runComplexAdapter, type ComplexOmrInput } from "./complex-omr.js";
 
-type AdapterInput = Pick<ComplexOmrInput, "pythonCommand" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled">;
+type AdapterInput = Pick<ComplexOmrInput, "pythonCommand" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled" | "onQueueWait">;
 type Page = { page: number; imagePath: string; width: number; height: number; renderDpi: number };
 type SkippedPage = { page: number; reason: "NO_MUSIC_RECOGNIZED" };
 export type SimplePdfResult = AudiverisRunResult & {
@@ -33,14 +33,15 @@ export async function runSimplePdfOmr(input: AdapterInput & {
   recognize?: typeof runAudiverisWithRotationFallback;
   onProgress?: (update: { stage: "prepare-pages" | "recognize" | "restore-image" | "verify"; page?: number; totalPages: number }) => void;
 }): Promise<SimplePdfResult> {
-  const deadline = Date.now() + input.timeoutMs;
+  let deadline = Date.now() + input.timeoutMs;
+  const onQueueWait = (elapsedMs: number) => { deadline += elapsedMs; input.onQueueWait?.(elapsedMs); };
   const remaining = () => {
     if (input.isCancelled?.()) throw new AudiverisProcessError("PDF recognition was cancelled.", "cancelled");
     const budget = deadline - Date.now();
     if (budget <= 0) throw new AudiverisProcessError("PDF recognition exceeded the total job budget.", "timeout");
     return budget;
   };
-  const call = input.adapter ?? (<T>(action: string, request: Record<string, unknown>, timeoutMs: number) => runComplexAdapter<T>(input, action, request, timeoutMs));
+  const call = input.adapter ?? (<T>(action: string, request: Record<string, unknown>, timeoutMs: number) => runComplexAdapter<T>({ ...input, onQueueWait }, action, request, timeoutMs));
   input.onProgress?.({ stage: "prepare-pages", totalPages: input.renderPlan.length });
   const prepared = await call<{ pages: Page[]; sourcePageCount: number }>("prepare", {
     inputPath: input.inputPath, outputDir: path.join(input.outputDir, "pages"),
@@ -60,7 +61,7 @@ export async function runSimplePdfOmr(input: AdapterInput & {
     let result: AudiverisRunResult;
     try {
       result = await recognize({ ...input.audiveris, inputPath: page.imagePath, outputDir,
-        imageMagickCommand: input.imageMagickCommand, timeoutMs: remaining(), isCancelled: input.isCancelled,
+        imageMagickCommand: input.imageMagickCommand, timeoutMs: remaining(), isCancelled: input.isCancelled, onQueueWait,
         onProgress: stage => input.onProgress?.({ stage, page: page.page, totalPages: prepared.sourcePageCount }) });
     } catch (error) {
       if (!(error instanceof AudiverisRecognitionError)) throw error;

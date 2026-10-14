@@ -8,7 +8,7 @@ import { getScoreExportOptions, scoreExportPriceMatches } from "../lib/score-exp
 import fs from "node:fs";
 import path from "node:path";
 import { isIP } from "node:net";
-import { spawn } from "node:child_process";
+import { runNativeEngine } from "../lib/native-engine-runner.js";
 import {
   migrateScoreJson,
   MusicXmlPreservationError,
@@ -291,64 +291,35 @@ function normalizeScoreExportRequest(input: unknown): { format: ScoreExportForma
   return { format: format as ScoreExportFormat, options };
 }
 
-function checkExternalTool(input: { id: string; label: string; command: string; versionArgs?: string[]; timeoutMs?: number }) {
-  return new Promise<{ id: string; label: string; configured: boolean; available: boolean; message: string }>((resolve) => {
-    if (!input.command) {
-      resolve({
-        id: input.id,
-        label: input.label,
-        configured: false,
-        available: false,
-        message: `${input.label} is not configured.`,
-      });
-      return;
-    }
-
-    const child = spawn(input.command, input.versionArgs ?? ["--version"], {
-      shell: true,
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill();
-      resolve({
-        id: input.id,
-        label: input.label,
-        configured: true,
-        available: false,
-        message: `${input.label} did not answer before timeout.`,
-      });
-    }, input.timeoutMs ?? 8000);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      resolve({
-        id: input.id,
-        label: input.label,
-        configured: true,
-        available: false,
-        message: error.message,
-      });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      const output = (stdout || stderr).trim().split(/\r?\n/)[0];
-      resolve({
-        id: input.id,
-        label: input.label,
-        configured: true,
-        available: code === 0,
-        message: code === 0 ? output || `${input.label} is available.` : `${input.label} exited with code ${code}. ${(stderr || stdout).trim()}`.trim(),
-      });
-    });
-  });
+async function checkExternalTool(input: { id: string; label: string; command: string; versionArgs?: string[]; timeoutMs?: number }) {
+  if (!input.command) {
+    return {
+      id: input.id,
+      label: input.label,
+      configured: false,
+      available: false,
+      message: `${input.label} is not configured.`,
+    };
+  }
+  try {
+    const { stdout, stderr } = await runNativeEngine({ command: input.command, args: input.versionArgs ?? ["--version"], label: input.label, timeoutMs: input.timeoutMs ?? 8000, shell: true });
+    const output = (stdout || stderr).trim().split(/\r?\n/)[0];
+    return {
+      id: input.id,
+      label: input.label,
+      configured: true,
+      available: true,
+      message: output || `${input.label} is available.`,
+    };
+  } catch (error) {
+    return {
+      id: input.id,
+      label: input.label,
+      configured: true,
+      available: false,
+      message: error instanceof Error ? error.message : `${input.label} could not be checked.`,
+    };
+  }
 }
 
 const RENDERED_SCORE_EXPORTS = {

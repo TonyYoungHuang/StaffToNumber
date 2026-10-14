@@ -67,7 +67,7 @@ function persistentCounts(userId: string) {
 }
 
 test("free structure preflight requires login, is available without recognition credits and never persists or bills a score", async () => {
-  const f = await fixture(`if(request.limits.maxPages!==60 || request.limits.maxTotalPixels!==30000000)process.exit(1);
+  const f = await fixture(`if(request.limits.maxPages!==60 || request.limits.maxTotalPixels!==30000000 || request.limits.budgetMs!==${Math.max(100, config.scorePreflightTimeoutMs - 1000)})process.exit(1);
     fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
   const oldQuota = config.quotaFreeJobsPerMonth, oldTrial = config.freeTrialOmrJobs;
   config.quotaFreeJobsPerMonth = 0; config.freeTrialOmrJobs = 0;
@@ -143,13 +143,14 @@ test("oversized preflight upload returns a size error and leaves no partial file
 
 test("timed-out adapter is killed, releases capacity and cleans source/request/response files", async () => {
   const f = await fixture("setTimeout(()=>{},60000);"); config.scorePreflightTimeoutMs = 150;
+  const previousConcurrency = config.scorePreflightMaxConcurrency; config.scorePreflightMaxConcurrency = 1;
   try {
     const response = await f.upload(); assert.equal(response.statusCode, 504, response.body);
     assert.equal(response.json().code, "SCORE_PREFLIGHT_TIMEOUT");
     assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); await assertTemporaryFilesCleared();
     // A second request must reach the adapter rather than leave a stuck concurrency slot.
     assert.equal((await f.upload()).json().code, "SCORE_PREFLIGHT_TIMEOUT");
-  } finally { await f.close(); }
+  } finally { config.scorePreflightMaxConcurrency = previousConcurrency; await f.close(); }
 });
 
 test("malformed or oversized adapter responses fail explicitly, never create jobs and clean temporary files", async () => {
@@ -195,6 +196,23 @@ test("a same-user preflight waits for the running check then succeeds without bi
   } finally { config.scorePreflightQueueWaitMs = previous.wait; config.scorePreflightMaxConcurrency = previous.concurrency; await f.close(); }
 });
 
+test("three same-user authenticated uploads run inspection together without billing or retained files", async () => {
+  const f = await fixture(`const marker=require('node:path').join(__dirname,'active-checks');
+    fs.appendFileSync(marker,'x');
+    const interval=setInterval(()=>{if(fs.readFileSync(marker,'utf8').length===3){
+      clearInterval(interval);fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));}},10);`);
+  const previous = { concurrency: config.scorePreflightMaxConcurrency, requests: config.scorePreflightRequestsPerMinute };
+  config.scorePreflightMaxConcurrency = 3; config.scorePreflightRequestsPerMinute = 0; config.scorePreflightTimeoutMs = 2000;
+  try {
+    const responses = await Promise.all([f.upload(), f.upload(), f.upload()]);
+    for (const response of responses) assert.equal(response.statusCode, 200, response.body);
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); await assertTemporaryFilesCleared();
+  } finally {
+    config.scorePreflightMaxConcurrency = previous.concurrency; config.scorePreflightRequestsPerMinute = previous.requests;
+    await f.close();
+  }
+});
+
 test("preflight queue timeout returns retryable 429 with Retry-After", async () => {
   const f = await fixture(`setTimeout(()=>fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)})),200);`);
   const previous = { wait: config.scorePreflightQueueWaitMs, concurrency: config.scorePreflightMaxConcurrency };
@@ -235,7 +253,7 @@ test("real model-free Python adapter inspects authored PDF pages through the aut
   } finally { await f.close(); }
 });
 
-test("client cancellation after the upload kills inspection and releases the user slot", async () => {
+test("client cancellation after the upload kills inspection and releases the capacity slot", async () => {
   // Exercise an actual response socket close. This resource test needs no DB.
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "score-preflight-cancel-"));
   const adapterPath = path.join(tempRoot, "adapter.cjs"), markerPath = path.join(tempRoot, "started");
@@ -243,9 +261,9 @@ test("client cancellation after the upload kills inspection and releases the use
     const marker=${JSON.stringify(markerPath)};
     if(!fs.existsSync(marker)){fs.writeFileSync(marker,'started');setTimeout(()=>{},60000);}
     else fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
-  const original = { python: config.scorePreflightPythonCommand, adapter: config.scorePreflightAdapterPath, storage: config.storageDir };
+  const original = { python: config.scorePreflightPythonCommand, adapter: config.scorePreflightAdapterPath, storage: config.storageDir, concurrency: config.scorePreflightMaxConcurrency };
   config.scorePreflightPythonCommand = process.execPath; config.scorePreflightAdapterPath = adapterPath;
-  config.storageDir = path.join(tempRoot, "storage");
+  config.storageDir = path.join(tempRoot, "storage"); config.scorePreflightMaxConcurrency = 1;
   const userId = randomUUID();
   const app = Fastify({ logger: false });
   app.decorate("requireScorePreviewAccess", async request => { request.authUserId = userId; });
@@ -269,6 +287,7 @@ test("client cancellation after the upload kills inspection and releases the use
   } finally {
     client.destroy(); await app.close(); config.scorePreflightPythonCommand = original.python;
     config.scorePreflightAdapterPath = original.adapter; config.storageDir = original.storage;
+    config.scorePreflightMaxConcurrency = original.concurrency;
     await fs.rm(tempRoot, { recursive: true, force: true });
   }
 });

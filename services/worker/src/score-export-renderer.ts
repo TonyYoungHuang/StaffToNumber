@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { createEngineExecutionClock } from "./engine-execution-clock.js";
 import MidiWriter from "midi-writer-js";
 import { PDFDocument } from "pdf-lib";
 import { normalizeScoreTransposeTitle } from "@score/shared";
@@ -195,7 +196,9 @@ function runCommand(input: {
 }) {
   if (!input.command) throw new Error(`${input.label} is not configured.`);
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn(input.command, input.args, { windowsHide: true });
+    const clock = createEngineExecutionClock({ command: input.command, timeoutMs: input.timeoutMs,
+      onTimeout: () => terminate(new Error(`${input.label} timed out after ${input.timeoutMs} ms.`)) });
+    const child = spawn(input.command, input.args, { windowsHide: true, detached: process.platform !== "win32", env: { ...process.env, ...clock.environment } });
     let stdout = "";
     let stderr = "";
     let settled = false;
@@ -204,7 +207,7 @@ function runCommand(input: {
     const finish = (error?: Error) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
+      stderr += clock.finish();
       clearInterval(cancelPoll);
       if (terminationFallback) clearTimeout(terminationFallback);
       if (error) reject(error); else resolve({ stdout, stderr });
@@ -212,19 +215,20 @@ function runCommand(input: {
     const terminate = (error: Error) => {
       if (settled || terminationError) return;
       terminationError = error;
-      child.kill("SIGKILL");
+      clock.stop();
+      try {
+        if (process.platform !== "win32" && child.pid) process.kill(-child.pid, "SIGKILL");
+        else child.kill("SIGKILL");
+      } catch { /* The process may already have exited. */ }
       terminationFallback = setTimeout(() => finish(error), 2_000);
     };
-    const timeout = setTimeout(() => {
-      terminate(new Error(`${input.label} timed out after ${input.timeoutMs} ms.`));
-    }, input.timeoutMs);
     const cancelPoll = setInterval(() => {
       if (input.isCancelled()) {
         terminate(new Error("Export job was cancelled."));
       }
     }, 250);
     child.stdout?.on("data", (chunk) => { stdout += String(chunk); });
-    child.stderr?.on("data", (chunk) => { stderr += String(chunk); });
+    child.stderr?.on("data", (chunk) => { stderr += clock.stderr(chunk); });
     child.on("error", (error) => finish(error));
     child.on("close", (code) => {
       if (settled) return;

@@ -26,6 +26,7 @@ import { applyAudiverisOmrDiagnostics } from "./audiveris-omr-diagnostics.js";
 import { summarizeAudiverisConfidence } from "./omr-confidence.js";
 import { renderScoreExport } from "./score-export-renderer.js";
 import { AudiverisProcessError, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
+import { runBasicPitch } from "./basic-pitch-runner.js";
 import { ComplexOmrFailure, applyComplexCoverage, complexEvidenceEntries, runComplexOmr, type ComplexOmrResult } from "./complex-omr.js";
 import {
   findAudiverisMusicXmlOutput,
@@ -632,46 +633,6 @@ function createScoreRevisionFromAudioTranscribe(input: {
   }
 
   return revisionId;
-}
-
-function runBasicPitch(inputPath: string, outputDir: string) {
-  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    if (!workerConfig.basicPitchCommand) {
-      reject(new Error("BASIC_PITCH_COMMAND is not configured for the worker."));
-      return;
-    }
-
-    const args = [outputDir, inputPath];
-    const child = spawn(workerConfig.basicPitchCommand, args, {
-      shell: true,
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error(`Basic Pitch timed out after ${workerConfig.basicPitchTimeoutMs} ms.`));
-    }, workerConfig.basicPitchTimeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-      reject(new Error(`Basic Pitch exited with code ${code}. ${stderr || stdout}`.trim()));
-    });
-  });
 }
 
 function runYtDlp(inputUrl: string, outputTemplate: string) {
@@ -3529,8 +3490,10 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
 
   let basicPitchResult: { stdout: string; stderr: string };
   try {
-    basicPitchResult = await runBasicPitch(inputFile.storage_path, outputDir);
+    basicPitchResult = await runBasicPitch({ command: workerConfig.basicPitchCommand, timeoutMs: workerConfig.basicPitchTimeoutMs,
+      inputPath: inputFile.storage_path, outputDir, isCancelled: () => isScoreJobCancelled(job.id) });
   } catch (error) {
+    if (isScoreJobCancelled(job.id)) return;
     const message = error instanceof Error ? error.message : "Basic Pitch audio-to-MIDI generation failed.";
     insertOmrDiagnostic({
       jobId: job.id,
@@ -3545,6 +3508,7 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
     return;
   }
 
+  if (isScoreJobCancelled(job.id)) return;
   const midiPath = findMidiOutput(outputDir);
   if (!midiPath) {
     const message = "Basic Pitch finished but no .mid or .midi output was found.";
@@ -3566,6 +3530,7 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
   const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(mp3|wav|m4a|flac|ogg|aiff?)$/i, ""))}-basic-pitch.mid`;
   const storedMidiPath = path.join(jobDir, originalName);
   fs.copyFileSync(midiPath, storedMidiPath);
+  if (isScoreJobCancelled(job.id)) return;
   const midiFileId = await insertStoredFile({
     userId: job.user_id,
     originalName,
@@ -3573,6 +3538,7 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
     mimeType: "audio/midi",
     fileKind: "output_midi",
   });
+  if (isScoreJobCancelled(job.id)) return;
   createScoreAsset({
     documentId: job.document_id,
     fileId: midiFileId,
@@ -3589,6 +3555,7 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
       importedAt: nowIso(),
       cleanupProfile: params.transcriptionProfile,
     });
+    if (isScoreJobCancelled(job.id)) return;
     revisionId = createScoreRevisionFromAudioTranscribe({
       documentId: job.document_id,
       scoreJson: {
@@ -3606,6 +3573,7 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
   } catch (error) {
     scoreWarnings = [error instanceof Error ? error.message : "MIDI candidate could not be converted into Score JSON."];
   }
+  if (isScoreJobCancelled(job.id)) return;
   insertOmrDiagnostic({
     jobId: job.id,
     documentId: job.document_id,
