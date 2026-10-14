@@ -35,6 +35,9 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 4000
+      UPLOAD_MALWARE_SCAN: ${UPLOAD_MALWARE_SCAN:-off}
+      SCORE_PREFLIGHT_MAX_CONCURRENCY: ${SCORE_PREFLIGHT_MAX_CONCURRENCY:-1}
+      SCORE_PREFLIGHT_QUEUE_WAIT_MS: ${SCORE_PREFLIGHT_QUEUE_WAIT_MS:-30000}
     volumes:
       - score_data:/data
     secrets:
@@ -43,8 +46,6 @@ services:
         mode: 0444
     depends_on:
       redis:
-        condition: service_healthy
-      clamav:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4000/health"]

@@ -13,6 +13,7 @@ test("free structure review does not permit confirmation until the exact file an
   const input = { file, preflight: { status: "ready" as const, file, result }, selectedMode: "simple" as const, quote, quoteLoading: false, quoteError: null };
   assert.equal(canConfirmScoreRecognition(input), true);
   assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "checking", file } }), false);
+  assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "waiting", file } }), false);
   assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "failed", file, error: "timeout" } }), false);
   assert.equal(canConfirmScoreRecognition({ ...input, file: new File(["next"], "next.pdf") }), false);
   assert.equal(canConfirmScoreRecognition({ ...input, selectedMode: null }), false);

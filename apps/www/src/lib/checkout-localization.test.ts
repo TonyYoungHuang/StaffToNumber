@@ -35,6 +35,15 @@ test("checkout catalogs are complete and non-empty for all nine locales", () => 
   }
 });
 
+test("all nine public checkout catalogs include available single-score methods", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const body = getCheckoutMessages(locale).start.stripeBody;
+    assert.match(body, /Alipay|支付宝|支付寶/u, locale);
+    assert.match(body, /Link/u, locale);
+    assert.match(body, /Stripe/u, locale);
+  }
+});
+
 test("every non-English payment flow has distinct copy and a professional-review notice", () => {
   for (const locale of SUPPORTED_LOCALES.filter((item) => item !== "en")) {
     const messages = getCheckoutMessages(locale);

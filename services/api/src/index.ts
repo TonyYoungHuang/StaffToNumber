@@ -41,6 +41,9 @@ import {
 
 validateRuntimeConfig();
 const app = Fastify({ logger: true, trustProxy: config.trustProxy });
+if (config.uploadMalwareScan === "off") {
+  app.log.warn({ event: "upload.malware_scan_disabled", flag: "UPLOAD_MALWARE_SCAN=off" }, "Upload malware scanning is disabled; format, size, page and media checks remain enabled.");
+}
 
 await app.register(cors, {
   origin(origin, callback) {
@@ -52,6 +55,7 @@ await app.register(cors, {
     callback(null, isLocalDevelopmentOrigin);
   },
   credentials: true,
+  exposedHeaders: ["Retry-After"],
 });
 
 await app.register(multipart, {

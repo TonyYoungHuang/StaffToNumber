@@ -1,10 +1,11 @@
 "use client";
 
-import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreProcessingFailureMessages, localizeApiError } from "@score/i18n";
+import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRequestWaitingMessages, localizeApiError } from "@score/i18n";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
+import { fetchScorePreflight, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
@@ -29,7 +30,7 @@ type JobPayload = {
 };
 type OmrImportPayload = ScorePayload & { job: JobPayload["jobs"][number] };
 type RecognitionOptionsPayload = { options: ScoreRecognitionOption[] };
-type PreflightState = "idle" | "checking" | "ready" | "failed";
+type PreflightState = "idle" | "checking" | "waiting" | "ready" | "failed";
 
 type HomeHeroWorkbenchProps = {
   locale: SupportedLocale;
@@ -70,6 +71,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   const [mode, setMode] = useState<WorkbenchMode>("recognize");
   const [pendingFileSelection, setPendingFileSelection] = useState(false);
   const [session, setSession] = useState<SessionState>("checking");
+  const sessionAccountId = useRef<string | undefined>(undefined);
   const flow = usePurchaseFlow();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -124,7 +126,12 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   }, [session, flow.signIn]);
 
   useEffect(() => {
-    const refresh = () => { void apiRequest<AuthPayload>("/api/auth/me").then((result) => setSession(result.ok ? "authenticated" : "anonymous")); };
+    const refresh = () => { void apiRequest<AuthPayload>("/api/auth/me").then(result => {
+      const accountId = result.ok ? result.data.user.id : undefined;
+      if (sessionAccountId.current !== accountId) preflightAbort.current?.abort();
+      sessionAccountId.current = accountId;
+      setSession(result.ok ? "authenticated" : "anonymous");
+    }); };
     refresh();
     window.addEventListener(SESSION_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(SESSION_CHANGED_EVENT, refresh);
@@ -186,20 +193,20 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
       return;
     }
     setPreflightState("checking");
-    const formData = new FormData();
-    formData.append("file", file);
+    const waiting = window.setTimeout(() => {
+      if (generation !== preflightGeneration.current) return;
+      setPreflightState("waiting");
+    }, 2_000);
     const timeout = window.setTimeout(() => {
       if (generation !== preflightGeneration.current) return;
-      setPreflightState("failed");
-      setRecognitionError(preflightCopy.failed);
-      controller.abort();
-    }, 30_000);
+      setPreflightState("failed"); setRecognitionError(preflightCopy.failed); controller.abort();
+    }, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS);
     try {
       const [response, optionsResult] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/scores/import/omr/preflight`, { method: "POST", body: formData, credentials: "include", signal: controller.signal }),
+        fetchScorePreflight<{ preflight?: ScoreStructurePreflight; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, { signal: controller.signal, accountId: sessionAccountId.current }),
         apiRequest<RecognitionOptionsPayload>("/api/scores/recognition-options", { signal: controller.signal }),
       ]);
-      const payload = await response.json() as { preflight?: ScoreStructurePreflight; error?: string; code?: string };
+      const payload = response.payload ?? {};
       if (controller.signal.aborted || generation !== preflightGeneration.current) return;
       if (response.status === 401 || (!optionsResult.ok && optionsResult.status === 401)) {
         waitingForLogin.current = file;
@@ -228,6 +235,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
       setPreflightState("failed");
       setRecognitionError(preflightCopy.failed);
     } finally {
+      window.clearTimeout(waiting);
       window.clearTimeout(timeout);
     }
   }, [copy.invalidFile, flow.signIn, locale, preflightCopy.failed, preflightCopy.fileTooLarge]);
@@ -411,9 +419,10 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
 
         {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
-        {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking"}>
+        {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking" || preflightState === "waiting"}>
           <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span><p>{preflightCopy.freeBody}</p>
           {preflightState === "checking" ? <div role="status"><p>{preflightCopy.checking}</p><progress aria-label={preflightCopy.checking} /><p>{progressCopy.preflightBody}</p></div> : null}
+          {preflightState === "waiting" ? <div role="status"><p>{getScoreRequestWaitingMessages(locale).preflight}</p><progress aria-label={preflightCopy.checking} /></div> : null}
           {preflightState === "failed" ? <><p>{preflightCopy.failed}</p><button type="button" className={styles.preflightRetry} onClick={() => void startPreflight(pendingFile)}>{preflightCopy.retry}</button></> : null}
           {preflightState === "ready" && preflight ? <>
             <strong role="status">{!preflight.complete || preflight.recommendation === "uncertain" ? preflightCopy.recommendationUncertain : preflight.recommendation === "simple" ? preflightCopy.recommendedSimple : preflightCopy.recommendedComplex}</strong>

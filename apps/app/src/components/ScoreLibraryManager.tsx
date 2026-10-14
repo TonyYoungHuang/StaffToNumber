@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { formatDateTime, formatMessage, formatNumber, getScorePreflightMessages, getScoreProcessingMessages, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
-import { getSingleScorePassCopy, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
+import { formatDateTime, formatMessage, formatNumber, getScorePreflightMessages, getScoreProcessingMessages, getScoreRequestWaitingMessages, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
+import { fetchScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
@@ -66,6 +66,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const audioAvailable = process.env.NEXT_PUBLIC_AUDIO_TRANSCRIPTION_AVAILABLE === "true";
   const [scores, setScores] = useState<ScoreDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [slowRead, setSlowRead] = useState(false);
   const [access, setAccess] = useState<AccessUser | null>(null);
   const [mode, setMode] = useState<"file" | "jianpu">(view === "jianpu" ? "jianpu" : "file");
   const [file, setFile] = useState<File | null>(null);
@@ -120,15 +121,19 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   }, [token, access, file, title, jianpuText, mode, taskIntent, flow.fileLost]);
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    setLoading(true); setSlowRead(false);
+    const slowTimer = window.setTimeout(() => { if (active) setSlowRead(true); }, 5_000);
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-    void apiRequest<{ scores: ScoreDocument[] }>("/api/scores", { headers }).then(result => {
+    void apiRequest<{ scores: ScoreDocument[] }>("/api/scores", { headers, signal: controller.signal }).then(result => {
       if (!active) return;
-      setLoading(false);
+      clearTimeout(slowTimer);
+      setLoading(false); setSlowRead(false);
       if (result.ok) setScores(result.data.scores);
       else if (result.status === 401) { setScores([]); setFailed(false); }
       else { setStatus(result.error); setFailed(true); }
     });
-    void apiRequest<{ user: AccessUser }>("/api/auth/me", { headers }).then(async result => {
+    void apiRequest<{ user: AccessUser }>("/api/auth/me", { headers, signal: controller.signal }).then(async result => {
       if (!active) return;
       if (!result.ok) {
         if (result.status === 401) {
@@ -147,7 +152,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         if (active) { setDraftFailed(true); setStatus(flow.fileLost); setFailed(true); }
       }
     });
-    return () => { active = false; };
+    return () => { active = false; clearTimeout(slowTimer); controller.abort(); };
   }, [token, accessAttempt, flow.savedFile, flow.fileLost, recognitionMode, view]);
   useEffect(() => {
     let active = true;
@@ -171,19 +176,15 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     }
     const request = preflightGuard.current.start();
     setPreflight({ status: "checking", file }); setSelectedRecognitionMode(null);
-    const timeout = setTimeout(() => {
+    const waiting = setTimeout(() => {
       if (!preflightGuard.current.isCurrent(request)) return;
-      setPreflight({ status: "failed", file, error: preflightCopy.failed });
-      preflightGuard.current.invalidate();
-    }, 30_000);
-    const form = new FormData(); form.append("file", file);
+      setPreflight({ status: "waiting", file });
+    }, 2_000);
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
     void (async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/scores/import/omr/preflight`, {
-          method: "POST", headers, body: form, credentials: "include", cache: "no-store", signal: request.signal,
-        });
-        const data = await response.json().catch(() => null) as { preflight?: unknown; error?: string; code?: string } | null;
+        const response = await fetchScorePreflight<{ preflight?: unknown; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, { headers, signal: request.signal });
+        const data = response.payload;
         if (!preflightGuard.current.isCurrent(request)) return;
         if (!response.ok) throw new Error(localizeBrowserApiError({ error: data?.error ?? preflightCopy.failed, code: data?.code, status: response.status }));
         const result = parseScoreRecognitionPreflight(data?.preflight);
@@ -196,10 +197,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         if (!preflightGuard.current.isCurrent(request)) return;
         setPreflight({ status: "failed", file, error: error instanceof Error ? error.message : preflightCopy.failed });
       } finally {
-        clearTimeout(timeout);
+        clearTimeout(waiting);
       }
     })();
-    return () => { clearTimeout(timeout); preflightGuard.current.invalidate(); };
+    return () => { clearTimeout(waiting); preflightGuard.current.invalidate(); };
   }, [file, kind, mode, access?.id, token, preflightAttempt, preflightCopy.failed]);
   const recognitionQuote = selectedRecognitionMode ? recognitionOption(recognitionOptions, selectedRecognitionMode) : null;
   const simpleQuote = recognitionOption(recognitionOptions, "simple");
@@ -378,7 +379,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
             <p className="body-copy">{copy.list.body}</p>
           </div>
 
-          {loading ? <div className="empty-state">{copy.list.loading}</div> : null}
+          {loading ? <div className="empty-state" role="status" aria-busy="true"><p>{copy.list.loading}</p><progress aria-label={copy.list.loading} />{slowRead ? <p>{getScoreRequestWaitingMessages(locale).detail}</p> : null}</div> : null}
           {!loading && scores.length === 0 ? <div className="empty-state">{copy.list.empty}</div> : null}
 
           {!loading && scores.length > 0 ? (

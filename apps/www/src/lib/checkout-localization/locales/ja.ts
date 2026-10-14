@@ -6,7 +6,7 @@ export const jaCheckoutMessages = {
     badge: "ホスト型決済ページ", eyebrow: "安全な決済", title: "オンラインで購読し、アカウントを有効化",
     body: "登録済みの ScoreTransposer アカウントのメールアドレスで続行してください。支払い後、購読と利用枠が自動的にそのアカウントへ紐づきます。",
     email: "登録済みアカウントのメール", emailPlaceholder: "you@example.com", emailHelp: "購読を正しく紐づけるため、ScoreTransposer の登録メールと一致させてください。",
-    provider: "決済サービス", stripeTitle: "Stripe", stripeBody: "国際カード、Apple Pay、Google Pay、標準的なホスト型決済に適しています。",
+    provider: "決済サービス", stripeTitle: "Stripe", stripeBody: "1曲パス: Stripe の決済画面で表示されるカード、Alipay、Link を利用できます。 サブスクリプションでは決済画面に表示される支払方法をご利用ください。",
     paddleTitle: "Paddle", paddleBody: "Merchant of Record、税務処理、Paddle のホスト型決済が必要な場合に適しています。",
     button: "支払いへ進む", loading: "決済ページへ移動しています…", activate: "アクティベーションコードを持っています",
     accessLabel: "請求周期", accessValue: "月払いまたは年払い", accessBody: "選択した月次または年次周期で自動更新され、請求画面から支払い方法の管理や解約ができます。",

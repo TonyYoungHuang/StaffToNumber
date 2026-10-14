@@ -471,6 +471,7 @@ export async function scanUploadWithClamd(input: { filePath: string; host: strin
 }
 
 export async function scanUploadWithClamAv(filePath: string): Promise<UploadScanResult> {
+  if (config.uploadMalwareScan === "off") return "skipped";
   if (config.clamAvHost) {
     return scanUploadWithClamd({ filePath, host: config.clamAvHost, port: config.clamAvPort, timeoutMs: config.clamAvTimeoutMs });
   }
@@ -539,7 +540,9 @@ export async function storeVerifiedUpload(input: {
       throw new UploadSecurityError("The uploaded file content does not match a supported file type.", "UNSUPPORTED_FILE_TYPE");
     }
 
-    const scan = input.scan ?? scanUploadWithClamAv;
+    const scan = config.uploadMalwareScan === "off"
+      ? async (): Promise<UploadScanResult> => "skipped"
+      : input.scan ?? scanUploadWithClamAv;
     const scanStatus = await scan(quarantinePath);
     const pdfRasterInspection = input.pdfRasterSafety && detectedKind === "pdf"
       ? await inspectPdfRasterSafety(await fs.promises.readFile(quarantinePath), input.pdfRasterSafety)

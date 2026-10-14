@@ -36,3 +36,9 @@ test("corrected scans from all existing OMR engines remain reviewable while audi
     assert.equal(pendingOmrReviews([score]).length, 1, engine);
   }
 });
+
+test("lightweight list metadata keeps corrected scan reminders without a score model", () => {
+  const corrected = scan("corrected", { pendingRevision: { id: "edited", createdFrom: "manual_edit", recognitionEngine: "audiveris", hasAudioTranscriptionCleanup: false } });
+  const audio = scan("audio", { pendingRevision: { id: "audio", createdFrom: "manual_edit", recognitionEngine: "audiveris", hasAudioTranscriptionCleanup: true } });
+  assert.deepEqual(pendingOmrReviews([corrected, audio]).map(score => score.id), ["corrected"]);
+});

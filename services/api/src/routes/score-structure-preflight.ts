@@ -16,10 +16,10 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
     request.raw.once("aborted", abort);
     reply.raw.once("close", close);
     try {
-      release = acquireScorePreflightSlot(request.authUserId!);
+      release = await acquireScorePreflightSlot(request.authUserId!, cancellation.signal);
       const file = await request.file({ limits: { files: 1, fileSize: Math.min(config.uploadMaxBytes, 20 * 1024 * 1024) } });
       if (!file) return { statusCode: 400, body: { code: "EMPTY_FILE", error: "No PDF or image file uploaded." } };
-      // Reuse the paid OMR's scanner and format checks. Free PDF inspection
+      // Reuse the paid OMR's configured scanner and format checks. Free PDF inspection
       // validates metadata, then renders lazily under its own smaller budget.
       // No source is promoted into files, score documents, jobs or revisions.
       const tempRoot = path.join(config.storageDir, ".preflight");

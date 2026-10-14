@@ -4,7 +4,7 @@ import type { ScoreStructurePreflight } from "@score/shared";
 export type ScoreRecognitionPreflight = ScoreStructurePreflight;
 
 export type ScoreRecognitionPreflightState =
-  | { status: "idle" | "checking"; file: File | null }
+  | { status: "idle" | "checking" | "waiting"; file: File | null }
   | { status: "ready"; file: File; result: ScoreRecognitionPreflight }
   | { status: "failed"; file: File; error: string };
 

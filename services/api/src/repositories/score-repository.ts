@@ -937,6 +937,13 @@ export function listScoreRevisionsByDocumentId(documentId: string) {
     .all(documentId) as ScoreRevisionRow[];
 }
 
+/** Revision history needs metadata only; avoid transferring and parsing every score model. */
+export function listScoreRevisionSummariesByDocumentId(documentId: string) {
+  return (db.prepare(`SELECT id, document_id, revision_number, musicxml_file_id, created_from, status, created_at
+    FROM score_revisions WHERE document_id = ? ORDER BY revision_number DESC`)
+    .all(documentId) as Omit<ScoreRevisionRow, "score_json">[]).map(mapScoreRevisionSummaryForApi);
+}
+
 export function findScoreJobById(id: string) {
   return db.prepare(`${scoreJobSelect()} WHERE id = ?`).get(id) as ScoreJobRow | undefined;
 }
@@ -2540,17 +2547,20 @@ export function attachMusicXmlFileToRevision(input: {
   return findScoreRevisionById(input.revisionId);
 }
 
-export function mapScoreRevisionForApi(revision: ScoreRevisionRow) {
+export function mapScoreRevisionSummaryForApi(revision: Omit<ScoreRevisionRow, "score_json">) {
   return {
     id: revision.id,
     documentId: revision.document_id,
     revisionNumber: revision.revision_number,
-    scoreJson: migrateScoreJson(JSON.parse(revision.score_json)),
     musicxmlFileId: revision.musicxml_file_id,
     createdFrom: revision.created_from,
     status: revision.status,
     createdAt: revision.created_at,
   };
+}
+
+export function mapScoreRevisionForApi(revision: ScoreRevisionRow) {
+  return { ...mapScoreRevisionSummaryForApi(revision), scoreJson: migrateScoreJson(JSON.parse(revision.score_json)) };
 }
 
 export function mapScoreJobForApi(job: ScoreJobRow) {
@@ -2857,10 +2867,7 @@ export function mapSharedScoreForApi(row: SharedScoreRow) {
   };
 }
 
-export function mapScoreDocumentForApi(document: ScoreDocumentRow) {
-  const currentRevision = findCurrentRevisionForDocument(document);
-  const pendingRevision = findPendingRevisionForDocument(document);
-
+function mapScoreDocumentMetadataForApi(document: ScoreDocumentRow) {
   return {
     id: document.id,
     userId: document.user_id,
@@ -2872,7 +2879,33 @@ export function mapScoreDocumentForApi(document: ScoreDocumentRow) {
     status: document.status,
     createdAt: document.created_at,
     updatedAt: document.updated_at,
+  };
+}
+
+export function mapScoreDocumentForApi(document: ScoreDocumentRow) {
+  const currentRevision = findCurrentRevisionForDocument(document);
+  const pendingRevision = findPendingRevisionForDocument(document);
+  return {
+    ...mapScoreDocumentMetadataForApi(document),
     currentRevision: currentRevision ? mapScoreRevisionForApi(currentRevision) : null,
     pendingRevision: pendingRevision ? mapScoreRevisionForApi(pendingRevision) : null,
+  };
+}
+
+export function mapScoreDocumentSummaryForApi(document: ScoreDocumentRow) {
+  const summary = (revision: ScoreRevisionRow | undefined) => {
+    if (!revision) return null;
+    // These two hints preserve the pending-review banner for edited OMR candidates.
+    const model = JSON.parse(revision.score_json) as Partial<ScoreJson>;
+    return {
+      ...mapScoreRevisionSummaryForApi(revision),
+      recognitionEngine: model.recognitionLayer?.engine ?? null,
+      hasAudioTranscriptionCleanup: Boolean(model.metadata?.audioTranscriptionCleanup?.length),
+    };
+  };
+  return {
+    ...mapScoreDocumentMetadataForApi(document),
+    currentRevision: summary(findCurrentRevisionForDocument(document)),
+    pendingRevision: summary(findPendingRevisionForDocument(document)),
   };
 }

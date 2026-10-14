@@ -12,25 +12,81 @@ export class ScorePreflightError extends Error {
   }
 }
 
-const activeUsers = new Set<string>();
-const attempts = new Map<string, number[]>();
+type PreflightQueueOptions = { maxConcurrency: number; queueWaitMs: number; requestsPerMinute: number };
+type PreflightWaiter = { userId: string; grant: () => void; cancel: () => void };
 
-/** Per-instance resource gate only; no jobs, billing records or durable files. */
-export function acquireScorePreflightSlot(userId: string): () => void {
-  const now = Date.now();
-  for (const [key, dates] of attempts) if (!dates.some(date => date > now - 60_000)) attempts.delete(key);
-  if (activeUsers.has(userId) || activeUsers.size >= config.scorePreflightMaxConcurrency) {
-    throw new ScorePreflightError("SCORE_PREFLIGHT_BUSY", "The free structure check is busy. Please retry shortly.", 429);
+/** Per-instance FIFO resource queue. One running check per user, no durable jobs or billing. */
+export class ScorePreflightQueue {
+  private readonly activeUsers = new Set<string>();
+  private readonly attempts = new Map<string, number[]>();
+  private readonly waiting: PreflightWaiter[] = [];
+
+  constructor(private readonly options: () => PreflightQueueOptions) {}
+
+  async acquire(userId: string, signal?: AbortSignal): Promise<() => void> {
+    if (signal?.aborted) throw this.cancelled();
+    const now = Date.now();
+    const options = this.options();
+    for (const [key, dates] of this.attempts) if (!dates.some(date => date > now - 60_000)) this.attempts.delete(key);
+    const recent = (this.attempts.get(userId) ?? []).filter(date => date > now - 60_000);
+    if (recent.length >= options.requestsPerMinute) {
+      throw new ScorePreflightError("SCORE_PREFLIGHT_RATE_LIMIT", "Too many free structure checks. Please retry in one minute.", 429);
+    }
+    // Count actual requests, including queued requests, to bound each user's waiters.
+    this.attempts.set(userId, [...recent, now]);
+    return new Promise<() => void>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", aborted); };
+      const remove = () => {
+        const index = this.waiting.indexOf(waiter);
+        if (index !== -1) this.waiting.splice(index, 1);
+      };
+      const fail = (error: ScorePreflightError) => {
+        if (settled) return;
+        settled = true; cleanup(); remove(); reject(error); this.drain();
+      };
+      const aborted = () => fail(this.cancelled());
+      const waiter: PreflightWaiter = {
+        userId,
+        cancel: aborted,
+        grant: () => {
+          if (settled) return;
+          settled = true; cleanup(); remove(); this.activeUsers.add(userId);
+          let released = false;
+          resolve(() => {
+            if (released) return;
+            released = true; this.activeUsers.delete(userId); this.drain();
+          });
+        },
+      };
+      const timer = setTimeout(() => fail(new ScorePreflightError("SCORE_PREFLIGHT_BUSY", "The free structure check queue is busy. Please retry shortly.", 429)), options.queueWaitMs);
+      signal?.addEventListener("abort", waiter.cancel, { once: true });
+      this.waiting.push(waiter); this.drain();
+    });
   }
-  const recent = (attempts.get(userId) ?? []).filter(date => date > now - 60_000);
-  if (recent.length >= config.scorePreflightRequestsPerMinute) {
-    throw new ScorePreflightError("SCORE_PREFLIGHT_RATE_LIMIT", "Too many free structure checks. Please retry in one minute.", 429);
+
+  private cancelled() {
+    return new ScorePreflightError("SCORE_PREFLIGHT_FAILED", "The structure check was cancelled. Please retry.", 503);
   }
-  recent.push(now);
-  attempts.set(userId, recent);
-  activeUsers.add(userId);
-  let released = false;
-  return () => { if (!released) { activeUsers.delete(userId); released = true; } };
+
+  private drain() {
+    const maxConcurrency = this.options().maxConcurrency;
+    while (this.activeUsers.size < maxConcurrency) {
+      // Skip a user's queued follow-up while that user's check runs, allowing other users through.
+      const next = this.waiting.find(waiter => !this.activeUsers.has(waiter.userId));
+      if (!next) return;
+      next.grant();
+    }
+  }
+}
+
+const preflightQueue = new ScorePreflightQueue(() => ({
+  maxConcurrency: config.scorePreflightMaxConcurrency,
+  queueWaitMs: config.scorePreflightQueueWaitMs,
+  requestsPerMinute: config.scorePreflightRequestsPerMinute,
+}));
+export function acquireScorePreflightSlot(userId: string, signal?: AbortSignal): Promise<() => void> {
+  return preflightQueue.acquire(userId, signal);
 }
 
 function validateResult(value: unknown): ScoreStructurePreflight {
@@ -101,9 +157,10 @@ export async function runScoreStructurePreflight(input: { sourcePath: string; wo
   await new Promise<void>((resolve, reject) => {
     let failure: ScorePreflightError | undefined;
     if (input.signal?.aborted) { reject(new ScorePreflightError("SCORE_PREFLIGHT_FAILED", "The structure check was cancelled. Please retry.", 503)); return; }
-    const child = spawn(config.scorePreflightPythonCommand, [adapterPath, "--request", requestPath, "--response", responsePath], {
+    const pythonArgs = /^python(?:\d+(?:\.\d+)*)?(?:\.exe)?$/iu.test(path.basename(config.scorePreflightPythonCommand)) ? ["-B", "-X", "utf8"] : [];
+    const child = spawn(config.scorePreflightPythonCommand, [...pythonArgs, adapterPath, "--request", requestPath, "--response", responsePath], {
       shell: false, windowsHide: true, cwd: input.workspace, stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1", PYTHONUTF8: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
     });
     let diagnosticBytes = 0;
     const stop = (error: ScorePreflightError) => { failure ??= error; child.kill("SIGKILL"); };

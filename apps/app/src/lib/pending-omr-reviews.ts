@@ -9,6 +9,8 @@ export type ReviewableScore = {
   pendingRevision: {
     id: string;
     createdFrom: string;
+    recognitionEngine?: string | null;
+    hasAudioTranscriptionCleanup?: boolean;
     scoreJson?: {
       recognitionLayer?: { engine: string };
       metadata?: { audioTranscriptionCleanup?: unknown[] };
@@ -24,8 +26,8 @@ export function pendingOmrReviews(scores: readonly ReviewableScore[]): Reviewabl
     // An edited scan keeps its recognition layer. Ambiguous imports and audio
     // candidates must never be labelled as scans.
     return revision.createdFrom === "manual_edit"
-      && ["audiveris", "homr", "hybrid"].includes(revision.scoreJson?.recognitionLayer?.engine ?? "")
-      && !revision.scoreJson?.metadata?.audioTranscriptionCleanup?.length;
+      && ["audiveris", "homr", "hybrid"].includes(revision.recognitionEngine ?? revision.scoreJson?.recognitionLayer?.engine ?? "")
+      && !(revision.hasAudioTranscriptionCleanup ?? Boolean(revision.scoreJson?.metadata?.audioTranscriptionCleanup?.length));
   }).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id));
 }
 

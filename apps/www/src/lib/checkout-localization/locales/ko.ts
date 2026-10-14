@@ -6,7 +6,7 @@ export const koCheckoutMessages = {
     badge: "호스팅 결제 페이지", eyebrow: "안전한 결제", title: "온라인 구독으로 계정 활성화",
     body: "등록된 ScoreTransposer 계정의 이메일로 계속하세요. 결제 후 구독과 사용 한도가 해당 계정에 자동 연결됩니다.",
     email: "등록 계정 이메일", emailPlaceholder: "you@example.com", emailHelp: "구독을 안전하게 연결하려면 ScoreTransposer 가입 이메일과 같아야 합니다.",
-    provider: "결제 제공업체", stripeTitle: "Stripe", stripeBody: "해외 카드, Apple Pay, Google Pay 및 표준 호스팅 결제 흐름에 적합합니다.",
+    provider: "결제 제공업체", stripeTitle: "Stripe", stripeBody: "한 곡 이용권: Stripe 결제 화면에 표시되는 카드, Alipay 또는 Link를 사용할 수 있습니다. 구독은 결제 화면에 표시되는 결제 수단을 이용하세요.",
     paddleTitle: "Paddle", paddleBody: "Merchant of Record, 세금 처리 및 Paddle 호스팅 결제가 필요한 경우에 적합합니다.",
     button: "결제로 계속", loading: "결제 페이지로 이동 중…", activate: "활성화 코드가 있습니다",
     accessLabel: "청구 주기", accessValue: "월간 또는 연간", accessBody: "선택한 월간 또는 연간 주기로 자동 갱신되며 청구 센터에서 결제 수단을 관리하거나 취소할 수 있습니다.",

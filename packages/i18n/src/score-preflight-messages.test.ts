@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SUPPORTED_LOCALES } from './locales.ts';
-import { getScorePreflightMessages } from './score-preflight-messages.ts';
+import { getScorePreflightMessages, getScoreRequestWaitingMessages } from './score-preflight-messages.ts';
+
+test('preflight waiting and long detail read messages are available in all nine locales', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getScoreRequestWaitingMessages(locale);
+    assert.ok(copy.preflight.trim()); assert.ok(copy.detail.trim());
+    if (locale !== 'en') {
+      assert.notEqual(copy.preflight, getScoreRequestWaitingMessages('en').preflight);
+      assert.notEqual(copy.detail, getScoreRequestWaitingMessages('en').detail);
+    }
+  }
+});
 
 const placeholders = (text: string) => [...text.matchAll(/\{([a-zA-Z]+)\}/gu)].map(match => match[1]).sort();
 

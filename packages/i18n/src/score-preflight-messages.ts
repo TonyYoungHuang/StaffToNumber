@@ -1,5 +1,21 @@
 import type { SupportedLocale } from './locales.ts';
 
+const requestWaitingCopy: Record<SupportedLocale, readonly [string, string]> = {
+  en: ['Waiting for the score check. Busy servers queue requests automatically; keep this page open. Your file is still selected.', 'This score is taking longer to load. Keep this page open; you can retry if the request times out.'],
+  'zh-CN': ['正在等待乐谱预检。服务繁忙时会自动排队，请保持页面打开，原文件仍已选中。', '乐谱读取时间较长，请保持页面打开；若请求超时，可重试。'],
+  'zh-TW': ['正在等待樂譜預檢。服務繁忙時會自動排隊，請保持頁面開啟，原檔案仍已選取。', '樂譜讀取時間較長，請保持頁面開啟；若請求逾時，可重試。'],
+  ja: ['楽譜の事前確認を待っています。混雑時は自動で順番待ちになります。ページを開いたままお待ちください。ファイルは選択済みです。', '楽譜の読み込みに時間がかかっています。このページでお待ちください。タイムアウトした場合は再試行できます。'],
+  ko: ['악보 사전 검사를 기다리고 있습니다. 서버가 바쁘면 자동으로 대기열에 들어갑니다. 페이지를 열어 두세요. 파일은 선택된 상태입니다.', '악보를 불러오는 데 시간이 걸립니다. 페이지를 열어 두세요. 시간이 초과되면 다시 시도할 수 있습니다.'],
+  fr: ['En attente de la vérification. En cas de forte demande, les requêtes sont mises en file automatiquement. Gardez cette page ouverte ; votre fichier reste sélectionné.', 'Le chargement prend plus de temps. Gardez cette page ouverte ; vous pourrez réessayer si le délai est dépassé.'],
+  es: ['Esperando la comprobación. Si el servidor está ocupado, las solicitudes esperan en una cola automáticamente. Mantén esta página abierta; el archivo sigue seleccionado.', 'La partitura tarda más en cargar. Mantén la página abierta; podrás reintentar si se agota el tiempo de espera.'],
+  de: ['Warten auf die Prüfung. Bei hoher Auslastung werden Anfragen automatisch eingereiht. Lassen Sie diese Seite geöffnet; Ihre Datei bleibt ausgewählt.', 'Das Laden dauert länger. Lassen Sie diese Seite geöffnet; nach einer Zeitüberschreitung können Sie es erneut versuchen.'],
+  ru: ['Ожидаем проверку партитуры. При нагрузке запросы автоматически ставятся в очередь. Не закрывайте страницу; файл остаётся выбранным.', 'Загрузка партитуры занимает больше времени. Не закрывайте страницу; при истечении времени ожидания можно повторить попытку.'],
+};
+
+export function getScoreRequestWaitingMessages(locale: SupportedLocale) {
+  return { preflight: requestWaitingCopy[locale][0], detail: requestWaitingCopy[locale][1] };
+}
+
 const supportCopy: Record<SupportedLocale, readonly [string, string, string, string]> = {
   en: ['This file is supported for recognition. Results still need review.', 'This PDF is supported. Page resolution will be adjusted to the processing budget, and all pages will be recognized in order.', 'This PDF cannot be processed at a useful reading resolution. Crop oversized pages or split the file before confirming. No credits have been used.', 'This PDF cannot be read safely. Export it again before confirming. No credits have been used.'],
   'zh-CN': ['此文件支持正式识谱，结果仍需校对。', '此 PDF 支持正式识谱。将按处理预算自动调整每页分辨率，按顺序识别全部页面。', '此 PDF 无法在可用清晰度下完成识谱。请裁切过大页面或拆分文件后再确认，当前未扣积分。', '此 PDF 无法安全读取，请重新导出后再确认，当前未扣积分。'],

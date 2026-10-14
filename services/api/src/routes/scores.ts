@@ -147,6 +147,7 @@ import {
   listScoreDocumentsByUserId,
   listScoreJobsByDocumentId,
   listScoreRevisionsByDocumentId,
+  listScoreRevisionSummariesByDocumentId,
   listScoreRubricTemplatesByUserId,
   listScoreSharesByDocumentId,
   mapOmrDiagnosticForApi,
@@ -159,6 +160,7 @@ import {
   mapScoreCommentForApi,
   mapScoreCollaborationCommandForApi,
   mapScoreDocumentForApi,
+  mapScoreDocumentSummaryForApi,
   mapScoreJobForApi,
   mapScoreRevisionForApi,
   mapScoreRubricTemplateForApi,
@@ -1562,6 +1564,13 @@ function mapOwnedScoreForAccess(document: Parameters<typeof mapScoreDocumentForA
   };
 }
 
+function mapOwnedScoreSummaryForAccess(document: Parameters<typeof mapScoreDocumentForApi>[0], paidAccess: boolean) {
+  const mapped = mapScoreDocumentSummaryForApi(document);
+  if (paidAccess) return mapped;
+  const redactRevision = (revision: typeof mapped.currentRevision) => revision ? { ...revision, musicxmlFileId: null } : null;
+  return { ...mapped, sourceFileId: null, currentRevision: redactRevision(mapped.currentRevision), pendingRevision: redactRevision(mapped.pendingRevision) };
+}
+
 export async function scoreRoutes(app: FastifyInstance) {
   registerScoreStructurePreflightRoute(app);
   app.setErrorHandler((error, _request, reply) => {
@@ -1604,7 +1613,8 @@ export async function scoreRoutes(app: FastifyInstance) {
         },
         uploadSecurity: {
           maxBytes: config.uploadMaxBytes,
-          malwareScanRequired: config.clamAvRequired,
+          malwareScanEnabled: config.uploadMalwareScan === "on",
+          malwareScanRequired: config.uploadMalwareScan === "on" && config.clamAvRequired,
         },
       };
     },
@@ -1618,7 +1628,7 @@ export async function scoreRoutes(app: FastifyInstance) {
     async (request) => {
       const paidAccess = getUserProfile(request.authUserId!)?.entitlement.status === "active";
       return {
-        scores: listScoreDocumentsByUserId(request.authUserId!).map((document) => mapOwnedScoreForAccess(
+        scores: listScoreDocumentsByUserId(request.authUserId!).map((document) => mapOwnedScoreSummaryForAccess(
           document,
           paidAccess || isFreeTrialScoreDocumentForUser(document.id, request.authUserId!) || Boolean(scorePassForDocument(db, request.authUserId!, document.id)),
         )),
@@ -1644,7 +1654,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       return reply.send({
         score: mapOwnedScoreForAccess(document, editingAccess),
-        revisions: editingAccess ? listScoreRevisionsByDocumentId(document.id).map(mapScoreRevisionForApi) : [],
+        revisions: editingAccess ? listScoreRevisionSummariesByDocumentId(document.id) : [],
       });
     },
   );

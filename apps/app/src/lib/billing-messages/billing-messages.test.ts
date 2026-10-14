@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
 import { getPricingPlanCatalog } from "@score/shared";
+import { getOneScoreUpsellCopy } from "../one-score-upsell-copy";
 import {
   formatBillingBytes,
   formatBillingMoney,
@@ -46,6 +47,20 @@ test("billing catalogs cover identical typed keys in all nine locales", () => {
         assert.ok(value.trim().length > 0, `${locale} has an empty billing message at ${key}`);
       }
     }
+  }
+});
+
+test("all nine locales describe single-score card, Alipay and Link without promising subscription methods", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const body = getBillingMessages(locale).checkout.client.stripeLiveBody;
+    const upsell = getOneScoreUpsellCopy(locale);
+    for (const text of [body, upsell.passNote]) {
+      assert.match(text, /Alipay|支付宝|支付寶/u, locale);
+      assert.match(text, /Link/u, locale);
+      assert.match(text, /Stripe/u, locale);
+    }
+    assert.match(upsell.passCta, /US\$2\.99/u, locale);
+    assert.doesNotMatch(upsell.subscriptionCta, /Alipay|支付宝|支付寶|Link/u, locale);
   }
 });
 

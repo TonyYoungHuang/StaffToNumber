@@ -6,7 +6,7 @@ export const deCheckoutMessages = {
     badge: "Gehostete Zahlungsseite", eyebrow: "Sicher bezahlen", title: "Online abonnieren und Konto freischalten",
     body: "Fahre mit der E-Mail eines bestehenden ScoreTransposer-Kontos fort. Abonnement und Kontingente werden nach der Zahlung automatisch zugeordnet.",
     email: "E-Mail des registrierten Kontos", emailPlaceholder: "name@beispiel.de", emailHelp: "Verwenden Sie die E-Mail-Adresse Ihres ScoreTransposer-Kontos, damit der gekaufte Zugang richtig zugeordnet wird.",
-    provider: "Zahlungsanbieter", stripeTitle: "Stripe", stripeBody: "Geeignet für internationale Karten, Apple Pay, Google Pay und einen üblichen gehosteten Bezahlvorgang.",
+    provider: "Zahlungsanbieter", stripeTitle: "Stripe", stripeBody: "Einzelpartitur-Pass: Karten, Alipay oder Link, wie im Stripe-Checkout angeboten. Für Abonnements gelten die im Checkout angezeigten Zahlungsmethoden.",
     paddleTitle: "Paddle", paddleBody: "Geeignet für Merchant-of-Record-Abrechnung, Steuerabwicklung und von Paddle gehostete Zahlungen.",
     button: "Weiter zur Zahlung", loading: "Weiterleitung zur Zahlungsseite…", activate: "Ich habe bereits einen Aktivierungscode",
     accessLabel: "Abrechnungszeitraum", accessValue: "Monatlich oder jährlich", accessBody: "Das Abonnement verlängert sich im gewählten Zeitraum und kann im Abrechnungsbereich verwaltet oder gekündigt werden.",

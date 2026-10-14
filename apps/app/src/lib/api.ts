@@ -1,4 +1,5 @@
 import { localizeBrowserApiError } from "@score/i18n";
+import { sharedInFlightRequest, SCORE_READ_TIMEOUT_MS } from "@score/shared";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
@@ -7,6 +8,25 @@ export type ApiResult<T> =
   | { ok: false; error: string; status: number; data?: T };
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+  const scoreRead = (options.method ?? "GET").toUpperCase() === "GET" && /^\/api\/scores(?:\?[^#]*)?$|^\/api\/scores\/[^/?]+(?:\?[^#]*)?$/u.test(path);
+  if (!scoreRead) return performApiRequest<T>(path, options);
+  const headers = new Headers(options.headers);
+  const key = `score-read:${API_BASE_URL}${path}:${JSON.stringify(Array.from(headers.entries()))}`;
+  try {
+    return await sharedInFlightRequest(key, async signal => {
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      signal.addEventListener("abort", cancel, { once: true });
+      const timeout = setTimeout(cancel, SCORE_READ_TIMEOUT_MS);
+      try { return await performApiRequest<T>(path, { ...options, signal: controller.signal }); }
+      finally { clearTimeout(timeout); signal.removeEventListener("abort", cancel); }
+    }, options.signal ?? undefined);
+  } catch (error) {
+    return { ok: false, status: 0, error: localizeBrowserApiError({ error: error instanceof Error ? error.message : "Network request failed.", status: 0 }) };
+  }
+}
+
+async function performApiRequest<T>(path: string, options: RequestInit): Promise<ApiResult<T>> {
   try {
     const headers = new Headers(options.headers);
     if (options.body != null && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");

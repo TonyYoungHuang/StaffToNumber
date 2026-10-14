@@ -101,7 +101,9 @@ export const config = {
   scorePreflightTimeoutMs: positiveInteger(process.env.SCORE_PREFLIGHT_TIMEOUT_MS, 25_000),
   scorePreflightMaxPages: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_PAGES, 60),
   scorePreflightRequestsPerMinute: positiveInteger(process.env.SCORE_PREFLIGHT_REQUESTS_PER_MINUTE, 6),
-  scorePreflightMaxConcurrency: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_CONCURRENCY, 2),
+  scorePreflightMaxConcurrency: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_CONCURRENCY, 1),
+  scorePreflightQueueWaitMs: positiveInteger(process.env.SCORE_PREFLIGHT_QUEUE_WAIT_MS, 30_000),
+  uploadMalwareScan: (process.env.UPLOAD_MALWARE_SCAN?.trim().toLowerCase() || "off") as "on" | "off",
   clamAvCommand: process.env.CLAMAV_COMMAND ?? "",
   clamAvHost: process.env.CLAMAV_HOST ?? "",
   clamAvPort: positiveInteger(process.env.CLAMAV_PORT, 3310),
@@ -179,6 +181,9 @@ export const config = {
 };
 
 export function validateRuntimeConfig() {
+  if (config.uploadMalwareScan !== "on" && config.uploadMalwareScan !== "off") {
+    throw new Error("UPLOAD_MALWARE_SCAN must be on or off.");
+  }
   if ((config.nodeEnv === "production" || config.nodeEnv === "staging") && config.runtimeDatabasePrimary !== "postgres") {
     throw new Error(`${config.nodeEnv} API requires RUNTIME_DATABASE_PRIMARY=postgres; SQLite fallback is disabled.`);
   }
@@ -189,7 +194,7 @@ export function validateRuntimeConfig() {
   const failures: string[] = [];
   if (config.securityAuditHashSalt.length < 32) failures.push("SECURITY_AUDIT_HASH_SALT must contain at least 32 characters");
   if (config.metricsBearerToken.length < 32) failures.push("METRICS_BEARER_TOKEN must contain at least 32 characters");
-  if (!config.clamAvCommand && !config.clamAvHost) failures.push("CLAMAV_COMMAND or CLAMAV_HOST is required");
+  if (config.uploadMalwareScan === "on" && !config.clamAvCommand && !config.clamAvHost) failures.push("CLAMAV_COMMAND or CLAMAV_HOST is required when UPLOAD_MALWARE_SCAN=on");
   if (!config.ffmpegCommand) failures.push("FFMPEG_COMMAND is required for safe media uploads");
   if (!config.ffprobeCommand) failures.push("FFPROBE_COMMAND is required for safe media uploads");
   if (config.apiReplicaCount > 1 && !config.redisUrl) failures.push("REDIS_URL is required when API_REPLICA_COUNT is greater than 1");

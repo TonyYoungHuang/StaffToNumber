@@ -4,7 +4,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import test from "node:test";
+import test, { before, after } from "node:test";
 import { PDFDocument } from "pdf-lib";
 import {
   buildSafeMediaTranscodeArgs,
@@ -12,12 +12,41 @@ import {
   inspectPdfRasterSafety,
   parseMediaProbe,
   scanUploadWithClamd,
+  scanUploadWithClamAv,
   storeVerifiedUpload,
   UploadSecurityError,
   uploadErrorResponse,
   uploadKinds,
 } from "./upload-security.js";
 import { ObjectStorageUnavailableError } from "./object-storage.js";
+import { config } from "../config.js";
+
+const originalMalwareScan = config.uploadMalwareScan;
+before(() => { config.uploadMalwareScan = "on"; });
+after(() => { config.uploadMalwareScan = originalMalwareScan; });
+
+test("scan off skips both ClamAV and injected scanner failures while retaining format checks", async () => {
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-scan-off-"));
+  const previous = { mode: config.uploadMalwareScan, command: config.clamAvCommand, host: config.clamAvHost };
+  config.uploadMalwareScan = "off"; config.clamAvCommand = "nonexistent-clamav"; config.clamAvHost = "127.0.0.1";
+  let scans = 0;
+  try {
+    assert.equal(await scanUploadWithClamAv(path.join(root, "does-not-exist.pdf")), "skipped");
+    const result = await storeVerifiedUpload({
+      stream: Readable.from(Buffer.from("%PDF-1.4\nvalid magic")), targetPath: path.join(root, "source.pdf"),
+      quarantineDir: path.join(root, ".quarantine"), allowedKinds: uploadKinds.pdf,
+      scan: async () => { scans += 1; throw new UploadSecurityError("Scanner unavailable", "SCANNER_FAILED", 503); },
+    });
+    assert.equal(scans, 0); assert.equal(result.scanStatus, "skipped"); assert.equal(result.mimeType, "application/pdf");
+    await assert.rejects(storeVerifiedUpload({
+      stream: Readable.from(Buffer.from("unexpected file content")), targetPath: path.join(root, "invalid.pdf"),
+      quarantineDir: path.join(root, ".quarantine"), allowedKinds: uploadKinds.pdf,
+    }), (error: unknown) => error instanceof UploadSecurityError && error.code === "UNSUPPORTED_FILE_TYPE");
+  } finally {
+    config.uploadMalwareScan = previous.mode; config.clamAvCommand = previous.command; config.clamAvHost = previous.host;
+    await fs.promises.rm(root, { recursive: true, force: true });
+  }
+});
 
 test("truncated multipart streams are rejected before scanning and leave no partial file", async () => {
   const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "score-truncated-upload-"));

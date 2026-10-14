@@ -6,7 +6,7 @@ export const esCheckoutMessages = {
     badge: "Pago alojado", eyebrow: "Pago seguro", title: "Suscríbete en línea y activa tu cuenta",
     body: "Continúa con el correo de una cuenta existente de ScoreTransposer. La suscripción y las cuotas se vincularán automáticamente después del pago.",
     email: "Correo de la cuenta registrada", emailPlaceholder: "tu@ejemplo.com", emailHelp: "Debe coincidir con tu cuenta de ScoreTransposer para atribuir la suscripción correctamente.",
-    provider: "Proveedor de pago", stripeTitle: "Stripe", stripeBody: "Adecuado para tarjetas internacionales, Apple Pay, Google Pay y un flujo de pago alojado estándar.",
+    provider: "Proveedor de pago", stripeTitle: "Stripe", stripeBody: "Pase para una partitura: Tarjetas, Alipay o Link, según las opciones de Stripe Checkout. Para suscripciones, utiliza los métodos que aparecen al pagar.",
     paddleTitle: "Paddle", paddleBody: "Adecuado si necesitas Merchant of Record, gestión fiscal y pago alojado por Paddle.",
     button: "Continuar al pago", loading: "Redirigiendo al pago…", activate: "Ya tengo un código de activación",
     accessLabel: "Ciclo de facturación", accessValue: "Mensual o anual", accessBody: "La suscripción se renueva según el ciclo elegido y puede gestionarse o cancelarse desde Facturación.",

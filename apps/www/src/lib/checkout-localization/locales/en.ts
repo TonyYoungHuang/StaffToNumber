@@ -12,7 +12,7 @@ export const enCheckoutMessages = {
     emailHelp: "This must match your ScoreTransposer account so the subscription can be attributed safely.",
     provider: "Payment provider",
     stripeTitle: "Stripe",
-    stripeBody: "Best for international cards, Apple Pay, Google Pay, and a standard hosted checkout flow.",
+    stripeBody: "One Score Pass: Cards, Alipay or Link, as offered at Stripe Checkout. For subscriptions, use the payment methods shown at checkout.",
     paddleTitle: "Paddle",
     paddleBody: "Best when you want Merchant of Record billing, tax handling, and Paddle-hosted checkout.",
     button: "Continue to payment",

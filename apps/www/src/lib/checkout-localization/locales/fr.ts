@@ -6,7 +6,7 @@ export const frCheckoutMessages = {
     badge: "Paiement hébergé", eyebrow: "Paiement sécurisé", title: "Choisissez votre accès et activez votre compte",
     body: "Continuez avec l’adresse e-mail d’un compte ScoreTransposer existant. Votre accès et vos quotas lui seront automatiquement associés après le paiement.",
     email: "E-mail du compte inscrit", emailPlaceholder: "vous@exemple.fr", emailHelp: "Il doit correspondre à votre compte ScoreTransposer afin d’attribuer correctement l’accès acheté.",
-    provider: "Prestataire de paiement", stripeTitle: "Stripe", stripeBody: "Adapté aux cartes internationales, à Apple Pay, Google Pay et à un paiement hébergé standard.",
+    provider: "Prestataire de paiement", stripeTitle: "Stripe", stripeBody: "Pass une partition: Cartes, Alipay ou Link, selon les options proposées par Stripe Checkout. Pour les abonnements, utilisez les moyens affichés au paiement.",
     paddleTitle: "Paddle", paddleBody: "Adapté à la facturation Merchant of Record, au traitement fiscal et au paiement hébergé par Paddle.",
     button: "Continuer vers le paiement", loading: "Redirection vers le paiement…", activate: "J’ai déjà un code d’activation",
     accessLabel: "Période de facturation", accessValue: "Mensuelle ou annuelle", accessBody: "L’achat unique dure un mois ou un an sans renouvellement automatique. L’abonnement se renouvelle selon la période choisie et peut être résilié depuis Facturation.",

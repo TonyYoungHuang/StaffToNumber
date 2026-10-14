@@ -27,6 +27,7 @@ import type {
   TransposeSpellingPolicy,
 } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
+import { getScoreRequestWaitingMessages } from "@score/i18n";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
@@ -74,7 +75,7 @@ type ScoreDocument = {
 
 type ScorePayload = {
   score: ScoreDocument;
-  revisions: ScoreRevision[];
+  revisions: Omit<ScoreRevision, "scoreJson">[];
 };
 
 type JianpuPayload = {
@@ -430,6 +431,9 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const [lastExportJobId, setLastExportJobId] = useState<string | null>(null);
   const [payload, setPayload] = useState<ScorePayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slowRead, setSlowRead] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const detailReadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [jianpu, setJianpu] = useState<JianpuDocument | null>(null);
@@ -652,9 +656,14 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     }
 
     let active = true;
+    const controller = new AbortController();
+    detailReadAbort.current = controller;
+    setLoading(true); setSlowRead(false); setError(null);
+    const slowTimer = window.setTimeout(() => { if (active) setSlowRead(true); }, 5_000);
 
     async function loadScore() {
       const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}`, {
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -664,7 +673,8 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
         return;
       }
 
-      setLoading(false);
+      clearTimeout(slowTimer);
+      setLoading(false); setSlowRead(false);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -694,8 +704,10 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
 
     return () => {
       active = false;
+      clearTimeout(slowTimer);
+      controller.abort();
     };
-  }, [copy.missing, jianpuCopy.error, scoreId, token]);
+  }, [copy.missing, jianpuCopy.error, scoreId, token, loadAttempt]);
 
   useEffect(() => {
     const workingRevisionId = payload?.score.pendingRevisionId ?? payload?.score.currentRevisionId ?? null;
@@ -916,13 +928,14 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }, [currentScoreJson, selectedScoreEventId]);
 
   if (loading) {
-    return <div className="empty-state">{copy.loading}</div>;
+    return <div className="empty-state" role="status" aria-busy="true"><p>{copy.loading}</p><progress aria-label={copy.loading} />{slowRead ? <p>{getScoreRequestWaitingMessages(locale).detail}</p> : null}</div>;
   }
 
   if (error || !payload || !score) {
     return (
       <div className="surface-panel stack-lg">
         <p className="form-status error">{error ?? copy.missing}</p>
+        <button type="button" className="button button-secondary" onClick={() => setLoadAttempt(value => value + 1)}>{flow.retry}</button>
         <Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">
           {copy.back}
         </Link>
@@ -1009,12 +1022,13 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     }
 
     const result = await apiRequest<ScorePayload>(`/api/scores/${scoreId}`, {
+      signal: detailReadAbort.current?.signal,
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!result.ok) {
+    if (!result.ok || detailReadAbort.current?.signal.aborted) {
       return;
     }
 

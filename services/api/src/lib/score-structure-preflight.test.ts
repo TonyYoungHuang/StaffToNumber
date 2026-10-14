@@ -83,6 +83,22 @@ test("free structure preflight requires login, is available without recognition 
   } finally { config.quotaFreeJobsPerMonth = oldQuota; config.freeTrialOmrJobs = oldTrial; await f.close(); }
 });
 
+test("scan off preflight ignores an unavailable configured scanner and still rejects invalid PDFs", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  const previous = { mode: config.uploadMalwareScan, host: config.clamAvHost, command: config.clamAvCommand };
+  config.uploadMalwareScan = "off"; config.clamAvHost = "unreachable-scanner.invalid"; config.clamAvCommand = "nonexistent-clamav";
+  try {
+    const response = await f.upload(); assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.body.includes("SCANNER_FAILED"), false);
+    const invalid = await f.upload(Buffer.from("%PDF-1.4\ninvalid document"));
+    assert.equal(invalid.json().code, "PDF_INVALID");
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); await assertTemporaryFilesCleared();
+  } finally {
+    config.uploadMalwareScan = previous.mode; config.clamAvHost = previous.host; config.clamAvCommand = previous.command;
+    await f.close();
+  }
+});
+
 test("partial-page inspection never recommends simple and discards all temporary input and result files", async () => {
   const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify({ ...validResult, sourcePageCount: 4, complete: false })}));`);
   try {
@@ -147,19 +163,48 @@ test("malformed or oversized adapter responses fail explicitly, never create job
   }
 });
 
-test("free preflight rate and process limits return retryable responses without billing", async () => {
+test("free preflight rate limits return retryable responses without billing", async () => {
   const f = await fixture(`setTimeout(()=>fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)})),200);`);
   const previousLimit = config.scorePreflightRequestsPerMinute; config.scorePreflightRequestsPerMinute = 1;
   try {
     const first = f.upload();
     await new Promise(resolve => setTimeout(resolve, 40));
     const concurrent = await f.upload(); assert.equal(concurrent.statusCode, 429, concurrent.body);
-    assert.equal(concurrent.json().code, "SCORE_PREFLIGHT_BUSY"); assert.equal(concurrent.headers["retry-after"], "5");
+    assert.equal(concurrent.json().code, "SCORE_PREFLIGHT_RATE_LIMIT"); assert.equal(concurrent.headers["retry-after"], "60");
     assert.equal((await first).statusCode, 200);
     const limited = await f.upload(); assert.equal(limited.statusCode, 429, limited.body);
     assert.equal(limited.json().code, "SCORE_PREFLIGHT_RATE_LIMIT"); assert.equal(limited.headers["retry-after"], "60");
     assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); await assertTemporaryFilesCleared();
   } finally { config.scorePreflightRequestsPerMinute = previousLimit; await f.close(); }
+});
+
+test("a same-user preflight waits for the running check then succeeds without billing", async () => {
+  const f = await fixture(`setTimeout(()=>fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)})),200);`);
+  const previous = { wait: config.scorePreflightQueueWaitMs, concurrency: config.scorePreflightMaxConcurrency };
+  config.scorePreflightQueueWaitMs = 2000; config.scorePreflightMaxConcurrency = 1;
+  try {
+    const first = f.upload();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    let finished = false;
+    const second = f.upload().then(response => { finished = true; return response; });
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.equal(finished, false, "queued request must wait for capacity");
+    assert.equal((await first).statusCode, 200);
+    const response = await second; assert.equal(response.statusCode, 200, response.body);
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); await assertTemporaryFilesCleared();
+  } finally { config.scorePreflightQueueWaitMs = previous.wait; config.scorePreflightMaxConcurrency = previous.concurrency; await f.close(); }
+});
+
+test("preflight queue timeout returns retryable 429 with Retry-After", async () => {
+  const f = await fixture(`setTimeout(()=>fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)})),200);`);
+  const previous = { wait: config.scorePreflightQueueWaitMs, concurrency: config.scorePreflightMaxConcurrency };
+  config.scorePreflightQueueWaitMs = 30; config.scorePreflightMaxConcurrency = 1;
+  try {
+    const first = f.upload(); await new Promise(resolve => setTimeout(resolve, 40));
+    const response = await f.upload(); assert.equal(response.statusCode, 429, response.body);
+    assert.equal(response.json().code, "SCORE_PREFLIGHT_BUSY"); assert.equal(response.headers["retry-after"], "5");
+    assert.equal((await first).statusCode, 200); await assertTemporaryFilesCleared();
+  } finally { config.scorePreflightQueueWaitMs = previous.wait; config.scorePreflightMaxConcurrency = previous.concurrency; await f.close(); }
 });
 
 test("real model-free Python adapter inspects authored PDF pages through the authenticated API", { skip: !process.env.SCORE_PREFLIGHT_INTEGRATION_PYTHON }, async () => {
