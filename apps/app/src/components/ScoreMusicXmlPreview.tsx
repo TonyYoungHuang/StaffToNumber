@@ -1,5 +1,7 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
+import { useAppLocale } from "./AppLocaleProvider";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage } from "@score/i18n";
 import type { ScoreEvent, ScoreJson } from "@score/shared";
@@ -58,6 +60,7 @@ export function ScoreMusicXmlPreview({
   largeScoreThreshold?: number;
   zoom?: number;
 }) {
+  const { locale } = useAppLocale();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplayInstance | null>(null);
   const zoomRef = useRef(zoom);
@@ -264,7 +267,7 @@ export function ScoreMusicXmlPreview({
           </button>
         </div>
       ) : null}
-      {state === "loading" ? <div className="empty-state">{loadingLabel}</div> : null}
+      <ProcessingProgress active={state === "loading"} label={loadingLabel} error={state === "error"} operationKey={`${fileId ?? "inline"}:${renderAttempt}`} locale={locale} />
       {state === "error" ? (
         <div className="empty-state stack-sm" role="alert">
           <p>{errorLabel}</p>

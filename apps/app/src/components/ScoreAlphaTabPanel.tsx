@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useRef, useState } from "react";
 import type { AlphaTabApi, model } from "@coderline/alphatab";
 import type { PlaybackDocument, ScoreJson } from "@score/shared";
@@ -151,7 +152,7 @@ export function ScoreAlphaTabPanel({ scoreId, revisionId, isCandidate, token, mu
   return <section className="surface-panel stack-lg" data-alpha-tab-panel>
     <h2 className="card-title">{copy.tabDrumTitle}</h2>
     {!opened ? <button type="button" className="button button-secondary" disabled={!musicXml} onClick={() => setOpened(true)}>{copy.loadTabPlayer}</button> : null}
-    {opened && state === "loading" ? <p role="status">{copy.loading}</p> : null}
+    <ProcessingProgress active={opened && state === "loading"} label={copy.loading} error={state === "error"} operationKey={`${revisionId}:${attempt}`} locale={locale} />
     {opened && state === "error" ? <div role="alert"><p className="form-status error">{copy.playerFailed}</p><button type="button" className="button button-secondary" onClick={() => setAttempt(value => value + 1)}>{copy.retry}</button></div> : null}
     {opened ? <>
       <div className={styles.toolbar}>

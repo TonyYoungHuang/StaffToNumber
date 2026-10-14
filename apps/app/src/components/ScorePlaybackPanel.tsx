@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMessage } from "@score/i18n";
 import type { PlaybackDocument, PlaybackMeasureMarker, PlaybackNoteEvent } from "@score/shared";
@@ -48,6 +49,9 @@ export type PlaybackPracticeExportActions = {
     costHint?: string;
     loadingLabel: string;
     loading: boolean;
+    progressPercent?: number | null;
+    operationKey?: string;
+    error?: boolean;
     disabled?: boolean;
     onClick: () => void;
   };
@@ -56,6 +60,9 @@ export type PlaybackPracticeExportActions = {
     costHint?: string;
     loadingLabel: string;
     loading: boolean;
+    progressPercent?: number | null;
+    operationKey?: string;
+    error?: boolean;
     disabled?: boolean;
     onClick: () => void;
   };
@@ -64,6 +71,9 @@ export type PlaybackPracticeExportActions = {
     costHint?: string;
     loadingLabel: string;
     loading: boolean;
+    progressPercent?: number | null;
+    operationKey?: string;
+    error?: boolean;
     disabled?: boolean;
     onClick: () => void;
   };
@@ -520,6 +530,7 @@ export function ScorePlaybackPanel({
               {copy.stop}
             </button>
           </div>
+          <ProcessingProgress active={loading} label={copy.loading} error={statusKind === "error"} operationKey={revisionId ?? undefined} locale={locale} />
           <details className="flow-details"><summary>{flow.advanced}</summary>            <button type="button" className="button button-secondary" onClick={() => void loadPlayback()} disabled={loading}>
               {loading ? copy.loading : copy.load}
             </button>
@@ -537,7 +548,8 @@ export function ScorePlaybackPanel({
                   >
                     {exportActions.midi.loading ? exportActions.midi.loadingLabel : exportActions.midi.label}
                   </button>
-                  {exportActions.midi.costHint ? <p className="helper-copy">{exportActions.midi.costHint}</p> : null}
+                    <ProcessingProgress active={exportActions.midi.loading} label={exportActions.midi.loadingLabel} progressPercent={exportActions.midi.progressPercent} error={exportActions.midi.error} operationKey={exportActions.midi.operationKey} locale={locale} />
+                    {exportActions.midi.costHint ? <p className="helper-copy">{exportActions.midi.costHint}</p> : null}
                 </div>
               ) : null}
               {exportActions.wav ? (
@@ -550,7 +562,8 @@ export function ScorePlaybackPanel({
                   >
                     {exportActions.wav.loading ? exportActions.wav.loadingLabel : exportActions.wav.label}
                   </button>
-                  {exportActions.wav.costHint ? <p className="helper-copy">{exportActions.wav.costHint}</p> : null}
+                    <ProcessingProgress active={exportActions.wav.loading} label={exportActions.wav.loadingLabel} progressPercent={exportActions.wav.progressPercent} error={exportActions.wav.error} operationKey={exportActions.wav.operationKey} locale={locale} />
+                    {exportActions.wav.costHint ? <p className="helper-copy">{exportActions.wav.costHint}</p> : null}
                 </div>
               ) : null}
               {exportActions.mp3 ? (
@@ -563,7 +576,8 @@ export function ScorePlaybackPanel({
                   >
                     {exportActions.mp3.loading ? exportActions.mp3.loadingLabel : exportActions.mp3.label}
                   </button>
-                  {exportActions.mp3.costHint ? <p className="helper-copy">{exportActions.mp3.costHint}</p> : null}
+                    <ProcessingProgress active={exportActions.mp3.loading} label={exportActions.mp3.loadingLabel} progressPercent={exportActions.mp3.progressPercent} error={exportActions.mp3.error} operationKey={exportActions.mp3.operationKey} locale={locale} />
+                    {exportActions.mp3.costHint ? <p className="helper-copy">{exportActions.mp3.costHint}</p> : null}
                 </div>
               ) : null}
             </div>

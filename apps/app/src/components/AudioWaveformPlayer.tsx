@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { usePlaybackPracticeMessages } from "../lib/playback-practice-messages/client";
@@ -139,7 +140,7 @@ export const AudioWaveformPlayer = forwardRef<HTMLAudioElement, {
           }
         }}
       />
-      {waveformStatus === "loading" ? <p className="helper-copy" role="status">{copy.waveformLoading}</p> : null}
+      <ProcessingProgress active={waveformStatus === "loading"} label={copy.waveformLoading} error={waveformStatus === "unavailable"} operationKey={src} locale={locale} />
       {waveformStatus === "unavailable" ? <p className="helper-copy" role="status">{copy.waveformUnavailable}</p> : null}
       <audio
         ref={setAudioRef}

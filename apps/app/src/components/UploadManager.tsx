@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
-import { DownloadIcon, FileStackIcon, PreviewStaffGraphic, UploadIcon } from "@score/ui";
+import { DownloadIcon, FileStackIcon, PreviewStaffGraphic, ProcessingProgress, ScoreDownloadProgress, UploadIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
+import { boundedScoreTransfer } from "../lib/score-transfer-request";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { accountActivationRoute } from "../lib/release";
@@ -36,7 +37,10 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingFailed, setLoadingFailed] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(0);
+  const [downloading, setDownloading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const token = useMemo(() => getStoredToken(), []);
 
@@ -49,6 +53,7 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
     }
 
     setLoading(true);
+    setLoadingFailed(false);
     const result = await apiRequest<FileListPayload>("/api/files", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -57,6 +62,7 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
     setLoading(false);
 
     if (!result.ok) {
+      setLoadingFailed(true);
       if (result.error === "An active entitlement is required.") {
         router.replace(accountActivationRoute);
         return;
@@ -89,6 +95,7 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
     }
 
     setUploading(true);
+    setUploadProgress(0);
     setStatus(null);
     setStatusKind(null);
 
@@ -96,12 +103,21 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const response = await fetch(`${API_BASE_URL}/api/files/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+      const response = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${API_BASE_URL}/api/files/upload`);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.timeout = 180_000;
+        xhr.upload.onprogress = progress => {
+          setUploadProgress(progress.lengthComputable && progress.total > 0 ? progress.loaded / progress.total * 100 : null);
+        };
+        xhr.upload.onload = () => setUploadProgress(100);
+        xhr.onload = () => {
+          if (!xhr.status) { reject(new Error(copy.uploadFailed)); return; }
+          resolve(new Response(xhr.responseText, { status: xhr.status, headers: { "Content-Type": "application/json" } }));
+        };
+        xhr.onerror = xhr.ontimeout = xhr.onabort = () => reject(new Error(copy.uploadFailed));
+        xhr.send(formData);
       });
 
       const payload = (await response.json().catch(() => null)) as UploadPayload | { error?: string } | null;
@@ -143,10 +159,15 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
       return;
     }
 
+    setDownloading(true);
+    setStatusKind(null);
+    try {
+    await boundedScoreTransfer(async signal => {
     const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/download`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      signal,
     });
 
     if (!response.ok) {
@@ -168,6 +189,10 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
     anchor.download = originalName;
     anchor.click();
     window.URL.revokeObjectURL(url);
+    });
+    } catch {
+      setStatus(copy.downloadFailed); setStatusKind("error");
+    } finally { setDownloading(false); }
   }
 
   const totalSizeLabel = formatSize(files.reduce((sum, file) => sum + file.sizeBytes, 0), locale);
@@ -266,6 +291,7 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
             </Link>
           </div>
 
+          <ProcessingProgress active={uploading} label={copy.upload.uploading} progressPercent={uploadProgress} error={statusKind === "error"} locale={locale} />
           {status && statusTone ? <p className={`form-status ${statusTone}`} role={statusKind === "error" ? "alert" : "status"}>{status}</p> : null}
         </form>
 
@@ -336,7 +362,8 @@ export function UploadManager({ copy }: { copy: WorkspaceMessages["uploads"] }) 
           <p className="body-copy">{copy.stored.body}</p>
         </div>
 
-        {loading ? <div className="empty-state">{copy.stored.loading}</div> : null}
+        <ProcessingProgress active={loading} label={copy.stored.loading} error={loadingFailed} locale={locale} />
+        <ScoreDownloadProgress active={downloading} error={statusKind === "error"} locale={locale} />
         {!loading && files.length === 0 ? <div className="empty-state">{copy.stored.empty}</div> : null}
 
         {!loading && files.length > 0 ? (

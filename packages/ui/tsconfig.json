@@ -4,7 +4,11 @@
     "declaration": true,
     "outDir": "dist",
     "rootDir": "src",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@score/i18n": ["packages/i18n/dist/index.d.ts"],
+      "@score/i18n/*": ["packages/i18n/dist/*"]
+    }
   },
   "include": [
     "src/**/*.ts",

@@ -4,9 +4,9 @@ import type { ScoreStructurePreflight } from "@score/shared";
 export type ScoreRecognitionPreflight = ScoreStructurePreflight;
 
 export type ScoreRecognitionPreflightState =
-  | { status: "idle" | "checking" | "waiting"; file: File | null }
-  | { status: "ready"; file: File; result: ScoreRecognitionPreflight }
-  | { status: "failed"; file: File; error: string };
+  | { status: "idle" | "checking" | "waiting"; file: File | null; uploadProgress?: number | null }
+  | { status: "ready"; file: File; result: ScoreRecognitionPreflight; stagedUploadId: string; stagedUploadExpiresAt: string }
+  | { status: "failed"; file: File; error: string; stagedUnavailable?: boolean };
 
 const isCount = (value: unknown, minimum = 0): value is number => Number.isSafeInteger(value) && Number(value) >= minimum;
 
@@ -71,7 +71,7 @@ export function canConfirmScoreRecognition(input: {
   quoteLoading: boolean;
   quoteError: string | null;
 }) {
-  return input.file !== null && input.preflight.status === "ready" && input.preflight.file === input.file && input.preflight.result.recognitionSupport?.supported !== false &&
+  return input.file !== null && input.preflight.status === "ready" && input.preflight.file === input.file && Boolean(input.preflight.stagedUploadId?.trim()) && input.preflight.result.recognitionSupport?.supported !== false &&
     input.selectedMode !== null && input.quote?.mode === input.selectedMode && input.quote.canSubmit &&
     Number.isSafeInteger(input.quote.creditCost) && input.quote.creditCost > 0 && !input.quoteLoading && !input.quoteError;
 }

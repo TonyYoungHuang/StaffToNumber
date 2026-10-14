@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScoreJson, ScoreLyric, ScoreNoteEvent } from "@score/shared";
 import { apiRequest } from "../lib/api";
@@ -35,7 +36,7 @@ export function ScoreNotationProperties({ scoreId, scoreJson, revisionId, select
   const [baseline, setBaseline] = useState("");
   const draft = JSON.stringify({ technical, lyrics, unpitched });
   const dirty = Boolean(note && baseline && draft !== baseline);
-  useScoreActivity(saving, dirty, copy.saving);
+  const hasOperationBoundary = useScoreActivity(saving, dirty, copy.saving, failed);
   function reset() {
     const t = draftTechnical(note);
     const l = structuredClone(note?.lyrics ?? []);
@@ -95,6 +96,7 @@ export function ScoreNotationProperties({ scoreId, scoreJson, revisionId, select
       </fieldset>)}
       <div className="button-row"><button type="button" className="button button-secondary" disabled={saving} onClick={() => setLyrics(current => [...current, { number: String(current.length + 1), text: "" }])}>{copy.addLyric}</button><button type="submit" className="button button-primary" disabled={saving || !dirty}>{saving ? copy.saving : copy.save}</button><button type="button" className="button button-secondary" disabled={saving || !dirty} onClick={reset}>{copy.discard}</button></div>
     </form>
+    <ProcessingProgress active={!hasOperationBoundary && saving} label={copy.saving} error={failed} locale={locale} />
     {status ? <p className={`form-status ${failed ? "error" : "success"}`} role={failed ? "alert" : "status"}>{status}</p> : null}
   </section>;
 }

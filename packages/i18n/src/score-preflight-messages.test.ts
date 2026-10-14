@@ -2,6 +2,23 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SUPPORTED_LOCALES } from './locales.ts';
 import { getScorePreflightMessages, getScoreRequestWaitingMessages } from './score-preflight-messages.ts';
+import { getPercentProgressMessages, getStagedUploadMessages } from './percent-progress-messages.ts';
+
+test('progress and staged expiry actions are translated in all nine locales', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    for (const factory of [getPercentProgressMessages, getStagedUploadMessages]) {
+      const english = factory('en');
+      const messages = factory(locale);
+      assert.deepEqual(Object.keys(messages), Object.keys(english));
+      for (const [key, value] of Object.entries(messages)) {
+        assert.ok(value.trim(), `${locale}.${key}`);
+        if (locale !== 'en') assert.notEqual(value, english[key as keyof typeof english], `${locale}.${key}`);
+      }
+    }
+  }
+  assert.match(getStagedUploadMessages('en').expired, /expired.*upload.*once more/);
+  assert.match(getStagedUploadMessages('zh-CN').expired, /过期.*再次上传一次/);
+});
 
 test('preflight waiting and long detail read messages are available in all nine locales', () => {
   for (const locale of SUPPORTED_LOCALES) {

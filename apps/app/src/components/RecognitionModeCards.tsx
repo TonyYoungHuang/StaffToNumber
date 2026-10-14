@@ -1,6 +1,7 @@
 "use client";
 
 import { formatMessage, formatNumber, getScorePreflightMessages } from "@score/i18n";
+import { ProcessingProgress } from "@score/ui";
 import { useAppLocale } from "./AppLocaleProvider";
 import type { RecognitionMode, RecognitionOptions } from "../lib/recognition-options";
 import { recognitionOption } from "../lib/recognition-options";
@@ -34,7 +35,7 @@ export function RecognitionModeCards({ options, selected, loading, error, onRetr
         </article>;
       })}
     </div>
-    {loading ? <p className="helper-copy" role="status">{copy.priceLoading}</p> : null}
+    <ProcessingProgress active={loading} label={copy.priceLoading} error={Boolean(error)} locale={locale} />
     {error ? <div role="alert"><p className="form-status error">{error}</p><button type="button" className="button button-secondary" onClick={onRetry}>{copy.retry}</button></div> : null}
   </section>;
 }

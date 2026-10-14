@@ -7,3 +7,4 @@ export * from "./locales.ts";
 export * from "./messages/index.ts";
 export * from "./transactional.ts";
 export * from "./score-preflight-messages.ts";
+export * from "./percent-progress-messages.ts";

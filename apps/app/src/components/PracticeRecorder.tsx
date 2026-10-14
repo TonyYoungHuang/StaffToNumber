@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
 import { StatusPill } from "@score/ui";
@@ -346,9 +347,9 @@ export function PracticeRecorder({ locale, value, playbackEndpoint, practiceSett
         </label>
       </div>
       {error ? <p className="form-status error" role="alert">{error}</p> : null}
-      {status === "requesting" ? <p className="helper-copy" role="status">{copy.requesting}</p> : null}
+      <ProcessingProgress active={status === "requesting"} label={copy.requesting} error={status === "error"} locale={locale} />
       {status === "ready" && previewUrl ? <><AudioWaveformPlayer ref={previewAudioRef} src={previewUrl} locale={locale} markers={analysis?.events.map((event) => event.recordingTimeSeconds) ?? []} /><p className="form-status success" role="status">{copy.ready}</p></> : null}
-      {analyzing ? <p className="helper-copy" role="status">{copy.analyzing}</p> : null}
+      <ProcessingProgress active={analyzing} label={copy.analyzing} error={Boolean(analysisError)} locale={locale} />
       {analysisError ? <p className="form-status error" role="alert">{analysisError}</p> : null}
       {analysis ? (
         <div className="stack-md" role="region" aria-label={copy.feedbackAria}>

@@ -1,6 +1,7 @@
 "use client";
 
-import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreRequestWaitingMessages } from "@score/i18n";
+import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreRequestWaitingMessages, getStagedUploadMessages } from "@score/i18n";
+import { ProcessingProgress } from "@score/ui";
 import type { ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -9,14 +10,18 @@ export function ScoreRecognitionPreflight({ state, onRetry, compact = false }: {
   const copy = getScorePreflightMessages(locale);
   const result = state.status === "ready" ? state.result : null;
   const reasons = result ? result.reasonCodes.map(code => copy.reasonStrings[code] ?? copy.uncertainStructure) : [];
+  const pending = state.status === "checking" || state.status === "waiting";
+  const uploadPercent = pending ? state.uploadProgress : null;
+  const uploading = pending && typeof uploadPercent === "number" && uploadPercent < 100;
   return <section className="stack-md" aria-label={copy.title} data-score-preflight={state.status} data-preflight-compact={compact ? "true" : undefined} aria-busy={state.status === "checking" || state.status === "waiting"}>
     {!compact ? <h3 className="card-title">{copy.title}</h3> : null}
     <p className="helper-copy">{copy.freeBody}</p>
-    {state.status === "checking" ? <div role="status"><p>{copy.checking}</p><progress aria-label={copy.checking} style={{ width: "100%" }} /><p className="helper-copy">{getScoreProcessingMessages(locale).preflightBody}</p></div> : null}
-    {state.status === "waiting" ? <div role="status"><p>{getScoreRequestWaitingMessages(locale).preflight}</p><progress aria-label={copy.checking} style={{ width: "100%" }} /></div> : null}
+    <ProcessingProgress active={uploading} label={getScoreProcessingMessages(locale).uploadTitle} progressPercent={uploadPercent} error={state.status === "failed" || state.status === "idle"} operationKey={state.file?.name} locale={locale} />
+    <ProcessingProgress active={pending && !uploading} label={state.status === "waiting" ? getScoreRequestWaitingMessages(locale).preflight : copy.checking} error={state.status === "failed" || state.status === "idle"} operationKey={state.file?.name} locale={locale} />
+    {pending && !uploading ? <p className="helper-copy">{getScoreProcessingMessages(locale).preflightBody}</p> : null}
     {state.status === "failed" ? <div role="alert" className="stack-sm">
       <p className="form-status error">{copy.failed}</p><p className="helper-copy">{state.error}</p>
-      <button type="button" className="button button-secondary" onClick={onRetry}>{copy.retry}</button>
+      <button type="button" className="button button-secondary" onClick={onRetry}>{state.stagedUnavailable ? getStagedUploadMessages(locale).retry : copy.retry}</button>
     </div> : null}
     {result ? <div className="stack-sm" role="status" data-preflight-recommendation={result.recommendation}>
       {result.recognitionSupport ? <p className={result.recognitionSupport.supported ? "helper-copy" : "form-status error"} role={result.recognitionSupport.supported ? undefined : "alert"}>{getScoreRecognitionSupportMessage(locale, result.recognitionSupport.code)}</p> : null}

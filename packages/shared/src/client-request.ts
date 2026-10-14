@@ -70,16 +70,63 @@ export function retryAfterMilliseconds(value: string | null, now = Date.now()): 
   return Number.isFinite(date) ? Math.max(0, date - now) : null;
 }
 
-function wait(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, ms);
-    function abort() { clearTimeout(timer); reject(abortError()); }
-    if (signal.aborted) abort();
-    else signal.addEventListener("abort", abort, { once: true });
-  });
+export type ScorePreflightResponse<T> = { ok: boolean; status: number; payload: T | null };
+type StagedPreflightMetadata = { stagedUploadId: string; stagedUploadExpiresAt: string };
+const stagedPreflights = new Map<string, ScorePreflightResponse<unknown>>();
+const uploadProgress = new Map<string, { percent: number; listeners: Set<(percent: number) => void> }>();
+
+export function parseStagedPreflightMetadata(value: unknown): StagedPreflightMetadata | null {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  return typeof data.stagedUploadId === "string" && data.stagedUploadId.trim().length > 0 &&
+    typeof data.stagedUploadExpiresAt === "string" && Number.isFinite(Date.parse(data.stagedUploadExpiresAt))
+    ? { stagedUploadId: data.stagedUploadId, stagedUploadExpiresAt: data.stagedUploadExpiresAt } : null;
 }
 
-export type ScorePreflightResponse<T> = { ok: boolean; status: number; payload: T | null };
+/** Confirmation sends the staged reference and accepted price, never the source bytes. */
+export function stagedScoreRecognitionBody(stagedUploadId: string, recognitionMode: "simple" | "complex", expectedCreditCost: number) {
+  return { stagedUploadId, recognitionMode, expectedCreditCost };
+}
+
+/** A later deliberate selection of the same file must get a new unconsumed stage. */
+export function forgetStagedScorePreflight(stagedUploadId: string) {
+  for (const [key, response] of stagedPreflights) {
+    if (parseStagedPreflightMetadata(response.payload)?.stagedUploadId === stagedUploadId) stagedPreflights.delete(key);
+  }
+}
+
+function uploadPreflight<T>(url: string, file: File, headers: Headers, signal: AbortSignal, report: (percent: number) => void, factory: () => XMLHttpRequest): Promise<ScorePreflightResponse<T>> {
+  return new Promise((resolve, reject) => {
+    const xhr = factory();
+    const abort = () => xhr.abort();
+    let settled = false;
+    const finish = (result?: ScorePreflightResponse<T>, error?: Error) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener("abort", abort);
+      if (error) reject(error); else resolve(result!);
+    };
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
+    headers.forEach((value, name) => xhr.setRequestHeader(name, value));
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable && event.total > 0) report(Math.min(100, Math.max(0, Math.round(event.loaded / event.total * 100))));
+    };
+    xhr.upload.onload = () => report(100);
+    xhr.onerror = () => finish(undefined, new TypeError("Score upload failed."));
+    xhr.onabort = () => finish(undefined, abortError());
+    xhr.ontimeout = () => finish(undefined, abortError());
+    xhr.onload = () => {
+      let payload: T | null = null;
+      try { payload = JSON.parse(xhr.responseText) as T; } catch { /* Invalid responses cannot authorize confirmation. */ }
+      finish({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, payload });
+    };
+    if (signal.aborted) { finish(undefined, abortError()); return; }
+    signal.addEventListener("abort", abort, { once: true });
+    const body = new FormData(); body.append("file", file);
+    try { xhr.send(body); } catch (error) { finish(undefined, error instanceof Error ? error : new TypeError("Score upload failed.")); }
+  });
+}
 
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -90,15 +137,17 @@ function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
-/** Retry only the explicitly retryable capacity response; never replay a failed upload. */
+/** Upload once; a rejected or expired stage requires an explicit new attempt. */
 export async function fetchScorePreflight<T extends { code?: string }>(url: string, file: File, options: {
   signal?: AbortSignal;
   headers?: HeadersInit;
   accountId?: string;
   pages?: string;
   fetch?: typeof fetch;
-  wait?: (ms: number, signal: AbortSignal) => Promise<void>;
-  now?: () => number;
+  onUploadProgress?: (percent: number) => void;
+  xhr?: () => XMLHttpRequest;
+  /** A user-selected retry changes this key; effect remounts reuse the same staged upload. */
+  retryKey?: string | number;
   timeoutMs?: number;
 } = {}): Promise<ScorePreflightResponse<T>> {
   const consumerController = new AbortController();
@@ -110,32 +159,47 @@ export async function fetchScorePreflight<T extends { code?: string }>(url: stri
   try {
   const identity = await abortable(scorePreflightFileKey(file, options.pages), consumerController.signal);
   const headers = new Headers(options.headers);
-  const key = `preflight:${url}:${headers.get("authorization") ?? options.accountId ?? "session"}:${identity}`;
-  return await sharedInFlightRequest(key, async sharedSignal => {
+  const key = `preflight:${url}:${headers.get("authorization") ?? options.accountId ?? "session"}:${JSON.stringify([file.name, identity])}:${options.retryKey ?? 0}`;
+  // Keep the reference even when its TTL passes: confirmation reports expiry and
+  // the user explicitly chooses a new upload instead of an effect replaying bytes.
+  const staged = stagedPreflights.get(key);
+  if (staged) { options.onUploadProgress?.(100); return staged as ScorePreflightResponse<T>; }
+  let progress = uploadProgress.get(key);
+  if (!progress) { progress = { percent: 0, listeners: new Set() }; uploadProgress.set(key, progress); }
+  const listener = options.onUploadProgress;
+  if (listener) { progress.listeners.add(listener); listener(progress.percent); }
+  try { return await sharedInFlightRequest(key, async sharedSignal => {
     const controller = new AbortController();
     const cancel = () => controller.abort();
     sharedSignal.addEventListener("abort", cancel, { once: true });
     const timeout = setTimeout(cancel, timeoutMs);
-    const now = options.now ?? Date.now;
-    const deadline = now() + timeoutMs;
     try {
-      for (let attempt = 0; ; attempt += 1) {
+      let result: ScorePreflightResponse<T>;
+      const report = (percent: number) => {
+        progress!.percent = percent;
+        for (const notify of progress!.listeners) notify(percent);
+      };
+      if (options.fetch || (typeof XMLHttpRequest === "undefined" && !options.xhr)) {
         const body = new FormData(); body.append("file", file);
         const response = await abortable((options.fetch ?? fetch)(url, { method: "POST", headers, body, credentials: "include", cache: "no-store", signal: controller.signal }), controller.signal);
         const payload = await abortable(response.json().catch(() => null), controller.signal) as T | null;
-        const result = { ok: response.ok, status: response.status, payload };
-        if (response.status !== 429 || payload?.code !== "SCORE_PREFLIGHT_BUSY" || attempt >= 2) return result;
-        const delay = Math.max(retryAfterMilliseconds(response.headers.get("Retry-After"), now()) ?? 0, Math.min(8_000, 1_000 * 2 ** attempt));
-        // A bounded retry must not disregard a longer server Retry-After.
-        if (delay >= deadline - now()) return result;
-        await (options.wait ?? wait)(delay, controller.signal);
+        result = { ok: response.ok, status: response.status, payload };
+      } else {
+        result = await uploadPreflight<T>(url, file, headers, controller.signal, report, options.xhr ?? (() => new XMLHttpRequest()));
       }
+      if (result.ok && parseStagedPreflightMetadata(result.payload)) {
+        stagedPreflights.set(key, result);
+        if (stagedPreflights.size > 64) stagedPreflights.delete(stagedPreflights.keys().next().value!);
+      }
+      return result;
     } finally {
       clearTimeout(timeout);
       sharedSignal.removeEventListener("abort", cancel);
+      if (uploadProgress.get(key) === progress) uploadProgress.delete(key);
     }
   // Changing files or leaving the page releases unused network/rendering work.
-  }, consumerController.signal, { cancelWhenUnused: true });
+  }, consumerController.signal, { cancelWhenUnused: true }); }
+  finally { if (listener) progress.listeners.delete(listener); }
   } finally {
     clearTimeout(consumerTimeout);
     options.signal?.removeEventListener("abort", cancelConsumer);

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { formatMessage, formatNumber } from "@score/i18n";
 import { apiRequest } from "../lib/api";
@@ -52,9 +53,10 @@ export function PendingOmrReviewBanner({ copy, pathname }: { copy: ScoreEntryMes
 
   // Hide data from the previous account synchronously, before effect cleanup.
   if (!enabled || !token || state?.token !== token) return null;
-  if (state.status === "loading") return home ? <div className="container review-entry-status" role="status">{copy.loading}</div> : null;
+  if (state.status === "loading") return home ? <aside className="container review-entry-status"><ProcessingProgress active label={copy.loading} operationKey={token} locale={locale} /></aside> : null;
   if (state.status === "error") return (
     <aside className="container review-entry-status" aria-label={copy.label}>
+      <ProcessingProgress active={false} label={copy.loading} error operationKey={token} locale={locale} />
       <p role="status">{copy.failed}</p>
       <button className="button button-secondary" onClick={() => setRetry(value => value + 1)}>{copy.retry}</button>
     </aside>
@@ -65,6 +67,7 @@ export function PendingOmrReviewBanner({ copy, pathname }: { copy: ScoreEntryMes
   const template = copy.titles[plural as keyof typeof copy.titles] ?? copy.titles.other;
   return (
     <aside className={`container review-entry${count ? " has-pending" : ""}`} aria-label={copy.label} data-pending-review-count={count}>
+      <ProcessingProgress active={false} label={copy.loading} operationKey={token} locale={locale} />
       <div className="review-entry-copy">
         <h2>{count ? formatMessage(template, { count: formatNumber(count, locale) }) : copy.emptyTitle}</h2>
         <p>{count ? copy.body : copy.emptyBody}</p>

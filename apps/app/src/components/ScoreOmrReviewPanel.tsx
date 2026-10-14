@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import type { ScoreJson } from "@score/shared";
@@ -263,7 +264,7 @@ export function ScoreOmrReviewPanel({
         {focusedSourceRegion ? <p className="helper-copy" role="status" data-focused-source-page={activePage}>{formatMessage(copy.pageTemplate, { page: formatNumber(activePage, locale) })} · {focusedSourceRegion.label}</p> : null}
         {!displayedFile ? <div className="empty-state">{copy.noSource}</div> : null}
         {sourceError ? <p className="form-status error" role="alert">{sourceError}</p> : null}
-        {displayedFile && !sourceUrl && !sourceError ? <div className="empty-state" role="status" aria-live="polite">{copy.loadingSource}</div> : null}
+        <ProcessingProgress active={Boolean(displayedFile && !sourceUrl && !sourceError)} label={copy.loadingSource} error={Boolean(sourceError)} operationKey={displayedFile?.id} locale={locale} />
         {sourceUrl && displayedFile?.mimeType === "application/pdf" ? <iframe src={`${sourceUrl}#page=${activePage}`} title={displayedFile.originalName} /> : null}
         {sourceUrl && displayedFile?.mimeType.startsWith("image/") ? (
           <>

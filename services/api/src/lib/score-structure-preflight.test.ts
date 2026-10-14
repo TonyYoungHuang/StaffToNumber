@@ -13,10 +13,13 @@ import { db, initDb } from "../db.js";
 import { createSession, createUser } from "../repositories/auth-repository.js";
 import { authPlugin } from "../plugins/auth.js";
 import { registerScoreStructurePreflightRoute } from "../routes/score-structure-preflight.js";
+import { scoreRoutes } from "../routes/scores.js";
 import { getPlanQuotaUsage } from "./plan-quotas.js";
 import { getRecognitionOptions } from "./recognition-options.js";
 import { runScoreStructurePreflight, ScorePreflightError } from "./score-structure-preflight.js";
 import { inspectPdfRasterSafety, UploadSecurityError } from "./upload-security.js";
+import { claimStagedOmrUpload, cleanupExpiredStagedOmrUploads, STAGED_OMR_TTL_MS } from "./staged-omr-uploads.js";
+import { getFreeTrialAccess } from "./free-trial.js";
 
 const validResult = {
   schemaVersion: 1, recommendation: "simple", confidence: "high", sourcePageCount: 1, pagesAnalyzed: 1, complete: true,
@@ -36,7 +39,7 @@ async function fixture(code: string) {
   config.scorePreflightPythonCommand = process.execPath;
   config.scorePreflightAdapterPath = adapterPath;
   const app = Fastify({ logger: false });
-  await app.register(multipart); await app.register(authPlugin); registerScoreStructurePreflightRoute(app);
+  await app.register(multipart); await app.register(authPlugin); await app.register(scoreRoutes);
   const pdf = await PDFDocument.create(); pdf.addPage([200, 300]);
   const validPdf = Buffer.from(await pdf.save());
   const upload = (bytes = validPdf, auth = true) => {
@@ -50,8 +53,17 @@ async function fixture(code: string) {
     await app.close(); config.scorePreflightPythonCommand = oldConfig.python;
     config.scorePreflightAdapterPath = oldConfig.adapter; config.scorePreflightTimeoutMs = oldConfig.timeout;
     await fs.rm(adapterDir, { recursive: true, force: true });
+    const stagedRoot = path.join(config.storageDir, ".staged-omr");
+    for (const id of await fs.readdir(stagedRoot).catch(() => [])) {
+      const metadata = await fs.readFile(path.join(stagedRoot, id, "metadata.json"), "utf8").then(value => JSON.parse(value)).catch(() => null);
+      if (metadata?.userId === user.id) await fs.rm(path.join(stagedRoot, id), { recursive: true, force: true });
+    }
   };
-  return { user, upload, close };
+  const confirm = (stagedUploadId: string, extra: Record<string, unknown> = {}, authToken = token, headers: Record<string, string> = {}) => app.inject({
+    method: "POST", url: "/scores/import/omr", headers: { authorization: `Bearer ${authToken}`, ...headers },
+    payload: { stagedUploadId, recognitionMode: "simple", expectedCreditCost: 1, ...extra },
+  });
+  return { user, upload, confirm, close, app, token, validPdf };
 }
 
 async function assertTemporaryFilesCleared() {
@@ -66,7 +78,7 @@ function persistentCounts(userId: string) {
     (db.prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE user_id=?`).get(userId) as {count:number}).count);
 }
 
-test("free structure preflight requires login, is available without recognition credits and never persists or bills a score", async () => {
+test("free preflight stages an owner-bound original with 24h TTL and never creates file rows, scores, jobs or credit reservations", async () => {
   const f = await fixture(`if(request.limits.maxPages!==60 || request.limits.maxTotalPixels!==30000000 || request.limits.budgetMs!==${Math.max(100, config.scorePreflightTimeoutMs - 1000)})process.exit(1);
     fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
   const oldQuota = config.quotaFreeJobsPerMonth, oldTrial = config.freeTrialOmrJobs;
@@ -75,10 +87,22 @@ test("free structure preflight requires login, is available without recognition 
     assert.equal(getRecognitionOptions(f.user.id).options.every(option => !option.canSubmit), true);
     assert.equal((await f.upload(undefined, false)).statusCode, 401);
     const before = persistentCounts(f.user.id), beforeCredits = getPlanQuotaUsage(f.user.id).jobs.used;
+    const beforeTrial = getFreeTrialAccess(f.user.id).omrJobsUsed;
     const response = await f.upload(); assert.equal(response.statusCode, 200, response.body);
     assert.equal(response.json().preflight.recommendation, "simple");
+    const stagedId = response.json().stagedUploadId;
+    assert.match(stagedId, /^[a-f0-9-]{36}$/);
+    const stageDir = path.join(config.storageDir, ".staged-omr", stagedId);
+    const metadata = JSON.parse(await fs.readFile(path.join(stageDir, "metadata.json"), "utf8"));
+    assert.equal(metadata.userId, f.user.id); assert.equal(metadata.filename, "score.pdf");
+    assert.equal(metadata.sizeBytes, f.validPdf.length); assert.equal(metadata.mimeType, "application/pdf");
+    assert.equal(metadata.checksumSha256, createHash("sha256").update(f.validPdf).digest("hex"));
+    assert.equal(Date.parse(metadata.expiresAt) - Date.parse(metadata.createdAt), STAGED_OMR_TTL_MS);
+    assert.equal(response.json().stagedUploadExpiresAt, metadata.expiresAt);
+    assert.deepEqual(await fs.readFile(path.join(stageDir, "source.upload")), f.validPdf);
     assert.deepEqual(persistentCounts(f.user.id), before);
     assert.equal(getPlanQuotaUsage(f.user.id).jobs.used, beforeCredits);
+    assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, beforeTrial);
     await assertTemporaryFilesCleared();
   } finally { config.quotaFreeJobsPerMonth = oldQuota; config.freeTrialOmrJobs = oldTrial; await f.close(); }
 });
@@ -99,7 +123,133 @@ test("scan off preflight ignores an unavailable configured scanner and still rej
   }
 });
 
-test("partial-page inspection never recommends simple and discards all temporary input and result files", async () => {
+test("JSON confirmation imports the checked original once without another multipart upload and consumes the staged source", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  try {
+    const checked = await f.upload(); assert.equal(checked.statusCode, 200, checked.body);
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]);
+    const id = checked.json().stagedUploadId;
+    const confirmed = await f.confirm(id); assert.equal(confirmed.statusCode, 201, confirmed.body);
+    assert.equal(confirmed.json().recognition.mode, "simple"); assert.equal(confirmed.json().recognition.creditCost, 1);
+    assert.deepEqual(persistentCounts(f.user.id), [1, 1, 1, 0]);
+    assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, 1);
+    const original = db.prepare("SELECT storage_path, original_name, checksum_sha256 FROM files WHERE id = ?").get(confirmed.json().score.sourceFileId) as {storage_path:string;original_name:string;checksum_sha256:string};
+    assert.equal(original.original_name, "score.pdf");
+    assert.equal(original.checksum_sha256, createHash("sha256").update(f.validPdf).digest("hex"));
+    assert.deepEqual(await fs.readFile(original.storage_path), f.validPdf);
+    const dir = path.join(config.storageDir, ".staged-omr", id);
+    assert.equal(JSON.parse(await fs.readFile(path.join(dir, "metadata.json"), "utf8")).consumed, true);
+    assert.equal(await fs.stat(path.join(dir, "source.upload")).then(() => true, () => false), false);
+    const replay = await f.confirm(id); assert.equal(replay.statusCode, 409, replay.body);
+    assert.equal(replay.json().code, "STAGED_UPLOAD_CONSUMED");
+    assert.deepEqual(persistentCounts(f.user.id), [1, 1, 1, 0]); assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, 1);
+  } finally { await f.close(); }
+});
+
+test("staged confirmation and consumption are owner-only", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  const other = createUser(`${randomUUID()}@preflight.test`, "hash", "salt")!;
+  const otherToken = randomUUID(); createSession(other.id, otherToken, 1);
+  try {
+    const id = (await f.upload()).json().stagedUploadId;
+    const forbidden = await f.confirm(id, {}, otherToken);
+    assert.equal(forbidden.statusCode, 404, forbidden.body); assert.equal(forbidden.json().code, "STAGED_UPLOAD_NOT_FOUND");
+    assert.deepEqual(persistentCounts(other.id), [0, 0, 0, 0]); assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]);
+    assert.equal((await f.confirm(id)).statusCode, 201);
+    assert.equal((await f.confirm(id, {}, otherToken)).statusCode, 404);
+  } finally { await f.close(); }
+});
+
+test("expired staged sources are lazily cleaned by another preflight and confirmation clearly asks for a new upload", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  try {
+    const id = (await f.upload()).json().stagedUploadId;
+    const dir = path.join(config.storageDir, ".staged-omr", id), metadataPath = path.join(dir, "metadata.json");
+    const metadata = JSON.parse(await fs.readFile(metadataPath, "utf8"));
+    await fs.writeFile(metadataPath, JSON.stringify({ ...metadata, expiresAt: new Date(Date.now() - 1000).toISOString() }));
+    const fresh = await f.upload(); assert.equal(fresh.statusCode, 200, fresh.body);
+    assert.notEqual(fresh.json().stagedUploadId, id);
+    assert.equal(await fs.stat(dir).then(() => true, () => false), false, "preflight must collect expired staged objects");
+    const confirmed = await f.confirm(id); assert.equal(confirmed.statusCode, 410, confirmed.body);
+    assert.equal(confirmed.json().code, "STAGED_UPLOAD_EXPIRED"); assert.match(confirmed.json().error, /Check the file again/);
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, 0);
+  } finally { await f.close(); }
+});
+
+test("staged price changes return 409 without consuming the source or credits; confirmation can retry with its current quote", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  const previousCost = config.omrSimpleCreditCost;
+  try {
+    const id = (await f.upload()).json().stagedUploadId;
+    config.omrSimpleCreditCost = previousCost + 1;
+    const changed = await f.confirm(id); assert.equal(changed.statusCode, 409, changed.body);
+    assert.equal(changed.json().code, "OMR_PRICE_CHANGED"); assert.equal(changed.json().options[0].creditCost, previousCost + 1);
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]); assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, 0);
+    const claim = await claimStagedOmrUpload(f.user.id, id); await claim.release();
+    config.omrSimpleCreditCost = previousCost;
+    assert.equal((await f.confirm(id, { expectedCreditCost: previousCost })).statusCode, 201);
+  } finally { config.omrSimpleCreditCost = previousCost; await f.close(); }
+});
+
+test("simultaneous staged confirmations acquire one durable claim and create exactly one score/job/charge", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  try {
+    const id = (await f.upload()).json().stagedUploadId;
+    const responses = await Promise.all([f.confirm(id), f.confirm(id), f.confirm(id)]);
+    assert.deepEqual(responses.map(response => response.statusCode).sort(), [201, 409, 409], responses.map(response => response.body).join("\n"));
+    for (const response of responses.filter(response => response.statusCode === 409)) assert.match(response.json().code, /^STAGED_UPLOAD_(BUSY|CONSUMED)$/);
+    assert.deepEqual(persistentCounts(f.user.id), [1, 1, 1, 0]); assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, 1);
+  } finally { await f.close(); }
+});
+
+test("staged confirmations preserve query aliases and upload receipt recovery without duplicate billing", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  try {
+    const id = (await f.upload()).json().stagedUploadId, key = randomUUID();
+    const headers = { authorization: `Bearer ${f.token}`, "idempotency-key": key };
+    const payload = { stagedUploadId: id, expectedCreditCost: 1 };
+    const initial = await f.app.inject({ method: "POST", url: "/scores/import/omr?mode=simple", headers, payload });
+    assert.equal(initial.statusCode, 201, initial.body);
+    const replay = await f.app.inject({ method: "POST", url: "/scores/import/omr?mode=simple", headers, payload });
+    assert.equal(replay.statusCode, 200, replay.body); assert.equal(replay.json().score.id, initial.json().score.id);
+    const different = await f.app.inject({ method: "POST", url: "/scores/import/omr?mode=simple", headers, payload: { ...payload, stagedUploadId: randomUUID() } });
+    assert.equal(different.statusCode, 409, different.body); assert.equal(different.json().code, "IDEMPOTENCY_KEY_REUSED");
+    assert.deepEqual(persistentCounts(f.user.id), [1, 1, 1, 0]); assert.equal(getFreeTrialAccess(f.user.id).omrJobsUsed, 1);
+  } finally { await f.close(); }
+});
+
+test("TTL cleanup keeps active claims and removes abandoned claims after an hour", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  try {
+    const id = (await f.upload()).json().stagedUploadId, claim = await claimStagedOmrUpload(f.user.id, id);
+    const dir = path.join(config.storageDir, ".staged-omr", id), metadataPath = path.join(dir, "metadata.json");
+    await fs.writeFile(metadataPath, JSON.stringify({ ...claim.metadata, expiresAt: new Date(Date.now() - 1000).toISOString() }));
+    await cleanupExpiredStagedOmrUploads(); assert.equal(await fs.stat(claim.sourcePath).then(() => true, () => false), true);
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000); await fs.utimes(path.join(dir, ".claim"), old, old);
+    await cleanupExpiredStagedOmrUploads(); assert.equal(await fs.stat(dir).then(() => true, () => false), false);
+    await claim.release();
+  } finally { await f.close(); }
+});
+
+test("TTL cleanup safely sweeps old incomplete or corrupt stage directories while keeping fresh ones", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify(validResult)}));`);
+  const dirs = [randomUUID(), randomUUID(), randomUUID()].map(id => path.join(config.storageDir, ".staged-omr", id));
+  try {
+    for (const dir of dirs) { await fs.mkdir(dir, { recursive: true }); await fs.writeFile(path.join(dir, "source.upload"), "orphan"); }
+    await fs.writeFile(path.join(dirs[1], "metadata.json"), "{");
+    await fs.writeFile(path.join(dirs[2], "metadata.json"), "null");
+    const old = new Date(Date.now() - STAGED_OMR_TTL_MS - 1000);
+    await fs.utimes(dirs[0], old, old); await fs.utimes(dirs[1], old, old);
+    await cleanupExpiredStagedOmrUploads();
+    assert.deepEqual(await Promise.all(dirs.map(dir => fs.stat(dir).then(() => true, () => false))), [false, false, true]);
+    assert.equal((await f.upload()).statusCode, 200, "fresh corrupt metadata must not block a valid preflight");
+  } finally {
+    for (const dir of dirs) await fs.rm(dir, { recursive: true, force: true });
+    await f.close();
+  }
+});
+
+test("partial-page inspection never recommends simple and clears its analysis workspace while staging the original", async () => {
   const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify({ ...validResult, sourcePageCount: 4, complete: false })}));`);
   try {
     const response = await f.upload(); assert.equal(response.statusCode, 200, response.body);
@@ -196,7 +346,7 @@ test("a same-user preflight waits for the running check then succeeds without bi
   } finally { config.scorePreflightQueueWaitMs = previous.wait; config.scorePreflightMaxConcurrency = previous.concurrency; await f.close(); }
 });
 
-test("three same-user authenticated uploads run inspection together without billing or retained files", async () => {
+test("three same-user authenticated uploads run inspection together without billing or retained analysis files", async () => {
   const f = await fixture(`const marker=require('node:path').join(__dirname,'active-checks');
     fs.appendFileSync(marker,'x');
     const interval=setInterval(()=>{if(fs.readFileSync(marker,'utf8').length===3){

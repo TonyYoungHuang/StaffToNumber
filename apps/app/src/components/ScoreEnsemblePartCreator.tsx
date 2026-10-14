@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useEffect, useRef, useState } from "react";
 import type { ScoreJson } from "@score/shared";
 import { apiRequest } from "../lib/api";
@@ -23,7 +24,7 @@ export function ScoreEnsemblePartCreator({ scoreId, revisionId, token, missingSt
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lock = useRef(false);
-  useScoreActivity(saving, false, copy.saving);
+  const hasOperationBoundary = useScoreActivity(saving, false, copy.saving, Boolean(error));
   useEffect(() => {
     setName(missingStaff?.name ?? ""); setAbbreviation(""); setStaffCount(1); setError(null);
     setKind(missingStaff?.kind === "tablature" || missingStaff?.kind === "percussion" ? missingStaff.kind : "pitched");
@@ -52,6 +53,7 @@ export function ScoreEnsemblePartCreator({ scoreId, revisionId, token, missingSt
       <label className="field-group"><span>{copy.staffCount}</span><input type="number" min={1} max={4} required className="field-control" value={staffCount} onChange={event => setStaffCount(Number(event.target.value))} /></label>
     </fieldset>
     <div className="button-row"><button type="submit" disabled={saving || !name.trim()} className="button button-primary">{saving ? copy.saving : copy.createInstrument}</button><button type="button" className="button button-secondary" disabled={saving} onClick={onClose}>{copy.cancel}</button></div>
+    <ProcessingProgress active={!hasOperationBoundary && saving} label={copy.saving} error={Boolean(error)} locale={locale} />
     {error ? <p className="form-status error" role="alert">{error}</p> : null}
   </form>;
 }

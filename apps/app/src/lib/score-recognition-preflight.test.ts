@@ -8,9 +8,10 @@ const result: ScoreRecognitionPreflight = {
 };
 const file = new File(["score"], "piano.pdf", { type: "application/pdf" });
 const quote = { mode: "simple" as const, creditCost: 1, canSubmit: true, reason: null, creditSource: "plan" as const };
+const staged = { stagedUploadId: "staged-score-1", stagedUploadExpiresAt: "2026-10-15T00:00:00.000Z" };
 
 test("free structure review does not permit confirmation until the exact file and valid quote are ready", () => {
-  const input = { file, preflight: { status: "ready" as const, file, result }, selectedMode: "simple" as const, quote, quoteLoading: false, quoteError: null };
+  const input = { file, preflight: { status: "ready" as const, file, result, ...staged }, selectedMode: "simple" as const, quote, quoteLoading: false, quoteError: null };
   assert.equal(canConfirmScoreRecognition(input), true);
   assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "checking", file } }), false);
   assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "waiting", file } }), false);
@@ -21,7 +22,8 @@ test("free structure review does not permit confirmation until the exact file an
   assert.equal(canConfirmScoreRecognition({ ...input, quote: { ...quote, canSubmit: false } }), false);
   assert.equal(canConfirmScoreRecognition({ ...input, quoteLoading: true }), false);
   assert.equal(canConfirmScoreRecognition({ ...input, quoteError: "offline" }), false);
-  assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "ready", file, result: { ...result,
+  assert.equal(canConfirmScoreRecognition({ ...input, preflight: { ...input.preflight, stagedUploadId: "" } }), false);
+  assert.equal(canConfirmScoreRecognition({ ...input, preflight: { status: "ready", file, ...staged, result: { ...result,
     recognitionSupport: { supported: false, code: "PDF_TOTAL_PIXEL_LIMIT" } } } }), false);
 });
 
@@ -62,7 +64,7 @@ test("defaultRecognitionMode falls back to simple when recommendation is uncerta
 });
 
 test("isFreeSimpleScanPath requires ready simple free-trial quote", () => {
-  const ready = { status: "ready" as const, file: new File(["x"], "a.pdf", { type: "application/pdf" }), result };
+  const ready = { status: "ready" as const, file: new File(["x"], "a.pdf", { type: "application/pdf" }), result, ...staged };
   const quote = { mode: "simple" as const, creditCost: 1, canSubmit: true, reason: null, creditSource: "free_trial" as const };
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: "simple", simpleQuote: quote, preflight: ready }), true);
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: "complex", simpleQuote: quote, preflight: ready }), false);

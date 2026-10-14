@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useScoreActivity } from "./ScoreOperationBoundary";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -258,7 +259,7 @@ export function ScoreVisualEditorPanel({
   const undoTarget = latestOwnHistoryCommand && latestOwnHistoryCommand.commandType !== "history.undo" ? latestOwnHistoryCommand : null;
   const redoTarget = latestOwnHistoryCommand?.commandType === "history.undo" ? latestOwnHistoryCommand : null;
   const busy = saving || mutating !== null || historyMutating !== null || syncingOfflineQueue || resolvingConflict;
-  useScoreActivity(busy, hasUnsavedChanges || Boolean(pendingConflict) || offlineQueueCount > 0, flow.scoreOperations.saving);
+  const hasOperationBoundary = useScoreActivity(busy, hasUnsavedChanges || Boolean(pendingConflict) || offlineQueueCount > 0, flow.scoreOperations.saving, statusKind === "error");
 
   useEffect(() => {
     if (hasUnsavedChanges || busy || !selectedEventId || selectedEventId === selectedNoteId) {
@@ -1134,6 +1135,7 @@ export function ScoreVisualEditorPanel({
               </div>
             </div>
           ) : null}
+          <ProcessingProgress active={!hasOperationBoundary && busy} label={flow.scoreOperations.saving} error={statusKind === "error"} locale={locale} />
           {status && statusKind ? <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"} aria-label={copy.statusAria}>{status}</p> : null}
         </div>
       </div>

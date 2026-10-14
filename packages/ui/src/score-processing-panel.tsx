@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ProcessingProgress } from "./processing-progress";
 
 export type ScoreProcessingCopy = {
   phases: Record<string, string>; elapsed: string; page: string; queuedPosition: string;
   working: string; slow: string; stale: string; offline: string; saved: string;
 };
 export type ScoreProgressJob = {
+  id?: string; progressPercent?: number | null;
   status: string; params?: Record<string, unknown> | null;
   startedAt?: string | null; createdAt?: string; updatedAt?: string; queuePosition?: number | null;
 };
@@ -15,7 +17,12 @@ export function ScoreProcessingPanel({ job, copy, locale, connectionError = fals
   job?: ScoreProgressJob | null; copy: ScoreProcessingCopy; locale: string; connectionError?: boolean;
 }) {
   const [now, setNow] = useState(Date.now);
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  const active = !job || job.status === "queued" || job.status === "processing";
+  useEffect(() => {
+    if (!active) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
   const raw = job?.params?.processingProgress;
   const progress = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
   const queued = job?.status === "queued";
@@ -27,9 +34,11 @@ export function ScoreProcessingPanel({ job, copy, locale, connectionError = fals
   const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const page = typeof progress.page === "number" && Number.isSafeInteger(progress.page) ? progress.page : 0;
   const total = typeof progress.totalPages === "number" && Number.isSafeInteger(progress.totalPages) ? progress.totalPages : 0;
-  return <div className="stack-md" data-score-processing-phase={phase} aria-busy="true">
-    <strong role="status" aria-live="polite">{copy.phases[phase]}</strong>
-    <progress aria-label={copy.phases[phase]} style={{ width: "100%" }} />
+  return <div className="stack-md" data-score-processing-phase={phase} aria-busy={active}>
+    <ProcessingProgress active={active} label={copy.phases[phase]}
+      progressPercent={job?.progressPercent} operationKey={job?.id} locale={locale}
+      error={job?.status === "failed" || job?.status === "cancelled"} />
+    {active ? <>
     {queued && job?.queuePosition && job.queuePosition > 0 ? <p>{copy.queuedPosition.replace("{position}", number(job.queuePosition))}</p> : null}
     {page > 0 && total >= page && total <= 1000 ? <p>{copy.page.replace("{page}", number(page)).replace("{total}", number(total))}</p> : null}
     <p className="helper-copy" aria-live="off">{copy.elapsed.replace("{seconds}", number(elapsed))}</p>
@@ -37,5 +46,6 @@ export function ScoreProcessingPanel({ job, copy, locale, connectionError = fals
       {connectionError ? copy.offline : stale ? copy.stale : elapsed >= 45 ? copy.slow : copy.working}
     </p>
     <p className="helper-copy">{copy.saved}</p>
+    </> : null}
   </div>;
 }

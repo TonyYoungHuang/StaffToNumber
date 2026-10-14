@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import { useScoreActivity } from "./ScoreOperationBoundary";
 import { useFlowMessages } from "../lib/flow-messages/client";
 
@@ -164,9 +165,9 @@ export function ScoreCorrectionPanel({
   const [repeatTimes, setRepeatTimes] = useState(selectedMeasure?.barlines?.[0]?.repeatTimes ?? 2);
   const [saving, setSaving] = useState(false);
   const operationCopy = useFlowMessages().scoreOperations;
-  useScoreActivity(saving, false, operationCopy.saving);
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
+  const hasOperationBoundary = useScoreActivity(saving, false, operationCopy.saving, statusKind === "error");
 
   const copy = { ...messages.intro, ...messages.note, ...messages.status, empty: messages.empty.events };
   const measureCopy = { ...messages.measure, empty: messages.empty.measures };
@@ -1557,6 +1558,7 @@ export function ScoreCorrectionPanel({
         </form>
       ) : null}
 
+      <ProcessingProgress active={!hasOperationBoundary && saving} label={operationCopy.saving} error={statusKind === "error"} locale={locale} />
       {status && statusKind ? (
         <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"} aria-live="polite" aria-label={messages.aria.status}>
           {status}

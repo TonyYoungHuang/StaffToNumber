@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ScoreOperationBoundary, useScoreActivity, useScoreNavigationLocked } from "./ScoreOperationBoundary";
 import { ScoreWorkspace, WorkspacePanel } from "./ScoreWorkspace";
 import { ScoreImportStatus } from "./ScoreImportStatus";
+import { ProcessingProgress } from "@score/ui";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { trackFunnelEvent } from "../lib/analytics";
@@ -27,7 +28,7 @@ import type {
   TransposeSpellingPolicy,
 } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
-import { getScoreRequestWaitingMessages } from "@score/i18n";
+import { getScoreRequestWaitingMessages, getPercentProgressMessages } from "@score/i18n";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
@@ -430,6 +431,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const [exportFormat, setExportFormat] = useState("pdf");
   const [exportQuote, setExportQuote] = useState<ScoreExportQuote | null>(null);
   const [exportQuoteError, setExportQuoteError] = useState<string | null>(null);
+  const [exportQuoteLoading, setExportQuoteLoading] = useState(false);
   const navigationLocked = useScoreNavigationLocked();
   const submitLockRef = useRef(false);
   const [lastExportJobId, setLastExportJobId] = useState<string | null>(null);
@@ -440,6 +442,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const detailReadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadCount, setDownloadCount] = useState(0);
   const [jianpu, setJianpu] = useState<JianpuDocument | null>(null);
   const [jianpuLoading, setJianpuLoading] = useState(false);
   const [jianpuError, setJianpuError] = useState<string | null>(null);
@@ -777,17 +780,29 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }, [payload?.score.currentRevisionId]);
 
   const requestingExport = exportingMidi || exportingJianpu || exportingScoreJson || exportingMusicXml || exportingPdf || exportingSvg || exportingPng || exportingWav || exportingMp3;
-  const updatingScore = Boolean(candidateAction || restoringRevisionId || applyingClefRecommendations || savingTransposePreset);
-  useScoreActivity(transposing || transposeSuggestionsLoading || updatingScore || requestingExport, false,
-    transposing ? flow.scoreOperations.transposing : transposeSuggestionsLoading ? flow.scoreOperations.suggesting : requestingExport ? flow.scoreOperations.preparingExport : flow.scoreOperations.updating);
+  useScoreActivity(loading, false, copy.loading, Boolean(error), false);
+  useScoreActivity(transposing, false, flow.scoreOperations.transposing, transposeStatusKind === "error");
+  useScoreActivity(transposeSuggestionsLoading, false, flow.scoreOperations.suggesting, Boolean(transposeSuggestionsError));
+  useScoreActivity(requestingExport, false, flow.scoreOperations.preparingExport, exportStatusKind === "error");
+  useScoreActivity(Boolean(candidateAction), false, flow.scoreOperations.updating, Boolean(candidateActionError));
+  useScoreActivity(Boolean(restoringRevisionId), false, flow.scoreOperations.updating, revisionStatusKind === "error");
+  useScoreActivity(applyingClefRecommendations, false, flow.scoreOperations.updating, clefRecommendationStatusKind === "error");
+  useScoreActivity(savingTransposePreset, false, flow.scoreOperations.updating, transposePresetStatusKind === "error");
+  useScoreActivity(extractingParts, false, partExtractCopy.working, partExtractStatusKind === "error");
   const activeExportJobs = scoreJobs.filter(job => job.jobType === "render_export" && (job.status === "queued" || job.status === "processing"));
   const isExportRunning = (format: string) => activeExportJobs.some(job => job.params?.format === format && job.params?.revisionId === payload?.score.currentRevisionId);
+  const playbackExportProgress = (format: string) => {
+    const job = scoreJobs.find(item => item.jobType === "render_export" && item.params?.format === format && item.params?.revisionId === payload?.score.currentRevisionId);
+    return { progressPercent: job && (job.status === "queued" || job.status === "processing") ? job.progressPercent : undefined, operationKey: job?.id,
+      error: !requestingExport && (exportStatusKind === "error" || job?.status === "failed" || job?.status === "cancelled") };
+  };
   const selectedExportRunning = isExportRunning(exportFormat);
   const selectedExportQuote = exportQuoteOption(exportQuote, exportFormat);
   const exportCreditState = scoreJobs.map(job => `${job.id}:${job.status}`).join("|");
 
   const refreshExportQuote = useCallback(async () => {
     if (!token || !scoreId) return null;
+    setExportQuoteLoading(true);
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
@@ -797,7 +812,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       if (!result.ok) { setExportQuote(null); setExportQuoteError(result.error); return null; }
       setExportQuote(result.data); setExportQuoteError(null);
       return result.data;
-    } finally { window.clearTimeout(timeout); }
+    } finally { window.clearTimeout(timeout); setExportQuoteLoading(false); }
   }, [scoreId, token]);
 
   useEffect(() => {
@@ -950,7 +965,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }, [currentScoreJson, selectedScoreEventId]);
 
   if (loading) {
-    return <div className="empty-state" role="status" aria-busy="true"><p>{copy.loading}</p><progress aria-label={copy.loading} />{slowRead ? <p>{getScoreRequestWaitingMessages(locale).detail}</p> : null}</div>;
+    return <div className="empty-state">{slowRead ? <p>{getScoreRequestWaitingMessages(locale).detail}</p> : null}</div>;
   }
 
   if (error || !payload || !score) {
@@ -2400,6 +2415,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       return false;
     }
     const controller = new AbortController(); downloadReads.current.add(controller);
+    setDownloadCount(count => count + 1);
     try {
       if (!fileId || !fileName) throw new ScoreTransferError("INVALID_FILE");
       const blob = await readScoreDownload(`${API_BASE_URL}/api/files/${fileId}/download`, { Authorization: `Bearer ${token}` }, { signal: controller.signal });
@@ -2415,7 +2431,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       if (controller.signal.aborted) return false;
       const message = error instanceof ScoreTransferError ? error.code === "TIMEOUT" ? transferCopy.downloadTimeout : error.code === "READ" ? transferCopy.downloadRead : error.code === "INVALID_FILE" ? transferCopy.downloadInvalid : error.code === "RESPONSE" && error.server ? scoreGenerationError(error.server, locale) ?? localizeApiError(error.server, locale) : transferCopy.downloadNetwork : transferCopy.downloadRead;
       setDownloadError(message); return false;
-    } finally { downloadReads.current.delete(controller); }
+    } finally { downloadReads.current.delete(controller); setDownloadCount(count => Math.max(0, count - 1)); }
   }
 
   async function handleCandidateDecision(action: "accept" | "reject", coverageReviewed?: boolean) {
@@ -2500,6 +2516,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   return (
     <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
 {downloadError ? <p className="form-status error">{downloadError}</p> : null}
+<ProcessingProgress active={downloadCount > 0} label={getPercentProgressMessages(locale).downloading} error={Boolean(downloadError)} locale={locale} />
 <WorkspacePanel name="edit">{currentScoreJson ? (
         <>
           {ensemble && reviewRevision ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={currentScoreJson} fileId={musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={reviewRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview onSourceRegionFocus={handleSourceRegionFocus} /> : null}
@@ -2571,7 +2588,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
             </button>
           </div>
         </div>
-        {jianpuLoading ? <div className="empty-state">{jianpuCopy.loading}</div> : null}
+        <ProcessingProgress active={jianpuLoading} label={jianpuCopy.loading} error={Boolean(jianpuError)} locale={locale} />
         {jianpuError ? <p className="form-status error">{jianpuError}</p> : null}
         {!jianpuLoading && !jianpuError && !jianpu ? <div className="empty-state">{jianpuCopy.empty}</div> : null}
         {jianpu ? (
@@ -2921,6 +2938,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
                   costHint: exportCostHint("midi"),
                   loadingLabel: exportCopy.exporting,
                   loading: exportingMidi || isExportRunning("midi"),
+                  ...playbackExportProgress("midi"),
                   disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "midi")?.canSubmit || isExportRunning("midi"),
                   onClick: () => void handleExportMidi(),
                 },
@@ -2929,6 +2947,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
                   costHint: exportCostHint("wav"),
                   loadingLabel: wavExportCopy.exporting,
                   loading: exportingWav || isExportRunning("wav"),
+                  ...playbackExportProgress("wav"),
                   disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "wav")?.canSubmit || isExportRunning("wav"),
                   onClick: () => void handleExportWav(),
                 },
@@ -2937,6 +2956,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
                   costHint: exportCostHint("mp3"),
                   loadingLabel: mp3ExportCopy.exporting,
                   loading: exportingMp3 || isExportRunning("mp3"),
+                  ...playbackExportProgress("mp3"),
                   disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "mp3")?.canSubmit || isExportRunning("mp3"),
                   onClick: () => void handleExportMp3(),
                 },
@@ -2968,6 +2988,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
 {["pdf", "musicxml", "midi", "wav", "mp3", "svg", "png", "jianpu", "score-json"].map(format => <option key={format} value={format}>{format === "jianpu" ? flow.jianpu : format === "score-json" ? "Score JSON" : format.toUpperCase()}</option>)}
 </select></label>
 <p className="helper-copy" aria-live="polite">{exportCostHint(exportFormat)}</p>
+<ProcessingProgress active={exportQuoteLoading} label={exportCostCopy.checking} error={Boolean(exportQuoteError)} locale={locale} />
 {exportQuoteError ? <div className="stack-sm"><p className="form-status error">{exportCostCopy.unavailable}</p><button type="button" className="button button-secondary" onClick={() => void refreshExportQuote()}>{exportCostCopy.retryQuote}</button></div> : null}
 {selectedExportQuote && !selectedExportQuote.canSubmit ? <div className="stack-sm"><p className="form-status error">{selectedExportQuote.reason === "SCORE_PASS_QUEUED_EXPORT_REQUIRED" ? exportCostCopy.passFormatUnavailable : exportCostCopy.insufficient}</p><Link className="button button-secondary" href={upgradePath(currentWorkPath())}>{flow.upgrade}</Link></div> : null}
 <button type="button" className="button button-primary" disabled={!currentScoreJson || !selectedExportQuote?.canSubmit || requestingExport || selectedExportRunning} onClick={() => {
@@ -2975,11 +2996,10 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
 }}>{requestingExport || selectedExportRunning ? `${flow.scoreOperations.exporting} ${exportFormat.toUpperCase()}` : formatMessage(exportCostCopy.generate, { format: exportFormat === "jianpu" ? `${flow.jianpu} TXT` : exportFormat === "score-json" ? "Score JSON" : exportFormat.toUpperCase() })}</button>
 {!["jianpu", "score-json"].includes(exportFormat) ? <p className="helper-copy">{exportCostCopy.regeneration}</p> : null}
 {exportStatus && exportStatusKind ? <p role={exportStatusKind === "error" ? "alert" : "status"} className={`form-status ${exportStatusKind}`}>{exportStatus}</p> : null}
-{activeExportJobs.map(job => <div key={job.id} className="mini-card stack-sm" data-export-progress={job.id}>
-  <p role="status">{flow.scoreOperations.exporting} {String(job.params?.format ?? "").toUpperCase()} · {omrCopy.statuses[job.status]}</p>
-  <progress max={100} value={job.progressPercent || undefined} aria-label={omrCopy.progressAria} />
-  <p className="helper-copy">{flow.scoreOperations.exportWait}</p>
-  <button type="button" className="button button-secondary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "cancel")}>{omrCopy.cancel}</button>
+{scoreJobs.filter(job => job.jobType === "render_export").map(job => <div key={job.id} data-export-progress={job.id}>
+  <ProcessingProgress active={job.status === "queued" || job.status === "processing"} progressPercent={job.progressPercent} label={`${flow.scoreOperations.exporting} ${String(job.params?.format ?? "").toUpperCase()} · ${omrCopy.statuses[job.status]}`} error={job.status === "failed" || job.status === "cancelled"} operationKey={job.id} locale={locale} />
+  {job.status === "queued" || job.status === "processing" ? <div className="mini-card stack-sm"><p className="helper-copy">{flow.scoreOperations.exportWait}</p>
+  <button type="button" className="button button-secondary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "cancel")}>{omrCopy.cancel}</button></div> : null}
 </div>)}
 
 {["pdf", "svg", "png"].includes(exportFormat) ? <details className="flow-details"><summary>{flow.advanced}</summary><section id="print-export-settings" className="surface-panel stack-lg">
@@ -3098,7 +3118,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
           <h2 className="card-title">{assetCopy.title}</h2>
           <p className="body-copy">{assetCopy.body}</p>
         </div>
-        {assetsLoading ? <div className="empty-state">{assetCopy.loading}</div> : null}
+        <ProcessingProgress active={assetsLoading} label={assetCopy.loading} error={Boolean(assetsError)} locale={locale} />
         {assetsError ? <p className="form-status error">{assetsError}</p> : null}
         {!assetsLoading && !assetsError && assets.length === 0 ? <div className="empty-state">{assetCopy.empty}</div> : null}
         {assets.length > 0 ? (
@@ -3146,6 +3166,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
         ) : null}
         {jobsError ? <p className="form-status error">{jobsError}</p> : null}
         {jobsNotice ? <p className="helper-copy" role="status">{jobsNotice}</p> : null}
+        <ProcessingProgress active={jobsLoading} label={omrCopy.loading} error={Boolean(jobsError)} locale={locale} />
         {!jobsLoading && !jobsError && scoreJobs.length === 0 && omrDiagnostics.length === 0 ? <div className="empty-state">{omrCopy.empty}</div> : null}
         {scoreJobs.length > 0 ? (
           <div className="list-grid">
@@ -3162,12 +3183,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                       {omrCopy.outputs}: {formatNumber(job.outputFileIds?.length ?? 0, locale)} | {omrCopy.attempt}: {formatNumber(job.attemptCount, locale)}
                       {job.queuePosition ? ` | ${omrCopy.queue}: ${formatNumber(job.queuePosition, locale)}` : ""}
                     </p>
-                    {(job.status === "queued" || job.status === "processing") ? (
-                      <div className="stack-sm">
-                        <progress max={100} value={job.progressPercent} aria-label={omrCopy.progressAria} />
-                        <p className="helper-copy">{formatNumber(job.progressPercent / 100, locale, { style: "percent" })}</p>
-                      </div>
-                    ) : null}
+                    <ProcessingProgress active={job.status === "queued" || job.status === "processing"} progressPercent={job.progressPercent} label={omrCopy.statuses[job.status]} error={job.status === "failed" || job.status === "cancelled"} operationKey={job.id} locale={locale} />
                     {job.errorMessage ? <p className="form-status error">{scoreGenerationError({ error: job.errorMessage }, locale) ?? localizeApiError({ error: job.errorMessage }, locale)}</p> : null}
                   </div>
                   {(outputAssets.length > 0 || job.status === "queued" || job.status === "processing" || job.status === "failed" || job.status === "cancelled") ? (
@@ -3274,6 +3290,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
             <p className="body-copy">{clefRecommendationCopy.body}</p>
           </div>
           <div className="button-row">
+            <ProcessingProgress active={clefRecommendationsLoading} label={clefRecommendationCopy.loading} error={clefRecommendationStatusKind === "error"} locale={locale} />
             <button type="button" className="button button-secondary" onClick={() => void handleLoadClefRecommendations()} disabled={clefRecommendationsLoading}>
               {clefRecommendationsLoading ? clefRecommendationCopy.loading : clefRecommendationCopy.load}
             </button>
@@ -3336,7 +3353,8 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
           </button>
         </div>
         {shareStatus && shareStatusKind ? <p className={`form-status ${shareStatusKind}`}>{shareStatus}</p> : null}
-        {sharesLoading ? <div className="empty-state">{shareCopy.loading}</div> : null}
+        <ProcessingProgress active={sharesLoading} label={shareCopy.loading} error={shareStatusKind === "error"} locale={locale} />
+        <ProcessingProgress active={creatingShare || Boolean(revokingShareId)} label={revokingShareId ? shareCopy.revoking : shareCopy.creating} error={shareStatusKind === "error"} locale={locale} />
         {!sharesLoading && shares.length === 0 ? <div className="empty-state">{shareCopy.empty}</div> : null}
         {shares.length > 0 ? (
           <div className="list-grid">
@@ -3421,7 +3439,8 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
             </button>
           </div>
         </form>
-        {commentsLoading ? <div className="empty-state">{commentCopy.loading}</div> : null}
+        <ProcessingProgress active={commentsLoading} label={commentCopy.loading} error={Boolean(commentsError)} locale={locale} />
+        <ProcessingProgress active={postingComment || Boolean(resolvingCommentId)} label={commentCopy.posting} error={Boolean(commentsError)} locale={locale} />
         {commentsError ? <p className="form-status error">{commentsError}</p> : null}
         {!commentsLoading && !commentsError && comments.length === 0 ? <div className="empty-state">{commentCopy.empty}</div> : null}
         {comments.length > 0 ? (

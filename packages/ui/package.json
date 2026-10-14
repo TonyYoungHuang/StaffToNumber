@@ -13,8 +13,12 @@
     "./sonata.css": "./src/sonata.css"
   },
   "scripts": {
+    "test": "tsx --tsconfig tsconfig.test.json --test src/processing-progress.test.tsx",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@score/i18n": "0.1.0"
   },
   "peerDependencies": {
     "react": "^19.1.0"

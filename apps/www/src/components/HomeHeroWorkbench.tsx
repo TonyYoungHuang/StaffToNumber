@@ -1,12 +1,12 @@
 "use client";
 
-import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRequestWaitingMessages, localizeApiError } from "@score/i18n";
+import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRequestWaitingMessages, getStagedUploadMessages, localizeApiError } from "@score/i18n";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
-import { fetchScorePreflight, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
-import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel } from "@score/ui";
+import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
+import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
 import { localizePublicHref } from "../lib/locale-routing";
@@ -84,8 +84,13 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   const [retrying, setRetrying] = useState(false);
   const progressCopy = getScoreProcessingMessages(locale);
   const preflightCopy = getScorePreflightMessages(locale);
+  const stagedCopy = getStagedUploadMessages(locale);
   const [preflightState, setPreflightState] = useState<PreflightState>("idle");
   const [preflight, setPreflight] = useState<ScoreStructurePreflight | null>(null);
+  const [stagedUpload, setStagedUpload] = useState<ReturnType<typeof parseStagedPreflightMetadata>>(null);
+  const [stagedUnavailable, setStagedUnavailable] = useState(false);
+  const preflightRetryKey = useRef<string | number>(0);
+  const confirmReceipts = useRef(new Map<string, string>());
   const [recognitionOptions, setRecognitionOptions] = useState<ScoreRecognitionOption[]>([]);
   const [recognitionMode, setRecognitionMode] = useState<ScoreRecognitionMode | null>(null);
   const [submittedMode, setSubmittedMode] = useState<ScoreRecognitionMode>("simple");
@@ -128,7 +133,10 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   useEffect(() => {
     const refresh = () => { void apiRequest<AuthPayload>("/api/auth/me").then(result => {
       const accountId = result.ok ? result.data.user.id : undefined;
-      if (sessionAccountId.current !== accountId) preflightAbort.current?.abort();
+      if (sessionAccountId.current !== accountId) {
+        preflightAbort.current?.abort(); importRequest.current?.abort();
+        setStagedUpload(null); setPreflight(null); setPreflightState("idle"); setUploadProgress(null);
+      }
       sessionAccountId.current = accountId;
       setSession(result.ok ? "authenticated" : "anonymous");
     }); };
@@ -165,7 +173,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     return () => window.removeEventListener("hashchange", handleHashStart);
   }, [beginFileSelection, session, pendingFileSelection]);
 
-  const startPreflight = useCallback(async (file: File) => {
+  const startPreflight = useCallback(async (file: File, retry = false) => {
     preflightAbort.current?.abort();
     const generation = ++preflightGeneration.current;
     const controller = new AbortController();
@@ -173,6 +181,8 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     currentFile.current = file;
     setPendingFile(file);
     setPreflight(null);
+    setStagedUpload(null); setStagedUnavailable(false); setUploadProgress(0);
+    if (retry) preflightRetryKey.current = crypto.randomUUID();
     setRecognitionOptions([]);
     setRecognitionMode(null);
     setRecognitionError(null);
@@ -184,11 +194,13 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     const extension = file.name.split(".").pop()?.toLowerCase();
     if (!extension || !["pdf", "png", "jpg", "jpeg", "webp", "tif", "tiff"].includes(extension)) {
       setPreflightState("failed");
+      setUploadProgress(null);
       setRecognitionError(copy.invalidFile);
       return;
     }
     if (file.size > 20 * 1024 * 1024) {
       setPreflightState("failed");
+      setUploadProgress(null);
       setRecognitionError(preflightCopy.fileTooLarge);
       return;
     }
@@ -199,11 +211,14 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     }, 2_000);
     const timeout = window.setTimeout(() => {
       if (generation !== preflightGeneration.current) return;
-      setPreflightState("failed"); setRecognitionError(preflightCopy.failed); controller.abort();
+      setPreflightState("failed"); setUploadProgress(null); setRecognitionError(preflightCopy.failed); controller.abort();
     }, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS);
     try {
       const [response, optionsResult] = await Promise.all([
-        fetchScorePreflight<{ preflight?: ScoreStructurePreflight; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, { signal: controller.signal, accountId: sessionAccountId.current }),
+        fetchScorePreflight<{ preflight?: ScoreStructurePreflight; stagedUploadId?: string; stagedUploadExpiresAt?: string; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, {
+          signal: controller.signal, accountId: sessionAccountId.current, retryKey: preflightRetryKey.current,
+          onUploadProgress: percent => { if (!controller.signal.aborted && generation === preflightGeneration.current) setUploadProgress(percent); },
+        }),
         apiRequest<RecognitionOptionsPayload>("/api/scores/recognition-options", { signal: controller.signal }),
       ]);
       const payload = response.payload ?? {};
@@ -221,12 +236,14 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
         return;
       }
       const result = payload.preflight;
-      if (result.schemaVersion !== 1 || !["simple", "complex", "uncertain"].includes(result.recommendation) || !Array.isArray(result.pages) || typeof result.complete !== "boolean" || !Array.isArray(result.reasonCodes) || !Array.isArray(optionsResult.data.options)) {
+      const staged = parseStagedPreflightMetadata(payload);
+      if (!staged || result.schemaVersion !== 1 || !["simple", "complex", "uncertain"].includes(result.recommendation) || !Array.isArray(result.pages) || typeof result.complete !== "boolean" || !Array.isArray(result.reasonCodes) || !Array.isArray(optionsResult.data.options)) {
         setPreflightState("failed");
         setRecognitionError(preflightCopy.failed);
         return;
       }
       setPreflight(result);
+      setStagedUpload(staged);
       setRecognitionOptions(optionsResult.data.options);
       setRecognitionMode(result.complete && result.recommendation !== "uncertain" ? result.recommendation : null);
       setPreflightState("ready");
@@ -237,6 +254,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     } finally {
       window.clearTimeout(waiting);
       window.clearTimeout(timeout);
+      if (generation === preflightGeneration.current) setUploadProgress(null);
     }
   }, [copy.invalidFile, flow.signIn, locale, preflightCopy.failed, preflightCopy.fileTooLarge]);
 
@@ -246,28 +264,29 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
     importRequest.current?.abort();
   }, []);
 
-  const startUpload = useCallback((file: File, chosenMode: ScoreRecognitionMode, creditCost: number) => {
+  const startRecognition = useCallback((file: File, chosenMode: ScoreRecognitionMode, creditCost: number) => {
+    if (!stagedUpload || preflight?.recognitionSupport?.supported === false) return;
     setRecognitionError(null);
     setMusicXml(null);
     setScoreId(null);
     setScoreTitle(file.name.replace(/\.[^.]+$/u, ""));
     setJob(null);
-    setUploadProgress(0);
     setSubmittedMode(chosenMode);
 
-    if (preflight?.recognitionSupport?.supported === false) return;
-    const formData = new FormData();
-    formData.append("file", file);
     const xhr = new XMLHttpRequest();
     importRequest.current = xhr;
     const params = new URLSearchParams({ recognitionMode: chosenMode, expectedCreditCost: String(creditCost) });
     xhr.open("POST", `${API_BASE_URL}/api/scores/import/omr?${params}`);
     xhr.withCredentials = true;
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) setUploadProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
-    };
-    const release = () => { submissionLock.current = false; setConfirming(false); setUploadProgress(null); importRequest.current = null; };
+    xhr.timeout = 180_000;
+    xhr.setRequestHeader("Content-Type", "application/json");
+    const receiptIdentity = `${sessionAccountId.current}:${stagedUpload.stagedUploadId}:${chosenMode}:${creditCost}`;
+    let receipt = confirmReceipts.current.get(receiptIdentity);
+    if (!receipt) { receipt = crypto.randomUUID(); confirmReceipts.current.set(receiptIdentity, receipt); }
+    xhr.setRequestHeader("Idempotency-Key", receipt);
+    const release = () => { submissionLock.current = false; setConfirming(false); importRequest.current = null; };
     xhr.onerror = () => { release(); setRecognitionError(copy.uploadFailed); };
+    xhr.ontimeout = () => { release(); setRecognitionError(copy.uploadFailed); };
     xhr.onabort = release;
     xhr.onload = () => {
       release();
@@ -278,6 +297,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
         waitingForLogin.current = file;
         setPreflightState("idle");
         setPreflight(null);
+        setStagedUpload(null);
         setRecognitionMode(null);
         flow.signIn();
         return;
@@ -287,24 +307,33 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
         setRecognitionError(preflightCopy.priceChanged);
         return;
       }
+      const code = payload && "code" in payload && typeof payload.code === "string" ? payload.code : undefined;
+      if (["STAGED_UPLOAD_EXPIRED", "STAGED_UPLOAD_NOT_FOUND", "STAGED_UPLOAD_CONSUMED"].includes(code ?? "")) {
+        setStagedUpload(null); setPreflightState("failed"); setStagedUnavailable(true);
+        setRecognitionError(code === "STAGED_UPLOAD_EXPIRED" ? stagedCopy.expired : stagedCopy.unavailable);
+        return;
+      }
+      if (code === "STAGED_UPLOAD_BUSY") { setRecognitionError(stagedCopy.busy); return; }
       if (xhr.status < 200 || xhr.status >= 300 || !payload || !("score" in payload) || !("job" in payload)) {
         setRecognitionError(localizeApiError({ error: apiErrorOrFallback(payload && "error" in payload ? payload.error : undefined, copy.uploadFailed), status: xhr.status, code: payload && "code" in payload && typeof payload.code === "string" ? payload.code : undefined }, locale));
         return;
       }
       setScoreId(payload.score.id);
+      forgetStagedScorePreflight(stagedUpload.stagedUploadId);
       setScoreTitle(payload.score.title);
       setJob(payload.job);
       setPendingFile(null);
+      setStagedUpload(null);
       currentFile.current = null;
     };
-    try { xhr.send(formData); } catch { release(); setRecognitionError(copy.uploadFailed); }
-  }, [copy.uploadFailed, flow.signIn, locale, preflightCopy.priceChanged, preflight]);
+    try { xhr.send(JSON.stringify(stagedScoreRecognitionBody(stagedUpload.stagedUploadId, chosenMode, creditCost))); } catch { release(); setRecognitionError(copy.uploadFailed); }
+  }, [copy.uploadFailed, flow.signIn, locale, preflightCopy.priceChanged, preflight, stagedUpload, stagedCopy]);
 
   const confirmRecognition = async () => {
     if (preflight?.recognitionSupport?.supported === false) return;
     const file = currentFile.current;
     const selected = recognitionOptions.find(option => option.mode === recognitionMode);
-    if (submissionLock.current || !file || preflightState !== "ready" || !preflight || !selected?.canSubmit || !recognitionMode) return;
+    if (submissionLock.current || !file || preflightState !== "ready" || !preflight || !stagedUpload || !selected?.canSubmit || !recognitionMode) return;
     submissionLock.current = true;
     setConfirming(true);
     setRecognitionError(null);
@@ -319,7 +348,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
       if (!latest?.canSubmit) { setRecognitionError(preflightCopy.noCredit); return; }
       if (latest.creditCost !== selected.creditCost) { setRecognitionError(preflightCopy.priceChanged); return; }
       if (currentFile.current !== file) return;
-      startUpload(file, recognitionMode, latest.creditCost);
+      startRecognition(file, recognitionMode, latest.creditCost);
     } catch {
       setRecognitionError(copy.uploadFailed);
     } finally {
@@ -379,7 +408,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   }
 
   function acceptFile(file: File | undefined) {
-    if (!file || submissionLock.current || uploadProgress !== null || job?.status === "queued" || job?.status === "processing") return;
+    if (!file || submissionLock.current || (uploadProgress !== null && uploadProgress < 100) || job?.status === "queued" || job?.status === "processing") return;
     if (session !== "authenticated") {
       preflightAbort.current?.abort();
       ++preflightGeneration.current;
@@ -387,6 +416,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
       setPendingFile(file);
       setPreflightState("idle");
       setPreflight(null);
+      setStagedUpload(null); setUploadProgress(null);
       setRecognitionMode(null);
       waitingForLogin.current = file;
       flow.signIn();
@@ -396,7 +426,9 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   }
 
   const jobLabel = job ? copy[job.status] : null;
-  const busy = confirming || retrying || uploadProgress !== null || job?.status === "queued" || job?.status === "processing";
+  const uploading = uploadProgress !== null && uploadProgress < 100;
+  const checking = preflightState === "checking" || preflightState === "waiting";
+  const busy = confirming || retrying || uploading || job?.status === "queued" || job?.status === "processing";
   const chosenOption = recognitionOptions.find(option => option.mode === recognitionMode);
 
   return (
@@ -419,11 +451,14 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
 
         {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
+        <ProcessingProgress active={mode === "recognize" && uploading} label={progressCopy.uploadTitle} progressPercent={uploadProgress} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
+        <ProcessingProgress active={mode === "recognize" && checking && !uploading} label={preflightState === "waiting" ? getScoreRequestWaitingMessages(locale).preflight : preflightCopy.checking} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
+        <ProcessingProgress active={confirming || retrying} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
+
         {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking" || preflightState === "waiting"}>
           <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span><p>{preflightCopy.freeBody}</p>
-          {preflightState === "checking" ? <div role="status"><p>{preflightCopy.checking}</p><progress aria-label={preflightCopy.checking} /><p>{progressCopy.preflightBody}</p></div> : null}
-          {preflightState === "waiting" ? <div role="status"><p>{getScoreRequestWaitingMessages(locale).preflight}</p><progress aria-label={preflightCopy.checking} /></div> : null}
-          {preflightState === "failed" ? <><p>{preflightCopy.failed}</p><button type="button" className={styles.preflightRetry} onClick={() => void startPreflight(pendingFile)}>{preflightCopy.retry}</button></> : null}
+          {checking && !uploading ? <p>{progressCopy.preflightBody}</p> : null}
+          {preflightState === "failed" ? <><p>{stagedUnavailable ? recognitionError : preflightCopy.failed}</p><button type="button" className={styles.preflightRetry} onClick={() => void startPreflight(pendingFile, true)}>{stagedUnavailable ? stagedCopy.retry : preflightCopy.retry}</button></> : null}
           {preflightState === "ready" && preflight ? <>
             <strong role="status">{!preflight.complete || preflight.recommendation === "uncertain" ? preflightCopy.recommendationUncertain : preflight.recommendation === "simple" ? preflightCopy.recommendedSimple : preflightCopy.recommendedComplex}</strong>
             <p>{formatMessage(preflightCopy.summary, { pages: formatNumber(preflight.sourcePageCount, locale), analyzed: formatNumber(preflight.pagesAnalyzed, locale), staves: formatNumber(Math.max(0, ...preflight.pages.map(page => page.maxStavesPerSystem)), locale), systems: formatNumber(preflight.pages.reduce((sum, page) => sum + page.systemCount, 0), locale) })}</p>
@@ -437,17 +472,16 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
             })}</fieldset>
             <p>{preflightCopy.selectedFilePreserved}</p>
           </> : null}
-          <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || preflight?.recognitionSupport?.supported === false || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button>
+          <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || !stagedUpload || preflight?.recognitionSupport?.supported === false || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button>
         </section> : null}
 
-        {mode === "recognize" && (uploadProgress !== null || job || recognitionError) ? (
+        {mode === "recognize" && (job || recognitionError) ? (
           <section className={styles.recognitionPanel} aria-live="polite">
-            <div className={styles.recognitionHeading}><div><small>{copy.candidateTitle}</small><strong>{scoreTitle ?? activeMode.title}</strong></div><span className={recognitionError && !connectionError ? styles.statusError : job?.status === "completed" ? styles.statusDone : styles.statusWorking}>{recognitionError && !connectionError ? copy.failed : uploadProgress !== null ? `${copy.uploading} · ${uploadProgress}%` : jobLabel}</span></div>
-            {uploadProgress !== null ? <div role="status"><strong>{progressCopy.uploadTitle}</strong><progress max={100} value={uploadProgress} aria-label={progressCopy.uploadTitle} style={{ width: "100%" }} /><p>{progressCopy.uploadBody}</p></div> : null}
-            {job && ["queued", "processing"].includes(job.status) ? <ScoreProcessingPanel job={job} copy={progressCopy} locale={locale} connectionError={connectionError} /> : null}
+            <div className={styles.recognitionHeading}><div><small>{copy.candidateTitle}</small><strong>{scoreTitle ?? activeMode.title}</strong></div><span className={recognitionError && !connectionError ? styles.statusError : job?.status === "completed" ? styles.statusDone : styles.statusWorking}>{recognitionError && !connectionError ? copy.failed : jobLabel}</span></div>
+            {job && !["failed", "cancelled"].includes(job.status) ? <ScoreProcessingPanel job={job} copy={progressCopy} locale={locale} connectionError={connectionError} /> : null}
             {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{getScoreProcessingFailureMessages(locale, job.errorMessage).reason}</strong></p><p>{getScoreProcessingFailureMessages(locale, job.errorMessage).recovery}</p>{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
             {job?.status === "completed" ? <p>{copy.candidateBody}</p> : null}
-            {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} /> : null}
+            {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} locale={locale} /> : null}
             <div className={styles.recognitionActions}>{scoreId ? <a href={getAppScoreUrl(scoreId, locale, submittedMode)}>{copy.openProject}<ArrowNorthEastIcon width={15} height={15} /></a> : null}{!busy ? <button type="button" onClick={() => job && ["failed", "cancelled"].includes(job.status) ? void retrySavedScore() : beginFileSelection()}>{job && ["failed", "cancelled"].includes(job.status) ? savedOriginalRetryLabels[locale] : copy.retry}</button> : null}</div>
           </section>
         ) : null}

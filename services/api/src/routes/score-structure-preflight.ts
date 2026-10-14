@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
 import { acquireScorePreflightSlot, runScoreStructurePreflight, ScorePreflightError } from "../lib/score-structure-preflight.js";
 import { inspectPdfStructurePreflight, inspectPdfRasterSafety, UploadSecurityError, storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
+import { stageOmrUpload } from "../lib/staged-omr-uploads.js";
 
 export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
   app.post("/scores/import/omr/preflight", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
@@ -24,7 +25,8 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
       if (cancellation.signal.aborted) cancelUpload();
       // Reuse the paid OMR's configured scanner and format checks. Free PDF inspection
       // validates metadata, then renders lazily under its own smaller budget.
-      // No source is promoted into files, score documents, jobs or revisions.
+      // A successful check retains only a user-bound, expiring staged source.
+      // No file database row, score, job, revision or credit reservation is created.
       const tempRoot = path.join(config.storageDir, ".preflight");
       await fs.mkdir(tempRoot, { recursive: true });
       workspace = await fs.mkdtemp(path.join(tempRoot, "check-"));
@@ -46,7 +48,9 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
         }
       }
       const preflight = await runScoreStructurePreflight({ sourcePath, workspace, signal: cancellation.signal });
-      return { statusCode: 200, body: { preflight: { ...preflight, recognitionSupport } } };
+      if (cancellation.signal.aborted) throw new ScorePreflightError("SCORE_PREFLIGHT_TIMEOUT", "The structure check was cancelled. Please retry.", 504);
+      const staged = await stageOmrUpload({ sourcePath, userId: request.authUserId!, filename: file.filename || "score-source.pdf", ...verified });
+      return { statusCode: 200, body: { preflight: { ...preflight, recognitionSupport }, stagedUploadId: staged.id, stagedUploadExpiresAt: staged.expiresAt } };
     } catch (error) {
       if (cancellation.signal.aborted) return { statusCode: 504, body: { code: "SCORE_PREFLIGHT_TIMEOUT", error: "The structure check was cancelled or timed out. Your file was not imported; please retry." } };
       if (error instanceof ScorePreflightError) {

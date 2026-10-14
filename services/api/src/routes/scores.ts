@@ -2,6 +2,7 @@ import { ScoreUploadReceipts, UploadReceiptError } from "../lib/score-upload-rec
 import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
 import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
+import { claimStagedOmrUpload, StagedOmrUploadError } from "../lib/staged-omr-uploads.js";
 import { countTiffPages } from "../lib/score-pass-pages.js";
 import { assertRecognitionQuote, getRecognitionOptions, normalizeRecognitionMode, RecognitionAccessError, RecognitionPriceChangedError, resolveRecognitionAccess } from "../lib/recognition-options.js";
 import { PlanQuotaExceededError } from "../lib/plan-quotas.js";
@@ -40,7 +41,7 @@ import {
 import { linkEducationInvitationsByEmail, listAccessibleClassroomIds, resolveClassroomAccess, resolveOrganizationRole } from "../lib/education-access.js";
 import { createId } from "../lib/auth.js";
 import { deleteStoredFileObject, openStoredFile, storedFileExists } from "../lib/object-storage.js";
-import { omrPdfRasterSafetyPolicy, storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
+import { inspectPdfRasterSafety, omrPdfRasterSafetyPolicy, storeVerifiedUpload, uploadErrorResponse, uploadKinds, UploadSecurityError } from "../lib/upload-security.js";
 import { scoreJsonToJianpu } from "../lib/jianpu-converter.js";
 import { storeJianpuSourceText } from "../lib/jianpu-source-storage.js";
 import { applyScoreClefRecommendations, recommendScoreClefs } from "../lib/score-clef-recommendation.js";
@@ -1568,7 +1569,10 @@ export async function scoreRoutes(app: FastifyInstance) {
       // Account and ownership checks still precede every replay.
       const url = new URL(request.url, "http://upload.local");
       url.searchParams.sort();
-      const signature = url.pathname + url.search;
+      const stagedBody = request.body && typeof request.body === "object" && !Array.isArray(request.body)
+        ? request.body as { stagedUploadId?: unknown; recognitionMode?: unknown; mode?: unknown; expectedCreditCost?: unknown } : undefined;
+      const signature = url.pathname + url.search + (stagedBody?.stagedUploadId !== undefined
+        ? JSON.stringify([stagedBody.stagedUploadId, stagedBody.recognitionMode, stagedBody.mode, stagedBody.expectedCreditCost]) : "");
       if (state?.state !== "completed") {
         await access(request, reply);
         if (reply.sent) return;
@@ -1604,6 +1608,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
   registerScoreStructurePreflightRoute(app);
   app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof StagedOmrUploadError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreCoverageReviewRequiredError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreEditRevisionConflictError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreAddPartError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
@@ -5277,20 +5282,30 @@ export async function scoreRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const query = request.query as { recognitionMode?: unknown; mode?: unknown; expectedCreditCost?: unknown };
+      const body = request.body && typeof request.body === "object" && !Array.isArray(request.body)
+        ? request.body as { stagedUploadId?: unknown; recognitionMode?: unknown; mode?: unknown; expectedCreditCost?: unknown } : {};
+      let staged: Awaited<ReturnType<typeof claimStagedOmrUpload>> | undefined;
+      try {
+      if (body.stagedUploadId !== undefined) staged = await claimStagedOmrUpload(request.authUserId!, body.stagedUploadId);
       let expectedCreditCost: number | undefined;
-      if (query.expectedCreditCost !== undefined) {
-        if (typeof query.expectedCreditCost !== "string" || !/^[1-9]\d*$/.test(query.expectedCreditCost)
-          || !Number.isSafeInteger(Number(query.expectedCreditCost))) {
+      const suppliedCost = query.expectedCreditCost ?? body.expectedCreditCost;
+      if (query.expectedCreditCost !== undefined && body.expectedCreditCost !== undefined && Number(query.expectedCreditCost) !== Number(body.expectedCreditCost)) {
+        return reply.code(400).send({ code: "INVALID_EXPECTED_CREDIT_COST", error: "Conflicting expected recognition credits were supplied." });
+      }
+      if (suppliedCost !== undefined) {
+        if ((typeof suppliedCost !== "number" && typeof suppliedCost !== "string") || !/^[1-9]\d*$/.test(String(suppliedCost))
+          || !Number.isSafeInteger(Number(suppliedCost))) {
           return reply.code(400).send({ code: "INVALID_EXPECTED_CREDIT_COST", error: "Expected recognition credits must be a positive integer." });
         }
-        expectedCreditCost = Number(query.expectedCreditCost);
+        expectedCreditCost = Number(suppliedCost);
       }
       const priceChangedResponse = () => reply.code(409).send({ code: "OMR_PRICE_CHANGED",
         error: "The recognition price changed. Review the current price and confirm again.", ...getRecognitionOptions(request.authUserId!) });
-      if (query.recognitionMode !== undefined && query.mode !== undefined && query.recognitionMode !== query.mode) {
+      const modes = [query.recognitionMode, query.mode, body.recognitionMode, body.mode].filter(value => value !== undefined);
+      if (modes.some(value => value !== modes[0])) {
         throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Conflicting recognition modes were supplied.");
       }
-      const queryMode = query.recognitionMode ?? query.mode;
+      const queryMode = modes[0];
       let recognitionMode = normalizeRecognitionMode(queryMode);
       if (queryMode !== undefined) {
         try { assertRecognitionQuote(recognitionMode, expectedCreditCost); }
@@ -5298,26 +5313,37 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       // Reject ineligible requests before reading/storing their upload.
       if (queryMode !== undefined) resolveRecognitionAccess(request.authUserId!, recognitionMode);
-      const file = await request.file();
+      const file = staged ? undefined : request.isMultipart() ? await request.file() : undefined;
 
-      if (!file) {
+      if (!file && !staged) {
         return reply.code(400).send({ error: "No PDF or image file uploaded." });
       }
 
-      const filename = file.filename || "score-source.pdf";
+      const filename = staged?.metadata.filename || file!.filename || "score-source.pdf";
       const userDir = path.join(config.storageDir, request.authUserId!, "scores", "omr-sources");
       fs.mkdirSync(userDir, { recursive: true });
 
       const storedName = `${createId()}-${sanitizeFilename(filename)}`;
       const targetPath = path.join(userDir, storedName);
-      let verified;
+      let verified: Pick<Awaited<ReturnType<typeof storeVerifiedUpload>>, "detectedKind" | "mimeType" | "sizeBytes" | "pdfRasterInspection">;
       try {
-        verified = await storeVerifiedUpload({
-          stream: file.file,
-          targetPath,
-          allowedKinds: uploadKinds.omr,
-          pdfRasterSafety: omrPdfRasterSafetyPolicy(),
-        });
+        if (staged) {
+          if (staged.metadata.sizeBytes > Math.min(config.uploadMaxBytes, 20 * 1024 * 1024)) throw new UploadSecurityError("The checked upload exceeds the current file size limit.", "FILE_TOO_LARGE", 413);
+          if (!uploadKinds.omr.some(kind => kind === staged!.metadata.detectedKind)) throw new UploadSecurityError("The checked upload is not a supported OMR source.", "UNSUPPORTED_FILE_TYPE");
+          // The source was already content-checked and scanned according to the
+          // configured policy at preflight. Reapply current PDF admission limits.
+          const pdfRasterInspection = staged.metadata.detectedKind === "pdf"
+            ? await inspectPdfRasterSafety(await fs.promises.readFile(staged.sourcePath)) : null;
+          await fs.promises.copyFile(staged.sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
+          verified = { ...staged.metadata, pdfRasterInspection };
+        } else {
+          verified = await storeVerifiedUpload({
+            stream: file!.file,
+            targetPath,
+            allowedKinds: uploadKinds.omr,
+            pdfRasterSafety: omrPdfRasterSafetyPolicy(),
+          });
+        }
       } catch (error) {
         const response = uploadErrorResponse(error);
         request.log.warn({ uploadCode: response.body.code }, "OMR source upload rejected.");
@@ -5327,7 +5353,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       let recognition;
       try {
-        const fields = file.fields;
+        const fields = file?.fields ?? {};
         const readModeField = (field: typeof fields[string]) => {
           if (field === undefined) return undefined;
           if (Array.isArray(field) || field.type !== "field") throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Recognition mode must be supplied once as a text field.");
@@ -5370,6 +5396,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       } catch (error) {
         const response = uploadErrorResponse(error);
         request.log.error({ uploadCode: response.body.code }, "OMR source persistence failed.");
+        await fs.promises.rm(targetPath, { force: true });
         return reply.code(response.statusCode).send(response.body);
       }
 
@@ -5413,12 +5440,18 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(500).send({ error: "Could not create the OMR import score project." });
       }
 
+      if (staged) {
+        try { await staged.consume(); }
+        catch (error) { request.log.error({ error, stagedUploadId: staged.metadata.id, scoreId: result.document.id }, "Staged source consumption failed after recognition committed; claim retained to prevent duplicate billing."); }
+      }
+
       return reply.code(201).send({
         score: mapScoreDocumentForApi(result.document),
         job: mapScoreJobForApi(result.job),
         recognition: { mode: recognitionMode, creditCost: JSON.parse(result.job.params_json!).creditCost,
           creditSource: JSON.parse(result.job.params_json!).creditSource },
       });
+      } finally { await staged?.release(); }
     },
   );
 

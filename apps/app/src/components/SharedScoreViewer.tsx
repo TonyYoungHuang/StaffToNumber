@@ -1,5 +1,6 @@
 "use client";
 
+import { ProcessingProgress } from "@score/ui";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -252,7 +253,7 @@ export function SharedScoreViewer() {
   }, []);
 
   if (loading) {
-    return <div className="empty-state" role="status" aria-label={copy.loadingAria}>{copy.loading}</div>;
+    return <div className="page-stack"><ProcessingProgress active={loading} label={copy.loading} error={Boolean(error)} operationKey={token} locale={locale} /></div>;
   }
 
   if (error || !payload) {
@@ -487,6 +488,7 @@ export function SharedScoreViewer() {
 
   return (
     <div className="page-stack">
+      <ProcessingProgress active={loading} label={copy.loading} error={Boolean(error)} operationKey={token} locale={locale} />
       <div className="page-banner split">
         <div className="stack-md">
           <p className="eyebrow">{copy.shared}</p>

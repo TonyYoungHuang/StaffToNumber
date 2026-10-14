@@ -6,8 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber } from "@score/i18n";
 import type { ConversionDirection } from "@score/shared";
 import { APP_ROUTES } from "@score/shared";
-import { DotIcon, DownloadIcon, FileStackIcon, SparkIcon, StatusPill } from "@score/ui";
+import { DotIcon, DownloadIcon, FileStackIcon, ProcessingProgress, ScoreDownloadProgress, SparkIcon, StatusPill } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
+import { boundedScoreTransfer } from "../lib/score-transfer-request";
 import { getStoredToken } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { accountActivationRoute } from "../lib/release";
@@ -47,7 +48,9 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [selectedFileId, setSelectedFileId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingFailed, setLoadingFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const direction: ConversionDirection = "staff_pdf_to_numbered";
@@ -61,6 +64,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
     }
 
     setLoading(true);
+    setLoadingFailed(false);
     const [filesResult, jobsResult] = await Promise.all([
       apiRequest<FilesPayload>("/api/files", { headers: { Authorization: `Bearer ${token}` } }),
       apiRequest<JobsPayload>("/api/jobs", { headers: { Authorization: `Bearer ${token}` } }),
@@ -68,6 +72,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
     setLoading(false);
 
     if (!filesResult.ok) {
+      setLoadingFailed(true);
       if (filesResult.error === "An active entitlement is required.") {
         router.replace(accountActivationRoute);
         return;
@@ -77,6 +82,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
     }
 
     if (!jobsResult.ok) {
+      setLoadingFailed(true);
       if (jobsResult.error === "An active entitlement is required.") {
         router.replace(accountActivationRoute);
         return;
@@ -163,8 +169,12 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
       return;
     }
 
+    setDownloading(true);
+    setStatusKind(null);
+    try {
+    await boundedScoreTransfer(async signal => {
     const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}` }, signal,
     });
 
     if (!response.ok) {
@@ -186,6 +196,10 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
     anchor.download = fileName;
     anchor.click();
     window.URL.revokeObjectURL(url);
+    });
+    } catch {
+      setStatus(copy.downloadFailed); setStatusKind("error");
+    } finally { setDownloading(false); }
   }
 
   const summary = {
@@ -276,6 +290,8 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
             </Link>
           </div>
 
+          <ProcessingProgress active={submitting} label={copy.create.creating} error={statusKind === "error"} locale={locale} />
+          <ScoreDownloadProgress active={downloading} error={statusKind === "error"} locale={locale} />
           {status && statusTone ? <p className={`form-status ${statusTone}`} role={statusKind === "error" ? "alert" : "status"}>{status}</p> : null}
 
           <div className="stack-sm">
@@ -327,7 +343,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
             </div>
           </div>
 
-          {loading ? <div className="empty-state">{copy.monitor.loading}</div> : null}
+          <ProcessingProgress active={loading} label={copy.monitor.loading} error={loadingFailed} locale={locale} />
           {!loading && !latestJob ? <div className="empty-state">{copy.monitor.empty}</div> : null}
 
           {latestJob ? (
@@ -358,6 +374,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
                         : copy.monitor.none}
                   </p>
                 </div>
+                <ProcessingProgress active={latestJob.status === "queued" || latestJob.status === "processing"} label={copy.statuses[latestJob.status]} error={latestJob.status === "failed"} operationKey={latestJob.id} locale={locale} />
                 {latestJob.previewText ? <pre className="preview-block">{latestJob.previewText}</pre> : <p className="helper-copy">{copy.monitor.previewWaiting}</p>}
                 {latestJob.errorMessage ? <p className="form-status error">{latestJob.errorMessage}</p> : null}
               </div>
@@ -436,6 +453,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
                       <StatusPill tone={resultTone}>{copy.resultKinds[job.resultKind]}</StatusPill>
                     </div>
 
+                    <ProcessingProgress active={job.status === "queued" || job.status === "processing"} label={copy.statuses[job.status]} error={job.status === "failed"} operationKey={job.id} locale={locale} />
                     {job.previewText ? <pre className="preview-block">{job.previewText}</pre> : null}
                     {job.errorMessage ? <p className="form-status error">{job.errorMessage}</p> : null}
 
