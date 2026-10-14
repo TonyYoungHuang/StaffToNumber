@@ -11,7 +11,6 @@ import { trackFunnelEventOnce } from "../lib/analytics";
 import type { CheckoutStatusCopy } from "../lib/checkout-localization";
 import { localizePublicHref } from "../lib/locale-routing";
 import {
-  getAppActivateUrl,
   getAppRegisterUrl,
   getAppLoginUrl,
   getAppScoreProjectsUrl,
@@ -21,12 +20,12 @@ import {
 } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 import { getPaymentRecoveryCopy, type PaymentVerification } from "@score/shared";
+import { readPurchaseReturn } from "../lib/purchase-flow";
 
 type PublicOrder = {
   id: string;
   provider: PaymentProvider;
   status: PaymentOrderStatus;
-  activationCode: string | null;
   billingKind: "one_time" | "subscription";
   userId: string | null;
   customerEmail: string | null;
@@ -58,7 +57,6 @@ export function CheckoutStatusClient({
 }) {
   const { locale } = useSiteLocale();
   const purchaseCopy = getPurchaseOptionsCopy(locale);
-  const activateUrl = getAppActivateUrl(locale);
   const checkoutUrl = getCheckoutUrl(locale);
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +112,7 @@ export function CheckoutStatusClient({
     if (!order?.userId) return;
     const query = new URLSearchParams({ order_id: orderId, token, provider });
     if (sessionId) query.set("session_id", sessionId);
+    query.set("next", readPurchaseReturn(orderId));
     const destination = new URL("/api/locale", `${siteConfig.appUrl}/`);
     destination.searchParams.set("locale", locale);
     destination.searchParams.set("next", `/checkout/success?${query}`);
@@ -141,18 +140,18 @@ export function CheckoutStatusClient({
   const hasVerificationError = verification?.status === "verification_failed" || verification?.status === "fulfillment_failed";
   const isStalled = order?.status === "cancelled" || order?.status === "failed" || hasVerificationError;
   const badge = isStalled ? copy.stalledBadge : isPaid ? copy.paidBadge : copy.pendingBadge;
-  const title = hasVerificationError ? copy.errorTitle : isOneTimePaid ? copy.statuses.paid : isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
-  const body = verification && verification.status !== "ready" ? recoveryCopy[verification.status] : isOneTimePaid ? purchaseCopy.oneTimeNote : isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
+  const title = hasVerificationError ? copy.errorTitle : isOneTimePaid ? copy.statuses.paid : isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.statuses.paid : isStalled ? copy.stalledTitle : copy.pendingTitle;
+  const body = verification && verification.status !== "ready" ? recoveryCopy[verification.status] : order?.planCode === "single-score" && isPaid ? getSingleScorePassCopy(locale).paid : isOneTimePaid ? purchaseCopy.oneTimeNote : isPaid ? copy.subscriptionPaidBody : isStalled ? copy.stalledBody : copy.pendingBody;
   const steps = isPaid && order?.planCode === "single-score" ? [getSingleScorePassCopy(locale).paid, ...getSingleScorePassCopy(locale).benefits] : isOneTimePaid ? [
     formatMessage(purchaseCopy.startsTemplate, { date: safelyFormatDateTime(order!.accessStartsAt!, locale) }),
     formatMessage(purchaseCopy.expiresTemplate, { date: safelyFormatDateTime(order!.accessEndsAt!, locale) }),
-  ] : isSubscriptionPaid ? copy.subscriptionPaidSteps : isPaid ? copy.paidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
+  ] : isPaid ? copy.subscriptionPaidSteps : isStalled ? copy.stalledSteps : copy.pendingSteps;
   const paidActionUrl = isOneTimePaid ? getAppLoginUrl("/billing#one-time-purchases", locale) : isSubscriptionPaid
     ? order?.userId ? getAppScoreProjectsUrl(locale) : getAppRegisterUrl(locale)
-    : activateUrl;
+    : getAppScoreProjectsUrl(locale);
   const paidActionLabel = isOneTimePaid ? purchaseCopy.purchases : isSubscriptionPaid
     ? order?.userId ? copy.openSubscription : copy.registerSubscription
-    : copy.redeem;
+    : copy.openSubscription;
 
   return (
     <div className="surface-panel stack-xl">
@@ -186,7 +185,6 @@ export function CheckoutStatusClient({
             body={order.paidAt ? safelyFormatDateTime(order.paidAt, locale) : order.id}
           />
           {order.customerEmail ? <MetricCard label={copy.email} value={order.customerEmail} body={siteConfig.supportEmail} /> : null}
-          {isPaid && order.activationCode ? <MetricCard label={copy.activationCode} value={order.activationCode} body={copy.paidSteps[0]} /> : null}
         </div>
       ) : null}
 

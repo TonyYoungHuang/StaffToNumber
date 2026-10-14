@@ -25,7 +25,7 @@ export const jaBillingMessages = {
       freeTitle: "最初の完全な楽譜を無料で作成", freeBody: "支払いもカードも不要です。無料プランでは完全な楽譜プロジェクトを1件保持し、毎月クレジットを受け取れます。", freeCta: "無料で楽譜を作成", creditUsage: "タスク作成時にクレジットを予約", includedCapabilities: "含まれる機能", benefitsAndResources: "特典とリソース",
     },
     client: {
-      checkoutEyebrow: "決済", title: "オンラインで支払い、アクセス権を自動有効化", body: "支払いが完了すると、登録アカウントのアクセス権が自動で有効になります。海外のお客様はコードを手動で利用する必要がありません。",
+      checkoutEyebrow: "決済", title: "オンラインで支払い、アクセス権を自動有効化", body: "支払いが完了すると、登録アカウントのアクセス権が自動で有効になります。",
       provider: "決済サービス", plan: "サブスクリプション種別", individual: "個人", school: "学校・組織の席", organization: "請求先組織", organizationPlaceholder: "組織を選択",
       noOrganizations: "このアカウントには請求に使用できる組織がありません。", seats: "席数", seatsHelp: "2～100,000席を選択できます。",
       stripeTitle: "Stripe", stripeLiveBody: "1曲パス: Stripe の決済画面で表示されるカード、Alipay、Link を利用できます。 サブスクリプションでは決済画面に表示される支払方法をご利用ください。", stripeBuildingBody: "本番決済は未接続です。現在は請求せずに要望だけを記録します。",
@@ -41,7 +41,7 @@ export const jaBillingMessages = {
     },
     status: {
       loading: "支払い状況を確認しています...", pendingTitle: "支払いを確認中", pendingBody: "支払いが完了すると、現在のアカウントでアクセス権が自動的に有効になります。",
-      successTitle: "支払い完了、アカウントを有効化しました", successBody: "アクセス権を利用できます。コードを手動で入力せずに楽譜を開けます。", cancelledTitle: "支払いはキャンセルされました", cancelledBody: "完了した支払いは記録されていません。楽譜に戻るか、プランを選び直せます。", failedTitle: "支払いが完了しませんでした", failedBody: "アクセス権の変更は確認されていません。決済サービスの画面を確認するか、再試行してください。", scores: "自分の楽譜を開く", jobs: "ジョブを開く", fallbackError: "支払い状況を読み込めませんでした。もう一度お試しください。",
+      successTitle: "支払い完了、アカウントを有効化しました", successBody: "アクセス権を利用できます。楽譜を開いて続行してください。", cancelledTitle: "支払いはキャンセルされました", cancelledBody: "完了した支払いは記録されていません。楽譜に戻るか、プランを選び直せます。", failedTitle: "支払いが完了しませんでした", failedBody: "アクセス権の変更は確認されていません。決済サービスの画面を確認するか、再試行してください。", scores: "自分の楽譜を開く", jobs: "ジョブを開く", fallbackError: "支払い状況を読み込めませんでした。もう一度お試しください。",
     },
   },
   billing: {

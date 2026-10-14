@@ -55,7 +55,7 @@ export const zhCNBillingMessages = {
     client: {
       checkoutEyebrow: "支付",
       title: "在线支付并自动开通权限",
-      body: "支付成功后，权限会自动开通到注册账户。国际用户无需手动兑换激活码。",
+      body: "支付成功后，权限会自动开通到注册账户。",
       provider: "支付渠道",
       plan: "订阅类型",
       individual: "个人订阅",
@@ -94,7 +94,7 @@ export const zhCNBillingMessages = {
       pendingTitle: "正在确认支付结果",
       pendingBody: "支付完成后，系统会自动把权限开通到当前账户。",
       successTitle: "支付成功，账户已自动开通",
-      successBody: "权限已经生效。现在可直接打开我的乐谱，无需手动兑换激活码。",
+      successBody: "权限已经生效。现在可直接打开我的乐谱继续。",
       cancelledTitle: "支付已取消",
       cancelledBody: "系统没有记录已完成的付款。你可返回我的乐谱或重新选择套餐。",
       failedTitle: "支付未完成",

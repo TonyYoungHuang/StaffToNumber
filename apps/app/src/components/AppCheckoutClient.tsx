@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, getPurchaseOptionsCopy, type CheckoutBillingKind, type CheckoutPlanCode, type PaymentProvider } from "@score/shared";
+import { getPurchaseOptionsCopy, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
@@ -13,7 +12,7 @@ import type { CheckoutClientCopy } from "../lib/billing-messages/types";
 import { AuthForm } from "./AuthForm";
 import { saveCheckoutReturn, workReturnPath } from "../lib/flow-return";
 import { useFlowMessages } from "../lib/flow-messages/client";
-import { getOneScoreUpsellCopy, showsSeparateActivationCta } from "../lib/one-score-upsell-copy";
+import { getOneScoreUpsellCopy } from "../lib/one-score-upsell-copy";
 import styles from "./AppCheckout.module.css";
 import { getPaymentRecoveryCopy } from "@score/shared";
 
@@ -28,7 +27,7 @@ type CheckoutPayload = {
 type Organization = { id: string; name: string; currentRole: string };
 
 type SelectedCheckoutPlan = {
-  code: CheckoutPlanCode;
+  code: PurchasePlanCode;
   name: string;
   cycle: string;
   price: string;
@@ -119,7 +118,7 @@ const defaultProvider = providers.includes("stripe") && liveProviders.has("strip
 const schoolCheckoutAvailable = process.env.NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABLE === "true";
 
 export function AppCheckoutClient({
-  billingKind = "subscription",
+  billingKind = "one_time",
   returnTo = "/scores",
   selectedPlan,
   authMessages,
@@ -159,6 +158,7 @@ export function AppCheckoutClient({
       setSessionState("signedOut");
       return;
     }
+    resumeCheckout.current = new URLSearchParams(window.location.search).get("continue") === "1" && selectedPlan.code === "single-score";
     setSessionState("ready");
   }, []);
 
@@ -330,7 +330,7 @@ export function AppCheckoutClient({
         <p className="eyebrow">{copy.checkoutEyebrow}</p>
         <h2 id="checkout-payment-title" className={styles.sectionHeading}>{copy.title}</h2>
         <p className="body-copy large">{copy.body}</p>
-        <p className={styles.purchaseNotice}>{billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
+        <p className={styles.purchaseNotice}>{selectedPlan.code === "single-score" ? getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
         <div className={styles.checkoutSelection}>
           <span>{copy.selectedPlan}</span>
           <strong>{selectedPlan.name} · {selectedPlan.cycle}</strong>
@@ -388,8 +388,8 @@ export function AppCheckoutClient({
         </details> : null}
 
         <div className="button-row">
-          <button type="submit" className="button button-primary" disabled={loading || (planKind === "school" && !organizationId)}>
-            {loading ? copy.loading : liveProviders.has(provider) ? copy.button : copy.intentButton}
+          <button type="submit" className="button button-primary" data-plan-type={selectedPlan.code === "single-score" ? "one_score" : "subscription"} disabled={loading || (planKind === "school" && !organizationId)}>
+            {loading ? copy.loading : selectedPlan.code === "single-score" ? getOneScoreUpsellCopy(locale).passCta : liveProviders.has(provider) ? copy.button : copy.intentButton}
           </button>
         </div>
       </form>
@@ -398,21 +398,6 @@ export function AppCheckoutClient({
         <p className={`form-status ${status.tone}`} role={status.tone === "error" ? "alert" : "status"}>
           {status.message}
         </p>
-      ) : null}
-      {showsSeparateActivationCta(locale) ? (
-        // P5: zh card checkout above; activation-code redemption is a separate, clearly labelled path.
-        <div className="stack-sm" data-plan-type="activation_code">
-          <p className="micro-copy">{getOneScoreUpsellCopy(locale).activationNote}</p>
-          <div className="button-row">
-            <Link
-              href={`${APP_ROUTES.activate}?${new URLSearchParams({ next: workReturnPath(returnTo) })}`}
-              className="button button-tertiary"
-              onClick={() => trackFunnelEvent("upgrade_click", { source: "checkout_activation_code", plan_type: "activation_code" })}
-            >
-              {getOneScoreUpsellCopy(locale).activationCta}
-            </Link>
-          </div>
-        </div>
       ) : null}
     </section>
   );

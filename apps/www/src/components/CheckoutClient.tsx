@@ -7,7 +7,7 @@ import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import type { CheckoutStartCopy } from "../lib/checkout-localization";
 import { localizePublicHref } from "../lib/locale-routing";
-import { getAppActivateUrl, getSupportUrl } from "../lib/site";
+import { getSupportUrl } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
 type CheckoutPayload = {
@@ -30,7 +30,6 @@ export function CheckoutClient({
   translationNotice: string;
 }) {
   const { locale } = useSiteLocale();
-  const activateUrl = getAppActivateUrl(locale);
   const [email, setEmail] = useState("");
   const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
   const [status, setStatus] = useState<string | null>(null);
@@ -127,7 +126,6 @@ export function CheckoutClient({
           <button type="submit" className="public-button primary" disabled={loading}>
             {loading ? copy.loading : copy.button}
           </button>
-          <a href={activateUrl} className="public-button secondary">{copy.activate}</a>
         </div>
       </form>
 

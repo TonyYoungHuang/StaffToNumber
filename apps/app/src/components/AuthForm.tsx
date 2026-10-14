@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
@@ -67,6 +67,9 @@ export function AuthForm({
   const [submitting, setSubmitting] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const [googleButtonFailed, setGoogleButtonFailed] = useState(false);
+  const [googleButtonRendered, setGoogleButtonRendered] = useState(false);
+  const [showEmail, setShowEmail] = useState(emailOnly || !googleClientId);
+  const emailFormId = useId();
   const sharedCopy = messages.shared;
   const copy = messages[mode];
 
@@ -75,8 +78,9 @@ export function AuthForm({
   const completeAuthentication = useCallback((payload: AuthPayload, method: "email" | "google") => {
     setPreferredLoginMethod(method);
     setStoredToken(payload.token);
-    trackFunnelEvent(payload.isNewUser || mode === "register" ? "sign_up" : "login", { method });
-    setStatus(payload.isNewUser || mode === "register" ? messages.register.success : messages.login.success);
+    const isNewUser = method === "google" ? Boolean(payload.isNewUser) : mode === "register";
+    trackFunnelEvent(isNewUser ? "sign_up" : "login", { method });
+    setStatus(isNewUser ? messages.register.success : messages.login.success);
     setStatusKind("success");
     if (onAuthenticated) {
       onAuthenticated();
@@ -107,6 +111,25 @@ export function AuthForm({
     return () => { active = false; controller.abort(); };
   }, [onAuthenticated, redirectTo, router]);
 
+  const showGoogleFallback = useCallback(() => {
+    setGoogleButtonFailed(true);
+    setShowEmail(true);
+    setStatus(sharedCopy.googleFailed);
+    setStatusKind("error");
+  }, [sharedCopy.googleFailed]);
+
+  const handleGoogleReady = useCallback(() => {
+    if (window.google?.accounts?.id) setGoogleReady(true);
+    else showGoogleFallback();
+  }, [showGoogleFallback]);
+
+  // A blocked GSI request may never emit either load or error.
+  useEffect(() => {
+    if (emailOnly || !googleClientId || googleReady) return;
+    const timer = window.setTimeout(showGoogleFallback, 8000);
+    return () => window.clearTimeout(timer);
+  }, [emailOnly, googleClientId, googleReady, showGoogleFallback]);
+
   // If the GSI script was already loaded by a previous mount/navigation, onLoad will not fire again.
   useEffect(() => {
     if (!googleClientId) return;
@@ -119,12 +142,13 @@ export function AuthForm({
     const button = googleButtonRef.current;
     setGoogleButtonFailed(false);
     button.replaceChildren();
-    window.google.accounts.id.initialize({
+    try { window.google.accounts.id.initialize({
       client_id: googleClientId,
       callback: (response) => {
         if (!response.credential) {
           setStatus(sharedCopy.googleFailed);
           setStatusKind("error");
+          setShowEmail(true);
           return;
         }
         setSubmitting(true);
@@ -138,12 +162,16 @@ export function AuthForm({
           if (!result.ok) {
             setStatus(result.error);
             setStatusKind("error");
+            setShowEmail(true);
             return;
           }
           completeAuthentication(result.data, "google");
         });
       },
-    });
+    }); } catch {
+      showGoogleFallback();
+      return;
+    }
     let renderedWidth = 0;
     const measureWidth = () => {
       const direct = Math.floor(button.clientWidth);
@@ -159,12 +187,13 @@ export function AuthForm({
       if (width === renderedWidth) return;
       renderedWidth = width;
       button.replaceChildren();
-      window.google.accounts.id.renderButton(button, {
+      try { window.google.accounts.id.renderButton(button, {
         theme: "outline", size: "large", shape: "rectangular", text: "continue_with", width, locale: locale.replace("-", "_"),
-      });
+      }); } catch { showGoogleFallback(); }
     };
     const labelGoogleFrames = () => {
       button.querySelectorAll("iframe").forEach(frame => { frame.title = sharedCopy.googleButtonRegionLabel; });
+      if (button.querySelector("iframe")) setGoogleButtonRendered(true);
     };
     const frameObserver = new MutationObserver(labelGoogleFrames);
     frameObserver.observe(button, { childList: true, subtree: true });
@@ -178,9 +207,7 @@ export function AuthForm({
     observer.observe(button);
     const failTimer = window.setTimeout(() => {
       if (!button.querySelector("iframe")) {
-        setGoogleButtonFailed(true);
-        setStatus(sharedCopy.googleFailed);
-        setStatusKind("error");
+        showGoogleFallback();
       }
     }, 8000);
     return () => {
@@ -190,7 +217,7 @@ export function AuthForm({
       observer.disconnect();
       frameObserver.disconnect();
     };
-  }, [completeAuthentication, googleClientId, googleReady, sharedCopy.googleFailed, sharedCopy.googleButtonRegionLabel, locale]);
+  }, [completeAuthentication, googleClientId, googleReady, sharedCopy.googleFailed, sharedCopy.googleButtonRegionLabel, locale, showGoogleFallback]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -227,19 +254,24 @@ export function AuthForm({
           <Script
             src="https://accounts.google.com/gsi/client"
             strategy="afterInteractive"
-            onLoad={() => setGoogleReady(true)}
-            onReady={() => setGoogleReady(true)}
-            onError={() => { setGoogleButtonFailed(true); setStatus(sharedCopy.googleFailed); setStatusKind("error"); }}
+            onLoad={handleGoogleReady}
+            onReady={handleGoogleReady}
+            onError={showGoogleFallback}
           />
           <section className="google-auth-panel" aria-label={sharedCopy.googleButtonRegionLabel}>
-            <strong className="google-auth-heading">{sharedCopy.googleButtonRegionLabel}</strong>
-            {!googleButtonFailed ? <div ref={googleButtonRef} className="google-auth-button" aria-live="polite" /> : null}
+            {!googleButtonFailed ? <>
+              {!googleButtonRendered ? <button type="button" disabled className="button button-primary" aria-busy="true">{sharedCopy.googleButtonRegionLabel}</button> : null}
+              <div ref={googleButtonRef} className="google-auth-button" inert={submitting} aria-busy={submitting} aria-live="polite" />
+            </> : null}
             {googleButtonFailed ? <p className="helper-copy">{sharedCopy.googleFailed}</p> : null}
           </section>
-          <div className="auth-divider"><span>{sharedCopy.googleDivider}</span></div>
         </div>
       ) : null}
 
+      {!emailOnly && googleClientId ? <button type="button" className="button button-tertiary" aria-expanded={showEmail} aria-controls={emailFormId}
+        onClick={() => setShowEmail(value => !value)}>{sharedCopy.googleDivider}</button> : null}
+
+      {showEmail ? <div id={emailFormId} className="stack-sm">
       <form onSubmit={handleSubmit} className="form-grid">
         <label className="field-group">
           <span className="field-label">{sharedCopy.email}</span>
@@ -266,7 +298,7 @@ export function AuthForm({
         </label>
 
         <div className="button-row">
-          <button type="submit" disabled={submitting} className="button button-primary">
+          <button type="submit" disabled={submitting} className="button button-secondary">
             {submitting ? sharedCopy.submitWaiting : copy.submit}
           </button>
           <button type="button" disabled={submitting} onClick={() => { setMode(mode === "login" ? "register" : "login"); setStatus(null); }} className="button button-secondary">
@@ -278,14 +310,12 @@ export function AuthForm({
       <p className="micro-copy">{copy.footnote}</p>
       {mode === "login" ? (
         <div className="button-row">
-          {!emailOnly ? <Link href={`${APP_ROUTES.activate}?${new URLSearchParams({ next: redirectTo ?? WORKSPACE_ROUTE })}`} className="button button-tertiary">
-            {sharedCopy.redeem}
-          </Link> : null}
           <Link href={APP_ROUTES.forgotPassword} className="button button-secondary">
             {sharedCopy.forgot}
           </Link>
         </div>
       ) : null}
+      </div> : null}
       {status && statusTone ? (
         <p className={`form-status ${statusTone}`} role={statusTone === "error" ? "alert" : "status"}>
           {status}

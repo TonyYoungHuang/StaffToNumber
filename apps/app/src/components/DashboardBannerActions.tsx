@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
-import { accountActivationRoute, checkoutAvailable } from "../lib/release";
+import { accountActivationRoute } from "../lib/release";
 import type { WorkspaceMessages } from "../lib/workspace-messages/types";
 
 type MePayload = {
@@ -44,7 +44,7 @@ export function DashboardBannerActions({ copy, setupHref }: { copy: WorkspaceMes
     return (
       <div className="page-banner-actions">
         <Link href={accountActivationRoute} className="button button-primary">
-          {checkoutAvailable ? copy.payNow : copy.activationOptions}
+          {copy.payNow}
         </Link>
         <Link href={setupHref} className="button button-secondary">
           {copy.accountSetup}

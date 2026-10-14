@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, getPurchaseOptionsCopy, type CheckoutBillingKind, type CheckoutPlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
+import { APP_ROUTES, getPurchaseOptionsCopy, getSingleScorePassCopy, SINGLE_SCORE_PASS, type CheckoutBillingKind, type PurchasePlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
 import { CreditPlanCard, CreditPlanGrid } from "@score/ui";
 import { trackFunnelEvent } from "../lib/analytics";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
@@ -20,7 +20,7 @@ export function CheckoutPlanSelector({
   locale,
   copy,
   initialPlanCode,
-  initialBillingKind = "subscription",
+  initialBillingKind = "one_time",
   authMessages,
   returnTo = "/scores",
 }: {
@@ -28,19 +28,16 @@ export function CheckoutPlanSelector({
   plans: readonly PricingPlanDisplay[];
   locale: SupportedLocale;
   copy: CheckoutCopy;
-  initialPlanCode?: CheckoutPlanCode;
+  initialPlanCode?: PurchasePlanCode;
   initialBillingKind?: CheckoutBillingKind;
   authMessages: AuthMessageCatalog["form"];
 }) {
-  // Prefer the plan from the URL; otherwise lowest-commitment paid plan (starter-monthly), never featured annual.
-  const defaultPlanCode = initialPlanCode
-    ?? plans.find((plan) => plan.code === "starter-monthly")?.code
-    ?? plans.find((plan) => plan.code !== "free")?.code
-    ?? plans[0]?.code;
-  const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | undefined>(defaultPlanCode);
+  const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | PurchasePlanCode>(initialPlanCode ?? SINGLE_SCORE_PASS.code);
   const [billingKind, setBillingKind] = useState<CheckoutBillingKind>(initialBillingKind);
+  const [plansOpen, setPlansOpen] = useState(Boolean(initialPlanCode && initialPlanCode !== SINGLE_SCORE_PASS.code));
   const flow = useFlowMessages();
   const purchaseCopy = getPurchaseOptionsCopy(locale);
+  const passCopy = getSingleScorePassCopy(locale);
   const displayPlans = billingKind === "subscription" ? plans : plans.map(plan => {
     if (plan.code === "free") return plan;
     const duration = plan.code.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month;
@@ -48,7 +45,10 @@ export function CheckoutPlanSelector({
       cta: formatMessage(purchaseCopy.buyTemplate, { name: plan.name, duration }),
       resources: [...plan.resources.slice(0, 3), purchaseCopy.oneTimeNote] };
   });
-  const selectedPlan = displayPlans.find((plan) => plan.code === selectedPlanCode) ?? displayPlans[0];
+  const selectedPlan = selectedPlanCode === SINGLE_SCORE_PASS.code ? {
+    code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: "US$2.99", credits: passCopy.benefits[1],
+  } : displayPlans.find((plan) => plan.code === selectedPlanCode);
+  const selectedBillingKind = selectedPlanCode === SINGLE_SCORE_PASS.code ? "one_time" : billingKind;
   const planListTracked = useRef(false);
 
   useEffect(() => {
@@ -78,13 +78,14 @@ export function CheckoutPlanSelector({
     });
   }
 
-  function choosePlan(code: string) {
+  function choosePlan(code: PricingPlanCode | PurchasePlanCode) {
     const plan = displayPlans.find(item => item.code === code);
-    if (!plan) return;
-    selectPlan(plan);
+    if (code === SINGLE_SCORE_PASS.code) { setSelectedPlanCode(code); setBillingKind("one_time"); }
+    else if (plan) selectPlan(plan);
+    else return;
     const url = new URL(window.location.href);
-    url.searchParams.set("plan", plan.code);
-    url.searchParams.set("billing", billingKind);
+    url.searchParams.set("plan", code);
+    url.searchParams.set("billing", code === SINGLE_SCORE_PASS.code ? "one_time" : billingKind);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
@@ -94,6 +95,14 @@ export function CheckoutPlanSelector({
     <>
       <Link className="button button-secondary flow-return" href={workReturnPath(returnTo)}>{flow.resume}</Link>
       <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
+        <div className="stack-sm" data-primary-plan="single-score">
+          <h2 className={styles.sectionHeading}>{passCopy.name} · US$2.99</h2>
+          <p className="body-copy">{passCopy.body}</p>
+          <p className="micro-copy">{passCopy.once}</p>
+          {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <button type="button" className="button button-secondary" onClick={() => choosePlan(SINGLE_SCORE_PASS.code)}>{passCopy.name} · US$2.99</button> : null}
+        </div>
+        <details className="flow-details" open={plansOpen} onToggle={event => setPlansOpen(event.currentTarget.open)}>
+          <summary>{purchaseCopy.subscription} · {purchaseCopy.oneTime}</summary>
         <div className={styles.purchaseType}>
           <div className="button-row" role="group" aria-label={purchaseCopy.label}>
             {(["subscription", "one_time"] as const).map(kind => (
@@ -101,7 +110,9 @@ export function CheckoutPlanSelector({
                 className={`button ${billingKind === kind ? "button-primary" : "button-secondary"}`}
                 onClick={() => {
                   setBillingKind(kind);
+                  if (selectedPlanCode === SINGLE_SCORE_PASS.code) setSelectedPlanCode("starter-monthly");
                   const url = new URL(window.location.href);
+                  if (selectedPlanCode === SINGLE_SCORE_PASS.code) url.searchParams.set("plan", "starter-monthly");
                   url.searchParams.set("billing", kind);
                   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
                 }}>{kind === "one_time" ? purchaseCopy.oneTime : purchaseCopy.subscription}</button>
@@ -112,15 +123,17 @@ export function CheckoutPlanSelector({
         </div>
         <label className="field-group">
           <span className="field-label">{copy.selector.selectedPlan}</span>
-          <select aria-label={copy.selector.selectedPlan} className="field-select" value={selectedPlan.code} onChange={event => choosePlan(event.target.value)}>
+          <select aria-label={copy.selector.selectedPlan} className="field-select" value={selectedPlanCode === SINGLE_SCORE_PASS.code ? "" : selectedPlan.code} onChange={event => choosePlan(event.target.value as PricingPlanCode)}>
+            <option value="" disabled>{copy.selector.selectedPlan}</option>
             {displayPlans.map(plan => <option key={plan.code} value={plan.code}>{plan.name} · {plan.cycle} · {plan.price}</option>)}
           </select>
         </label>
-        <details className="flow-details">
+        {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <details className="flow-details">
           <summary>{flow.planDetails}</summary>
           <CreditPlanGrid label={copy.selector.plansAria}>
-            <CreditPlanCard plan={selectedPlan} labels={{ creditUsage: copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
+            <CreditPlanCard plan={selectedPlan as PricingPlanDisplay} labels={{ creditUsage: copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
           </CreditPlanGrid>
+        </details> : null}
         </details>
 
         <div className={styles.selectedPlanBar} role="status" aria-live="polite">
@@ -148,14 +161,14 @@ export function CheckoutPlanSelector({
           </section>
         ) : (
           <AppCheckoutClient
-            key={billingKind}
+            key={`${selectedBillingKind}:${selectedPlan.code}`}
             returnTo={returnTo}
-            billingKind={billingKind}
+            billingKind={selectedBillingKind}
             locale={locale}
             copy={copy.client}
             authMessages={authMessages}
             selectedPlan={{
-              code: selectedPlan.code as CheckoutPlanCode,
+              code: selectedPlan.code as PurchasePlanCode,
               name: selectedPlan.name,
               cycle: selectedPlan.cycle,
               price: selectedPlan.price,

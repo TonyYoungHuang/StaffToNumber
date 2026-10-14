@@ -15,19 +15,17 @@ export type PendingPurchase = PurchaseSelection & {
 
 export const SESSION_CHANGED_EVENT = "scoretransposer:session-changed";
 
-/** Lowest-commitment paid default when the URL has no plan (not the featured annual). */
-export const DEFAULT_PURCHASE_PLAN_CODE: PurchasePlanCode = "starter-monthly";
+/** A single score is the default purchase; an explicit URL plan keeps its purchase kind. */
+export const DEFAULT_PURCHASE_PLAN_CODE: PurchasePlanCode = "single-score";
 
 const PENDING_PURCHASE_KEY = "scoretransposer_pending_purchase";
 const PENDING_PURCHASE_TTL_MS = 30 * 60 * 1000;
 
 export function defaultPurchaseSelection(search = ""): PurchaseSelection {
-  const params = new URLSearchParams(search);
-  const billingKind = params.get("billing") === "one_time" ? "one_time" : "subscription";
   return {
     planCode: DEFAULT_PURCHASE_PLAN_CODE,
-    billingKind,
-    provider: billingKind === "subscription" && params.get("provider") === "paddle" ? "paddle" : "stripe",
+    billingKind: "one_time",
+    provider: "stripe",
   };
 }
 
@@ -109,4 +107,26 @@ export function clearPendingPurchase() {
   } catch {
     /* Ignore storage failures when clearing. */
   }
+}
+
+function safeScoreReturn(value: unknown) {
+  if (typeof value !== "string" || value.length > 2048 || !/^\/scores(?:\/|\?|#|$)/u.test(value)) return "/scores";
+  try {
+    const url = new URL(value, "https://app.scoretransposer.com");
+    return url.origin === "https://app.scoretransposer.com" && /^\/scores(?:\/|$)/u.test(url.pathname) ? `${url.pathname}${url.search}${url.hash}` : "/scores";
+  } catch { return "/scores"; }
+}
+
+export function savePurchaseReturn(orderId: string, search: string) {
+  try {
+    window.sessionStorage.setItem(`scoretransposer_purchase_return:${orderId}`, JSON.stringify({ next: safeScoreReturn(new URLSearchParams(search).get("next")), savedAt: Date.now() }));
+  } catch { /* Payment success still offers the score library. */ }
+}
+
+export function readPurchaseReturn(orderId: string) {
+  try {
+    const entry = JSON.parse(window.sessionStorage.getItem(`scoretransposer_purchase_return:${orderId}`) ?? "null") as { next?: unknown; savedAt?: unknown } | null;
+    if (!entry || typeof entry.savedAt !== "number" || Date.now() - entry.savedAt > 86400000 || entry.savedAt > Date.now()) return "/scores";
+    return safeScoreReturn(entry.next);
+  } catch { return "/scores"; }
 }

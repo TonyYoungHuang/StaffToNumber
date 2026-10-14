@@ -36,7 +36,6 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
   const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const [loginHref, setLoginHref] = useState<string>(APP_ROUTES.login);
   useEffect(() => { setLoginHref(preferredLoginPath(returnPath)); }, [returnPath, token]);
-  const activationHref = loginHref.startsWith("/activate") ? "/activate?shop=1" : APP_ROUTES.activate;
   const [balance, setBalance] = useState<{ token: string; remaining: number } | null>(null);
   const isAuthScreen = [APP_ROUTES.login, APP_ROUTES.register, APP_ROUTES.forgotPassword, APP_ROUTES.resetPassword].some(route => pathname === route);
   const remainingCredits = !isAuthScreen && token && balance?.token === token ? balance.remaining : null;
@@ -88,7 +87,6 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
 
   const currentScore = /^\/scores\/(?!new(?:\/|$)|shared(?:\/|$))[^/]+$/.test(pathname) ? pathname : APP_ROUTES.scores;
   const navItems: SiteShellNavItem[] = [
-    { href: activationHref, label: copy.activate, active: pathname === APP_ROUTES.activate },
     { href: APP_ROUTES.scores, label: copy.scores, active: isScoresActive },
     { href: primaryHref, label: copy.scanner },
     { href: `${currentScore}#visual-editor`, label: copy.editor },
@@ -105,7 +103,6 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
   const footerLinks = [
     { href: APP_ROUTES.register, label: copy.register },
     { href: APP_ROUTES.billing, label: copy.billing },
-    { href: activationHref, label: copy.activate },
     ...(checkoutAvailable ? [{ href: APP_ROUTES.checkout, label: copy.checkout }] : []),
     { href: APP_ROUTES.scores, label: copy.scores },
     { href: publicHref("/about"), label: copy.about },

@@ -94,20 +94,15 @@ test("workspace clients receive only server-selected copy and preserve raw backe
   assert.doesNotMatch(uploads, /userFacingError/u);
 });
 
-test("changing the UI locale never gates activation-code entry points", () => {
+test("main-site navigation has no activation-code entry point in any locale", () => {
   const dashboard = readFileSync(new URL("../../components/DashboardClient.tsx", import.meta.url), "utf8");
   const dashboardPage = readFileSync(new URL("../../app/dashboard/page.tsx", import.meta.url), "utf8");
   const appChrome = readFileSync(new URL("../../components/AppChrome.tsx", import.meta.url), "utf8");
 
-  assert.match(dashboardPage, /setupHref=\{APP_ROUTES\.activate\}/u);
-  assert.doesNotMatch(dashboardPage, /showActivationLink/u);
-  assert.match(dashboard, /<Link href=\{APP_ROUTES\.activate\} className="button button-tertiary">/u);
-  assert.doesNotMatch(dashboard, /showActivationLink/u);
-  assert.match(appChrome, /\{ href: activationHref, label: copy\.activate \}/u);
-  assert.match(appChrome, /const activationHref = loginHref\.startsWith\("\/activate"\) \? "\/activate\?shop=1" : APP_ROUTES\.activate/u);
+  assert.match(dashboardPage, /setupHref=\{APP_ROUTES\.billing\}/u);
 
   for (const [name, source] of [["dashboard page", dashboardPage], ["dashboard client", dashboard], ["app chrome", appChrome]] as const) {
-    assert.doesNotMatch(source, /locale\s*===\s*["']zh-CN["'][\s\S]{0,120}APP_ROUTES\.activate/u, `${name} gates activation by locale`);
+    assert.doesNotMatch(source, /APP_ROUTES\.activate|activationHref/u, `${name} exposes activation navigation`);
   }
 });
 

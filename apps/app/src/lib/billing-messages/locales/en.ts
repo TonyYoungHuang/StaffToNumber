@@ -55,7 +55,7 @@ export const enBillingMessages = {
     client: {
       checkoutEyebrow: "Checkout",
       title: "Pay online and unlock access automatically",
-      body: "After payment succeeds, your registered account is activated automatically. International customers do not need to redeem a code manually.",
+      body: "After payment succeeds, your registered account is activated automatically.",
       provider: "Payment provider",
       plan: "Plan type",
       individual: "Individual",
@@ -98,7 +98,7 @@ export const enBillingMessages = {
       pendingTitle: "Confirming your payment",
       pendingBody: "After confirmation, access is activated on the account used before payment. If you have already paid, wait for the order check before paying again.",
       successTitle: "Payment successful and account activated",
-      successBody: "Your access is ready. Open your scores to continue without manually redeeming a code.",
+      successBody: "Your access is ready. Open your scores to continue.",
       cancelledTitle: "Payment was cancelled",
       cancelledBody: "No completed payment was recorded. You can return to your scores or choose a plan again.",
       failedTitle: "Payment did not complete",

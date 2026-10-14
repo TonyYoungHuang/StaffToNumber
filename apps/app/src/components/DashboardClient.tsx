@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -7,7 +7,7 @@ import { formatDateTime } from "@score/i18n";
 import { CheckSealIcon, ClockPulseIcon, DownloadIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
-import { accountActivationRoute, checkoutAvailable } from "../lib/release";
+import { accountActivationRoute } from "../lib/release";
 import { OperationsPanel } from "./OperationsPanel";
 import { useAppLocale } from "./AppLocaleProvider";
 import { useAppAuthModal } from "./AppAuthModal";
@@ -317,15 +317,12 @@ export function DashboardClient({
           </div>
           <div className="button-row">
             <Link href={accountActivationRoute} className="button button-primary">
-              {checkoutAvailable ? copy.actions.checkout : copy.actions.redeem}
+              {copy.actions.checkout}
             </Link>
             <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-primary">
               {profile.entitlement.status === "active" ? copy.actions.uploads : copy.actions.freeEditing}
             </Link>
             {profile.entitlement.status === "active" ? <Link href={APP_ROUTES.jobs} className="button button-secondary">{copy.actions.jobs}</Link> : null}
-            <Link href={APP_ROUTES.activate} className="button button-tertiary">
-              {copy.actions.redeem}
-            </Link>
             <Link href={APP_ROUTES.adminSupport} className="button button-tertiary">
               {copy.actions.supportAdmin}
             </Link>

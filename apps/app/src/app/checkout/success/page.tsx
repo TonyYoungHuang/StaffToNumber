@@ -8,5 +8,5 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   const copy = getBillingMessages(locale).checkout.status;
   const orderId = typeof params.order_id === "string" ? params.order_id : "";
   const token = typeof params.token === "string" ? params.token : "";
-  return <section className="container page-shell">{orderId && token ? <AppCheckoutStatusClient orderId={orderId} token={token} provider={params.provider === "paddle" ? "paddle" : "stripe"} sessionId={typeof params.session_id === "string" ? params.session_id : undefined} locale={locale} copy={copy} /> : <p role="alert">{copy.fallbackError}</p>}</section>;
+  return <section className="container page-shell">{orderId && token ? <AppCheckoutStatusClient orderId={orderId} token={token} provider={params.provider === "paddle" ? "paddle" : "stripe"} sessionId={typeof params.session_id === "string" ? params.session_id : undefined} returnTo={typeof params.next === "string" ? params.next : undefined} locale={locale} copy={copy} /> : <p role="alert">{copy.fallbackError}</p>}</section>;
 }

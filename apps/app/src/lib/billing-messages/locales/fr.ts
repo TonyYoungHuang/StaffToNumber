@@ -25,7 +25,7 @@ export const frBillingMessages = {
       freeTitle: "Créez gratuitement votre première partition complète", freeBody: "Aucun paiement ni carte n’est nécessaire. La formule gratuite conserve un projet de partition complet et fournit des crédits chaque mois.", freeCta: "Créer une partition gratuitement", creditUsage: "Crédits réservés par tâche", includedCapabilities: "Fonctions incluses", benefitsAndResources: "Avantages et ressources",
     },
     client: {
-      checkoutEyebrow: "Paiement", title: "Payez en ligne et activez automatiquement l’accès", body: "Après le paiement, l’accès est activé automatiquement sur votre compte. Les clients internationaux n’ont pas à saisir de code manuellement.",
+      checkoutEyebrow: "Paiement", title: "Payez en ligne et activez automatiquement l’accès", body: "Après le paiement, l’accès est activé automatiquement sur votre compte.",
       provider: "Prestataire de paiement", plan: "Formule", individual: "Individuel", school: "Places école ou organisme", organization: "Organisme facturé", organizationPlaceholder: "Choisir un organisme",
       noOrganizations: "Aucun organisme facturable n’est disponible pour ce compte.", seats: "Nombre de places", seatsHelp: "Choisissez entre 2 et 100 000 places.",
       stripeTitle: "Stripe", stripeLiveBody: "Pass une partition: Cartes, Alipay ou Link, selon les options proposées par Stripe Checkout. Pour les abonnements, utilisez les moyens affichés au paiement.", stripeBuildingBody: "Le paiement réel n’est pas encore connecté. Seule la demande est enregistrée, sans débit.",
@@ -41,7 +41,7 @@ export const frBillingMessages = {
     },
     status: {
       loading: "Vérification de l’état du paiement...", pendingTitle: "Confirmation de votre paiement", pendingBody: "Une fois le paiement terminé, l’accès est activé automatiquement sur le compte actuel.",
-      successTitle: "Paiement réussi et compte activé", successBody: "Votre accès est prêt. Ouvrez vos partitions sans utiliser de code manuellement.", cancelledTitle: "Le paiement a été annulé", cancelledBody: "Aucun paiement terminé n’a été enregistré. Revenez à vos partitions ou choisissez de nouveau une formule.", failedTitle: "Le paiement n’a pas abouti", failedBody: "Aucun changement d’accès n’a été confirmé. Consultez la page du prestataire ou réessayez.", scores: "Ouvrir mes partitions", jobs: "Ouvrir les tâches", fallbackError: "L’état du paiement n’a pas pu être chargé. Réessayez.",
+      successTitle: "Paiement réussi et compte activé", successBody: "Votre accès est prêt. Ouvrez vos partitions pour continuer.", cancelledTitle: "Le paiement a été annulé", cancelledBody: "Aucun paiement terminé n’a été enregistré. Revenez à vos partitions ou choisissez de nouveau une formule.", failedTitle: "Le paiement n’a pas abouti", failedBody: "Aucun changement d’accès n’a été confirmé. Consultez la page du prestataire ou réessayez.", scores: "Ouvrir mes partitions", jobs: "Ouvrir les tâches", fallbackError: "L’état du paiement n’a pas pu être chargé. Réessayez.",
     },
   },
   billing: {

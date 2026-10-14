@@ -43,7 +43,6 @@ export type AuthMessageCatalog = {
       password: string;
       passwordPlaceholder: string;
       submitWaiting: string;
-      redeem: string;
       forgot: string;
       googleFailed: string;
     };
@@ -151,16 +150,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "or use email",
-        googleButtonRegionLabel: "Google account sign-in",
+        googleDivider: "Other methods / Use email",
+        googleButtonRegionLabel: "Continue with Google",
         email: "Email",
         emailPlaceholder: "you@example.com",
         password: "Password",
         passwordPlaceholder: "At least 8 characters",
         submitWaiting: "Please wait...",
-        redeem: "Redeem activation code (Mainland China)",
         forgot: "Forgot password",
-        googleFailed: "Google sign-in did not finish. Please try again.",
+        googleFailed: "Google sign-in did not finish. Try again or continue with email below.",
       },
       register: {
         eyebrow: "Create account",
@@ -177,7 +175,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continue with Google or email to view, edit, and export your scores.",
         submit: "Sign in",
         switch: "Need an account",
-        footnote: "If you bought an activation code through a mainland-China sales channel, redeem it after signing in.",
+        footnote: "Your scores and purchases stay linked to your account.",
         success: "Signed in. Redirecting...",
       },
     },
@@ -264,16 +262,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "或使用邮箱",
-        googleButtonRegionLabel: "Google 账户登录",
+        googleDivider: "其他方式 / 用邮箱",
+        googleButtonRegionLabel: "用 Google 继续",
         email: "邮箱",
         emailPlaceholder: "you@example.com",
         password: "密码",
         passwordPlaceholder: "至少 8 个字符",
         submitWaiting: "请稍候...",
-        redeem: "兑换激活码（中国大陆）",
         forgot: "忘记密码",
-        googleFailed: "Google 登录没有完成，请重试。",
+        googleFailed: "Google 登录没有完成，请重试或使用下方的邮箱方式。",
       },
       register: {
         eyebrow: "创建账户",
@@ -290,7 +287,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "使用 Google 或邮箱登录，继续查看、修改和导出你的乐谱。",
         submit: "登录",
         switch: "还没有账户",
-        footnote: "如你通过电商渠道购买了激活码，可在登录后继续兑换。",
+        footnote: "你的乐谱和购买权益会保存在同一个账户中。",
         success: "登录成功，正在跳转...",
       },
     },
@@ -377,16 +374,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "或使用電子郵件",
-        googleButtonRegionLabel: "使用 Google 帳戶登入",
+        googleDivider: "其他方式 / 使用電子郵件",
+        googleButtonRegionLabel: "使用 Google 繼續",
         email: "電子郵件",
         emailPlaceholder: "you@example.com",
         password: "密碼",
         passwordPlaceholder: "至少 8 個字元",
         submitWaiting: "請稍候...",
-        redeem: "兌換啟用碼（中國大陸）",
         forgot: "忘記密碼",
-        googleFailed: "Google 登入未完成，請重試。",
+        googleFailed: "Google 登入未完成，請重試或使用下方的電子郵件方式。",
       },
       register: {
         eyebrow: "建立帳戶",
@@ -403,7 +399,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "使用 Google 或電子郵件登入，繼續查看、修改與匯出你的樂譜。",
         submit: "登入",
         switch: "還沒有帳戶",
-        footnote: "若你透過中國大陸銷售通路購買啟用碼，可在登入後兌換。",
+        footnote: "你的樂譜和購買權益會保存在同一個帳戶中。",
         success: "登入成功，正在重新導向...",
       },
     },
@@ -490,16 +486,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "またはメールを使用",
-        googleButtonRegionLabel: "Google アカウントでログイン",
+        googleDivider: "その他の方法 / メールを使用",
+        googleButtonRegionLabel: "Google で続行",
         email: "メールアドレス",
         emailPlaceholder: "you@example.com",
         password: "パスワード",
         passwordPlaceholder: "8 文字以上",
         submitWaiting: "しばらくお待ちください...",
-        redeem: "アクティベーションコードを利用（中国本土）",
         forgot: "パスワードを忘れた場合",
-        googleFailed: "Google ログインを完了できませんでした。もう一度お試しください。",
+        googleFailed: "Google ログインを完了できませんでした。再試行するか、下のメールで続行してください。",
       },
       register: {
         eyebrow: "アカウント作成",
@@ -516,7 +511,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Google またはメールでログインし、楽譜の表示、編集、書き出しを続けてください。",
         submit: "ログイン",
         switch: "アカウントを作成",
-        footnote: "中国本土の販売チャネルでアクティベーションコードを購入した場合は、ログイン後に利用できます。",
+        footnote: "楽譜と購入したアクセス権はアカウントに保存されます。",
         success: "ログインしました。移動しています...",
       },
     },
@@ -603,16 +598,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "또는 이메일 사용",
-        googleButtonRegionLabel: "Google 계정으로 로그인",
+        googleDivider: "다른 방법 / 이메일 사용",
+        googleButtonRegionLabel: "Google로 계속",
         email: "이메일",
         emailPlaceholder: "you@example.com",
         password: "비밀번호",
         passwordPlaceholder: "8자 이상",
         submitWaiting: "잠시 기다려 주세요...",
-        redeem: "활성화 코드 사용(중국 본토)",
         forgot: "비밀번호 찾기",
-        googleFailed: "Google 로그인이 완료되지 않았습니다. 다시 시도해 주세요.",
+        googleFailed: "Google 로그인이 완료되지 않았습니다. 다시 시도하거나 아래 이메일로 계속해 주세요.",
       },
       register: {
         eyebrow: "계정 만들기",
@@ -629,7 +623,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Google 또는 이메일로 로그인하여 악보를 보고 편집하고 내보내세요.",
         submit: "로그인",
         switch: "계정 만들기",
-        footnote: "중국 본토 판매 채널에서 활성화 코드를 구매했다면 로그인 후 사용할 수 있습니다.",
+        footnote: "악보와 구매한 이용 권한은 계정에 저장됩니다.",
         success: "로그인했습니다. 이동 중...",
       },
     },
@@ -716,16 +710,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "ou utiliser l’e-mail",
-        googleButtonRegionLabel: "Connexion avec un compte Google",
+        googleDivider: "Autres méthodes / Utiliser l’e-mail",
+        googleButtonRegionLabel: "Continuer avec Google",
         email: "E-mail",
         emailPlaceholder: "you@example.com",
         password: "Mot de passe",
         passwordPlaceholder: "8 caractères minimum",
         submitWaiting: "Veuillez patienter...",
-        redeem: "Utiliser un code d’activation (Chine continentale)",
         forgot: "Mot de passe oublié",
-        googleFailed: "La connexion Google n’a pas abouti. Veuillez réessayer.",
+        googleFailed: "La connexion Google n’a pas abouti. Réessayez ou continuez avec l’e-mail ci-dessous.",
       },
       register: {
         eyebrow: "Créer un compte",
@@ -742,7 +735,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continuez avec Google ou par e-mail pour consulter, modifier et exporter vos partitions.",
         submit: "Se connecter",
         switch: "Créer un compte",
-        footnote: "Si vous avez acheté un code d’activation via un canal de vente en Chine continentale, utilisez-le après vous être connecté.",
+        footnote: "Vos partitions et vos achats restent associés à votre compte.",
         success: "Connexion réussie. Redirection en cours...",
       },
     },
@@ -829,16 +822,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "o usa el correo electrónico",
-        googleButtonRegionLabel: "Inicio de sesión con cuenta de Google",
+        googleDivider: "Otras opciones / Usar correo electrónico",
+        googleButtonRegionLabel: "Continuar con Google",
         email: "Correo electrónico",
         emailPlaceholder: "you@example.com",
         password: "Contraseña",
         passwordPlaceholder: "8 caracteres como mínimo",
         submitWaiting: "Espera un momento...",
-        redeem: "Canjear código de activación (China continental)",
         forgot: "Olvidé mi contraseña",
-        googleFailed: "No se completó el inicio de sesión con Google. Inténtalo de nuevo.",
+        googleFailed: "No se completó el inicio de sesión con Google. Inténtalo de nuevo o usa el correo electrónico de abajo.",
       },
       register: {
         eyebrow: "Crear cuenta",
@@ -855,7 +847,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continúa con Google o correo electrónico para ver, editar y exportar tus partituras.",
         submit: "Iniciar sesión",
         switch: "Crear una cuenta",
-        footnote: "Si compraste un código de activación mediante un canal de venta de China continental, canjéalo después de iniciar sesión.",
+        footnote: "Tus partituras y tus compras permanecen vinculadas a tu cuenta.",
         success: "Sesión iniciada. Redirigiendo...",
       },
     },
@@ -942,16 +934,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "oder E-Mail verwenden",
-        googleButtonRegionLabel: "Mit Google-Konto anmelden",
+        googleDivider: "Andere Methoden / E-Mail verwenden",
+        googleButtonRegionLabel: "Mit Google fortfahren",
         email: "E-Mail",
         emailPlaceholder: "you@example.com",
         password: "Passwort",
         passwordPlaceholder: "Mindestens 8 Zeichen",
         submitWaiting: "Bitte warten...",
-        redeem: "Aktivierungscode einlösen (Festlandchina)",
         forgot: "Passwort vergessen",
-        googleFailed: "Die Google-Anmeldung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut.",
+        googleFailed: "Die Google-Anmeldung wurde nicht abgeschlossen. Versuchen Sie es erneut oder fahren Sie unten per E-Mail fort.",
       },
       register: {
         eyebrow: "Konto erstellen",
@@ -968,7 +959,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Melden Sie sich mit Google oder per E-Mail an, um Ihre Noten anzusehen, zu bearbeiten und zu exportieren.",
         submit: "Anmelden",
         switch: "Konto erstellen",
-        footnote: "Wenn Sie über einen Vertriebskanal in Festlandchina einen Aktivierungscode gekauft haben, lösen Sie ihn nach der Anmeldung ein.",
+        footnote: "Ihre Noten und Käufe bleiben mit Ihrem Konto verknüpft.",
         success: "Angemeldet. Weiterleitung...",
       },
     },
@@ -1055,16 +1046,15 @@ export const AUTH_MESSAGE_CATALOGS = {
     },
     form: {
       shared: {
-        googleDivider: "или использовать электронную почту",
-        googleButtonRegionLabel: "Вход через аккаунт Google",
+        googleDivider: "Другие способы / Электронная почта",
+        googleButtonRegionLabel: "Продолжить с Google",
         email: "Электронная почта",
         emailPlaceholder: "you@example.com",
         password: "Пароль",
         passwordPlaceholder: "Не менее 8 символов",
         submitWaiting: "Подождите...",
-        redeem: "Активировать код (материковый Китай)",
         forgot: "Забыли пароль?",
-        googleFailed: "Не удалось завершить вход через Google. Повторите попытку.",
+        googleFailed: "Не удалось завершить вход через Google. Повторите попытку или используйте электронную почту ниже.",
       },
       register: {
         eyebrow: "Создание аккаунта",
@@ -1081,7 +1071,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Войдите через Google или по электронной почте, чтобы просматривать, редактировать и экспортировать ноты.",
         submit: "Войти",
         switch: "Создать аккаунт",
-        footnote: "Если вы купили код активации через канал продаж в материковом Китае, активируйте его после входа.",
+        footnote: "Ваши ноты и покупки сохраняются в вашем аккаунте.",
         success: "Вход выполнен. Переходим дальше...",
       },
     },

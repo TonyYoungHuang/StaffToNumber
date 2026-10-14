@@ -25,7 +25,7 @@ export const esBillingMessages = {
       freeTitle: "Crea gratis tu primera partitura completa", freeBody: "No se requiere pago ni tarjeta. El plan gratuito conserva un proyecto de partitura completo y ofrece créditos cada mes.", freeCta: "Crear una partitura gratis", creditUsage: "Créditos reservados por tarea", includedCapabilities: "Funciones incluidas", benefitsAndResources: "Ventajas y recursos",
     },
     client: {
-      checkoutEyebrow: "Pago", title: "Paga en línea y activa el acceso automáticamente", body: "Al completarse el pago, el acceso se activa automáticamente en tu cuenta. Los clientes internacionales no necesitan canjear un código manualmente.",
+      checkoutEyebrow: "Pago", title: "Paga en línea y activa el acceso automáticamente", body: "Al completarse el pago, el acceso se activa automáticamente en tu cuenta.",
       provider: "Proveedor de pago", plan: "Tipo de plan", individual: "Individual", school: "Plazas para escuela u organización", organization: "Organización de facturación", organizationPlaceholder: "Elige una organización",
       noOrganizations: "Esta cuenta no tiene ninguna organización disponible para facturar.", seats: "Número de plazas", seatsHelp: "Elige entre 2 y 100.000 plazas.",
       stripeTitle: "Stripe", stripeLiveBody: "Pase para una partitura: Tarjetas, Alipay o Link, según las opciones de Stripe Checkout. Para suscripciones, utiliza los métodos que aparecen al pagar.", stripeBuildingBody: "El pago real aún no está conectado. Solo registra la demanda, sin realizar cargos.",
@@ -41,7 +41,7 @@ export const esBillingMessages = {
     },
     status: {
       loading: "Comprobando el estado del pago...", pendingTitle: "Confirmando tu pago", pendingBody: "Tras la confirmación, el acceso se activa en la cuenta utilizada antes de pagar. Si ya has pagado, espera a que se revise el pedido antes de volver a pagar.",
-      successTitle: "Pago completado y cuenta activada", successBody: "El acceso está listo. Abre tus partituras sin canjear un código manualmente.", cancelledTitle: "El pago se ha cancelado", cancelledBody: "No se registró ningún pago completado. Puedes volver a tus partituras o elegir otro plan.", failedTitle: "El pago no se completó", failedBody: "No se confirmó ningún cambio de acceso. Revisa la página del proveedor o vuelve a intentarlo.", scores: "Abrir mis partituras", jobs: "Abrir tareas", fallbackError: "No se pudo cargar el estado del pago. Inténtalo de nuevo.",
+      successTitle: "Pago completado y cuenta activada", successBody: "El acceso está listo. Abre tus partituras para continuar.", cancelledTitle: "El pago se ha cancelado", cancelledBody: "No se registró ningún pago completado. Puedes volver a tus partituras o elegir otro plan.", failedTitle: "El pago no se completó", failedBody: "No se confirmó ningún cambio de acceso. Revisa la página del proveedor o vuelve a intentarlo.", scores: "Abrir mis partituras", jobs: "Abrir tareas", fallbackError: "No se pudo cargar el estado del pago. Inténtalo de nuevo.",
     },
   },
   billing: {

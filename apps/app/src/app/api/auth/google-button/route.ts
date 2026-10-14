@@ -26,13 +26,16 @@ if(window.parent!==window){
  script.onerror=()=>send('error');
  script.onload=()=>{
   if(!window.google){send('error');return;}
-  google.accounts.id.initialize({client_id:config.clientId,callback:response=>{
+  try{google.accounts.id.initialize({client_id:config.clientId,callback:response=>{
    if(typeof response.credential==='string')send('credential',{credential:response.credential});else send('error');
-  }});
-  const el=document.getElementById('button');let lastWidth=0;
+  }});}catch{send('error');return;}
+  const el=document.getElementById('button');let lastWidth=0,ready=false;
+  const rendered=()=>{if(!ready&&el.querySelector('iframe')){ready=true;clearTimeout(timer);send('ready');}};
+  const timer=setTimeout(()=>{if(!ready)send('error');},8000);
+  new MutationObserver(rendered).observe(el,{childList:true,subtree:true});
   const measure=()=>{const direct=Math.floor(el.clientWidth);if(direct>0)return Math.min(400,direct);const parent=Math.floor(el.parentElement&&el.parentElement.clientWidth||0);if(parent>0)return Math.min(400,parent);return 320;};
-  const render=()=>{const width=measure();if(width===lastWidth)return;lastWidth=width;el.replaceChildren();google.accounts.id.renderButton(el,{theme:'outline',size:'large',shape:'rectangular',text:'continue_with',width,locale:config.locale});};
-  requestAnimationFrame(()=>requestAnimationFrame(render));new ResizeObserver(render).observe(el);send('ready');
+  const render=()=>{const width=measure();if(width===lastWidth)return;lastWidth=width;el.replaceChildren();try{google.accounts.id.renderButton(el,{theme:'outline',size:'large',shape:'rectangular',text:'continue_with',width,locale:config.locale});rendered();}catch{clearTimeout(timer);send('error');}};
+  requestAnimationFrame(()=>requestAnimationFrame(render));new ResizeObserver(render).observe(el);
  };
  document.head.append(script);
 }

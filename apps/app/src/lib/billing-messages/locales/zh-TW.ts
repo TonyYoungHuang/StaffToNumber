@@ -25,7 +25,7 @@ export const zhTWBillingMessages = {
       freeTitle: "免費建立你的第一份完整樂譜", freeBody: "無需付款或信用卡。免費方案會長期保留一個完整樂譜專案，並按月提供點數。", freeCta: "免費建立樂譜", creditUsage: "任務建立時預留點數", includedCapabilities: "包含功能", benefitsAndResources: "權益與資源",
     },
     client: {
-      checkoutEyebrow: "付款", title: "線上付款並自動開通權限", body: "付款成功後，權限會自動開通到註冊帳戶。國際使用者不必手動兌換啟用碼。",
+      checkoutEyebrow: "付款", title: "線上付款並自動開通權限", body: "付款成功後，權限會自動開通到註冊帳戶。",
       provider: "支付服務", plan: "訂閱類型", individual: "個人訂閱", school: "學校／機構席位", organization: "付款機構", organizationPlaceholder: "選擇機構",
       noOrganizations: "目前帳戶沒有可用於購買席位的機構。", seats: "席位數量", seatsHelp: "可選擇 2 至 100,000 個席位。",
       stripeTitle: "Stripe", stripeLiveBody: "單曲處理包: 可使用信用卡、支付寶或 Link，以 Stripe 結帳頁實際顯示為準。 訂閱付款方式以結帳頁實際顯示為準。", stripeBuildingBody: "正式付款尚未連接；目前只記錄需求，不會扣款。",
@@ -41,7 +41,7 @@ export const zhTWBillingMessages = {
     },
     status: {
       loading: "正在檢查付款狀態...", pendingTitle: "正在確認付款結果", pendingBody: "付款完成後，系統會自動將權限開通到目前帳戶。",
-      successTitle: "付款成功，帳戶已自動開通", successBody: "權限已生效。現在可直接開啟我的樂譜，無需手動兌換啟用碼。", cancelledTitle: "付款已取消", cancelledBody: "系統沒有記錄已完成的付款。你可返回我的樂譜或重新選擇方案。", failedTitle: "付款未完成", failedBody: "系統未確認權限變更。請查看支付服務頁面或重試。", scores: "開啟我的樂譜", jobs: "查看工作", fallbackError: "目前無法載入付款狀態，請重試。",
+      successTitle: "付款成功，帳戶已自動開通", successBody: "權限已生效。現在可直接開啟我的樂譜繼續。", cancelledTitle: "付款已取消", cancelledBody: "系統沒有記錄已完成的付款。你可返回我的樂譜或重新選擇方案。", failedTitle: "付款未完成", failedBody: "系統未確認權限變更。請查看支付服務頁面或重試。", scores: "開啟我的樂譜", jobs: "查看工作", fallbackError: "目前無法載入付款狀態，請重試。",
     },
   },
   billing: {

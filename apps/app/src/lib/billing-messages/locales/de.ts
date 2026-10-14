@@ -25,7 +25,7 @@ export const deBillingMessages = {
       freeTitle: "Erste vollständige Partitur kostenlos erstellen", freeBody: "Keine Zahlung und keine Karte erforderlich. Der kostenlose Tarif behält ein vollständiges Notenprojekt und stellt monatlich Credits bereit.", freeCta: "Kostenlose Partitur erstellen", creditUsage: "Credits pro Auftrag reserviert", includedCapabilities: "Enthaltene Funktionen", benefitsAndResources: "Vorteile und Ressourcen",
     },
     client: {
-      checkoutEyebrow: "Zahlung", title: "Online bezahlen und Zugriff automatisch freischalten", body: "Nach erfolgreicher Zahlung wird der Zugriff im registrierten Konto automatisch aktiviert. Internationale Kunden müssen keinen Code manuell einlösen.",
+      checkoutEyebrow: "Zahlung", title: "Online bezahlen und Zugriff automatisch freischalten", body: "Nach erfolgreicher Zahlung wird der Zugriff im registrierten Konto automatisch aktiviert.",
       provider: "Zahlungsanbieter", plan: "Abonnementtyp", individual: "Einzelperson", school: "Plätze für Schule oder Organisation", organization: "Abgerechnete Organisation", organizationPlaceholder: "Organisation auswählen",
       noOrganizations: "Für dieses Konto ist keine abrechenbare Organisation verfügbar.", seats: "Anzahl der Plätze", seatsHelp: "Wählen Sie zwischen 2 und 100.000 Plätzen.",
       stripeTitle: "Stripe", stripeLiveBody: "Einzelpartitur-Pass: Karten, Alipay oder Link, wie im Stripe-Checkout angeboten. Für Abonnements gelten die im Checkout angezeigten Zahlungsmethoden.", stripeBuildingBody: "Der Produktiv-Checkout ist noch nicht verbunden. Der Bedarf wird ohne Abbuchung erfasst.",
@@ -41,7 +41,7 @@ export const deBillingMessages = {
     },
     status: {
       loading: "Zahlungsstatus wird geprüft...", pendingTitle: "Zahlung wird bestätigt", pendingBody: "Nach Abschluss der Zahlung wird der Zugriff im aktuellen Konto automatisch aktiviert.",
-      successTitle: "Zahlung erfolgreich und Konto aktiviert", successBody: "Ihr Zugriff ist bereit. Öffnen Sie Ihre Noten, ohne einen Code manuell einzulösen.", cancelledTitle: "Die Zahlung wurde abgebrochen", cancelledBody: "Es wurde keine abgeschlossene Zahlung erfasst. Kehren Sie zu Ihren Noten zurück oder wählen Sie erneut einen Tarif.", failedTitle: "Die Zahlung wurde nicht abgeschlossen", failedBody: "Es wurde keine Zugriffsänderung bestätigt. Prüfen Sie die Anbieterseite oder versuchen Sie es erneut.", scores: "Meine Noten öffnen", jobs: "Aufträge öffnen", fallbackError: "Der Zahlungsstatus konnte nicht geladen werden. Versuchen Sie es erneut.",
+      successTitle: "Zahlung erfolgreich und Konto aktiviert", successBody: "Ihr Zugriff ist bereit. Öffnen Sie Ihre Noten, um fortzufahren.", cancelledTitle: "Die Zahlung wurde abgebrochen", cancelledBody: "Es wurde keine abgeschlossene Zahlung erfasst. Kehren Sie zu Ihren Noten zurück oder wählen Sie erneut einen Tarif.", failedTitle: "Die Zahlung wurde nicht abgeschlossen", failedBody: "Es wurde keine Zugriffsänderung bestätigt. Prüfen Sie die Anbieterseite oder versuchen Sie es erneut.", scores: "Meine Noten öffnen", jobs: "Aufträge öffnen", fallbackError: "Der Zahlungsstatus konnte nicht geladen werden. Versuchen Sie es erneut.",
     },
   },
   billing: {

@@ -1,4 +1,4 @@
-﻿import { DashboardBannerActions } from "../../components/DashboardBannerActions";
+import { DashboardBannerActions } from "../../components/DashboardBannerActions";
 import { DashboardClient } from "../../components/DashboardClient";
 import { readAppLocale } from "../../lib/locale";
 import { getWorkspaceMessages } from "../../lib/workspace-messages";
@@ -18,7 +18,7 @@ export default async function DashboardPage() {
           <p className="body-copy large">{copy.body}</p>
         </div>
         <div className="stack-md">
-          <DashboardBannerActions copy={messages.banner} setupHref={APP_ROUTES.activate} />
+          <DashboardBannerActions copy={messages.banner} setupHref={APP_ROUTES.billing} />
           <p className="micro-copy">{copy.note}</p>
         </div>
       </div>

@@ -30,7 +30,7 @@ test("checkout catalogs are complete and non-empty for all nine locales", () => 
       assert.ok(value.trim().length > 0, `${locale} contains an empty checkout message`);
     }
     assert.deepEqual(Object.keys(messages.status.statuses).sort(), ["cancelled", "failed", "paid", "pending"]);
-    assert.equal(messages.status.paidSteps.length, 3);
+    assert.equal(messages.status.subscriptionPaidSteps.length, 3);
     assert.equal(messages.status.pendingSteps.length, 3);
   }
 });
@@ -41,6 +41,7 @@ test("all nine public checkout catalogs include available single-score methods",
     assert.match(body, /Alipay|支付宝|支付寶/u, locale);
     assert.match(body, /Link/u, locale);
     assert.match(body, /Stripe/u, locale);
+    assert.doesNotMatch(JSON.stringify(getCheckoutMessages(locale)), /activation.code|activationCode|激活码|啟用碼|アクティベーションコード|활성화 코드|Aktivierungscode|código de activación|code d.activation|код активации/iu, locale);
   }
 });
 
@@ -79,11 +80,12 @@ test("checkout actions retain locale across public and product-app boundaries", 
     readFile(new URL("../app/checkout/success/page.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(statusSource, /getAppActivateUrl\(locale\)/u);
+  assert.doesNotMatch(statusSource, /getAppActivateUrl|activationCode|copy\.redeem/u);
+  assert.match(statusSource, /query\.set\("next", readPurchaseReturn\(orderId\)\)/u);
   assert.match(statusSource, /getAppScoreProjectsUrl\(locale\)/u);
   assert.match(statusSource, /getAppRegisterUrl\(locale\)/u);
   assert.match(statusSource, /localizePublicHref\("\/", locale\)/u);
-  assert.match(cancelSource, /getAppActivateUrl\(locale\)/u);
+  assert.doesNotMatch(cancelSource, /getAppActivateUrl|copy\.activate/u);
   assert.match(cancelSource, /localizePublicHref\("\/", locale\)/u);
   assert.match(successPage, /copy=\{messages\.status\}/u);
 });

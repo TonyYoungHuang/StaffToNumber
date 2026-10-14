@@ -50,6 +50,7 @@ test("the dedicated pricing FAQ sources include the three purchase answers exact
     const faqs = pricingCopy[locale].faqs;
     assert.deepEqual(faqs.slice(-3), getPurchaseFaqs(locale));
     assert.equal(new Set(faqs.map(faq => faq.question)).size, faqs.length);
+    assert.doesNotMatch(JSON.stringify(faqs), /activation code|códigos de activación|Aktivierungscodes|коды активации/iu);
   }
   assert.deepEqual(frenchPricingFaqs.slice(-3), getPurchaseFaqs("fr"));
   assert.equal(new Set(frenchPricingFaqs.map(faq => faq.question)).size, frenchPricingFaqs.length);

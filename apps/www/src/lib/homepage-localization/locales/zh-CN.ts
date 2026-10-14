@@ -120,7 +120,7 @@ export const zhCNHomepage = {
     checking: "正在检查登录状态...",
     signedIn: "已登录，可选择一份完整乐谱创建免费项目。",
     signInFirst: "先登录或注册，完成后仍停留在首页。",
-    googleLabel: "使用 Google 账号继续",
+    googleLabel: "用 Google 继续",
     googleLoading: "正在加载 Google 登录…",
     googleFailed: "Google 登录暂时不可用，请重试或使用邮箱登录。",
     googleDivider: "或使用邮箱登录",

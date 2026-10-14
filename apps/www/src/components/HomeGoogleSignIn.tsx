@@ -19,13 +19,13 @@ export function HomeGoogleSignIn({ appUrl, locale, disabled, label, loadingLabel
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) { error.current(errorLabel); return; }
     const url = new URL("/api/auth/google-button", appUrl);
     url.searchParams.set("parent", window.location.origin);
     url.searchParams.set("locale", locale);
     setReady(false); setFailed(false); setSrc(url.toString());
     const fail = () => { setFailed(true); error.current(errorLabel); };
-    const timer = window.setTimeout(fail, 20000);
+    const timer = window.setTimeout(fail, 8000);
     const receive = (event: MessageEvent) => {
       if (event.origin !== url.origin || event.source !== frame.current?.contentWindow || event.data?.channel !== "score-google-signin") return;
       if (event.data.type === "ready") { window.clearTimeout(timer); setReady(true); setFailed(false); }
@@ -37,8 +37,7 @@ export function HomeGoogleSignIn({ appUrl, locale, disabled, label, loadingLabel
   }, [clientId, appUrl, locale, errorLabel]);
   if (!clientId) return null;
   return <section className={styles.googleAuth} aria-label={label}>
-    <strong>{label}</strong>
-    {!ready && !failed ? <span role="status">{loadingLabel}</span> : null}
+    {!ready && !failed ? <button type="button" className={styles.googlePending} disabled aria-busy="true" title={loadingLabel}>{label}</button> : null}
     {failed ? <span role="alert">{errorLabel}</span> : null}
     {!failed ? <div className={styles.googleButton} inert={disabled} aria-busy={disabled || !ready}>
       {src ? <iframe ref={frame} src={src} title={label} allow="identity-credentials-get" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" style={{ display: "block", width: "100%", minWidth: 220, height: 46, border: 0 }} onError={() => { setFailed(true); onError(errorLabel); }} /> : null}

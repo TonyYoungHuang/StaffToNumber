@@ -7,7 +7,7 @@ import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
 import type { PurchaseFlowCopy } from "../lib/purchase-copy";
-import { clearPendingPurchase, defaultPurchaseSelection, purchaseSelectionKey, readPendingPurchase, readPurchaseSelection, rememberPurchaseSelection, savePendingPurchase, SESSION_CHANGED_EVENT, type PurchaseSelection } from "../lib/purchase-flow";
+import { clearPendingPurchase, defaultPurchaseSelection, purchaseSelectionKey, readPendingPurchase, readPurchaseSelection, rememberPurchaseSelection, savePendingPurchase, savePurchaseReturn, SESSION_CHANGED_EVENT, type PurchaseSelection } from "../lib/purchase-flow";
 import { localizePublicHref } from "../lib/locale-routing";
 import { siteConfig } from "../lib/site";
 import { GoogleOneTap } from "./GoogleOneTap";
@@ -113,8 +113,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
     pendingRef.current = plan;
     setPending(plan);
     if (plan) savePendingPurchase(plan);
-    setAuthError(null); setMode(mode); setPassword(""); setOpen(true);
-    if (mode === "register") setEmailOpen(true);
+    setAuthError(null); setMode(mode); setPassword(""); setEmailOpen(!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID); setOpen(true);
   }, []);
   const signIn = useCallback((mode?: "login" | "register") => showSignIn(null, mode), [showSignIn]);
   const select = useCallback((selection: PurchaseSelection) => { setSelected(selection); rememberPurchaseSelection(selection); }, []);
@@ -125,7 +124,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
     authLock.current = true; setAuthBusy(true); setAuthError(null);
     try {
       const result = await apiRequest<AuthPayload>(`/api/auth/${path}`, { method: "POST", body: JSON.stringify(body) });
-      if (!result.ok) { setAuthError(result.error || auth.authFailed); return; }
+      if (!result.ok) { setAuthError(result.error || auth.authFailed); if (path === "google") setEmailOpen(true); return; }
       const plan = pendingRef.current ?? readPendingPurchase();
       setUser(result.data.user); setOpen(false); setPassword("");
       setNotice({ text: plan ? copy.signedIn : auth.signedIn });
@@ -158,7 +157,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
       }
       const signature = `${account.id}:${locale}:${purchaseSelectionKey(plan)}`;
       if (intent.current?.signature !== signature) intent.current = { signature, key: crypto.randomUUID() };
-      const result = await apiRequest<{ url: string | null }>("/api/payments/checkout/authenticated", {
+      const result = await apiRequest<{ url: string | null; orderId: string }>("/api/payments/checkout/authenticated", {
         method: "POST", headers: { "Idempotency-Key": intent.current.key },
         body: JSON.stringify({ provider: plan.provider, locale, planCode: plan.planCode, billingKind: plan.billingKind, seatQuantity: 1, returnTo: "pricing" }),
       });
@@ -168,6 +167,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
         return;
       }
       if (!result.data.url) { clearPendingPurchase(); pendingRef.current = null; setPending(null); setNotice({ text: copy.failed, error: true }); return; }
+      savePurchaseReturn(result.data.orderId, window.location.search);
       clearPendingPurchase();
       pendingRef.current = null;
       setPending(null);
@@ -222,12 +222,13 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
         <p>{pending ? copy.authBody : copy.accountBody}</p>
         {pending ? <div className={styles.selection}><small>{copy.selected}</small><strong>{pending.name} · {pending.cycle}</strong><span>{pending.price}</span></div> : null}
         <HomeGoogleSignIn appUrl={siteConfig.appUrl} locale={locale} disabled={authBusy} label={auth.googleLabel} loadingLabel={auth.googleLoading} errorLabel={auth.googleFailed}
-          onCredential={credential => { void authenticate("google", { credential }); }} onError={setAuthError} />
-        {!emailOpen ? <button className="public-button secondary" type="button" onClick={() => setEmailOpen(true)}>{copy.emailAction}</button> : <>
+          onCredential={credential => { void authenticate("google", { credential }); }} onError={message => { setAuthError(message); setEmailOpen(true); }} />
+        {!emailOpen ? <button className={styles.emailLink} type="button" onClick={() => setEmailOpen(true)}>{copy.emailAction}</button> : <>
           <div className={styles.tabs} role="group" aria-label={copy.emailAction}>{(["login", "register"] as const).map(value => <button key={value} type="button" aria-pressed={mode === value} disabled={authBusy} onClick={() => { setMode(value); setAuthError(null); }}>{auth[value]}</button>)}</div>
           <form className={styles.form} onSubmit={event => { event.preventDefault(); void authenticate(mode, { email: email.trim(), password }); }}>
             <label>{auth.email}<input type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} /></label>
             <label>{auth.password}<input type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} minLength={8} required value={password} onChange={event => setPassword(event.target.value)} /></label>
+            {mode === "login" ? <a className={styles.emailLink} href={`${siteConfig.appUrl}/api/locale?${new URLSearchParams({ locale, next: "/forgot-password" })}`}>{copy.forgotPassword}</a> : null}
             <button type="submit" className="public-button primary" disabled={authBusy}>{authBusy ? auth.submitting : auth[mode]}</button>
           </form>
         </>}

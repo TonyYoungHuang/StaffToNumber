@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { APP_ROUTES, isCheckoutPlanCode } from "@score/shared";
+import { APP_ROUTES, isPurchasePlanCode } from "@score/shared";
 import { CheckoutPlanSelector } from "../../components/CheckoutPlanSelector";
 import styles from "../../components/AppCheckout.module.css";
 import { getAuthMessages } from "../../lib/auth-messages";
@@ -42,7 +42,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
   const plans = getLocalizedPricingPlanCatalog(locale);
   const params = await searchParams;
   const requestedPlan = Array.isArray(params.plan) ? params.plan[0] : params.plan;
-  const initialPlanCode = isCheckoutPlanCode(requestedPlan) ? requestedPlan : undefined;
+  const initialPlanCode = isPurchasePlanCode(requestedPlan) ? requestedPlan : undefined;
 
   return (
     <section className={styles.checkoutShell}>
@@ -63,7 +63,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
         returnTo={typeof params.next === "string" ? params.next : undefined}
         plans={plans}
         initialPlanCode={initialPlanCode}
-        initialBillingKind={params.billing === "one_time" ? "one_time" : "subscription"}
+        initialBillingKind={!initialPlanCode || initialPlanCode === "single-score" || params.billing === "one_time" ? "one_time" : "subscription"}
         locale={locale}
         copy={copy.checkout}
         authMessages={authMessages}

@@ -13,7 +13,6 @@ import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { getAuthMessages } from "../lib/auth-messages";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { trackFunnelEvent } from "../lib/analytics";
-import { accountActivationRoute, checkoutAvailable } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type MePayload = {
@@ -43,7 +42,7 @@ export function EntitlementGate({
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "redirecting" | "signin" | "guest">("checking");
-  const deniedAction = checkoutAvailable ? copy.unlockAction : copy.redeemAction;
+  const deniedAction = copy.unlockAction;
 
   useEffect(() => {
     setError(null);
@@ -71,11 +70,7 @@ export function EntitlementGate({
           return;
         }
         setStatus("redirecting");
-        router.replace(
-          checkoutAvailable
-            ? upgradePath(currentWorkPath())
-            : `${accountActivationRoute}?${new URLSearchParams({ next: currentWorkPath() })}`,
-        );
+        router.replace(upgradePath(currentWorkPath()));
         return;
       }
 
@@ -123,9 +118,9 @@ export function EntitlementGate({
         </div>
         <div className="button-row">
           <Link
-            href={checkoutAvailable ? upgradePath(currentWorkPath()) : `${accountActivationRoute}?${new URLSearchParams({ next: currentWorkPath() })}`}
+            href={upgradePath(currentWorkPath())}
             className="button button-primary"
-            onClick={() => trackFunnelEvent("upgrade_click", { source: checkoutAvailable ? "entitlement_gate" : "entitlement_gate_activation" })}
+            onClick={() => trackFunnelEvent("upgrade_click", { source: "entitlement_gate" })}
           >
             {deniedAction}
           </Link>

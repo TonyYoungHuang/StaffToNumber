@@ -25,7 +25,7 @@ export const koBillingMessages = {
       freeTitle: "첫 번째 완전한 악보를 무료로 만들기", freeBody: "결제나 카드가 필요 없습니다. 무료 요금제는 완전한 악보 프로젝트 하나를 계속 보관하고 매달 크레딧을 제공합니다.", freeCta: "무료로 악보 만들기", creditUsage: "작업 생성 시 크레딧 예약", includedCapabilities: "포함 기능", benefitsAndResources: "혜택 및 리소스",
     },
     client: {
-      checkoutEyebrow: "결제", title: "온라인 결제 후 이용 권한 자동 활성화", body: "결제가 완료되면 등록 계정의 이용 권한이 자동으로 활성화됩니다. 해외 고객은 코드를 직접 입력할 필요가 없습니다.",
+      checkoutEyebrow: "결제", title: "온라인 결제 후 이용 권한 자동 활성화", body: "결제가 완료되면 등록 계정의 이용 권한이 자동으로 활성화됩니다.",
       provider: "결제 서비스", plan: "구독 유형", individual: "개인", school: "학교/기관 좌석", organization: "결제 기관", organizationPlaceholder: "기관 선택",
       noOrganizations: "이 계정에는 결제에 사용할 수 있는 기관이 없습니다.", seats: "좌석 수", seatsHelp: "2~100,000석을 선택할 수 있습니다.",
       stripeTitle: "Stripe", stripeLiveBody: "한 곡 이용권: Stripe 결제 화면에 표시되는 카드, Alipay 또는 Link를 사용할 수 있습니다. 구독은 결제 화면에 표시되는 결제 수단을 이용하세요.", stripeBuildingBody: "운영 결제가 아직 연결되지 않았습니다. 현재는 청구 없이 수요만 기록합니다.",
@@ -41,7 +41,7 @@ export const koBillingMessages = {
     },
     status: {
       loading: "결제 상태 확인 중...", pendingTitle: "결제 확인 중", pendingBody: "결제가 완료되면 현재 계정의 이용 권한이 자동으로 활성화됩니다.",
-      successTitle: "결제 완료 및 계정 활성화", successBody: "이용 권한이 준비되었습니다. 코드를 직접 입력하지 않고 내 악보를 열 수 있습니다.", cancelledTitle: "결제가 취소되었습니다", cancelledBody: "완료된 결제가 기록되지 않았습니다. 내 악보로 돌아가거나 요금제를 다시 선택할 수 있습니다.", failedTitle: "결제가 완료되지 않았습니다", failedBody: "이용 권한 변경이 확인되지 않았습니다. 결제 서비스 페이지를 확인하거나 다시 시도하세요.", scores: "내 악보 열기", jobs: "작업 열기", fallbackError: "결제 상태를 불러올 수 없습니다. 다시 시도하세요.",
+      successTitle: "결제 완료 및 계정 활성화", successBody: "이용 권한이 준비되었습니다. 내 악보를 열어 계속하세요.", cancelledTitle: "결제가 취소되었습니다", cancelledBody: "완료된 결제가 기록되지 않았습니다. 내 악보로 돌아가거나 요금제를 다시 선택할 수 있습니다.", failedTitle: "결제가 완료되지 않았습니다", failedBody: "이용 권한 변경이 확인되지 않았습니다. 결제 서비스 페이지를 확인하거나 다시 시도하세요.", scores: "내 악보 열기", jobs: "작업 열기", fallbackError: "결제 상태를 불러올 수 없습니다. 다시 시도하세요.",
     },
   },
   billing: {

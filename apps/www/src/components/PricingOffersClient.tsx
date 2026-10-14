@@ -18,11 +18,12 @@ export function PricingOffersClient({ locale, plans, labels, purchase }: {
 }) {
   const [kind, setKind] = useState<CheckoutBillingKind>("subscription");
   const [provider, setProvider] = useState<PaymentProvider>("stripe");
+  const [plansOpen, setPlansOpen] = useState(false);
   const flow = usePurchaseFlow();
   const paddleAvailable = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDERS ?? "stripe,paddle").split(",").some(value => value.trim() === "paddle");
   useEffect(() => {
     const selection = readPurchaseSelection(window.location.search);
-    if (selection) { setKind(selection.billingKind); setProvider(paddleAvailable ? selection.provider : "stripe"); }
+    if (selection && selection.planCode !== "single-score") { setKind(selection.billingKind); setProvider(paddleAvailable ? selection.provider : "stripe"); setPlansOpen(true); }
     else if (new URLSearchParams(window.location.search).get("billing") === "one_time") setKind("one_time");
   }, [paddleAvailable]);
 
@@ -33,6 +34,11 @@ export function PricingOffersClient({ locale, plans, labels, purchase }: {
   }
 
   return <>
+    <div className={styles.passOffer} data-primary-plan="single-score">
+      <SingleScoreOffer locale={locale} labels={labels} />
+    </div>
+    <details className={styles.morePlans} open={plansOpen} onToggle={event => setPlansOpen(event.currentTarget.open)}>
+    <summary>{purchase.subscription} · {purchase.oneTime}</summary>
     <div className={styles.controls}>
       <div className={styles.tabs} role="group" aria-label={purchase.label}>
         {(["subscription", "one_time"] as const).map(value => <button key={value} type="button" aria-pressed={kind === value} disabled={flow.busy}
@@ -45,8 +51,8 @@ export function PricingOffersClient({ locale, plans, labels, purchase }: {
       </details> : null}
     </div>
     <CreditPlanGrid label={purchase.label}>
-      <SingleScoreOffer locale={locale} labels={labels} />
       {plans[kind].map(plan => <PurchasePlanCard key={`${kind}:${plan.code}`} plan={plan} labels={labels} billingKind={kind} provider={provider} />)}
     </CreditPlanGrid>
+    </details>
   </>;
 }

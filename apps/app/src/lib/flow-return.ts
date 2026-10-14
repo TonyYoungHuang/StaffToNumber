@@ -16,8 +16,8 @@ const prefix = "score-checkout-return:";
 export function saveCheckoutReturn(orderId: string, next: string, retry: string) {
   try { sessionStorage.setItem(prefix + orderId, JSON.stringify({ next: workReturnPath(next), retry: resolveAuthReturnPath(retry) ?? "/checkout", createdAt: Date.now() })); } catch { /* A visible return link remains available. */ }
 }
-export function readCheckoutReturn(orderId: string): CheckoutReturn {
-  const fallback = { next: "/scores", retry: "/checkout", createdAt: 0 };
+export function readCheckoutReturn(orderId: string, returnTo?: string): CheckoutReturn {
+  const fallback = { next: workReturnPath(returnTo), retry: "/checkout", createdAt: 0 };
   try {
     const entry = JSON.parse(sessionStorage.getItem(prefix + orderId) ?? "null") as CheckoutReturn | null;
     if (!entry || typeof entry.createdAt !== "number" || Date.now() - entry.createdAt > 86400000 || entry.createdAt > Date.now()) return fallback;

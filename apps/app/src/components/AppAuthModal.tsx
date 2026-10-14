@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { AuthForm } from "./AuthForm";
 import { currentWorkPath } from "../lib/flow-return";
+import { resolveAuthReturnPath } from "../lib/auth-return";
 
 type OpenAuth = (mode?: "login" | "register", onDone?: () => void) => void;
 const Context = createContext<OpenAuth | null>(null);
@@ -18,7 +19,8 @@ export function AppAuthModalProvider({ children, messages }: { children: ReactNo
   const [mode, setMode] = useState<"login" | "register" | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const callback = useRef<(() => void) | undefined>(undefined);
-  const open = useCallback<OpenAuth>((next = "login", onDone) => { callback.current = onDone; setMode(next); }, []);
+  const returnPath = useRef<string | null>(null);
+  const open = useCallback<OpenAuth>((next = "login", onDone) => { callback.current = onDone; returnPath.current = null; setMode(next); }, []);
   useEffect(() => {
     if (!mode || !dialog.current) return;
     const el = dialog.current, focus = document.activeElement;
@@ -36,6 +38,7 @@ export function AppAuthModalProvider({ children, messages }: { children: ReactNo
       const url = new URL(link.href);
       if (url.origin !== window.location.origin || !["/login", "/register"].includes(url.pathname)) return;
       event.preventDefault(); event.stopPropagation(); open(url.pathname === "/register" ? "register" : "login");
+      returnPath.current = resolveAuthReturnPath(url.searchParams.get("next") ?? undefined);
     };
     document.addEventListener("click", listener, true);
     return () => document.removeEventListener("click", listener, true);
@@ -44,7 +47,14 @@ export function AppAuthModalProvider({ children, messages }: { children: ReactNo
     <dialog ref={dialog} className="app-auth-modal" aria-label={messages.routes[mode].title}
       onCancel={event => { event.preventDefault(); setMode(null); }} onClick={event => { if (event.target === event.currentTarget) setMode(null); }}>
       <div className="stack-lg"><button type="button" className="button button-tertiary" onClick={() => setMode(null)}>{messages.shell.back}</button>
-        <AuthForm key={mode} mode={mode} redirectTo={currentWorkPath()} messages={messages.form} onAuthenticated={() => { setMode(null); callback.current?.(); callback.current = undefined; }} />
+        <AuthForm key={mode} mode={mode} redirectTo={returnPath.current ?? currentWorkPath()} messages={messages.form} onAuthenticated={() => {
+          setMode(null);
+          const onDone = callback.current;
+          callback.current = undefined;
+          if (onDone) onDone();
+          else if (returnPath.current) window.location.assign(returnPath.current);
+          returnPath.current = null;
+        }} />
       </div>
     </dialog>, document.body) : null}</Context.Provider>;
 }

@@ -42,6 +42,7 @@ export function AppCheckoutStatusClient({
   token,
   provider,
   sessionId,
+  returnTo,
   locale,
   copy,
 }: {
@@ -49,6 +50,7 @@ export function AppCheckoutStatusClient({
   token: string;
   provider: PaymentProvider;
   sessionId?: string;
+  returnTo?: string;
   locale: SupportedLocale;
   copy: CheckoutStatusCopy;
 }) {
@@ -58,7 +60,7 @@ export function AppCheckoutStatusClient({
   const [retryCount, setRetryCount] = useState(0);
   const [destination, setDestination] = useState({ next: "/scores", retry: "/checkout", createdAt: 0 });
   const [accessState, setAccessState] = useState<"waiting" | "ready" | "mismatch" | "error">("waiting");
-  useEffect(() => { setDestination(readCheckoutReturn(orderId)); }, [orderId]);
+  useEffect(() => { setDestination(readCheckoutReturn(orderId, returnTo)); }, [orderId, returnTo]);
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const purchaseCopy = getPurchaseOptionsCopy(locale);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ export function AppCheckoutStatusClient({
       if (result.ok && result.data.user.id !== order.userId) { setAccessState("mismatch"); return; }
       if (result.ok && (result.data.user.entitlement.status === "active" || (order.planCode === "single-score" && result.data.user.scorePasses?.some(pass => pass.id === orderId)))) {
         setAccessState("ready");
-        router.replace(readCheckoutReturn(orderId).next);
+        router.replace(readCheckoutReturn(orderId, returnTo).next);
         router.refresh();
         return;
       }
@@ -143,7 +145,7 @@ export function AppCheckoutStatusClient({
     setAccessState("waiting");
     void verifyAccess();
     return () => { disposed = true; controller.abort(); if (timer) window.clearTimeout(timer); };
-  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn, verification?.status]);
+  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn, verification?.status, returnTo]);
 
 
   useEffect(() => {

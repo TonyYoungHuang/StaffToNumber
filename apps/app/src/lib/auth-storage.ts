@@ -5,15 +5,14 @@ const AUTH_STATE_EVENT = "score-auth-state-changed";
 const LOGIN_METHOD_KEY = "score-login-method";
 
 export function setPreferredLoginMethod(method: "email" | "google" | "activation-code") {
-  // Google and email both land on /login; activation-code keeps the redeem path.
+  // Remember the method for the account; main-site sign-in always uses /login.
   window.localStorage.setItem(LOGIN_METHOD_KEY, method === "google" ? "google" : method);
 }
 
 export function preferredLoginPath(next?: string) {
-  const codeLogin = typeof window !== "undefined" && window.localStorage.getItem(LOGIN_METHOD_KEY) === "activation-code";
-  const params = new URLSearchParams(codeLogin ? { shop: "1" } : {});
+  const params = new URLSearchParams();
   if (next) params.set("next", next);
-  return `${codeLogin ? "/activate" : "/login"}${params.size ? `?${params}` : ""}`;
+  return `/login${params.size ? `?${params}` : ""}`;
 }
 
 export function subscribeAuthChanges(onChange: () => void) {

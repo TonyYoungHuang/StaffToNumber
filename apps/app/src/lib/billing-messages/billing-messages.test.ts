@@ -1,4 +1,4 @@
-import { workReturnPath } from "../flow-return";
+import { readCheckoutReturn, workReturnPath } from "../flow-return";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
@@ -61,6 +61,28 @@ test("all nine locales describe single-score card, Alipay and Link without promi
     }
     assert.match(upsell.passCta, /US\$2\.99/u, locale);
     assert.doesNotMatch(upsell.subscriptionCta, /Alipay|支付宝|支付寶|Link/u, locale);
+  }
+});
+
+test("checkout and upsells make the One Score Pass primary and omit activation in every locale", () => {
+  const upsell = source("../../components/OneScorePassUpsell.tsx");
+  const checkout = source("../../components/AppCheckoutClient.tsx");
+  const selector = source("../../components/CheckoutPlanSelector.tsx");
+  const page = source("../../app/checkout/page.tsx");
+  for (const contents of [upsell, checkout, selector]) {
+    assert.doesNotMatch(contents, /APP_ROUTES\.activate|activationCta|activationNote|data-plan-type="activation_code"/u);
+  }
+  assert.match(upsell, /className="button button-primary" data-plan-type="one_score"/u);
+  assert.match(upsell, /plan=single-score&billing=one_time&continue=1/u);
+  assert.match(upsell, /plan=starter-monthly&billing=subscription/u);
+  assert.match(checkout, /resumeCheckout\.current = true/u);
+  assert.match(checkout, /selectedPlan\.code === "single-score" \? getOneScoreUpsellCopy\(locale\)\.passCta/u);
+  assert.match(selector, /initialPlanCode \?\? SINGLE_SCORE_PASS\.code/u);
+  assert.match(selector, /<details className="flow-details" open=\{plansOpen\}/u);
+  assert.match(page, /isPurchasePlanCode\(requestedPlan\)/u);
+  for (const locale of SUPPORTED_LOCALES) {
+    assert.doesNotMatch(JSON.stringify(getOneScoreUpsellCopy(locale)), /activation|激活码|啟用碼|アクティベーション|활성화 코드|Aktivierungscode|código de activación|code d.activation|код активации/iu, locale);
+    assert.doesNotMatch(JSON.stringify(getBillingMessages(locale).checkout), /\bcode\b|código|コード|코드|код|激活码|啟用碼/iu, locale);
   }
 });
 
@@ -225,6 +247,10 @@ test("payment completion keeps a safe work destination without a public-app redi
   const status = source("../../components/AppCheckoutStatusClient.tsx");
   assert.match(status, /result\.data\.user\.id !== order\.userId/u);
   assert.match(status, /entitlement\.status === "active"/u);
+  assert.match(status, /order\.planCode === "single-score"[\s\S]*pass\.id === orderId/u);
+  assert.match(status, /router\.replace\(readCheckoutReturn\(orderId, returnTo\)\.next\)/u);
+  assert.equal(readCheckoutReturn("missing-order", "/scores/original#export-center").next, "/scores/original#export-center");
+  assert.equal(readCheckoutReturn("missing-order", "https://external.invalid").next, "/scores");
   for (const [file, component] of [["success", "AppCheckoutStatusClient"], ["cancel", "AppCheckoutCancelClient"]]) {
     const contents = source(`../../app/checkout/${file}/page.tsx`);
     assert.ok(contents.includes(component));
