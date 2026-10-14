@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { AudiverisProcessError } from "./audiveris-runner.js";
+import { EngineResourceError } from "./engine-resource-error.js";
 import { ComplexOmrFailure, complexEvidenceEntries, recognitionStructurePenalty, runComplexOmr, type ComplexOmrInput, type PageInventory } from "./complex-omr.js";
 
 const analysis = (parts = 2, systems = 1, issues: Array<{ kind: string; message: string }> = []) => ({ partCount: parts, physicalStaffCount: parts, systemCount: systems, measureCount: 1, parts: Array.from({ length: parts }, (_, index) => ({ id: `P${index + 1}`, name: index ? "Violin" : "Flute", staffCount: 1, measureCount: 1, systemMeasureCounts: [1], issues: [] })), issues });
@@ -95,6 +96,17 @@ test("a model failure keeps independent staff structure and explicit uncertainty
   assert.equal(result.coverage.staffs.length, inventory.staffs.length);
   assert.ok(result.coverage.gaps.some(gap => gap.message === "Layout model timeout"));
   assert.equal(result.coverage.status, "review-required");
+});
+
+test("memory pressure ends recognition without starting fallback models or extra regions", async t => {
+  const { input, calls } = fixture(t);
+  let launches = 0;
+  input.recognizeAudiveris = async () => { launches += 1; throw new EngineResourceError("ENGINE_MEMORY_PRESSURE"); };
+  await assert.rejects(runComplexOmr(input), /\[ENGINE_MEMORY_PRESSURE\]/u);
+  assert.equal(launches, 1);
+  assert.equal(calls.includes("recognize"), false);
+  assert.equal(calls.includes("merge"), false);
+  assert.equal(fs.existsSync(input.inputPath), true);
 });
 
 test("equal layout coverage retains the primary score and exposes timing/engine disagreement", async t => {

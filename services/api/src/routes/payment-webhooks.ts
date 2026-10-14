@@ -8,6 +8,7 @@ import { db } from "../db.js";
 import { applyOneTimeRefund, fulfillOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { buildPaymentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
 import { config } from "../config.js";
+import { retryOperatorNotification } from "../lib/operator-notification.js";
 import {
   completeDurablePaymentOrder,
   findDurablePaymentOrderByCheckoutSessionId,
@@ -22,8 +23,7 @@ type RawBodyRequest = {
   body?: unknown;
 };
 
-async function sendPaymentAlert(app: FastifyInstance, order: PaymentOrderRow, providerReference: string | null) {
-  try {
+async function sendPaymentAlert(order: PaymentOrderRow, providerReference: string | null) {
     const email = buildPaymentNotificationEmail({
       provider: order.provider,
       environment: order.provider === "paddle"
@@ -38,9 +38,6 @@ async function sendPaymentAlert(app: FastifyInstance, order: PaymentOrderRow, pr
       paidAt: order.paid_at,
     });
     await sendTransactionalEmail({ to: config.paymentNotificationEmail, ...email });
-  } catch (error) {
-    app.log.error({ err: error, orderId: order.id }, "Payment succeeded but the operator notification email failed.");
-  }
 }
 
 export async function paymentWebhookRoutes(app: FastifyInstance) {
@@ -102,7 +99,10 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
                 currency: session.currency ?? null,
               });
             }
-            if (shouldNotify && completedOrder) await sendPaymentAlert(app, completedOrder, session.id ?? null);
+            if (shouldNotify && completedOrder) void retryOperatorNotification({
+              orderId: completedOrder.id, log: app.log,
+              send: () => sendPaymentAlert(completedOrder!, session.id ?? null),
+            });
           }
         }
 
@@ -187,7 +187,10 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
             } else {
               completedOrder = await completeDurablePaymentOrder({ orderId: order.id, amountMinor, currency });
             }
-            if (shouldNotify && completedOrder) await sendPaymentAlert(app, completedOrder, transactionId ?? null);
+            if (shouldNotify && completedOrder) void retryOperatorNotification({
+              orderId: completedOrder.id, log: app.log,
+              send: () => sendPaymentAlert(completedOrder!, transactionId ?? null),
+            });
           }
         }
 

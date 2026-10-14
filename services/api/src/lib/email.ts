@@ -371,6 +371,7 @@ export async function sendTransactionalEmail(input: EmailInput) {
   }
 
   const response = await fetch("https://api.resend.com/emails", {
+    signal: AbortSignal.timeout(10_000),
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.resendApiKey}`,

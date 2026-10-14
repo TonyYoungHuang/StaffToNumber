@@ -15,10 +15,13 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
     const close = () => { if (!reply.raw.writableEnded) cancellation.abort(); };
     request.raw.once("aborted", abort);
     reply.raw.once("close", close);
+    const deadline = setTimeout(abort, 200_000);
     try {
-      release = await acquireScorePreflightSlot(request.authUserId!, cancellation.signal);
       const file = await request.file({ limits: { files: 1, fileSize: Math.min(config.uploadMaxBytes, 20 * 1024 * 1024) } });
       if (!file) return { statusCode: 400, body: { code: "EMPTY_FILE", error: "No PDF or image file uploaded." } };
+      const cancelUpload = () => file.file.destroy(new ScorePreflightError("SCORE_PREFLIGHT_TIMEOUT", "The structure check ended before upload completed. Please retry.", 504));
+      cancellation.signal.addEventListener("abort", cancelUpload, { once: true });
+      if (cancellation.signal.aborted) cancelUpload();
       // Reuse the paid OMR's configured scanner and format checks. Free PDF inspection
       // validates metadata, then renders lazily under its own smaller budget.
       // No source is promoted into files, score documents, jobs or revisions.
@@ -26,7 +29,11 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
       await fs.mkdir(tempRoot, { recursive: true });
       workspace = await fs.mkdtemp(path.join(tempRoot, "check-"));
       const sourcePath = path.join(workspace, "source.upload");
-      const verified = await storeVerifiedUpload({ stream: file.file, targetPath: sourcePath, allowedKinds: uploadKinds.omr });
+      let verified;
+      try { verified = await storeVerifiedUpload({ stream: file.file, targetPath: sourcePath, allowedKinds: uploadKinds.omr }); }
+      finally { cancellation.signal.removeEventListener("abort", cancelUpload); }
+      // A slow multipart transfer must not occupy a scarce renderer slot.
+      release = await acquireScorePreflightSlot(request.authUserId!, cancellation.signal);
       if (verified.detectedKind === "pdf") await inspectPdfStructurePreflight(await fs.readFile(sourcePath));
       let recognitionSupport: import("@score/shared").ScoreStructurePreflight["recognitionSupport"] = { supported: true, code: "READY" };
       if (verified.detectedKind === "pdf") {
@@ -41,6 +48,7 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
       const preflight = await runScoreStructurePreflight({ sourcePath, workspace, signal: cancellation.signal });
       return { statusCode: 200, body: { preflight: { ...preflight, recognitionSupport } } };
     } catch (error) {
+      if (cancellation.signal.aborted) return { statusCode: 504, body: { code: "SCORE_PREFLIGHT_TIMEOUT", error: "The structure check was cancelled or timed out. Your file was not imported; please retry." } };
       if (error instanceof ScorePreflightError) {
         if (error.statusCode === 429) reply.header("Retry-After", error.code === "SCORE_PREFLIGHT_RATE_LIMIT" ? "60" : "5");
         return { statusCode: error.statusCode, body: { code: error.code, error: error.message } };
@@ -51,6 +59,7 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
       const response = uploadErrorResponse(error);
       return response;
     } finally {
+      clearTimeout(deadline);
       request.raw.removeListener("aborted", abort);
       reply.raw.removeListener("close", close);
       try { if (workspace) await fs.rm(workspace, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 }); }

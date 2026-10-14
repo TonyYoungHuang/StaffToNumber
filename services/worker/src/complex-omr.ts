@@ -7,6 +7,8 @@ import { AudiverisProcessError, runAudiverisWithRotationFallback, type RunAudive
 import { findAudiverisMusicXmlOutput, readAudiverisMusicXml } from "./audiveris-output.js";
 import { homrEngineSlotWeight, withOmrEngineSlot } from "./omr-engine-gate.js";
 import { createEngineExecutionClock } from "./engine-execution-clock.js";
+import { engineResourceError } from "./engine-resource-error.js";
+import { engineMemoryReservationMb } from "./engine-memory.js";
 
 export type RegionBox = { x: number; y: number; width: number; height: number };
 type PreparedPage = { page: number; width: number; height: number; imagePath: string };
@@ -78,14 +80,13 @@ function containedPath(directory: string, filename: string) {
 }
 
 export async function runComplexAdapter<T>(input: Pick<ComplexOmrInput, "pythonCommand" | "pythonArgsPrefix" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled" | "onQueueWait">, action: string, request: Record<string, unknown>, timeoutMs: number): Promise<T> {
-  if (["orient", "inventory", "recognize"].includes(action)) {
-    return withOmrEngineSlot({
-      timeoutMs, isCancelled: input.isCancelled, slots: homrEngineSlotWeight(), onQueueWait: input.onQueueWait,
-      cancelledError: () => new AudiverisProcessError("Complex recognition was cancelled while waiting for the OMR engine.", "cancelled"),
-      timeoutError: () => new AudiverisProcessError("Complex recognition budget was exhausted while waiting for the OMR engine.", "timeout"),
-    }, (remaining) => runComplexAdapterWithSlot<T>(input, action, request, remaining));
-  }
-  return runComplexAdapterWithSlot<T>(input, action, request, timeoutMs);
+  const heavy = ["orient", "inventory", "recognize"].includes(action);
+  return withOmrEngineSlot({
+    timeoutMs, isCancelled: input.isCancelled, slots: heavy ? homrEngineSlotWeight() : 1, onQueueWait: input.onQueueWait,
+    memoryMb: engineMemoryReservationMb(heavy),
+    cancelledError: () => new AudiverisProcessError("Complex recognition was cancelled while waiting for the OMR engine.", "cancelled"),
+    timeoutError: () => new AudiverisProcessError("Complex recognition budget was exhausted while waiting for the OMR engine.", "timeout"),
+  }, (remaining) => runComplexAdapterWithSlot<T>(input, action, request, remaining));
 }
 
 async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "pythonCommand" | "pythonArgsPrefix" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled" | "onQueueWait">, action: string, request: Record<string, unknown>, timeoutMs: number): Promise<T> {
@@ -95,7 +96,8 @@ async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "python
   fs.writeFileSync(requestPath, JSON.stringify({ ...request, homrSourceDir: input.homrSourceDir }), "utf8");
   if (input.isCancelled?.()) throw new AudiverisProcessError("Complex recognition was cancelled before launch.", "cancelled");
   await new Promise<void>((resolve, reject) => {
-    const clock = createEngineExecutionClock({ command: input.pythonCommand, timeoutMs, onQueueWait: input.onQueueWait, onTimeout: () => terminate("timeout") });
+    const clock = createEngineExecutionClock({ command: input.pythonCommand, timeoutMs, onQueueWait: input.onQueueWait,
+      onQueueTimeout: (cause) => terminate("resource", cause.message), onTimeout: () => terminate("timeout") });
     const child = spawn(input.pythonCommand, [...(input.pythonArgsPrefix ?? []), input.adapterPath, action, requestPath, resultPath], {
       shell: false, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "ignore", "pipe"],
       env: { ...process.env, ...clock.environment, PYTHONUTF8: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
@@ -110,9 +112,9 @@ async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "python
         else child.kill(signal);
       } catch { /* The child may have already exited. */ }
     };
-    const terminate = (reason: "timeout" | "cancelled") => {
+    const terminate = (reason: "timeout" | "cancelled" | "resource", message?: string) => {
       if (settled || error) return;
-      error = new AudiverisProcessError(reason === "cancelled" ? "Complex recognition was cancelled." : `Complex ${action} exceeded its remaining execution budget.`, reason);
+      error = new AudiverisProcessError(message ?? (reason === "cancelled" ? "Complex recognition was cancelled." : `Complex ${action} exceeded its remaining execution budget.`), reason);
       clock.stop();
       kill("SIGTERM");
       forceKill = setTimeout(() => kill("SIGKILL"), 2_000);
@@ -126,14 +128,18 @@ async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "python
       if (settled) return;
       settled = true;
       cleanup();
-      reject(new AudiverisProcessError(`Complex OMR Python adapter could not start: ${cause.message}`, "spawn"));
+      const resource = engineResourceError(cause);
+      reject(new AudiverisProcessError(resource?.message ?? `Complex OMR Python adapter could not start: ${cause.message}`, resource ? "resource" : "spawn"));
     });
     child.on("close", (code) => {
       if (settled) return;
       settled = true;
       cleanup();
       if (error) reject(error);
-      else if (code !== 0) reject(new AudiverisProcessError(`Complex OMR ${action} failed: ${stderr.trim()}`, "exit", code));
+      else if (code !== 0) {
+        const resource = engineResourceError(stderr);
+        reject(new AudiverisProcessError(resource?.message ?? `Complex OMR ${action} failed: ${stderr.trim()}`, resource ? "resource" : "exit", code));
+      }
       else resolve();
     });
   });
@@ -249,6 +255,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
         if (!best || penalty(recognized.analysis) < penalty(best.analysis)) best = { ...recognized, engine };
         if (best && penalty(best.analysis) === 0 && best.analysis.issues.length === 0) break;
       } catch (error) {
+        if (engineResourceError(error)) throw error;
         if (error instanceof AudiverisProcessError && error.reason === "cancelled") throw error;
         input.onProgress?.({ message: `${engine} ${scope} recognition needs recovery.`, attempts: attempts.length, page });
       }
@@ -267,6 +274,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
     try {
       inventory = await audit("layout", "inventory", page.page, undefined, () => call<PageInventory>("orient", { ...page }, Math.min(input.attemptTimeoutMs, remaining(assemblyReserve))));
     } catch (error) {
+      if (engineResourceError(error)) throw error;
       if (error instanceof AudiverisProcessError && error.reason === "cancelled") throw error;
       const warning = error instanceof Error ? error.message : "Page layout inventory failed";
       // A slow/failed model must not erase independently visible staff/TAB
@@ -275,6 +283,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
         inventory = await audit("layout", "inventory", page.page, undefined, () => call<PageInventory>("orient", { ...page, lineOnly: true }, Math.min(30_000, remaining(assemblyReserve))));
         inventory.warnings.push(warning);
       } catch (fallbackError) {
+        if (engineResourceError(fallbackError)) throw fallbackError;
         if (fallbackError instanceof AudiverisProcessError && fallbackError.reason === "cancelled") throw fallbackError;
         inventory = { ...page, staffs: [], systems: [], warnings: [warning, "Independent line inventory could not finish; review the retained source"] };
       }

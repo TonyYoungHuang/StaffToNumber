@@ -20,6 +20,7 @@ import {
   siteConfig,
 } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
+import { getPaymentRecoveryCopy, type PaymentVerification } from "@score/shared";
 
 type PublicOrder = {
   id: string;
@@ -38,7 +39,7 @@ type PublicOrder = {
   planCode?: string | null;
 };
 
-type OrderPayload = { order: PublicOrder | null };
+type OrderPayload = { order: PublicOrder | null; verification?: PaymentVerification };
 
 export function CheckoutStatusClient({
   orderId,
@@ -62,38 +63,51 @@ export function CheckoutStatusClient({
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [verification, setVerification] = useState<PaymentVerification | null>(null);
+  const [pollingStopped, setPollingStopped] = useState(false);
+  const recoveryCopy = getPaymentRecoveryCopy(locale);
 
   useEffect(() => {
     let cancelled = false;
     let timer: number | undefined;
     let attempts = 0;
+    const controller = new AbortController();
+    setPollingStopped(false);
 
     const load = async () => {
       const params = new URLSearchParams({ token, provider });
       if (sessionId) params.set("sessionId", sessionId);
 
-      const result = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}?${params.toString()}`);
+      const result = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}?${params.toString()}`, { signal: controller.signal });
       if (cancelled) return;
 
       setLoading(false);
       if (!result.ok) {
-        setError(result.error);
+        setError(`${recoveryCopy.verification_failed} ${result.error}`);
         return;
       }
+      if (!result.data?.order) { setError(recoveryCopy.verification_failed); return; }
 
+      setError(null);
       setOrder(result.data.order);
-      if (result.data.order?.status === "pending" && attempts < 10) {
-        attempts += 1;
-        timer = window.setTimeout(() => void load(), 3000);
+      setVerification(result.data.verification ?? null);
+      const pending = result.data.verification
+        ? ["waiting_payment", "waiting_fulfillment"].includes(result.data.verification.status)
+        : result.data.order?.status === "pending";
+      if (pending) {
+        if (attempts++ < 10) timer = window.setTimeout(() => void load(), 3000);
+        else setPollingStopped(true);
       }
     };
 
     void load();
     return () => {
       cancelled = true;
+      controller.abort();
       if (timer) window.clearTimeout(timer);
     };
-  }, [orderId, provider, sessionId, token]);
+  }, [orderId, provider, sessionId, token, retryCount, recoveryCopy.verification_failed]);
 
   const isPaid = order?.status === "paid";
   useEffect(() => {
@@ -124,10 +138,11 @@ export function CheckoutStatusClient({
 
   const isSubscriptionPaid = isPaid && order?.billingKind === "subscription";
   const isOneTimePaid = isPaid && Boolean(order?.accessEndsAt);
-  const isStalled = order?.status === "cancelled" || order?.status === "failed";
-  const badge = isPaid ? copy.paidBadge : isStalled ? copy.stalledBadge : copy.pendingBadge;
-  const title = isOneTimePaid ? copy.statuses.paid : isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
-  const body = isOneTimePaid ? purchaseCopy.oneTimeNote : isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
+  const hasVerificationError = verification?.status === "verification_failed" || verification?.status === "fulfillment_failed";
+  const isStalled = order?.status === "cancelled" || order?.status === "failed" || hasVerificationError;
+  const badge = isStalled ? copy.stalledBadge : isPaid ? copy.paidBadge : copy.pendingBadge;
+  const title = hasVerificationError ? copy.errorTitle : isOneTimePaid ? copy.statuses.paid : isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.paidTitle : isStalled ? copy.stalledTitle : copy.pendingTitle;
+  const body = verification && verification.status !== "ready" ? recoveryCopy[verification.status] : isOneTimePaid ? purchaseCopy.oneTimeNote : isSubscriptionPaid ? copy.subscriptionPaidBody : isPaid ? copy.paidBody : isStalled ? copy.stalledBody : copy.pendingBody;
   const steps = isPaid && order?.planCode === "single-score" ? [getSingleScorePassCopy(locale).paid, ...getSingleScorePassCopy(locale).benefits] : isOneTimePaid ? [
     formatMessage(purchaseCopy.startsTemplate, { date: safelyFormatDateTime(order!.accessStartsAt!, locale) }),
     formatMessage(purchaseCopy.expiresTemplate, { date: safelyFormatDateTime(order!.accessEndsAt!, locale) }),
@@ -142,7 +157,7 @@ export function CheckoutStatusClient({
   return (
     <div className="surface-panel stack-xl">
       <div className="stack-sm" aria-live="polite">
-        <StatusPill tone={isPaid ? "green" : isStalled ? "amber" : "cyan"}>{badge}</StatusPill>
+        <StatusPill tone={isStalled ? "amber" : isPaid ? "green" : "cyan"}>{badge}</StatusPill>
         {loading ? <p className="body-copy">{copy.pendingBody}</p> : null}
         {error ? (
           <>
@@ -158,6 +173,8 @@ export function CheckoutStatusClient({
           <><h1 className="page-title">{copy.missingTitle}</h1><p className="body-copy large">{copy.missingBody}</p></>
         ) : null}
         {translationNotice ? <p className="helper-copy" role="note">{translationNotice}</p> : null}
+        {pollingStopped ? <p className="form-status error" role="alert">{recoveryCopy.pollingStopped}</p> : null}
+        <button type="button" className="public-button secondary" disabled={loading} onClick={() => { setLoading(true); setError(null); setRetryCount(n => n + 1); }}>{recoveryCopy.retry}</button>
       </div>
 
       {!loading && !error && order ? (
@@ -180,9 +197,9 @@ export function CheckoutStatusClient({
           <div className="button-row">
             {isPaid ? (
               <a href={paidActionUrl} className="public-button primary">{paidActionLabel}</a>
-            ) : (
+            ) : order?.status === "cancelled" || order?.status === "failed" ? (
               <a href={checkoutUrl} className="public-button primary">{copy.retry}</a>
-            )}
+            ) : null}
             <a href={localizePublicHref(getSupportUrl("payment", "checkout-success"), locale)} className="public-button tertiary">{copy.contact}</a>
             <a href={localizePublicHref("/", locale)} className="public-button secondary">{copy.home}</a>
           </div>

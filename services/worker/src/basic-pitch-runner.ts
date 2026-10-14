@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { AudiverisProcessError } from "./audiveris-runner.js";
 import { createEngineExecutionClock } from "./engine-execution-clock.js";
+import { engineResourceError } from "./engine-resource-error.js";
 
 export function runBasicPitch(input: {
   command: string; timeoutMs: number; inputPath: string; outputDir: string; isCancelled: () => boolean;
@@ -15,6 +16,7 @@ export function runBasicPitch(input: {
       return;
     }
     const clock = createEngineExecutionClock({ command: input.command, timeoutMs: input.timeoutMs,
+      onQueueTimeout: (error) => terminate(error),
       onTimeout: () => terminate(new Error(`Basic Pitch timed out after ${input.timeoutMs} ms.`)) });
     const child = spawn(input.command, [input.outputDir, input.inputPath], {
       shell: false,
@@ -41,12 +43,12 @@ export function runBasicPitch(input: {
     const cleanup = () => { stderr += clock.finish(); clearInterval(cancelPoll); };
     child.stdout?.on("data", (chunk) => { stdout += String(chunk); });
     child.stderr?.on("data", (chunk) => { stderr += clock.stderr(chunk); });
-    child.on("error", (error) => { cleanup(); reject(error); });
+    child.on("error", (error) => { cleanup(); reject(engineResourceError(error) ?? error); });
     child.on("close", (code) => {
       cleanup();
       if (terminationError) { reject(terminationError); return; }
       if (code === 0) { resolve({ stdout, stderr }); return; }
-      reject(new Error(`Basic Pitch exited with code ${code}. ${stderr || stdout}`.trim()));
+      reject(engineResourceError(stderr || stdout) ?? new Error(`Basic Pitch exited with code ${code}. ${stderr || stdout}`.trim()));
     });
   });
 }

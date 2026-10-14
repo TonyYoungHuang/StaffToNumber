@@ -1,3 +1,4 @@
+import { ScoreUploadReceipts, UploadReceiptError } from "../lib/score-upload-receipts.js";
 import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
 import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
@@ -29,7 +30,7 @@ import {
 } from "@score/shared";
 import AdmZip from "adm-zip";
 import { XMLParser } from "fast-xml-parser";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../config.js";
 import { db } from "../db.js";
 import {
@@ -1543,6 +1544,64 @@ function mapOwnedScoreSummaryForAccess(document: Parameters<typeof mapScoreDocum
 }
 
 export async function scoreRoutes(app: FastifyInstance) {
+  const uploadRequests = new WeakMap<FastifyRequest, { key: string; scoreId: string }>();
+  const receipts = new ScoreUploadReceipts(path.join(config.storageDir, ".upload-receipts"), (id, userId) => {
+    const document = findScoreDocumentById(id);
+    return document?.user_id === userId;
+  });
+  const replayUpload = (scoreId: string, userId: string) => {
+    const document = findScoreDocumentById(scoreId)!;
+    const job = listScoreJobsByDocumentId(scoreId)[0];
+    const paidAccess = getUserProfile(userId)?.entitlement.status === "active";
+    const editingAccess = paidAccess || isFreeTrialScoreDocumentForUser(document.id, userId) || Boolean(scorePassForDocument(db, userId, document.id));
+    return { score: mapOwnedScoreForAccess(document, editingAccess), ...(job ? { job: mapScoreJobForApi(job) } : {}) };
+  };
+  const importAccess = (access: typeof app.requireAuth) => async (request: FastifyRequest, reply: FastifyReply) => {
+    await app.requireScorePreviewAccess(request, reply);
+    if (reply.sent) return;
+    const key = request.headers["idempotency-key"];
+    if (key === undefined) { await access(request, reply); return; }
+    if (typeof key !== "string") return reply.code(400).send({ code: "INVALID_IDEMPOTENCY_KEY", error: "Supply one UUID upload request key." });
+    try {
+      const state = receipts.status(request.authUserId!, key);
+      // Result recovery must not reserve credits or require the unused trial again.
+      // Account and ownership checks still precede every replay.
+      const url = new URL(request.url, "http://upload.local");
+      url.searchParams.sort();
+      const signature = url.pathname + url.search;
+      if (state?.state !== "completed") {
+        await access(request, reply);
+        if (reply.sent) return;
+      }
+      const receipt = receipts.begin(request.authUserId!, key, signature);
+      if (receipt.replay) return reply.code(200).send(replayUpload(receipt.scoreId, request.authUserId!));
+      uploadRequests.set(request, { key, scoreId: receipt.scoreId });
+    } catch (error) {
+      if (error instanceof UploadReceiptError) return reply.code(error.statusCode).send({ code: error.code, error: error.message });
+      request.log.error({ error }, "Upload result receipt unavailable.");
+      return reply.code(503).send({ code: "UPLOAD_RECOVERY_UNAVAILABLE", error: "Upload result recovery is unavailable. Please retry shortly." });
+    }
+  };
+  app.addHook("onSend", async (request, _reply, payload) => {
+    const receipt = uploadRequests.get(request);
+    if (receipt) {
+      uploadRequests.delete(request);
+      try { receipts.finish(request.authUserId!, receipt.key); }
+      catch (error) { request.log.error({ error, scoreId: receipt.scoreId }, "Upload receipt finalization failed; result remains recoverable by document id."); }
+    }
+    return payload;
+  });
+  app.get("/scores/uploads/:key", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
+    try {
+      const state = receipts.status(request.authUserId!, (request.params as { key: string }).key);
+      return state ? reply.send(state) : reply.code(404).send({ code: "UPLOAD_NOT_FOUND", error: "No upload with this request key was accepted." });
+    } catch (error) {
+      if (error instanceof UploadReceiptError) return reply.code(error.statusCode).send({ code: error.code, error: error.message });
+      request.log.error({ error }, "Upload result lookup failed.");
+      return reply.code(503).send({ code: "UPLOAD_RECOVERY_UNAVAILABLE", error: "The upload result could not be checked. Please retry shortly." });
+    }
+  });
+
   registerScoreStructurePreflightRoute(app);
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ScoreCoverageReviewRequiredError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
@@ -3175,7 +3234,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const needsMusicXml = ["musicxml", "pdf", "svg", "png"].includes(exportRequest.format);
       const playback = needsPlayback ? scoreJsonToPlayback(scoreJson) : undefined;
       if (needsPlayback && (!playback || playback.events.length === 0)) {
-        return reply.code(400).send({ error: "The current score revision does not contain playable note events." });
+        return reply.code(400).send({ code: "EXPORT_EMPTY_SELECTION", error: "The current score revision does not contain playable note events. Select a range with notes and retry." });
       }
 
       const renderedOptions: RenderedScoreExportOptions = {
@@ -4384,7 +4443,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       const options = normalizePracticeExportBody(request.body);
       if (countPlaybackMidiEvents(playback, options) === 0) {
-        return reply.code(400).send({ error: "The selected practice range or part filter does not contain playable notes." });
+        return reply.code(400).send({ code: "EXPORT_EMPTY_SELECTION", error: "The selected practice range or part filter does not contain playable notes. Select a range with notes and retry." });
       }
 
       const midiFile = playbackToMidiFile(playback, options);
@@ -4467,7 +4526,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         tempBaseName: storedName,
       });
       if (metadata.eventCount === 0) {
-        return reply.code(400).send({ error: "The selected practice range or part filter does not contain playable notes." });
+        return reply.code(400).send({ code: "EXPORT_EMPTY_SELECTION", error: "The selected practice range or part filter does not contain playable notes. Select a range with notes and retry." });
       }
       const targetPath = path.join(exportDir, storedName);
       fs.writeFileSync(targetPath, wav);
@@ -4549,7 +4608,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         tempBaseName: storedName,
       });
       if (metadata.eventCount === 0) {
-        return reply.code(400).send({ error: "The selected practice range or part filter does not contain playable notes." });
+        return reply.code(400).send({ code: "EXPORT_EMPTY_SELECTION", error: "The selected practice range or part filter does not contain playable notes. Select a range with notes and retry." });
       }
       const tempWavPath = path.join(exportDir, `${storedName}.wav`);
       const targetPath = path.join(exportDir, storedName);
@@ -4941,7 +5000,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/jianpu",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: importAccess(app.requireActiveEntitlement),
     },
     async (request, reply) => {
       let body;
@@ -4973,6 +5032,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       try {
         document = createScoreDocumentFromJianpu({
+          documentId: uploadRequests.get(request)?.scoreId,
           userId: request.authUserId!,
           title: body.title,
           sourceFileId: storedFile.id,
@@ -5001,7 +5061,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/musicxml",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: importAccess(app.requireActiveEntitlement),
     },
     async (request, reply) => {
       const file = await request.file();
@@ -5053,6 +5113,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       try {
         document = createScoreDocumentFromMusicXml({
+          documentId: uploadRequests.get(request)?.scoreId,
           userId: request.authUserId!,
           title: deriveTitle(filename),
           sourceFileId: storedFile.id,
@@ -5077,7 +5138,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/score-json",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: importAccess(app.requireActiveEntitlement),
     },
     async (request, reply) => {
       const file = await request.file();
@@ -5125,6 +5186,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
 
       const document = createScoreDocumentFromScoreJson({
+          documentId: uploadRequests.get(request)?.scoreId,
         userId: request.authUserId!,
         title: scoreJson.title || deriveTitle(filename),
         sourceFileId: storedFile.id,
@@ -5145,7 +5207,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/midi",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: importAccess(app.requireActiveEntitlement),
     },
     async (request, reply) => {
       const file = await request.file();
@@ -5186,6 +5248,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       let document;
       try {
         document = createScoreDocumentFromMidi({
+          documentId: uploadRequests.get(request)?.scoreId,
           userId: request.authUserId!,
           title: deriveTitle(filename),
           sourceFileId: storedFile.id,
@@ -5210,7 +5273,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/omr",
     {
-      preHandler: app.requireScorePreviewAccess,
+      preHandler: importAccess(app.requireScorePreviewAccess),
     },
     async (request, reply) => {
       const query = request.query as { recognitionMode?: unknown; mode?: unknown; expectedCreditCost?: unknown };
@@ -5317,6 +5380,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       let result;
       try {
       result = createOmrImportScoreDocument({
+          documentId: uploadRequests.get(request)?.scoreId,
         userId: request.authUserId!,
         title: deriveTitle(filename),
         sourceFileId: storedFile.id,
@@ -5361,7 +5425,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/audio",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: importAccess(app.requireActiveEntitlement),
     },
     async (request, reply) => {
       const file = await request.file();
@@ -5408,6 +5472,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
 
       const result = createAudioTranscribeScoreDocument({
+          documentId: uploadRequests.get(request)?.scoreId,
         userId: request.authUserId!,
         title: deriveTitle(filename),
         sourceFileId: storedFile.id,
@@ -5428,7 +5493,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/import/audio-url",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: importAccess(app.requireActiveEntitlement),
     },
     async (request, reply) => {
       let body;
@@ -5443,6 +5508,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
 
       const result = createAudioTranscribeScoreDocumentFromUrl({
+          documentId: uploadRequests.get(request)?.scoreId,
         userId: request.authUserId!,
         title: body.title,
         sourceUrl: body.sourceUrl,

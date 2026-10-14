@@ -81,6 +81,15 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
 
 export type ScorePreflightResponse<T> = { ok: boolean; status: number; payload: T | null };
 
+function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => { signal.removeEventListener("abort", abort); reject(abortError()); };
+    if (signal.aborted) { abort(); return; }
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(value => { signal.removeEventListener("abort", abort); resolve(value); }, error => { signal.removeEventListener("abort", abort); reject(error); });
+  });
+}
+
 /** Retry only the explicitly retryable capacity response; never replay a failed upload. */
 export async function fetchScorePreflight<T extends { code?: string }>(url: string, file: File, options: {
   signal?: AbortSignal;
@@ -90,22 +99,30 @@ export async function fetchScorePreflight<T extends { code?: string }>(url: stri
   fetch?: typeof fetch;
   wait?: (ms: number, signal: AbortSignal) => Promise<void>;
   now?: () => number;
+  timeoutMs?: number;
 } = {}): Promise<ScorePreflightResponse<T>> {
-  const identity = await scorePreflightFileKey(file, options.pages);
+  const consumerController = new AbortController();
+  const cancelConsumer = () => consumerController.abort();
+  const timeoutMs = options.timeoutMs ?? SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS;
+  const consumerTimeout = setTimeout(cancelConsumer, timeoutMs);
+  if (options.signal?.aborted) consumerController.abort();
+  else options.signal?.addEventListener("abort", cancelConsumer, { once: true });
+  try {
+  const identity = await abortable(scorePreflightFileKey(file, options.pages), consumerController.signal);
   const headers = new Headers(options.headers);
   const key = `preflight:${url}:${headers.get("authorization") ?? options.accountId ?? "session"}:${identity}`;
-  return sharedInFlightRequest(key, async sharedSignal => {
+  return await sharedInFlightRequest(key, async sharedSignal => {
     const controller = new AbortController();
     const cancel = () => controller.abort();
     sharedSignal.addEventListener("abort", cancel, { once: true });
-    const timeout = setTimeout(cancel, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS);
+    const timeout = setTimeout(cancel, timeoutMs);
     const now = options.now ?? Date.now;
-    const deadline = now() + SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS;
+    const deadline = now() + timeoutMs;
     try {
       for (let attempt = 0; ; attempt += 1) {
         const body = new FormData(); body.append("file", file);
-        const response = await (options.fetch ?? fetch)(url, { method: "POST", headers, body, credentials: "include", cache: "no-store", signal: controller.signal });
-        const payload = await response.json().catch(() => null) as T | null;
+        const response = await abortable((options.fetch ?? fetch)(url, { method: "POST", headers, body, credentials: "include", cache: "no-store", signal: controller.signal }), controller.signal);
+        const payload = await abortable(response.json().catch(() => null), controller.signal) as T | null;
         const result = { ok: response.ok, status: response.status, payload };
         if (response.status !== 429 || payload?.code !== "SCORE_PREFLIGHT_BUSY" || attempt >= 2) return result;
         const delay = Math.max(retryAfterMilliseconds(response.headers.get("Retry-After"), now()) ?? 0, Math.min(8_000, 1_000 * 2 ** attempt));
@@ -117,7 +134,10 @@ export async function fetchScorePreflight<T extends { code?: string }>(url: stri
       clearTimeout(timeout);
       sharedSignal.removeEventListener("abort", cancel);
     }
-  // The server may already be rendering. Keep bounded preflight work available to
-  // resumed drafts, while the disconnected UI subscription aborts immediately.
-  }, options.signal, { cancelWhenUnused: false });
+  // Changing files or leaving the page releases unused network/rendering work.
+  }, consumerController.signal, { cancelWhenUnused: true });
+  } finally {
+    clearTimeout(consumerTimeout);
+    options.signal?.removeEventListener("abort", cancelConsumer);
+  }
 }

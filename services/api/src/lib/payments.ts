@@ -24,7 +24,7 @@ type PaddleTransactionResponse = {
 };
 
 const stripeClient = config.stripeSecretKey
-  ? new Stripe(normalizeStripeCredential(config.stripeSecretKey))
+  ? new Stripe(normalizeStripeCredential(config.stripeSecretKey), { timeout: 10_000, maxNetworkRetries: 1 })
   : null;
 const paddleApiBase = config.paddleEnvironment === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
 const stripeManagedPaymentsApiVersion = "2026-03-04.preview";
@@ -320,6 +320,11 @@ export async function retrieveStripeCheckoutSession(sessionId: string) {
   return stripeClient.checkout.sessions.retrieve(sessionId);
 }
 
+export async function retrieveStripeSubscription(subscriptionId: string) {
+  if (!stripeClient) throw new Error("Stripe is not configured.");
+  return stripeClient.subscriptions.retrieve(subscriptionId);
+}
+
 export function verifyStripeWebhook(rawBody: Buffer, signature: string) {
   const webhookSecret = normalizeWebhookSigningSecret(config.stripeWebhookSecret);
   if (!stripeClient || !webhookSecret) {
@@ -360,6 +365,7 @@ export async function createPaddleTransaction(input: {
   }
 
   const response = await fetch(`${paddleApiBase}/transactions`, {
+    signal: AbortSignal.timeout(20_000),
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.paddleApiKey}`,
@@ -396,6 +402,7 @@ export async function retrievePaddleTransaction(transactionId: string) {
 
   const endpoint = buildPaddleTransactionEndpoint(transactionId);
   const response = await fetch(endpoint, {
+    signal: AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${config.paddleApiKey}`,
       "Content-Type": "application/json",

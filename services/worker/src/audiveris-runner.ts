@@ -3,8 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { withOmrEngineSlot } from "./omr-engine-gate.js";
 import { createEngineExecutionClock } from "./engine-execution-clock.js";
+import { engineResourceError } from "./engine-resource-error.js";
+import { engineMemoryReservationMb } from "./engine-memory.js";
 
-export type AudiverisFailureReason = "cancelled" | "timeout" | "spawn" | "exit";
+export type AudiverisFailureReason = "cancelled" | "timeout" | "spawn" | "exit" | "resource";
 
 export class AudiverisProcessError extends Error {
   constructor(
@@ -77,6 +79,7 @@ function appendOutput(current: string, chunk: unknown) {
 export function runAudiverisCommand(input: RunAudiverisInput) {
   return withOmrEngineSlot({
     timeoutMs: input.timeoutMs,
+    memoryMb: Math.max(engineMemoryReservationMb(), (input.maxHeapMb ?? 768) + 256),
     isCancelled: input.isCancelled,
     onQueueWait: input.onQueueWait,
     cancelledError: () => new AudiverisProcessError("Audiveris processing was cancelled while waiting for the OMR engine.", "cancelled"),
@@ -97,6 +100,7 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
 
     const args = [...(input.commandArgsPrefix ?? []), "-batch", "-export", "-output", input.outputDir, input.inputPath];
     const clock = createEngineExecutionClock({ command: input.command, timeoutMs: input.timeoutMs, onQueueWait: input.onQueueWait,
+      onQueueTimeout: (error) => terminate(new AudiverisProcessError(error.message, "resource")),
       onTimeout: () => terminate(new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout")) });
     const child = spawn(input.command, args, {
       env: { ...buildAudiverisEnvironment(input.maxHeapMb), ...clock.environment },
@@ -153,7 +157,8 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
       stderr = appendOutput(stderr, clock.stderr(chunk));
     });
     child.on("error", (error) => {
-      fail(new AudiverisProcessError(`Audiveris could not start: ${error.message}`, "spawn"));
+      const resource = engineResourceError(error);
+      fail(new AudiverisProcessError(resource?.message ?? `Audiveris could not start: ${error.message}`, resource ? "resource" : "spawn"));
     });
     child.on("close", (code) => {
       if (settled) return;
@@ -170,7 +175,8 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
       // JVM startup options are often the only stderr output. Audiveris writes
       // its actual recognition diagnostics to stdout, so retain both streams.
       const diagnostics = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n").slice(-12_000);
-      reject(new AudiverisProcessError(`Audiveris exited with code ${code}. ${diagnostics}`.trim(), "exit", code));
+      const resource = engineResourceError(diagnostics);
+      reject(new AudiverisProcessError(resource?.message ?? `Audiveris exited with code ${code}. ${diagnostics}`.trim(), resource ? "resource" : "exit", code));
     });
   });
 }
@@ -214,6 +220,7 @@ export async function runAudiverisWithRotationFallback(
       timeoutMs: Math.min(30_000, remainingBeforeConvert),
       isCancelled: input.isCancelled,
       cancellationPollMs: input.cancellationPollMs,
+      onQueueWait,
     });
 
     const remainingBeforeAudiveris = deadline - Date.now();
@@ -252,6 +259,7 @@ export async function runAudiverisWithRotationFallback(
         timeoutMs: Math.min(30_000, remainingBeforeRecovery),
         isCancelled: input.isCancelled,
         cancellationPollMs: input.cancellationPollMs,
+        onQueueWait,
       });
       const remainingAfterRecovery = deadline - Date.now();
       if (remainingAfterRecovery <= 0) throw new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout");
@@ -283,9 +291,18 @@ type ImageMagickNormalizationInput = {
   timeoutMs: number;
   isCancelled?: () => boolean;
   cancellationPollMs?: number;
+  onQueueWait?: (elapsedMs: number) => void;
 };
 
 function runImageMagickNormalization(input: ImageMagickNormalizationInput) {
+  return withOmrEngineSlot({
+    timeoutMs: input.timeoutMs, isCancelled: input.isCancelled, onQueueWait: input.onQueueWait,
+    cancelledError: () => new AudiverisProcessError("Image normalization was cancelled.", "cancelled"),
+    timeoutError: () => new AudiverisProcessError("Image normalization execution budget was exhausted.", "timeout"),
+  }, (timeoutMs) => runImageMagickNormalizationWithSlot({ ...input, timeoutMs }));
+}
+
+function runImageMagickNormalizationWithSlot(input: ImageMagickNormalizationInput) {
   return new Promise<void>((resolve, reject) => {
     const args = [
       ...(input.commandArgsPrefix ?? []),
@@ -345,7 +362,8 @@ function runImageMagickNormalization(input: ImageMagickNormalizationInput) {
 
     child.stderr?.on("data", (chunk) => { stderr = appendOutput(stderr, chunk); });
     child.on("error", (error) => {
-      fail(new AudiverisProcessError(`ImageMagick could not start: ${error.message}`, "spawn"));
+      const resource = engineResourceError(error);
+      fail(new AudiverisProcessError(resource?.message ?? `ImageMagick could not start: ${error.message}`, resource ? "resource" : "spawn"));
     });
     child.on("close", (code) => {
       if (settled) return;
@@ -359,7 +377,8 @@ function runImageMagickNormalization(input: ImageMagickNormalizationInput) {
         resolve();
         return;
       }
-      reject(new AudiverisProcessError(`ImageMagick exited with code ${String(code)}. ${stderr}`.trim(), "exit", code));
+      const resource = engineResourceError(stderr);
+      reject(new AudiverisProcessError(resource?.message ?? `ImageMagick exited with code ${String(code)}. ${stderr}`.trim(), resource ? "resource" : "exit", code));
     });
   });
 }

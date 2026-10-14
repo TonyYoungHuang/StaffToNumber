@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatMessage, type SupportedLocale } from "@score/i18n";
+import type { SupportedLocale } from "@score/i18n";
 import { APP_ROUTES, getPurchaseOptionsCopy, type CheckoutBillingKind, type CheckoutPlanCode, type PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
@@ -15,14 +15,14 @@ import { saveCheckoutReturn, workReturnPath } from "../lib/flow-return";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { getOneScoreUpsellCopy, showsSeparateActivationCta } from "../lib/one-score-upsell-copy";
 import styles from "./AppCheckout.module.css";
+import { getPaymentRecoveryCopy } from "@score/shared";
 
 type CheckoutPayload = {
   provider: PaymentProvider;
   orderId: string;
   token: string;
   url: string;
-  code?: "PAYMENT_PROVIDER_BUILDING" | "CHECKOUT_INTENT_NOTIFICATION_FAILED";
-  intentNotified?: boolean;
+  code?: "PAYMENT_PROVIDER_BUILDING" | "CHECKOUT_PREPARATION_FAILED";
 };
 
 type Organization = { id: string; name: string; currentRole: string };
@@ -138,6 +138,7 @@ export function AppCheckoutClient({
   const flow = useFlowMessages();
   const checkoutPath = `/checkout?${new URLSearchParams({ plan: selectedPlan.code, billing: billingKind, next: workReturnPath(returnTo) })}`;
   const purchaseCopy = getPurchaseOptionsCopy(locale);
+  const recoveryCopy = getPaymentRecoveryCopy(locale);
   const availableProviders = billingKind === "one_time" ? providers.filter(item => item === "stripe") : providers;
   const [status, setStatus] = useState<{ message: string; tone: "success" | "error" } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -241,20 +242,16 @@ export function AppCheckoutClient({
           return;
         }
         clearPendingCheckout();
-        if (result.error?.trim()) {
-          setStatus({ message: result.error, tone: "error" });
-          return;
-        }
         if (result.data?.code === "PAYMENT_PROVIDER_BUILDING") {
-          const providerName = provider === "stripe" ? copy.stripeTitle : copy.paddleTitle;
-          setStatus({ message: formatMessage(copy.providerBuildingTemplate, { provider: providerName }), tone: "success" });
+          setStatus({ message: recoveryCopy.providerBuilding, tone: "error" });
           return;
         }
-        if (result.data?.code === "CHECKOUT_INTENT_NOTIFICATION_FAILED") {
-          setStatus({ message: copy.notificationFailed, tone: "error" });
-          return;
-        }
-        setStatus({ message: rawApiErrorOrFallback(result.error, copy.fallbackError), tone: "error" });
+        setStatus({ message: `${recoveryCopy.preparingFailed} ${rawApiErrorOrFallback(result.error, copy.fallbackError)}`, tone: "error" });
+        return;
+      }
+
+      if (!result.data?.url || !/^https?:\/\//u.test(result.data.url)) {
+        setStatus({ message: recoveryCopy.preparingFailed, tone: "error" });
         return;
       }
 
@@ -274,6 +271,8 @@ export function AppCheckoutClient({
       saveCheckoutReturn(result.data.orderId, returnTo, checkoutPath);
       navigating = true;
       window.location.href = result.data.url;
+    } catch {
+      setStatus({ message: recoveryCopy.preparingFailed, tone: "error" });
     } finally {
       if (!navigating) {
         checkoutLock.current = false;

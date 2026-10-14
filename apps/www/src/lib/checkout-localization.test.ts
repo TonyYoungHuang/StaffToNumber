@@ -66,8 +66,8 @@ test("checkout clients receive only current copy and preserve raw provider or AP
     assert.doesNotMatch(source, /locale\s*===\s*["']zh-CN["']/u);
     assert.doesNotMatch(source, /getCheckoutMessages|CHECKOUT_MESSAGE_CATALOGS/u);
   }
-  assert.match(sources[0], /setStatus\(result\.error\)/u);
-  assert.match(sources[1], /setError\(result\.error\)/u);
+  assert.match(sources[0], /recoveryCopy\.preparingFailed[\s\S]*result\.error/u);
+  assert.match(sources[1], /recoveryCopy\.verification_failed[\s\S]*result\.error/u);
   assert.match(sources[1], /role="alert">\{error\}/u);
   assert.match(sources[3], /checkoutError instanceof Error \? checkoutError\.message/u);
 });

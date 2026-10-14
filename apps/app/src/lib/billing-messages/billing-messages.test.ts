@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
-import { getPricingPlanCatalog } from "@score/shared";
+import { getPricingPlanCatalog, getPaymentRecoveryCopy } from "@score/shared";
 import { getOneScoreUpsellCopy } from "../one-score-upsell-copy";
 import {
   formatBillingBytes,
@@ -185,7 +185,8 @@ test("checkout, activation, seat, portal, cancellation, and idempotency payloads
   assert.match(checkout, /planCode: selectedPlan\.code/u);
   assert.match(checkout, /organizationId: planKind === "school" \? organizationId : undefined/u);
   assert.match(checkout, /seatQuantity: planKind === "school" \? seatQuantity : 1/u);
-  assert.match(checkout, /setStatus\(\{ message: result\.error, tone: "error" \}\)/u);
+  assert.match(checkout, /recoveryCopy\.preparingFailed[\s\S]*rawApiErrorOrFallback\(result\.error, copy\.fallbackError\)/u);
+  assert.doesNotMatch(checkout, /CHECKOUT_INTENT_NOTIFICATION_FAILED/u);
 
   for (const endpoint of [
     "/api/payments/billing",
@@ -201,6 +202,18 @@ test("checkout, activation, seat, portal, cancellation, and idempotency payloads
   assert.match(billing, /body: JSON\.stringify\(\{ email \}\)/u);
   assert.match(billing, /body: JSON\.stringify\(\{ atPeriodEnd: true \}\)/u);
   assert.match(billing, /rawApiErrorOrFallback\(result\.error, copy\.fallbackError\)/u);
+});
+
+test("payment recovery copy distinguishes confirmed payment activation failure from provider verification failure", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const recovery = getPaymentRecoveryCopy(locale);
+    assert.notEqual(recovery.waiting_payment, recovery.waiting_fulfillment);
+    assert.notEqual(recovery.verification_failed, recovery.fulfillment_failed);
+    assert.notEqual(recovery.accessFailed, recovery.waiting_fulfillment);
+    assert.ok(recovery.retry.trim());
+  }
+  assert.match(getPaymentRecoveryCopy("zh-CN").fulfillment_failed, /付款已确认/u);
+  assert.match(getPaymentRecoveryCopy("en").preparingFailed, /original order/u);
 });
 
 test("payment completion keeps a safe work destination without a public-app redirect loop", () => {

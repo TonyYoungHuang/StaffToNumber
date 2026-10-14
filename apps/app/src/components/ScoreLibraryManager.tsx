@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, getScorePreflightMessages, getScoreProcessingMessages, getScoreRequestWaitingMessages, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
-import { fetchScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
+import { fetchScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
@@ -20,6 +20,8 @@ import { ScoreRecognitionPreflight } from "./ScoreRecognitionPreflight";
 import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, parseScoreRecognitionPreflight, PreflightRequestGuard, type ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
 import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { recognitionOption, type RecognitionMode, type RecognitionOptions } from "../lib/recognition-options";
+import { boundedScoreTransfer, fetchScoreUpload, forgetUploadReceipt, getUploadReceipt, latestUploadReceipt, ScoreTransferError } from "../lib/score-transfer-request";
+import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
 type ScoreDocument = {
   id: string;
   title: string;
@@ -55,6 +57,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const router = useRouter();
   const signIn = useAppAuthModal();
   const taskCopy = getScoreTaskMessages(locale);
+  const transferCopy = scoreTransferCopy(locale);
   const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);
   const taskIntentRef = useRef<ScoreTaskIntent | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -87,6 +90,14 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const [showAdvancedModes, setShowAdvancedModes] = useState(false);
   const preflightGuard = useRef(new PreflightRequestGuard());
   const submitLock = useRef(false);
+  const uploadAbort = useRef<AbortController | null>(null);
+  const [uploadRecovery, setUploadRecovery] = useState<{ key: string; identity: string } | null>(null);
+  useEffect(() => () => { uploadAbort.current?.abort(); }, [token, view]);
+  useEffect(() => {
+    if (!access) { setUploadRecovery(null); return; }
+    const receipt = latestUploadReceipt(access.id);
+    if (receipt) { setUploadRecovery(receipt); setStatus(transferCopy.uploadUnknown); setFailed(true); }
+  }, [access?.id, transferCopy.uploadUnknown]);
   const edited = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -105,7 +116,8 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       setTaskIntent(draft.intent);
       if (view === "library") window.history.replaceState(window.history.state, "", scoreTaskEntryPath(draft.intent));
     }
-    setStatus(flow.savedFile); setFailed(false);
+    const receipt = access ? latestUploadReceipt(access.id) : null;
+    setStatus(receipt ? transferCopy.uploadUnknown : flow.savedFile); setFailed(Boolean(receipt));
   }
   useEffect(() => {
     // Signing in from the page header can remount the guest form before submit.
@@ -186,7 +198,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         const response = await fetchScorePreflight<{ preflight?: unknown; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, { headers, signal: request.signal });
         const data = response.payload;
         if (!preflightGuard.current.isCurrent(request)) return;
-        if (!response.ok) throw new Error(localizeBrowserApiError({ error: data?.error ?? preflightCopy.failed, code: data?.code, status: response.status }));
+        if (!response.ok) throw new Error(scoreGenerationError({ error: data?.error, code: data?.code }, locale) ?? localizeBrowserApiError({ error: data?.error ?? preflightCopy.failed, code: data?.code, status: response.status }));
         const result = parseScoreRecognitionPreflight(data?.preflight);
         if (!result) throw new Error(preflightCopy.failed);
         setPreflight({ status: "ready", file, result });
@@ -195,13 +207,13 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         setShowAdvancedModes(result.recommendation === "complex");
       } catch (error) {
         if (!preflightGuard.current.isCurrent(request)) return;
-        setPreflight({ status: "failed", file, error: error instanceof Error ? error.message : preflightCopy.failed });
+        setPreflight({ status: "failed", file, error: error instanceof Error && error.name === "AbortError" ? transferCopy.preflightTimeout : error instanceof TypeError ? transferCopy.preflightNetwork : error instanceof Error ? error.message : preflightCopy.failed });
       } finally {
         clearTimeout(waiting);
       }
     })();
     return () => { clearTimeout(waiting); preflightGuard.current.invalidate(); };
-  }, [file, kind, mode, access?.id, token, preflightAttempt, preflightCopy.failed]);
+  }, [file, kind, mode, access?.id, token, preflightAttempt, preflightCopy.failed, transferCopy.preflightTimeout, transferCopy.preflightNetwork, locale]);
   const recognitionQuote = selectedRecognitionMode ? recognitionOption(recognitionOptions, selectedRecognitionMode) : null;
   const simpleQuote = recognitionOption(recognitionOptions, "simple");
   const recognitionReady = canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
@@ -245,6 +257,39 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
     } finally { submitLock.current = false; setBusy(false); }
   }
+  function releaseUploadReceipt(key: string) {
+    if (!access) return;
+    forgetUploadReceipt(access.id, key);
+    setUploadRecovery(latestUploadReceipt(access.id));
+  }
+  async function lookupUpload(receipt: { key: string; identity: string }, signal?: AbortSignal): Promise<"retry" | "stop"> {
+    if (!access) return "stop";
+    const result = await apiRequest<{ state: "processing" | "completed" | "failed" | "unknown"; scoreId?: string; error?: string; code?: string }>(`/api/scores/uploads/${receipt.key}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined, signal,
+    });
+    if (signal?.aborted) return "stop";
+    if (result.ok && result.data.state === "completed" && typeof result.data.scoreId === "string") {
+      releaseUploadReceipt(receipt.key);
+      await boundedScoreTransfer(() => clearImportDraft(access.id), { timeoutMs: 5_000, signal }).catch(() => undefined);
+      if (signal?.aborted) return "stop";
+      router.push(scoreTaskDocumentPath(result.data.scoreId, taskIntent, receipt.identity.endsWith(":complex") || recognitionMode === "complex"));
+      return "stop";
+    }
+    if ((!result.ok && result.status === 404) || (result.ok && result.data.state === "failed")) {
+      setStatus(result.ok ? transferCopy.uploadFailed : transferCopy.uploadUnseen); setFailed(true);
+      return "retry";
+    }
+    setStatus(result.ok && result.data.state === "processing" ? transferCopy.uploadPending : result.ok && result.data.state === "unknown" ? `${transferCopy.uploadNeedsSupport} ${receipt.key}` : transferCopy.uploadUnknown);
+    setFailed(true);
+    return "stop";
+  }
+  async function checkOriginalUpload() {
+    if (!uploadRecovery || submitLock.current) return;
+    const controller = new AbortController(); uploadAbort.current = controller;
+    submitLock.current = true; setBusy(true);
+    try { await lookupUpload(uploadRecovery, controller.signal); }
+    finally { if (uploadAbort.current === controller) uploadAbort.current = null; submitLock.current = false; setBusy(false); }
+  }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitLock.current) return;
@@ -268,52 +313,77 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     if (mode === "file" && (!file || !kind)) return;
     if (mode === "jianpu" && !jianpuText.trim()) return;
     submitLock.current = true; setBusy(true); setStatus(null); setFailed(false);
+    const controller = new AbortController(); uploadAbort.current = controller;
+    let attempt: { key: string; identity: string } | null = null;
+    let uploadSent = false;
     try {
       let imported: ScoreDocument;
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const sourceIdentity = await boundedScoreTransfer(() => mode === "file" ? scorePreflightFileKey(file!) : crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify({ title, text: jianpuText }))).then(hash => Array.from(new Uint8Array(hash)).map(byte => byte.toString(16).padStart(2, "0")).join("")), { signal: controller.signal, timeoutMs: 15_000 });
+      const identity = `${sourceIdentity}:${mode === "jianpu" ? "jianpu" : kind}:${kind === "omr" ? selectedRecognitionMode : ""}`;
+      const receipt = getUploadReceipt(access.id, identity); attempt = receipt;
+      setUploadRecovery(receipt);
+      // Only reconcile an earlier request for these same inputs. Other pending
+      // receipts stay recoverable while a distinct file or import can proceed.
+      if (receipt.reused && await lookupUpload(receipt, controller.signal) !== "retry") return;
       let confirmedQuote = recognitionQuote;
       if (isRecognition) {
         const quoteController = new AbortController();
+        const cancelQuote = () => quoteController.abort(); controller.signal.addEventListener("abort", cancelQuote, { once: true });
         const quoteTimeout = setTimeout(() => quoteController.abort(), 15_000);
         let fresh: Awaited<ReturnType<typeof apiRequest<RecognitionOptions>>>;
         try {
           fresh = await apiRequest<RecognitionOptions>("/api/scores/recognition-options", { headers, signal: quoteController.signal });
-        } finally { clearTimeout(quoteTimeout); }
+        } finally { clearTimeout(quoteTimeout); controller.signal.removeEventListener("abort", cancelQuote); }
         if (!fresh.ok) { setQuoteError(fresh.error); throw new Error(fresh.error); }
         const freshQuote = selectedRecognitionMode ? recognitionOption(fresh.data, selectedRecognitionMode) : null;
         setRecognitionOptions(fresh.data); setQuoteError(null);
         if (!freshQuote?.canSubmit) throw new Error(preflightCopy.noCredit);
         if (freshQuote.creditCost !== confirmedQuote?.creditCost) {
-          setStatus(preflightCopy.priceChanged); setFailed(false); submitLock.current = false; setBusy(false); return;
+          releaseUploadReceipt(receipt.key);
+          setStatus(preflightCopy.priceChanged); setFailed(true); return;
         }
         confirmedQuote = freshQuote;
       }
+      const uploadHeaders = new Headers(headers); uploadHeaders.set("Idempotency-Key", receipt.key);
+      // A refresh after a lost response retains both the input and the original request.
+      await boundedScoreTransfer(() => saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined }), { timeoutMs: 5_000, signal: controller.signal }).catch(() => setDraftFailed(true));
+      if (controller.signal.aborted) throw new ScoreTransferError("CANCELLED");
       if (mode === "jianpu") {
-        const result = await apiRequest<{ score: ScoreDocument }>("/api/scores/import/jianpu", {
-          method: "POST", headers, body: JSON.stringify({ title, text: jianpuText }),
-        });
-        if (!result.ok) throw new Error(result.error);
-        imported = result.data.score;
+        uploadHeaders.set("Content-Type", "application/json");
+        uploadSent = true;
+        const data = await fetchScoreUpload<{ score: ScoreDocument }>(`${API_BASE_URL}/api/scores/import/jianpu`, { method: "POST", headers: uploadHeaders, body: JSON.stringify({ title, text: jianpuText }) }, { signal: controller.signal });
+        imported = data.score;
       } else {
         const form = new FormData(); form.append("file", file!);
         const recognitionQuery = kind === "omr" ? `?recognitionMode=${selectedRecognitionMode}&expectedCreditCost=${confirmedQuote!.creditCost}` : "";
-        const response = await fetch(`${API_BASE_URL}/api/scores/import/${kind}${recognitionQuery}`, { method: "POST", headers, body: form, credentials: "include", cache: "no-store" });
-        const data = await response.json();
-        if (data.code === "OMR_PRICE_CHANGED") {
-          if (Array.isArray(data.options)) setRecognitionOptions(data as RecognitionOptions);
-          else setQuoteAttempt(n => n + 1);
-          throw new Error(preflightCopy.priceChanged);
-        }
-        if (!response.ok) throw new Error(data.error || copy.musicxml.importFailed);
+        uploadSent = true;
+        const data = await fetchScoreUpload<{ score: ScoreDocument }>(`${API_BASE_URL}/api/scores/import/${kind}${recognitionQuery}`, { method: "POST", headers: uploadHeaders, body: form }, { signal: controller.signal });
         imported = data.score;
         // Fires for every OMR creation; free_trial=true marks the free-plan step of the funnel, false means a paid/active account.
         if (kind === "omr") trackFunnelEvent("free_omr_created", { free_trial: access.entitlement.status !== "active", source_type: file!.name.toLowerCase().endsWith(".pdf") ? "pdf" : "image", recognition_mode: selectedRecognitionMode ?? "unknown" });
       }
-      await clearImportDraft(access.id);
+      if (!imported || typeof imported.id !== "string" || !imported.id) throw new ScoreTransferError("RESPONSE");
+      if (controller.signal.aborted) return;
+      releaseUploadReceipt(receipt.key);
+      await boundedScoreTransfer(() => clearImportDraft(access.id), { timeoutMs: 5_000, signal: controller.signal }).catch(() => undefined);
       const targetMode = isRecognition ? selectedRecognitionMode : recognitionMode;
       router.push(scoreTaskDocumentPath(imported.id, taskIntent, targetMode === "complex"));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : copy.musicxml.importFailed); setFailed(true);
+      if (error instanceof ScoreTransferError) {
+        const server = error.server;
+        if (server?.code === "OMR_PRICE_CHANGED") setQuoteAttempt(n => n + 1);
+        const knownRejected = server && server.status >= 400 && server.status < 500 && !["UPLOAD_IN_PROGRESS", "UPLOAD_RESULT_UNKNOWN", "IDEMPOTENCY_KEY_REUSED", "UPLOAD_IDEMPOTENCY_MISMATCH"].includes(server.code ?? "");
+        if (knownRejected && attempt) releaseUploadReceipt(attempt.key);
+        setStatus(error.code === "CANCELLED" ? transferCopy.uploadCancelled : knownRejected ? scoreGenerationError(server, locale) ?? localizeBrowserApiError(server) : transferCopy.uploadUnknown);
+      } else {
+        // No upload has been sent for quote or local-input failures.
+        if (!uploadSent && attempt) releaseUploadReceipt(attempt.key);
+        setStatus(uploadSent ? transferCopy.uploadUnknown : error instanceof Error ? error.message : copy.musicxml.importFailed);
+      }
+      setFailed(true);
+    } finally {
+      if (uploadAbort.current === controller) uploadAbort.current = null;
       submitLock.current = false; setBusy(false);
     }
   }
@@ -350,6 +420,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         </>}
         {mode === "file" && kind === "omr" ? <>
           <ScoreRecognitionPreflight state={preflight} compact={freeSimplePath || (preflight.status === "checking" && Boolean(access?.freeTrial.available))} onRetry={() => setPreflightAttempt(n => n + 1)} />
+          {(preflight.status === "checking" || preflight.status === "waiting") && file ? <button type="button" className="button button-secondary" onClick={() => { preflightGuard.current.invalidate(); setPreflight({ status: "failed", file, error: transferCopy.preflightCancelled }); }}>{transferCopy.cancel}</button> : null}
           {showModePicker ? <RecognitionModeCards options={recognitionOptions} selected={selectedRecognitionMode ?? undefined} loading={quoteLoading} error={quoteError} disabled={busy || preflight.status !== "ready" || preflight.file !== file} onSelect={selected => { setSelectedRecognitionMode(selected); setStatus(null); }} onRetry={() => setQuoteAttempt(n => n + 1)} /> : null}
           {freeSimplePath && !showAdvancedModes ? <div className="stack-sm">
             <p className="helper-copy" data-recognition-quote="simple" data-free-simple-path="true">{preflightCopy.freeProjectPrice}</p>
@@ -366,6 +437,8 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
           {file && !busy && mode === "file" ? <button type="button" className="button button-secondary" onClick={() => chooseFile(null)}>{copy.common.clearSelection}</button> : null}
           {draftFailed ? <Link className="button button-secondary" href={upgradePath(currentWorkPath())} onClick={() => trackFunnelEvent("upgrade_click", { source: "score_import_draft_failed" })}>{flow.upgrade}</Link> : null}
           {!access && failed ? <button type="button" className="button button-secondary" onClick={() => setAccessAttempt(n => n + 1)}>{flow.retry}</button> : null}
+          {uploadRecovery && access ? <button type="button" className="button button-secondary" disabled={busy} onClick={() => void checkOriginalUpload()}>{transferCopy.checkUpload}</button> : null}
+          {busy && uploadAbort.current ? <button type="button" className="button button-secondary" onClick={() => { uploadAbort.current?.abort(); setStatus(transferCopy.uploadCancelled); setFailed(true); }}>{transferCopy.cancel}</button> : null}
         </div>
       </form>
       {busy && mode === "file" && kind === "omr" ? <div role="status" className="surface-panel stack-sm"><strong>{getScoreProcessingMessages(locale).uploadTitle}</strong><progress aria-label={getScoreProcessingMessages(locale).uploadTitle} style={{ width: "100%" }} /><p>{getScoreProcessingMessages(locale).uploadBody}</p></div> : null}

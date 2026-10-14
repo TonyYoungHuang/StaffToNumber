@@ -48,6 +48,9 @@ import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { ScoreEnsembleWorkspace } from "./ScoreEnsembleWorkspace";
 import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { checkExportQuote, exportQuoteOption, type ScoreExportQuote } from "../lib/score-export-cost";
+import { hasUsableScoreOutputs, readScoreDownload } from "../lib/download-score-file";
+import { ScoreTransferError } from "../lib/score-transfer-request";
+import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
 
 type ScoreRevision = {
   id: string;
@@ -422,6 +425,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const token = useMemo(() => getStoredToken(), []);
   const performancePreviewUrlRef = useRef<Record<string, string>>({});
   const { locale } = useAppLocale();
+  const transferCopy = scoreTransferCopy(locale);
   const flow = useFlowMessages();
   const [exportFormat, setExportFormat] = useState("pdf");
   const [exportQuote, setExportQuote] = useState<ScoreExportQuote | null>(null);
@@ -499,7 +503,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const [exportingWav, setExportingWav] = useState(false);
   const [exportingMp3, setExportingMp3] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
-  const [exportStatusKind, setExportStatusKind] = useState<"success" | "error" | null>(null);
+  const [exportStatusKind, setExportStatusKind] = useState<"success" | "error" | "pending" | null>(null);
   const [renderImageDpi, setRenderImageDpi] = useState(300);
   const [trimRenderedImage, setTrimRenderedImage] = useState(false);
   const [renderTrimMargin, setRenderTrimMargin] = useState(20);
@@ -520,6 +524,15 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const [omrDiagnostics, setOmrDiagnostics] = useState<OmrDiagnostic[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState<string | null>(null);
+  const [jobsNotice, setJobsNotice] = useState<string | null>(null);
+  const jobsReadAbort = useRef<AbortController | null>(null);
+  const jobsHadError = useRef(false);
+  const downloadReads = useRef(new Set<AbortController>());
+  useEffect(() => () => {
+    jobsReadAbort.current?.abort(); jobsReadAbort.current = null;
+    for (const controller of downloadReads.current) controller.abort();
+    downloadReads.current.clear();
+  }, [scoreId, token]);
   const [jobActionId, setJobActionId] = useState<string | null>(null);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const [revisionStatus, setRevisionStatus] = useState<string | null>(null);
@@ -805,7 +818,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     const check = checkExportQuote(shown, fresh, format);
     if (check !== "ready") {
       setExportStatus(check === "changed" ? exportCostCopy.priceChanged : check === "restricted" ? exportCostCopy.passFormatUnavailable : check === "insufficient" ? exportCostCopy.insufficient : exportCostCopy.unavailable);
-      setExportStatusKind(check === "changed" ? "success" : "error");
+      setExportStatusKind("error");
       return null;
     }
     return exportQuoteOption(fresh, format);
@@ -814,16 +827,24 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   useEffect(() => {
     const job = scoreJobs.find(item => item.id === lastExportJobId);
     if (!job || job.status === "queued" || job.status === "processing") return;
-    setExportStatus(job.status === "failed" ? (locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? exportCopy.failed : job.errorMessage || exportCopy.failed) : `${String(job.params?.format ?? "").toUpperCase()} · ${omrCopy.statuses[job.status]}`);
-    setExportStatusKind(job.status === "completed" ? "success" : "error");
+    if (job.status === "completed") {
+      if (assetsLoading || jobsLoading) return;
+      const usable = hasUsableScoreOutputs(job.outputFileIds, assets.flatMap(asset => [asset.fileId, asset.file.id].map(id => ({ id, sizeBytes: asset.file.sizeBytes, stale: asset.isStale }))));
+      setExportStatus(usable ? `${String(job.params?.format ?? "").toUpperCase()} · ${transferCopy.fileReady}` : transferCopy.exportMissing);
+      setExportStatusKind(usable ? "success" : "error");
+    } else {
+      setExportStatus(scoreGenerationError({ error: job.errorMessage }, locale) ?? (job.status === "failed" ? transferCopy.exportGeneration : omrCopy.statuses[job.status]));
+      setExportStatusKind("error");
+    }
     setLastExportJobId(null);
-  }, [scoreJobs, lastExportJobId, exportCopy.failed, omrCopy.statuses]);
+  }, [scoreJobs, lastExportJobId, assets, assetsLoading, jobsLoading, locale, omrCopy.statuses, transferCopy.fileReady, transferCopy.exportMissing, transferCopy.exportGeneration]);
 
   const hasActiveScoreJob = scoreJobs.some((job) => job.status === "queued" || job.status === "processing");
   const waitingForImportJob = Boolean(payload?.score && !payload.score.currentRevision && !payload.score.pendingRevision && scoreJobs.length === 0);
+  const jobsNeedRecovery = Boolean(jobsError);
 
   useEffect(() => {
-    if (!token || !scoreId || (!hasActiveScoreJob && !waitingForImportJob)) {
+    if (!token || !scoreId || (!hasActiveScoreJob && !waitingForImportJob && !jobsNeedRecovery)) {
       return;
     }
 
@@ -839,8 +860,9 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      jobsReadAbort.current?.abort();
     };
-  }, [hasActiveScoreJob, waitingForImportJob, scoreId, token]);
+  }, [hasActiveScoreJob, waitingForImportJob, jobsNeedRecovery, scoreId, token]);
 
   useEffect(() => {
     const previewRevision = payload?.score.pendingRevision ?? payload?.score.currentRevision;
@@ -1043,34 +1065,44 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }
 
   async function refreshScoreJobs() {
-    if (!token || !scoreId) {
+    if (!token || !scoreId || jobsReadAbort.current) {
       return;
     }
-
+    const controller = new AbortController(); jobsReadAbort.current = controller;
     setJobsLoading(true);
-    setJobsError(null);
+    setJobsNotice(null);
+    try {
     const result = await apiRequest<ScoreJobsPayload>(`/api/scores/${scoreId}/jobs`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      signal: controller.signal,
     });
-    setJobsLoading(false);
-
+    if (controller.signal.aborted) return;
     if (!result.ok) {
-      setJobsError(result.error);
+      jobsHadError.current = true;
+      setJobsError(`${transferCopy.jobsFailed} ${result.error}`);
       return;
     }
-
+    if (!Array.isArray(result.data?.jobs) || !Array.isArray(result.data?.omrDiagnostics)) {
+      jobsHadError.current = true; setJobsError(transferCopy.jobsFailed); return;
+    }
+    setJobsError(null);
+    if (jobsHadError.current) { setJobsNotice(transferCopy.jobsRecovered); jobsHadError.current = false; }
     setScoreJobs(result.data.jobs);
     setOmrDiagnostics(result.data.omrDiagnostics);
     const latestCompletedRevisionId = result.data.jobs.find((job) => job.status === "completed" && job.resultRevisionId)?.resultRevisionId ?? null;
     const knownRevisionIds = new Set(payload?.revisions.map((revision) => revision.id) ?? []);
     const hasMissingOutputAssets = result.data.jobs.some((job) => job.status === "completed" && jobHasMissingOutputAssets(job, assets));
     if (latestCompletedRevisionId && !knownRevisionIds.has(latestCompletedRevisionId)) {
-      await refreshScoreSnapshot();
-      await refreshAssets();
+      await Promise.allSettled([refreshScoreSnapshot(), refreshAssets()]);
     } else if (hasMissingOutputAssets) {
       await refreshAssets();
+    }
+    } catch {
+      if (!controller.signal.aborted) { jobsHadError.current = true; setJobsError(transferCopy.jobsFailed); }
+    } finally {
+      if (jobsReadAbort.current === controller) { jobsReadAbort.current = null; setJobsLoading(false); }
     }
   }
 
@@ -2237,17 +2269,17 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       const changedQuote = result.data as unknown as ScoreExportQuote | undefined;
       if (changedQuote?.code === "EXPORT_PRICE_CHANGED") {
         setExportQuote(changedQuote); setExportQuoteError(null);
-        setExportStatus(exportCostCopy.priceChanged); setExportStatusKind("success"); return;
+        setExportStatus(exportCostCopy.priceChanged); setExportStatusKind("error"); return;
       }
       await refreshExportQuote();
-      setExportStatus(result.error);
+      setExportStatus(scoreGenerationError({ error: result.error, code: (result.data as { code?: string } | undefined)?.code }, locale) ?? result.error);
       setExportStatusKind("error");
       return;
     }
     setLastExportJobId(result.data.job.id);
     setScoreJobs((current) => [result.data.job, ...current.filter((job) => job.id !== result.data.job.id)]);
     setExportStatus(formatMessage(detailCopy.exports.queued, { format: format.toUpperCase() }));
-    setExportStatusKind("success");
+    setExportStatusKind("pending");
     await refreshExportQuote();
     } catch { setExportStatus(failedMessage); setExportStatusKind("error"); }
     finally { submitLockRef.current = false; setLoading(false); }
@@ -2283,76 +2315,51 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }
 
   async function handleExportJianpu() {
+    const projectionQuery = new URLSearchParams({ pitchSystem: jianpuPitchSystem, accidentalStrategy: jianpuAccidentalStrategy });
+    await exportDirectFile("jianpu", `/api/scores/${scoreId}/export/jianpu?${projectionQuery.toString()}`, setExportingJianpu, jianpuExportCopy.failed, jianpuExportCopy.success);
+  }
+
+  async function exportDirectFile(format: "jianpu" | "score-json", path: string, setLoading: (loading: boolean) => void, failedMessage: string, successMessage: string) {
     if (navigationLocked || requestingExport) return;
     if (!token || !scoreId) {
-      setExportStatus(jianpuExportCopy.failed);
+      setExportStatus(failedMessage);
       setExportStatusKind("error");
       return;
     }
-
-    setExportingJianpu(true);
+    setLoading(true);
     setExportStatus(null);
     setExportStatusKind(null);
-    if (!await confirmExportQuote("jianpu")) { setExportingJianpu(false); return; }
-    const projectionQuery = new URLSearchParams({ pitchSystem: jianpuPitchSystem, accidentalStrategy: jianpuAccidentalStrategy });
-    const result = await apiRequest<ExportWithAssetsPayload>(`/api/scores/${scoreId}/export/jianpu?${projectionQuery.toString()}`, {
+    try {
+    if (!await confirmExportQuote(format)) return;
+    const result = await apiRequest<ExportWithAssetsPayload>(path, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    setExportingJianpu(false);
-
     if (!result.ok) {
-      setExportStatus(result.error);
+      setExportStatus(scoreGenerationError({ error: result.error, code: (result.data as { code?: string } | undefined)?.code }, locale) ?? result.error);
       setExportStatusKind("error");
       return;
     }
 
-    setExportStatus(jianpuExportCopy.success);
-    setExportStatusKind("success");
+    if (!result.data?.file?.id || !result.data.file.originalName || !(result.data.file.sizeBytes > 0)) {
+      setExportStatus(transferCopy.exportMissing); setExportStatusKind("error"); return;
+    }
     if (result.data.assets) {
       setAssets(result.data.assets);
     } else {
       await refreshAssets();
     }
-    await handleDownload(result.data.file.id, result.data.file.originalName);
+    const downloaded = await handleDownload(result.data.file.id, result.data.file.originalName);
+    setExportStatus(downloaded ? successMessage : null);
+    setExportStatusKind(downloaded ? "success" : null);
+    } catch { setExportStatus(transferCopy.exportGeneration); setExportStatusKind("error"); }
+    finally { setLoading(false); }
   }
 
   async function handleExportScoreJson() {
-    if (navigationLocked || requestingExport) return;
-    if (!token || !scoreId) {
-      setExportStatus(scoreJsonExportCopy.failed);
-      setExportStatusKind("error");
-      return;
-    }
-
-    setExportingScoreJson(true);
-    setExportStatus(null);
-    setExportStatusKind(null);
-    if (!await confirmExportQuote("score-json")) { setExportingScoreJson(false); return; }
-    const result = await apiRequest<ExportWithAssetsPayload>(`/api/scores/${scoreId}/export/score-json`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    setExportingScoreJson(false);
-
-    if (!result.ok) {
-      setExportStatus(result.error);
-      setExportStatusKind("error");
-      return;
-    }
-
-    setExportStatus(scoreJsonExportCopy.success);
-    setExportStatusKind("success");
-    if (result.data.assets) {
-      setAssets(result.data.assets);
-    } else {
-      await refreshAssets();
-    }
-    await handleDownload(result.data.file.id, result.data.file.originalName);
+    await exportDirectFile("score-json", `/api/scores/${scoreId}/export/score-json`, setExportingScoreJson, scoreJsonExportCopy.failed, scoreJsonExportCopy.success);
   }
 
   async function handleExportWav() {
@@ -2387,30 +2394,28 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   }
 
   async function handleDownload(fileId: string, fileName: string) {
+    setDownloadError(null);
     if (!token) {
       setDownloadError(copy.downloadFailed);
-      return;
+      return false;
     }
-
-    const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/download`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { error?: string } | null;
-      setDownloadError(locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? localizeApiError({ error: payload?.error, status: response.status }, locale) : payload?.error ?? copy.downloadFailed);
-      return;
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = fileName;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
+    const controller = new AbortController(); downloadReads.current.add(controller);
+    try {
+      if (!fileId || !fileName) throw new ScoreTransferError("INVALID_FILE");
+      const blob = await readScoreDownload(`${API_BASE_URL}/api/files/${fileId}/download`, { Authorization: `Bearer ${token}` }, { signal: controller.signal });
+      if (controller.signal.aborted) return false;
+      const url = window.URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = url; anchor.download = fileName;
+        document.body.appendChild(anchor); anchor.click(); anchor.remove();
+      } finally { window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000); }
+      return true;
+    } catch (error) {
+      if (controller.signal.aborted) return false;
+      const message = error instanceof ScoreTransferError ? error.code === "TIMEOUT" ? transferCopy.downloadTimeout : error.code === "READ" ? transferCopy.downloadRead : error.code === "INVALID_FILE" ? transferCopy.downloadInvalid : error.code === "RESPONSE" && error.server ? scoreGenerationError(error.server, locale) ?? localizeApiError(error.server, locale) : transferCopy.downloadNetwork : transferCopy.downloadRead;
+      setDownloadError(message); return false;
+    } finally { downloadReads.current.delete(controller); }
   }
 
   async function handleCandidateDecision(action: "accept" | "reject", coverageReviewed?: boolean) {
@@ -3132,6 +3137,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
           <button type="button" className="button button-secondary" onClick={() => void refreshScoreJobs()} disabled={jobsLoading}>
             {jobsLoading ? omrCopy.loading : omrCopy.refresh}
           </button>
+          {jobsLoading ? <button type="button" className="button button-secondary" onClick={() => { jobsReadAbort.current?.abort(); setJobsNotice(transferCopy.jobsCancelled); }}>{transferCopy.cancel}</button> : null}
         </div>
         {hasActiveScoreJob ? (
           <p className="helper-copy">
@@ -3139,6 +3145,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
           </p>
         ) : null}
         {jobsError ? <p className="form-status error">{jobsError}</p> : null}
+        {jobsNotice ? <p className="helper-copy" role="status">{jobsNotice}</p> : null}
         {!jobsLoading && !jobsError && scoreJobs.length === 0 && omrDiagnostics.length === 0 ? <div className="empty-state">{omrCopy.empty}</div> : null}
         {scoreJobs.length > 0 ? (
           <div className="list-grid">
@@ -3161,7 +3168,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                         <p className="helper-copy">{formatNumber(job.progressPercent / 100, locale, { style: "percent" })}</p>
                       </div>
                     ) : null}
-                    {job.errorMessage ? <p className="form-status error">{locale === "en" || locale === "es" || locale === "de" || locale === "ru" ? localizeApiError({ error: job.errorMessage }, locale) : job.errorMessage}</p> : null}
+                    {job.errorMessage ? <p className="form-status error">{scoreGenerationError({ error: job.errorMessage }, locale) ?? localizeApiError({ error: job.errorMessage }, locale)}</p> : null}
                   </div>
                   {(outputAssets.length > 0 || job.status === "queued" || job.status === "processing" || job.status === "failed" || job.status === "cancelled") ? (
                     <div className="button-row">

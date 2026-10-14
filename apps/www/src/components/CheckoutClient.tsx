@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { PaymentProvider } from "@score/shared";
+import { getPaymentRecoveryCopy, type PaymentProvider } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
@@ -35,6 +35,7 @@ export function CheckoutClient({
   const [provider, setProvider] = useState<PaymentProvider>(providers[0] ?? "stripe");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const recoveryCopy = getPaymentRecoveryCopy(locale);
   const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
 
   async function handleCheckout(event: React.FormEvent<HTMLFormElement>) {
@@ -56,7 +57,13 @@ export function CheckoutClient({
 
     if (!result.ok) {
       setLoading(false);
-      setStatus(result.error);
+      setStatus(`${recoveryCopy.preparingFailed} ${result.error}`);
+      return;
+    }
+
+    if (!result.data?.url || !/^https?:\/\//u.test(result.data.url)) {
+      setLoading(false);
+      setStatus(recoveryCopy.preparingFailed);
       return;
     }
 

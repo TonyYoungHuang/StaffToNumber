@@ -61,7 +61,7 @@ test("retryable preflight busy honours Retry-After and then succeeds", async () 
   assert.equal(retryAfterMilliseconds("Wed, 14 Oct 2026 02:18:05 GMT", Date.parse("2026-10-14T02:18:00Z")), 5_000);
 });
 
-test("a resumed draft reuses preflight work after the original component disconnects", async () => {
+test("changing the selected file releases the original preflight and a resumed draft starts fresh", async () => {
   const controller = new AbortController();
   let calls = 0, finish!: (response: Response) => void, underlying!: AbortSignal;
   const fetcher: typeof fetch = async (_, init) => {
@@ -73,12 +73,29 @@ test("a resumed draft reuses preflight work after the original component disconn
   while (!finish) await setImmediate();
   controller.abort(); await cancelled;
   await new Promise(resolve => setTimeout(resolve, 10));
-  assert.equal(underlying.aborted, false);
+  assert.equal(underlying.aborted, true);
   const resumed = fetchScorePreflight("https://preflight.test/resume", new File(["resume PDF"], "score.pdf"), { fetch: fetcher });
   await new Promise(resolve => setTimeout(resolve, 10));
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   finish(Response.json({ preflight: { complete: true } }));
   assert.equal((await resumed).ok, true);
+});
+
+test("preflight deadline ends a stalled response body and releases the shared request", async () => {
+  const file = new File(["deadline PDF"], "score.pdf");
+  let bodyStarted!: () => void;
+  const started = new Promise<void>(resolve => { bodyStarted = resolve; });
+  const pending = fetchScorePreflight("https://preflight.test/body-deadline", file, {
+    timeoutMs: 20,
+    fetch: async () => ({ ok: true, status: 200, headers: new Headers(), json: () => { bodyStarted(); return new Promise(() => undefined); } }) as Response,
+  });
+  const rejected = assert.rejects(pending, { name: "AbortError" });
+  await started; await rejected;
+  await new Promise(resolve => setTimeout(resolve, 5));
+  const recovered = await fetchScorePreflight("https://preflight.test/body-deadline", file, {
+    fetch: async () => Response.json({ preflight: { complete: true } }),
+  });
+  assert.equal(recovered.ok, true);
 });
 
 test("preflight backoff is bounded and does not retry unrelated throttles or early", async () => {

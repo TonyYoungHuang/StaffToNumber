@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { isPurchasePlanCode, isCheckoutBillingKind, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
-import { fulfillOneTimePurchase, hasRenewingSubscription, prepareOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
+import { findOneTimePurchase, fulfillOneTimePurchase, hasRenewingSubscription, prepareOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { config } from "../config.js";
 import { getPlanQuotaUsage } from "../lib/plan-quotas.js";
 import { findUserByEmail, getUserProfile } from "../repositories/auth-repository.js";
@@ -21,6 +21,7 @@ import {
   isPaymentProviderEnabled,
   retrievePaddleTransaction,
   retrieveStripeCheckoutSession,
+  retrieveStripeSubscription,
   stripeSessionMatchesPaymentOrder,
 } from "../lib/payments.js";
 import {
@@ -35,6 +36,7 @@ import {
   listBillingForUser,
   markBillingSubscriptionCancellation,
   revokeBillingSeat,
+  processBillingWebhookEvent,
 } from "../repositories/billing-repository.js";
 import {
   attachPaddleTransaction,
@@ -46,10 +48,12 @@ import {
   findReusablePaymentOrder,
   mapPaymentOrderForPublic,
   markPaymentOrderCancelled,
-  markPaymentOrderFailed,
 } from "../repositories/payment-repository.js";
 import type { PaymentOrderRow } from "../repositories/payment-repository.js";
 import { buildCheckoutIntentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
+import { retryOperatorNotification } from "../lib/operator-notification.js";
+import { normalizeStripeBillingEvent } from "../lib/billing-events.js";
+import type { PaymentVerification, PaymentVerificationStatus } from "@score/shared";
 
 function isProvider(value: unknown): value is PaymentProvider {
   return value === "stripe" || value === "paddle";
@@ -99,6 +103,7 @@ async function sendCheckoutIntentAlert(
     providerEnabled: boolean;
     planCode?: PurchasePlanCode | null;
   },
+  send = sendTransactionalEmail,
 ) {
   const email = buildCheckoutIntentNotificationEmail({
     provider: input.order.provider,
@@ -114,7 +119,7 @@ async function sendCheckoutIntentAlert(
     seatQuantity: input.order.seat_quantity,
     createdAt: input.order.created_at,
   });
-  const delivery = await sendTransactionalEmail({ to: config.paymentNotificationEmail, ...email });
+  const delivery = await send({ to: config.paymentNotificationEmail, ...email });
   if (config.nodeEnv === "production" && delivery.mode !== "resend") {
     throw new Error("Production checkout intent email delivery is not configured.");
   }
@@ -174,15 +179,14 @@ function recoverStripePaymentOrder(
   const timestamp = new Date(session.created * 1_000).toISOString();
   const now = new Date().toISOString();
   const billingKind = session.mode === "subscription" ? "subscription" : "one_time";
-  const purchase = fulfillOneTimePurchase(db, session);
-  const paymentConfirmed = (session.payment_status === "paid" && billingKind === "subscription") || Boolean(purchase);
+  // Recover the order first. Fulfillment below owns errors and retry states.
   const seatQuantity = Math.max(1, Math.min(Number(session.metadata?.seatQuantity) || 1, 100_000));
   return {
     id: input.orderId,
     public_token: input.publicToken,
     user_id: session.metadata?.userId ?? null,
     provider: "stripe",
-    status: paymentConfirmed ? "paid" : "pending",
+    status: "pending",
     customer_email: session.customer_details?.email ?? session.customer_email ?? null,
     locale: session.locale && session.locale !== "auto" ? session.locale : null,
     entitlement_days: config.entitlementDays,
@@ -196,18 +200,122 @@ function recoverStripePaymentOrder(
     amount_minor: session.amount_total ?? null,
     currency: session.currency ?? null,
     activation_code_id: null,
-    paid_at: paymentConfirmed ? now : null,
+    paid_at: null,
     cancelled_at: null,
-    failure_reason: session.payment_status === "paid" && billingKind === "one_time" && !purchase
-      ? "Recovered one-time payment requires activation-code review."
-      : null,
+    failure_reason: null,
     created_at: timestamp,
     updated_at: now,
     activation_code: null,
   };
 }
 
-export async function paymentRoutes(app: FastifyInstance) {
+export async function paymentRoutes(app: FastifyInstance, options: { paymentServices?: Partial<{
+  createStripeCheckoutSession: typeof createStripeCheckoutSession;
+  retrieveStripeCheckoutSession: typeof retrieveStripeCheckoutSession;
+  retrieveStripeSubscription: typeof retrieveStripeSubscription;
+  sendTransactionalEmail: typeof sendTransactionalEmail;
+}> } = {}) {
+  const services = { createStripeCheckoutSession, retrieveStripeCheckoutSession, retrieveStripeSubscription, sendTransactionalEmail, ...options.paymentServices };
+  const orderChecks = new Map<string, Promise<PaymentVerification>>();
+
+  const verifyAndFulfill = async (order: PaymentOrderRow, publicToken: string, sessionId?: string, transactionId?: string): Promise<PaymentVerification> => {
+    const result = (status: PaymentVerificationStatus, retryable = false) => ({ status, retryable });
+    if (order.status === "cancelled") return result("cancelled");
+    if (order.status === "failed") return result("failed");
+    let paymentConfirmed = order.status === "paid";
+    try {
+      const purchase = order.billing_kind === "one_time" ? findOneTimePurchase(db, order.id) : undefined;
+      if (purchase?.status === "refunded") return result("refunded");
+      if (order.status === "paid" && order.billing_kind === "one_time" && (purchase?.paid_at || order.activation_code_id)) {
+        try { await saveDurablePaymentOrder(order); return result("ready"); }
+        catch (error) {
+          app.log.error({ err: error, orderId: order.id }, "Paid order persistence failed; retry preserves fulfilled access.");
+          return result("fulfillment_failed", true);
+        }
+      }
+      if (order.provider === "stripe" && (sessionId || order.checkout_session_id)) {
+        const session = await services.retrieveStripeCheckoutSession(sessionId ?? order.checkout_session_id!);
+        if (!stripeSessionMatchesPaymentOrder(session, { orderId: order.id, publicToken, sessionId: session.id })) {
+          throw new Error("Checkout session does not match this order.");
+        }
+        paymentConfirmed = session.payment_status === "paid" || (session.status === "complete" && session.payment_status === "no_payment_required" && session.amount_total === 0);
+        if (!paymentConfirmed && session.status === "expired") {
+          markPaymentOrderCancelled(order.id);
+          await cancelDurablePaymentOrder(order.id);
+          return result("cancelled");
+        }
+        if (!paymentConfirmed) return result("waiting_payment", true);
+        try {
+          if (order.billing_kind === "one_time") {
+            const fulfilled = fulfillOneTimePurchase(db, session);
+            if (purchase && !fulfilled?.paid_at) throw new Error("One-time access could not be activated.");
+          } else {
+            const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+            if (!subscriptionId || !order.user_id) throw new Error("Paid subscription identity is unavailable.");
+            {
+              // Read the current subscription, never replay an old "paid" event
+              // that could restore cancelled/refunded access. Original webhook
+              // event IDs and their processed records remain untouched.
+              const subscription = await services.retrieveStripeSubscription(subscriptionId);
+              const sessionCustomer = typeof session.customer === "string" ? session.customer : session.customer?.id;
+              const subscriptionCustomer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+              if (!sessionCustomer || sessionCustomer !== subscriptionCustomer || (subscription.metadata.userId && subscription.metadata.userId !== order.user_id)) {
+                throw new Error("Subscription does not match the paid account.");
+              }
+              const snapshot = { ...subscription, metadata: { ...session.metadata, ...subscription.metadata, userId: order.user_id } };
+              const rawPayload = Buffer.from(JSON.stringify(snapshot));
+              const event = normalizeStripeBillingEvent({
+                id: `order-recovery-${order.id}-${createHash("sha256").update(rawPayload).digest("hex")}`,
+                type: "customer.subscription.updated",
+                data: { object: snapshot },
+              }, rawPayload);
+              if (!event?.subscription) throw new Error("Subscription cannot be fulfilled safely.");
+              processBillingWebhookEvent(db, event);
+              if (!["active", "trialing"].includes(subscription.status)) throw new Error("The current subscription is not active. Contact support.");
+              const fulfilled = db.prepare(`SELECT status, current_period_end AS endsAt FROM billing_subscriptions
+                WHERE provider = 'stripe' AND provider_subscription_id = ? AND user_id = ?`)
+                .get(subscriptionId, order.user_id) as { status: string; endsAt: string | null } | undefined;
+              if (!fulfilled || !["active", "trialing"].includes(fulfilled.status) || (fulfilled.endsAt && Date.parse(fulfilled.endsAt) <= Date.now())) {
+                throw new Error("Subscription access is not ready after recovery.");
+              }
+              if (getUserProfile(order.user_id)?.entitlement.status !== "active") throw new Error("Paid account access is not active after recovery.");
+            }
+          }
+          const completed = await completePaymentOrderEverywhere(order, { amountMinor: session.amount_total, currency: session.currency, codePrefix: "STR", createdBy: "stripe-order-recovery" });
+          if (!completed) throw new Error("Unable to complete the paid order.");
+          return result("ready");
+        } catch (error) {
+          app.log.error({ err: error, orderId: order.id }, "Payment confirmed but fulfillment failed; original order can be retried.");
+          return result("fulfillment_failed", true);
+        }
+      }
+      if (order.provider === "paddle" && (transactionId || order.transaction_id)) {
+        const transaction = await retrievePaddleTransaction(transactionId ?? order.transaction_id!);
+        if (transaction.id !== order.transaction_id) throw new Error("Transaction does not match this order.");
+        paymentConfirmed = transaction.status === "completed" || transaction.status === "paid";
+        if (!paymentConfirmed) return result("waiting_payment", true);
+        try {
+          const completed = await completePaymentOrderEverywhere(order, {
+            amountMinor: transaction.details?.totals?.grand_total ? Number(transaction.details.totals.grand_total) : null,
+            currency: transaction.details?.totals?.currency_code ?? null, codePrefix: "PDL", createdBy: "paddle-order-recovery",
+          });
+          if (!completed) throw new Error("Unable to complete the paid order.");
+          const profile = order.user_id ? getUserProfile(order.user_id) : null;
+          if (order.billing_kind === "subscription" && profile?.entitlement.status !== "active") {
+            return result(Date.now() - Date.parse(completed.updated_at) < 120_000 ? "waiting_fulfillment" : "fulfillment_failed", true);
+          }
+          return result("ready");
+        } catch (error) {
+          app.log.error({ err: error, orderId: order.id }, "Payment confirmed but fulfillment failed.");
+          return result("fulfillment_failed", true);
+        }
+      }
+      return result(paymentConfirmed ? "fulfillment_failed" : "waiting_payment", true);
+    } catch (error) {
+      app.log.error({ err: error, orderId: order.id }, "Payment verification failed; original order can be retried.");
+      return result("verification_failed", true);
+    }
+  };
   app.post(
     "/payments/checkout/authenticated",
     {
@@ -299,31 +407,24 @@ export async function paymentRoutes(app: FastifyInstance) {
       const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
       const providerEnabled = isPaymentProviderEnabled(body.provider, planCode, billingKind);
       if (!reusable) {
-        try {
-          await sendCheckoutIntentAlert(app, {
+        void retryOperatorNotification({
+          orderId: order.id,
+          log: app.log,
+          send: () => sendCheckoutIntentAlert(app, {
             order,
             userId: request.authUserId!,
             providerEnabled,
             planCode,
-          });
-        } catch (error) {
-          app.log.error({ err: error, orderId: order.id }, "Checkout intent email delivery failed.");
-          markPaymentOrderFailed(order.id, "checkout-intent-notification-failed");
-          await persistLocalPaymentOrder(order.id);
-          return reply.code(503).send({
-            error: "Unable to notify the operator about this checkout request. Please try again.",
-            code: "CHECKOUT_INTENT_NOTIFICATION_FAILED",
-          });
-        }
+          }, services.sendTransactionalEmail),
+        });
       }
 
       if (!providerEnabled) {
         return reply.code(409).send({
-          error: `${body.provider === "stripe" ? "Stripe" : "Paddle"} production checkout is being prepared. The operator has received your purchase request.`,
+          error: `${body.provider === "stripe" ? "Stripe" : "Paddle"} production checkout is being prepared. Please choose another payment method or try later.`,
           code: "PAYMENT_PROVIDER_BUILDING",
           provider: body.provider,
           orderId: order.id,
-          intentNotified: true,
         });
       }
 
@@ -345,7 +446,7 @@ export async function paymentRoutes(app: FastifyInstance) {
       try {
         if (body.provider === "stripe") {
           if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: request.authUserId!, planCode, priceId: priceId! });
-          const session = await createStripeCheckoutSession({
+          const session = await services.createStripeCheckoutSession({
           locale: body.locale,
             billingKind, planCode,
             orderId: order.id,
@@ -399,8 +500,10 @@ export async function paymentRoutes(app: FastifyInstance) {
           url: checkoutUrl,
         });
       } catch (error) {
+        app.log.error({ err: error, orderId: order.id }, "Checkout preparation failed.");
         return reply.code(500).send({
-          error: error instanceof Error ? error.message : "Unable to initialize checkout.",
+          error: "Unable to prepare payment. Retry this checkout to reuse the original order.",
+          code: "CHECKOUT_PREPARATION_FAILED",
         });
       }
     },
@@ -497,7 +600,7 @@ export async function paymentRoutes(app: FastifyInstance) {
     try {
       if (body.provider === "stripe") {
         if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: account.id, planCode, priceId });
-        const session = await createStripeCheckoutSession({
+        const session = await services.createStripeCheckoutSession({
           locale: body.locale,
           billingKind, planCode,
           orderId: order.id,
@@ -547,8 +650,10 @@ export async function paymentRoutes(app: FastifyInstance) {
         url: checkoutUrl,
       });
     } catch (error) {
+      app.log.error({ err: error, orderId: order.id }, "Checkout preparation failed.");
       return reply.code(500).send({
-        error: error instanceof Error ? error.message : "Unable to initialize checkout.",
+        error: "Unable to prepare payment. Retry this checkout to reuse the original order.",
+        code: "CHECKOUT_PREPARATION_FAILED",
       });
     }
   });
@@ -570,7 +675,7 @@ export async function paymentRoutes(app: FastifyInstance) {
 
     if (!order && query.provider === "stripe" && query.sessionId) {
       try {
-        const session = await retrieveStripeCheckoutSession(query.sessionId);
+        const session = await services.retrieveStripeCheckoutSession(query.sessionId);
         if (!stripeSessionMatchesPaymentOrder(session, {
           orderId: params.id,
           publicToken: query.token,
@@ -582,46 +687,24 @@ export async function paymentRoutes(app: FastifyInstance) {
         await saveDurablePaymentOrder(order);
       } catch (error) {
         app.log.error(error);
-        return reply.code(404).send({ error: "Payment order not found." });
+        return reply.code(503).send({ error: "Payment verification is temporarily unavailable. Retry this order; do not pay again.", code: "PAYMENT_VERIFICATION_FAILED" });
       }
     }
 
     if (!order) return reply.code(404).send({ error: "Payment order not found." });
 
-    try {
-      if (order.status === "pending" && order.provider === "stripe" && (query.sessionId || order.checkout_session_id)) {
-        const session = await retrieveStripeCheckoutSession(query.sessionId ?? order.checkout_session_id!);
-        if (!stripeSessionMatchesPaymentOrder(session, { orderId: order.id, publicToken: query.token, sessionId: session.id })) {
-          return reply.code(400).send({ error: "Checkout session does not match this order." });
-        }
-        const purchase = fulfillOneTimePurchase(db, session);
-        if (session.payment_status === "paid" || purchase) {
-          await completePaymentOrderEverywhere(order, {
-            amountMinor: session.amount_total ?? null,
-            currency: session.currency ?? null,
-            codePrefix: "STR",
-            createdBy: "stripe",
-          });
-        }
-      }
-
-      if (order.status === "pending" && order.provider === "paddle" && (query.transactionId || order.transaction_id)) {
-        const transaction = await retrievePaddleTransaction(query.transactionId ?? order.transaction_id!);
-        if (transaction.status === "completed" || transaction.status === "paid") {
-          await completePaymentOrderEverywhere(order, {
-            amountMinor: transaction.details?.totals?.grand_total ? Number(transaction.details.totals.grand_total) : null,
-            currency: transaction.details?.totals?.currency_code ?? null,
-            codePrefix: "PDL",
-            createdBy: "paddle",
-          });
-        }
-      }
-    } catch (error) {
-      app.log.error(error);
+    // Coalesce concurrent browser polls/retries for the same token-verified order.
+    let check = orderChecks.get(order.id);
+    if (!check) {
+      check = verifyAndFulfill(order, query.token, query.sessionId, query.transactionId);
+      orderChecks.set(order.id, check);
+      const cleanup = () => { if (orderChecks.get(order!.id) === check) orderChecks.delete(order!.id); };
+      void check.then(cleanup, cleanup);
     }
+    const verification = await check;
 
     const refreshed = await findPaymentOrderForPublicDurably(params.id, query.token);
-    return reply.send({ order: refreshed ? mapPaymentOrderForPublic(refreshed) : null });
+    return reply.send({ order: mapPaymentOrderForPublic(refreshed ?? order), verification });
   });
 
   app.post("/payments/orders/:id/cancel", async (request, reply) => {

@@ -13,6 +13,7 @@ const mode = process.argv[2];
 if (mode === "success") { process.stdout.write("exported"); process.exit(0); }
 if (mode === "heap") { process.stdout.write(process.env.JAVA_TOOL_OPTIONS || ""); process.exit(0); }
 if (mode === "failure") { process.stderr.write("invalid score image"); process.exit(7); }
+if (mode === "memory") { process.stderr.write("java.lang.OutOfMemoryError: Java heap space"); process.exit(3); }
 if (mode === "stdout-diagnostic") { process.stdout.write("SCALE: no usable staff spacing detected"); process.stderr.write("Picked up JAVA_TOOL_OPTIONS: -Xmx768m"); process.exit(1); }
 if (mode === "small-staff" || mode === "small-staff-wait") {
   const fs = require("node:fs"), path = require("node:path");
@@ -82,6 +83,15 @@ test("retains recognition errors from stdout when stderr only contains JVM start
     assert.ok(error instanceof AudiverisProcessError);
     assert.match(error.message, /no usable staff spacing detected/);
     assert.match(error.message, /JAVA_TOOL_OPTIONS/);
+    return true;
+  });
+});
+
+test("JVM allocation failure ends as a retryable resource error instead of a content exit", async () => {
+  await assert.rejects(run("memory"), (error: unknown) => {
+    assert.ok(error instanceof AudiverisProcessError);
+    assert.equal(error.reason, "resource");
+    assert.match(error.message, /\[ENGINE_MEMORY_PRESSURE\].*Retry/iu);
     return true;
   });
 });

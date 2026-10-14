@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createNativeEngineClock, isManagedMusicEngine, runNativeEngine } from "./native-engine-runner.js";
+import { createNativeEngineClock, isManagedMusicEngine, NativeEngineQueueError, runNativeEngine } from "./native-engine-runner.js";
 
 test("managed engine execution budget starts after admission, including a split marker", context => {
   context.mock.timers.enable({ apis: ["setTimeout"] });
@@ -31,6 +31,37 @@ test("unmanaged commands retain an immediate bounded timeout", context => {
   assert.equal(clock.stderr("ordinary diagnostics\n"), "ordinary diagnostics\n");
   context.mock.timers.tick(50);
   assert.equal(timedOut, true);
+  clock.finish();
+});
+
+test("a managed wrapper without admission ends with a retryable queue failure", context => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const queueFailures: NativeEngineQueueError[] = [];
+  let nativeTimeouts = 0;
+  const clock = createNativeEngineClock({ managed: true, timeoutMs: 20, queueWaitMs: 50,
+    onTimeout: () => { nativeTimeouts += 1; }, onQueueTimeout: error => { queueFailures.push(error); } });
+  context.mock.timers.tick(1049);
+  assert.equal(queueFailures.length, 0);
+  context.mock.timers.tick(1);
+  assert.equal(queueFailures[0]?.code, "ENGINE_RESOURCE_BUSY");
+  assert.equal(queueFailures[0]?.retryable, true);
+  assert.equal(nativeTimeouts, 0, "admission failure must not consume or mislabel the execution budget");
+  clock.finish();
+});
+
+test("admission clears the queue watchdog and preserves the full native execution budget", context => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  let queueTimeouts = 0;
+  let nativeTimeouts = 0;
+  const clock = createNativeEngineClock({ managed: true, timeoutMs: 5000, queueWaitMs: 50,
+    onTimeout: () => { nativeTimeouts += 1; }, onQueueTimeout: () => { queueTimeouts += 1; } });
+  context.mock.timers.tick(25);
+  clock.stderr("SCORE_ENGINE_STARTED\n");
+  context.mock.timers.tick(4999);
+  assert.equal(queueTimeouts, 0);
+  assert.equal(nativeTimeouts, 0);
+  context.mock.timers.tick(1);
+  assert.equal(nativeTimeouts, 1);
   clock.finish();
 });
 
@@ -78,6 +109,16 @@ test("a real managed wrapper can wait longer than its execution timeout", { skip
   } finally {
     await fs.rm(directory, { recursive: true, force: true });
   }
+});
+
+test("a real stalled wrapper ends with a resource queue error", { skip: process.platform === "win32" }, async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "score-api-engine-stalled-"));
+  const command = path.join(directory, "score-musescore");
+  try {
+    await fs.writeFile(command, "#!/bin/sh\nsleep 30\n", { mode: 0o755 });
+    await assert.rejects(runNativeEngine({ command, args: [], label: "MuseScore", timeoutMs: 100, queueWaitMs: 20 }),
+      error => error instanceof NativeEngineQueueError && error.code === "ENGINE_RESOURCE_BUSY" && error.retryable);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
 test("the production semaphore wrapper waits for occupied slots without using the API execution budget", {

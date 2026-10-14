@@ -27,6 +27,7 @@ import { summarizeAudiverisConfidence } from "./omr-confidence.js";
 import { renderScoreExport } from "./score-export-renderer.js";
 import { AudiverisProcessError, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
 import { runBasicPitch } from "./basic-pitch-runner.js";
+import { workerFailureMessage } from "./engine-resource-error.js";
 import { ComplexOmrFailure, applyComplexCoverage, complexEvidenceEntries, runComplexOmr, type ComplexOmrResult } from "./complex-omr.js";
 import {
   findAudiverisMusicXmlOutput,
@@ -346,6 +347,7 @@ recordWorkerHeartbeat("idle", "Worker started", {
 });
 
 function markFailed(jobId: string, message: string) {
+  message = workerFailureMessage(message);
   const timestamp = nowIso();
   db.prepare(
     `
@@ -479,6 +481,7 @@ async function materializeInputFile(file: FileRow, workDir: string) {
 }
 
 function markScoreJobFailed(jobId: string, message: string) {
+  message = workerFailureMessage(message);
   const timestamp = nowIso();
   db.prepare(
     `
@@ -3641,9 +3644,13 @@ async function processScoreExportJob(job: ScoreJobRow) {
   });
   if (isScoreJobCancelled(job.id)) return;
 
+  if (result.files.length === 0) throw new Error("[EXPORT_GENERATION_FAILED] Export completed without a usable file. Retry export.");
   const outputFileIds: string[] = [];
   for (const output of result.files) {
     if (isScoreJobCancelled(job.id)) return;
+    if (!fs.existsSync(output.path) || fs.statSync(output.path).size === 0) {
+      throw new Error("[EXPORT_GENERATION_FAILED] The generated export file is empty or missing. Retry export.");
+    }
     const checksumSha256 = crypto.createHash("sha256").update(fs.readFileSync(output.path)).digest("hex");
     const fileId = await insertStoredFile({
       userId: job.user_id,

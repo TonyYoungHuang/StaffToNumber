@@ -38,3 +38,14 @@ test("cancelled queued wrapper never starts an execution timer", { skip: process
   assert.equal(timedOut, false);
   clock.finish();
 });
+
+test("a wrapper that never reports admission ends with a queue failure", { skip: process.platform === "win32" }, async () => {
+  let queueCode = "";
+  let executionTimedOut = false;
+  const clock = createEngineExecutionClock({ command: "/usr/local/bin/score-musescore", timeoutMs: 20, queueWaitMs: 10,
+    onTimeout: () => { executionTimedOut = true; }, onQueueTimeout: error => { queueCode = error.code; } });
+  await delay(1_050);
+  assert.equal(queueCode, "ENGINE_RESOURCE_BUSY");
+  assert.equal(executionTimedOut, false);
+  clock.finish();
+});

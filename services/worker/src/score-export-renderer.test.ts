@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import type { PlaybackDocument } from "@score/shared";
 import { PDFDocument } from "pdf-lib";
+import { PNG } from "pngjs";
 import { buildFfmpegAudioArgs, buildFluidSynthArgs, inspectRenderedScoreFile, parseFfmpegAudioQuality, playbackToMidiBuffer, renderScoreExport } from "./score-export-renderer.js";
 
 const playback: PlaybackDocument = {
@@ -82,6 +83,20 @@ test("percussion MIDI exports use mapped drums on channel 10 and omit unknown in
   assert.equal(result.buffer.includes(Buffer.from([0xc9])), false);
 });
 
+test("empty part/range export fails distinctly even when practice clicks were selected", async () => {
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "score-export-empty-"));
+  try {
+    await assert.rejects(renderScoreExport({ workDir,
+      snapshot: { schemaVersion: 1, format: "midi", revisionId: "synthetic", revisionNumber: 1,
+        title: "Empty selection", playback, options: { soloPartIds: ["missing"], countIn: true, metronome: true } },
+      config: { museScoreCommand: "unused", museScoreTimeoutMs: 1, fluidSynthCommand: "unused", fluidSynthTimeoutMs: 1,
+        soundFontPath: "unused", ffmpegCommand: "unused", ffmpegTimeoutMs: 1 },
+      isCancelled: () => false, onProgress: () => {},
+    }), /\[EXPORT_EMPTY_SELECTION\]/u);
+    assert.equal(fs.readdirSync(workDir).length, 0);
+  } finally { fs.rmSync(workDir, { recursive: true, force: true }); }
+});
+
 test("creates reproducible MIDI snapshots with part filtering and practice count-in", () => {
   const options = { soloPartIds: ["piano"], countIn: true, metronome: true, partPans: { piano: -0.5 } };
   const first = playbackToMidiBuffer(playback, options);
@@ -138,7 +153,9 @@ test("validates rendered score formats and reads the real PDF page count", async
     assert.deepEqual(await inspectRenderedScoreFile("svg", svgPath), { pageCount: 1 });
 
     const pngPath = path.join(directory, "page.png");
-    fs.writeFileSync(pngPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]));
+    const png = new PNG({ width: 2, height: 2 });
+    png.data.fill(255);
+    fs.writeFileSync(pngPath, PNG.sync.write(png));
     assert.deepEqual(await inspectRenderedScoreFile("png", pngPath), { pageCount: 1 });
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
@@ -159,6 +176,30 @@ test("rejects corrupted files that only use a rendered score extension", async (
     const fakeSvg = path.join(directory, "fake.svg");
     fs.writeFileSync(fakeSvg, "<html></html>");
     await assert.rejects(() => inspectRenderedScoreFile("svg", fakeSvg), /valid SVG root/u);
+
+    for (const text of ["<svg>", '<svg xmlns="http://www.w3.org/2000/svg"><path></svg>', "<html><svg></svg></html>"]) {
+      fs.writeFileSync(fakeSvg, text);
+      await assert.rejects(() => inspectRenderedScoreFile("svg", fakeSvg), /unreadable SVG|complete SVG root/u);
+    }
+
+    const pngPath = path.join(directory, "corrupt.png");
+    fs.writeFileSync(pngPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    await assert.rejects(() => inspectRenderedScoreFile("png", pngPath), /unreadable PNG/u);
+    const png = new PNG({ width: 2, height: 2 });
+    png.data.fill(255);
+    const validPng = PNG.sync.write(png);
+    fs.writeFileSync(pngPath, validPng.subarray(0, validPng.length - 1));
+    await assert.rejects(() => inspectRenderedScoreFile("png", pngPath), /unreadable PNG/u);
+    fs.writeFileSync(pngPath, Buffer.concat([validPng.subarray(0, 33), validPng.subarray(-12)]));
+    await assert.rejects(() => inspectRenderedScoreFile("png", pngPath), /missing image data/u);
+    const invalidDimensions = Buffer.from(validPng);
+    invalidDimensions.writeUInt32BE(0, 16);
+    fs.writeFileSync(pngPath, invalidDimensions);
+    await assert.rejects(() => inspectRenderedScoreFile("png", pngPath), /invalid image dimensions/u);
+    const invalidCrc = Buffer.from(validPng);
+    invalidCrc[invalidCrc.length - 1] ^= 1;
+    fs.writeFileSync(pngPath, invalidCrc);
+    await assert.rejects(() => inspectRenderedScoreFile("png", pngPath), /unreadable PNG/u);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

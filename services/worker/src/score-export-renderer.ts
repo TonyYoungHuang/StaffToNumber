@@ -1,9 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { inflateSync } from "node:zlib";
 import { createEngineExecutionClock } from "./engine-execution-clock.js";
+import { engineResourceError } from "./engine-resource-error.js";
+import { withOmrEngineSlot } from "./omr-engine-gate.js";
 import MidiWriter from "midi-writer-js";
 import { PDFDocument } from "pdf-lib";
+import { PNG } from "pngjs";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { normalizeScoreTransposeTitle } from "@score/shared";
 import type {
   PlaybackDocument,
@@ -195,8 +200,19 @@ function runCommand(input: {
   isCancelled: () => boolean;
 }) {
   if (!input.command) throw new Error(`${input.label} is not configured.`);
+  return withOmrEngineSlot({
+    timeoutMs: input.timeoutMs, isCancelled: input.isCancelled,
+    cancelledError: () => new Error("Export job was cancelled."),
+    timeoutError: () => new Error(`${input.label} execution budget was exhausted.`),
+  }, (timeoutMs) => runCommandWithSlot({ ...input, timeoutMs }));
+}
+
+function runCommandWithSlot(input: {
+  command: string; args: string[]; label: string; timeoutMs: number; isCancelled: () => boolean;
+}) {
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     const clock = createEngineExecutionClock({ command: input.command, timeoutMs: input.timeoutMs,
+      onQueueTimeout: (error) => terminate(error),
       onTimeout: () => terminate(new Error(`${input.label} timed out after ${input.timeoutMs} ms.`)) });
     const child = spawn(input.command, input.args, { windowsHide: true, detached: process.platform !== "win32", env: { ...process.env, ...clock.environment } });
     let stdout = "";
@@ -210,7 +226,7 @@ function runCommand(input: {
       stderr += clock.finish();
       clearInterval(cancelPoll);
       if (terminationFallback) clearTimeout(terminationFallback);
-      if (error) reject(error); else resolve({ stdout, stderr });
+      if (error) reject(engineResourceError(error) ?? error); else resolve({ stdout, stderr });
     };
     const terminate = (error: Error) => {
       if (settled || terminationError) return;
@@ -227,8 +243,8 @@ function runCommand(input: {
         terminate(new Error("Export job was cancelled."));
       }
     }, 250);
-    child.stdout?.on("data", (chunk) => { stdout += String(chunk); });
-    child.stderr?.on("data", (chunk) => { stderr += clock.stderr(chunk); });
+    child.stdout?.on("data", (chunk) => { stdout = (stdout + String(chunk)).slice(-4 * 1024 * 1024); });
+    child.stderr?.on("data", (chunk) => { stderr = (stderr + clock.stderr(chunk)).slice(-4 * 1024 * 1024); });
     child.on("error", (error) => finish(error));
     child.on("close", (code) => {
       if (settled) return;
@@ -303,6 +319,42 @@ function findMuseScoreOutputs(targetPath: string) {
     .map((entry) => path.join(path.dirname(targetPath), entry));
 }
 
+function inspectPngChunks(content: Buffer) {
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let hasImageData = false;
+  const imageData: Buffer[] = [];
+  let complete = false;
+  while (offset + 12 <= content.length) {
+    const size = content.readUInt32BE(offset);
+    const type = content.subarray(offset + 4, offset + 8).toString("ascii");
+    const end = offset + size + 12;
+    if (end > content.length) throw new Error("PNG contains a truncated chunk.");
+    if (offset === 8 && (type !== "IHDR" || size !== 13)) throw new Error("PNG has no valid image header.");
+    if (type === "IHDR") {
+      if (offset !== 8 || size !== 13) throw new Error("PNG contains an invalid image header.");
+      width = content.readUInt32BE(offset + 8);
+      height = content.readUInt32BE(offset + 12);
+      if (width === 0 || height === 0 || width > 0x7fffffff || height > 0x7fffffff || !Number.isSafeInteger(width * height)) {
+        throw new Error("PNG contains invalid image dimensions.");
+      }
+    }
+    if (type === "IDAT" && size > 0) {
+      hasImageData = true;
+      imageData.push(content.subarray(offset + 8, offset + size + 8));
+    }
+    if (type === "IEND") {
+      if (size !== 0 || end !== content.length) throw new Error("PNG contains an invalid end chunk.");
+      complete = true;
+      break;
+    }
+    offset = end;
+  }
+  if (!width || !height || !hasImageData || !complete) throw new Error("PNG is missing image data or its end chunk.");
+  return { width, height, imageData };
+}
+
 export async function inspectRenderedScoreFile(format: "pdf" | "svg" | "png", filePath: string) {
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) {
     throw new Error(`MuseScore did not create a non-empty ${format.toUpperCase()} output.`);
@@ -328,11 +380,38 @@ export async function inspectRenderedScoreFile(format: "pdf" | "svg" | "png", fi
     if (content.length < pngSignature.length || !content.subarray(0, pngSignature.length).equals(pngSignature)) {
       throw new Error("MuseScore output does not have a valid PNG signature.");
     }
-    return { pageCount: 1 };
+    try {
+      const dimensions = inspectPngChunks(content);
+      // Decoding verifies CRCs and compressed image data. Reserve the encoded
+      // buffer and decoder/output pixels before allocating a large bitmap.
+      const memoryMb = Math.max(256, Math.ceil((content.length * 3 + dimensions.width * dimensions.height * 24 + dimensions.height * 8) / (1024 * 1024)));
+      await withOmrEngineSlot({ timeoutMs: 30_000, memoryMb,
+        cancelledError: () => new Error("PNG validation was cancelled."),
+        timeoutError: () => new Error("PNG validation timed out."),
+      }, async () => {
+        // pngjs's interlaced decoder uses an unbounded inflate. Verify the same
+        // stream with a dimensions-based output limit before handing it over.
+        inflateSync(Buffer.concat(dimensions.imageData), {
+          maxOutputLength: dimensions.width * dimensions.height * 8 + dimensions.height * 7 + 14,
+        });
+        PNG.sync.read(content, { checkCRC: true });
+      });
+      return { pageCount: 1 };
+    } catch (error) {
+      if (engineResourceError(error)) throw error;
+      throw new Error(`MuseScore produced an unreadable PNG: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
-  const text = content.subarray(0, Math.min(content.length, 16_384)).toString("utf8").replace(/^\uFEFF/, "").trimStart();
-  if (!/(?:<\?xml[^>]*>\s*)?<svg(?:\s|>)/iu.test(text)) {
+  const text = content.toString("utf8").replace(/^\uFEFF/, "").trimStart();
+  if (!/(?:<\?xml[^>]*>\s*)?<svg(?:\s|\/?>)/iu.test(text)) {
     throw new Error("MuseScore output does not contain a valid SVG root element.");
+  }
+  const validation = XMLValidator.validate(text);
+  if (validation !== true) throw new Error(`MuseScore produced an unreadable SVG: ${validation.err.msg}`);
+  const parsed = new XMLParser({ ignoreAttributes: false, processEntities: false }).parse(text) as Record<string, unknown>;
+  const roots = Object.keys(parsed).filter(key => !key.startsWith("?"));
+  if (roots.length !== 1 || roots[0] !== "svg" || Array.isArray(parsed.svg)) {
+    throw new Error("MuseScore output does not contain one complete SVG root element.");
   }
   return { pageCount: 1 };
 }
@@ -361,7 +440,7 @@ export async function renderScoreExport(input: {
   if (snapshot.format === "midi") {
     if (!snapshot.playback) throw new Error("Export snapshot does not contain playback events.");
     const midi = playbackToMidiBuffer(snapshot.playback, snapshot.options);
-    if (midi.eventCount === 0) throw new Error("The selected part or loop range does not contain playable notes.");
+    if (midi.eventCount === 0) throw new Error("[EXPORT_EMPTY_SELECTION] The selected part or loop range does not contain playable notes. Select a part or range with notes and retry export.");
     fs.writeFileSync(targetPath, midi.buffer);
     input.onProgress(100);
     return {
@@ -386,7 +465,9 @@ export async function renderScoreExport(input: {
     input.onProgress(90);
     const outputPaths = findMuseScoreOutputs(targetPath);
     if (outputPaths.length === 0) throw new Error(`MuseScore completed without creating ${snapshot.format.toUpperCase()} output.`);
-    const inspections = await Promise.all(outputPaths.map((outputPath) => inspectRenderedScoreFile(renderedFormat, outputPath)));
+    // Validate one page at a time so multi-page output buffers do not accumulate.
+    const inspections = [];
+    for (const outputPath of outputPaths) inspections.push(await inspectRenderedScoreFile(renderedFormat, outputPath));
     input.onProgress(100);
     const museScoreVersion = await detectToolVersion({ command: input.config.museScoreCommand, args: ["--version"], label: "MuseScore", isCancelled: input.isCancelled });
     return {
@@ -404,7 +485,7 @@ export async function renderScoreExport(input: {
   if (!input.config.fluidSynthCommand) throw new Error("FLUIDSYNTH_COMMAND is required for high-quality audio export.");
   if (!input.config.soundFontPath || !fs.existsSync(input.config.soundFontPath)) throw new Error("SOUNDFONT_PATH must point to an installed .sf2 or .sf3 file.");
   const midi = playbackToMidiBuffer(snapshot.playback, snapshot.options);
-  if (midi.eventCount === 0) throw new Error("The selected part or loop range does not contain playable notes.");
+  if (midi.eventCount === 0) throw new Error("[EXPORT_EMPTY_SELECTION] The selected part or loop range does not contain playable notes. Select a part or range with notes and retry export.");
   const midiPath = path.join(input.workDir, `${baseName}.source.mid`);
   const rawWavPath = path.join(input.workDir, `${baseName}.raw.wav`);
   fs.writeFileSync(midiPath, midi.buffer);

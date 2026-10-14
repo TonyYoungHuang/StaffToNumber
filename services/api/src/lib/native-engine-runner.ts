@@ -4,19 +4,44 @@ import path from "node:path";
 const START_MARKER = "SCORE_ENGINE_STARTED\n";
 const MAX_CAPTURED_OUTPUT = 4 * 1024 * 1024;
 
+export class NativeEngineQueueError extends Error {
+  readonly code = "ENGINE_RESOURCE_BUSY";
+  readonly retryable = true;
+  constructor() {
+    super("[ENGINE_RESOURCE_BUSY] The recognition and export queue did not become available in time. This attempt has ended. Your original score is retained; retry in a few minutes.");
+    this.name = "NativeEngineQueueError";
+  }
+}
+
 export function isManagedMusicEngine(command: string, platform: NodeJS.Platform = process.platform) {
   return platform !== "win32" && /^score-(?:audiveris|basic-pitch|musescore|fluidsynth|music21|homr)$/u.test(path.basename(command));
 }
 
 /** Admission to the shared engine pool has its own cancellable wait. Only the
  * native execution consumes timeoutMs; ordinary commands begin immediately. */
-export function createNativeEngineClock(input: { managed: boolean; timeoutMs: number; onTimeout: () => void }) {
+export function createNativeEngineClock(input: {
+  managed: boolean; timeoutMs: number; onTimeout: () => void;
+  queueWaitMs?: number; onQueueTimeout?: (error: NativeEngineQueueError) => void;
+}) {
   let waiting = input.managed;
   let buffered = "";
   let timer: NodeJS.Timeout | undefined;
   let finished = false;
-  const start = () => { timer = setTimeout(input.onTimeout, Math.max(1, input.timeoutMs)); };
+  const start = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(input.onTimeout, Math.max(1, input.timeoutMs));
+  };
   if (!waiting) start();
+  else {
+    const configured = Number(process.env.MUSIC_ENGINE_QUEUE_WAIT_MS);
+    const queueWaitMs = input.queueWaitMs ?? (Number.isSafeInteger(configured) && configured > 0 ? configured : 120_000);
+    // Let the wrapper report its memory-specific admission error first, then
+    // terminate a wrapper that stalls or never announces admission.
+    timer = setTimeout(() => {
+      if (input.onQueueTimeout) input.onQueueTimeout(new NativeEngineQueueError());
+      else input.onTimeout();
+    }, Math.max(1, queueWaitMs) + 1_000);
+  }
   return {
     stderr(chunk: unknown) {
       const value = String(chunk);
@@ -56,6 +81,7 @@ export function runNativeEngine(input: {
   args: string[];
   label: string;
   timeoutMs: number;
+  queueWaitMs?: number;
   shell?: boolean;
   signal?: AbortSignal;
 }): Promise<{ stdout: string; stderr: string }> {
@@ -74,16 +100,24 @@ export function runNativeEngine(input: {
     let stderr = "";
     let failure: Error | undefined;
     let settled = false;
+    let terminationFallback: NodeJS.Timeout | undefined;
     const stop = (error: Error) => {
-      failure ??= error;
+      if (settled || failure) return;
+      failure = error;
+      stderr = appendOutput(stderr, clock.finish());
       try {
         if (detached && child.pid) process.kill(-child.pid, "SIGKILL");
         else child.kill("SIGKILL");
-      } catch { child.kill("SIGKILL"); }
+      } catch {
+        try { child.kill("SIGKILL"); } catch { /* A process can already be gone. */ }
+      }
+      terminationFallback = setTimeout(() => finish(error), 2_000);
     };
     const clock = createNativeEngineClock({
       managed,
       timeoutMs: input.timeoutMs,
+      queueWaitMs: input.queueWaitMs,
+      onQueueTimeout: error => stop(error),
       onTimeout: () => stop(new Error(`${input.label} timed out after ${input.timeoutMs} ms.`)),
     });
     const cancel = () => stop(new Error(`${input.label} was cancelled.`));
@@ -95,20 +129,22 @@ export function runNativeEngine(input: {
     const cleanup = () => {
       stderr = appendOutput(stderr, clock.finish());
       input.signal?.removeEventListener("abort", cancel);
+      if (terminationFallback) clearTimeout(terminationFallback);
+    };
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (error) reject(error);
+      else resolve({ stdout, stderr });
     };
     child.on("error", error => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(error);
+      finish(failure ?? error);
     });
     child.on("close", code => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      if (failure) reject(failure);
-      else if (code !== 0) reject(new Error(`${input.label} exited with code ${code}. ${stderr || stdout}`.trim()));
-      else resolve({ stdout, stderr });
+      if (failure) finish(failure);
+      else if (code !== 0) finish(new Error(`${input.label} exited with code ${code}. ${stderr || stdout}`.trim()));
+      else finish();
     });
   });
 }

@@ -329,13 +329,14 @@ function scoreJobSelect() {
 
 export function createScoreDocumentFromMusicXml(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceFileId: string;
   sourceOriginalName: string;
   musicXml: string;
 }) {
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const revisionId = createId();
   const scoreJson: ScoreJson = parseMusicXmlToScoreJson({
     musicXml: input.musicXml,
@@ -384,6 +385,7 @@ export function createScoreDocumentFromMusicXml(input: {
 
 export function createScoreDocumentFromJianpu(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceFileId: string;
   sourceOriginalName: string;
@@ -394,7 +396,7 @@ export function createScoreDocumentFromJianpu(input: {
   beatType?: string;
 }) {
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const revisionId = createId();
   const scoreJson: ScoreJson = parseJianpuToScoreJson({
     text: input.jianpuText,
@@ -447,13 +449,14 @@ export function createScoreDocumentFromJianpu(input: {
 
 export function createScoreDocumentFromScoreJson(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceFileId: string;
   sourceOriginalName: string;
   scoreJson: ScoreJson;
 }) {
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const revisionId = createId();
   const scoreJson: ScoreJson = {
     ...input.scoreJson,
@@ -561,13 +564,14 @@ export function createScoreDocumentFromDerivedScoreJson(input: {
 
 export function createScoreDocumentFromMidi(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceFileId: string;
   sourceOriginalName: string;
   midi: Buffer;
 }) {
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const revisionId = createId();
   const scoreJson: ScoreJson = parseMidiToScoreJson({
     midi: input.midi,
@@ -616,6 +620,7 @@ export function createScoreDocumentFromMidi(input: {
 
 export function createOmrImportScoreDocument(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceFileId: string;
   sourceFileKind: Extract<StoredFileKind, "source_pdf" | "source_image">;
@@ -630,7 +635,7 @@ export function createOmrImportScoreDocument(input: {
   const creditCost = recognitionCreditCost(recognitionMode);
   assertRecognitionQuote(recognitionMode, input.expectedCreditCost);
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const jobId = createId();
   const diagnosticsId = createId();
   const context = currentRequestContext();
@@ -733,12 +738,13 @@ export function createOmrImportScoreDocument(input: {
 
 export function createAudioTranscribeScoreDocument(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceFileId: string;
   sourceOriginalName: string;
 }) {
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const jobId = createId();
   const context = currentRequestContext();
 
@@ -804,6 +810,7 @@ export function createAudioTranscribeScoreDocument(input: {
 
 export function createAudioTranscribeScoreDocumentFromUrl(input: {
   userId: string;
+  documentId?: string;
   title: string;
   sourceUrl: string;
   rightsBasis: "owned" | "licensed" | "public_domain";
@@ -811,7 +818,7 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
   transcriptionProfile: "monophonic" | "polyphonic-balanced";
 }) {
   const timestamp = nowIso();
-  const documentId = createId();
+  const documentId = input.documentId ?? createId();
   const jobId = createId();
   const context = currentRequestContext();
 
