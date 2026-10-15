@@ -1,6 +1,7 @@
 export type ScoreExportQuote = {
   balance: { available: number; creditSource: "monthly" | "prepaid" | "score_pass" };
   downloadCreditCost: number;
+  scorePass?: { rootDocumentId: string; remaining: number; sharedWithParts: true };
   options: { format: string; creditCost: number; canSubmit: boolean; reason?: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" }[];
   code?: string;
 };

@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES } from "@score/shared";
+import { APP_ROUTES, getPricingPlanCatalog, SINGLE_SCORE_PASS } from "@score/shared";
+import { getBillingMessages } from "./billing-messages";
+import { getScorePassCopy } from "./billing-messages/score-pass-copy";
 import { getAuthMessages } from "./auth-messages";
 import { getAppMessages } from "./app-messages";
 import { preferredLoginPath, setPreferredLoginMethod } from "./auth-storage";
@@ -287,4 +289,103 @@ test("public checkout resumes the pending pass automatically after Google sign-i
   assert.equal(JSON.parse(String(checkout.init?.body)).provider, "stripe");
   assert.equal(harness.browser.location.href, "https://checkout.stripe.com/fixture");
   assert.equal(pending, null);
+});
+
+
+test("checkout defaults to Starter monthly and carries a targeted explicit pass through the real selector", () => {
+  const harness = componentHarness("../components/CheckoutPlanSelector.tsx", {
+    "next/link": "a", "./AppCheckout.module.css": {}, "@score/ui": { CreditPlanCard: "plan", CreditPlanGrid: "plans" },
+    "./AppCheckoutClient": { AppCheckoutClient: "checkout" },
+    "../lib/analytics": { trackFunnelEvent() {} },
+    "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
+  });
+  const props = { plans: getPricingPlanCatalog("en"), locale: "en", copy: getBillingMessages("en").checkout, authMessages: getAuthMessages("en").form };
+  const checkout = nodes(harness.render("CheckoutPlanSelector", props)).find(node => node.type === "checkout")!;
+  assert.equal(checkout.props.selectedPlan.code, "starter-monthly");
+  assert.equal(checkout.props.billingKind, "subscription");
+  harness.dispose();
+  const targeted = componentHarness("../components/CheckoutPlanSelector.tsx", {
+    "next/link": "a", "./AppCheckout.module.css": {}, "@score/ui": { CreditPlanCard: "plan", CreditPlanGrid: "plans" }, "./AppCheckoutClient": { AppCheckoutClient: "checkout" },
+    "../lib/analytics": { trackFunnelEvent() {} }, "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
+  });
+  const action = { kind: "export", format: "pdf", options: { pageSize: "a4" } };
+  const tree = targeted.render("CheckoutPlanSelector", { ...props, initialPlanCode: "single-score", targetDocumentId: "score-1", intendedAction: action, isTopUp: true });
+  const selected = nodes(tree).find(node => node.type === "checkout")!;
+  assert.equal(selected.props.selectedPlan.code, "single-score");
+  assert.equal(selected.props.billingKind, "one_time");
+  assert.equal(selected.props.targetDocumentId, "score-1");
+  assert.deepEqual(selected.props.intendedAction, action);
+  assert.ok(text(tree).includes(getScorePassCopy("en").passTarget));
+  assert.ok(text(tree).includes("Buy 10 more credits"));
+  targeted.dispose();
+});
+
+test("upgrade modal recommends Starter and one click sends the score and exact export options to hosted checkout", async () => {
+  for (const code of ["starter-monthly", "converter-pro-monthly", "single-score"] as const) {
+    const calls: Array<{ path: string; init?: RequestInit }> = [];
+    let release: (result: unknown) => void = () => {};
+    const harness = componentHarness("../components/ScorePassUpgradeModal.tsx", {
+      "next/link": "a", "./ScorePassUpgradeModal.module.css": { recommended: "recommended" },
+      "../lib/auth-storage": { getStoredToken: () => "auth-token" },
+      "../lib/flow-return": { saveCheckoutReturn() {} },
+      "../lib/api": { apiRequest: (path: string, init?: RequestInit) => { calls.push({ path, init }); return new Promise(resolve => { release = resolve; }); } },
+    });
+    const action = { kind: "export", format: "png", options: { pageSize: "a4", imageResolutionDpi: 300, trimImage: true } };
+    const tree = harness.render("ScorePassUpgradeModal", { documentId: "score-1", action, locale: "en", topUp: true, onClose() {} });
+    const buttons = nodes(tree).filter(node => node.type === "button" && text(node) === getScorePassCopy("en").continuePayment);
+    assert.equal(buttons.length, 3);
+    assert.ok(buttons[0].props.className.includes("button-primary"));
+    assert.ok(buttons[2].props.className.includes("button-secondary"));
+    const index = ["starter-monthly", "converter-pro-monthly", "single-score"].indexOf(code);
+    buttons[index].props.onClick(); buttons[index].props.onClick();
+    assert.equal(calls.length, 1, "rapid duplicate clicks create one checkout");
+    const payload = JSON.parse(String(calls[0].init?.body));
+    assert.equal(payload.targetDocumentId, "score-1"); assert.deepEqual(payload.intendedAction, action);
+    assert.equal(payload.planCode, code); assert.equal(payload.provider, "stripe");
+    assert.equal(payload.billingKind, code === "single-score" ? "one_time" : "subscription");
+    assert.ok(new Headers(calls[0].init?.headers).get("Idempotency-Key"));
+    release({ ok: true, data: { orderId: "order-topup", url: "https://checkout.stripe.com/test-only" } });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(harness.browser.location.href, "https://checkout.stripe.com/test-only");
+    assert.ok(text(tree).includes(`US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`));
+    harness.dispose();
+  }
+});
+
+test("payment return recognizes top-ups by group membership and resumes only when an intended action exists", async () => {
+ for (const available of [true, false]) {
+  const routes: string[] = [], requests: Array<{ path: string; init?: RequestInit }> = [];
+  const router = { replace: (path: string) => routes.push(path), refresh() {} };
+  const signIn = () => {};
+  const harness = componentHarness("../components/AppCheckoutStatusClient.tsx", {
+    "next/link": "a", "next/navigation": { useRouter: () => router },
+    "./AppAuthModal": { useAppAuthModal: () => signIn },
+    "../lib/auth-storage": { getStoredToken: () => "fixture-auth", clearStoredToken() {} },
+    "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
+    "../lib/flow-return": { readCheckoutReturn: () => ({ next: "/scores/part-1", retry: "/checkout", createdAt: 1 }) },
+    "../lib/analytics": { trackFunnelEventOnce() {} },
+    "../lib/api": { apiRequest: async (path: string, init?: RequestInit) => {
+      requests.push({ path, init });
+      if (path === "/api/auth/me") return { ok: true, data: { user: { id: "user-1", entitlement: { status: "inactive" }, scorePasses: [{ id: "root-pass", documentId: "root-1", documentIds: ["root-1", "part-1"] }] } } };
+      if (path.endsWith("/continue")) return { ok: true, data: { documentId: "part-1", job: { id: "stored-job-1" } } };
+      return { ok: true, data: { verification: { status: "ready" }, order: { id: "topup-order", userId: "user-1", provider: "stripe", status: "paid", billingKind: "one_time", planCode: "single-score", continuation: { documentId: "part-1", available, consumed: false } } } };
+    } },
+  });
+  const props = { orderId: "topup-order", token: "public-return-token", provider: "stripe", locale: "en", copy: getBillingMessages("en").checkout.status };
+  harness.render("AppCheckoutStatusClient", props); harness.flushEffects();
+  await new Promise(resolve => setImmediate(resolve));
+  harness.render("AppCheckoutStatusClient", props); harness.flushEffects();
+  await new Promise(resolve => setImmediate(resolve));
+  harness.render("AppCheckoutStatusClient", props); harness.flushEffects();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(routes, ["/scores/part-1"]);
+  const continuations = requests.filter(request => request.path.endsWith("/continue"));
+  assert.equal(continuations.length, available ? 1 : 0);
+  if (available) {
+    assert.equal(new Headers(continuations[0].init?.headers).get("Authorization"), "Bearer fixture-auth");
+    assert.deepEqual(JSON.parse(String(continuations[0].init?.body)), { token: "public-return-token" });
+  }
+  assert.equal(requests.filter(request => request.path.includes("/exports") || request.path.includes("/retry")).length, 0, "browser delegates the retry and credit idempotency to the server");
+  harness.dispose();
+ }
 });

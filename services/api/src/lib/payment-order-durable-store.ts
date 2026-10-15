@@ -63,6 +63,10 @@ function mapRow(row: QueryResultRow, publicToken: string): PaymentOrderRow {
     organization_id: nullableString(row.organization_id),
     seat_quantity: Number(row.seat_quantity),
     idempotency_key_hash: nullableString(row.idempotency_key_hash),
+    target_document_id: nullableString(row.target_document_id),
+    intended_action_json: nullableString(row.intended_action_json),
+    resume_consumed_at: nullableString(row.resume_consumed_at),
+    resume_result_json: nullableString(row.resume_result_json),
     checkout_session_id: nullableString(row.checkout_session_id),
     transaction_id: nullableString(row.transaction_id),
     checkout_url: nullableString(row.checkout_url),
@@ -90,10 +94,11 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
         id, public_token_hash, user_id, provider, status, customer_email, locale,
         entitlement_days, billing_kind, organization_id, seat_quantity,
         checkout_session_id, transaction_id, checkout_url, amount_minor, currency,
-        activation_code, paid_at, cancelled_at, failure_reason, created_at, updated_at
+        activation_code, paid_at, cancelled_at, failure_reason, created_at, updated_at,
+        target_document_id, intended_action_json, resume_consumed_at, resume_result_json
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-        $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+        $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
       )
       ON CONFLICT (id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
@@ -113,6 +118,10 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
         paid_at = EXCLUDED.paid_at,
         cancelled_at = EXCLUDED.cancelled_at,
         failure_reason = EXCLUDED.failure_reason,
+        target_document_id = EXCLUDED.target_document_id,
+        intended_action_json = EXCLUDED.intended_action_json,
+        resume_consumed_at = COALESCE(score_payment_orders.resume_consumed_at, EXCLUDED.resume_consumed_at),
+        resume_result_json = COALESCE(score_payment_orders.resume_result_json, EXCLUDED.resume_result_json),
         updated_at = EXCLUDED.updated_at
     `,
     [
@@ -138,6 +147,10 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
       order.failure_reason,
       order.created_at,
       order.updated_at,
+      order.target_document_id,
+      order.intended_action_json,
+      order.resume_consumed_at,
+      order.resume_result_json,
     ],
   );
 }

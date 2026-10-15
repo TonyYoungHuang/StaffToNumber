@@ -22,6 +22,8 @@ import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
 import { ScoreCandidateReviewWorkspace } from "./ScoreCandidateReviewWorkspace";
 import { OneScorePassUpsell } from "./OneScorePassUpsell";
+import { ScorePassUpgradeModal } from "./ScorePassUpgradeModal";
+import { isCreditUpgradeError } from "../lib/score-pass-checkout";
 
 type TrialRevision = {
   id: string;
@@ -89,6 +91,7 @@ export function TrialScorePreview({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [upgradeRetry, setUpgradeRetry] = useState<{ jobId: string; topUp: boolean } | null>(null);
 
   const refresh = useCallback(async () => {
     if (!scoreId) return;
@@ -196,14 +199,20 @@ export function TrialScorePreview({
     );
   }
 
-  if (!scoreJson) return <ScoreImportStatus title={score?.title ?? copy.loadingScore} locale={locale} job={job ?? undefined}
+  if (!scoreJson) return <><ScoreImportStatus title={score?.title ?? copy.loadingScore} locale={locale} job={job ?? undefined}
     busy={retrying} error={error} onRefresh={() => void refresh()} onRetry={() => {
       if (!scoreId || !job || retrying) return;
       setRetrying(true); setError(null);
       void apiRequest<{ job: JobsPayload["jobs"][number] }>(`/api/scores/${scoreId}/jobs/${job.id}/retry`, {
         method: "POST", ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
-      }).then(result => { if (result.ok) setJob(result.data.job); else setError(result.error); }).finally(() => setRetrying(false));
-    }} />;
+      }).then(result => {
+        if (result.ok) setJob(result.data.job);
+        else {
+          setError(result.error);
+          if (isCreditUpgradeError(result)) setUpgradeRetry({ jobId: job.id, topUp: result.code === "SCORE_PASS_CREDITS_EXHAUSTED" });
+        }
+      }).finally(() => setRetrying(false));
+    }} />{upgradeRetry && scoreId ? <ScorePassUpgradeModal documentId={scoreId} action={{ kind: "retry", jobId: upgradeRetry.jobId }} topUp={upgradeRetry.topUp} locale={locale} onClose={() => setUpgradeRetry(null)} /> : null}</>;
 
   return (
     <div className="page-stack">
@@ -218,7 +227,7 @@ export function TrialScorePreview({
             {jobLabel}
           </span>
           {/* P5: One Score Pass primary, subscription secondary (zh: separate activation-code CTA). */}
-          <OneScorePassUpsell source="trial_score_preview" />
+          <OneScorePassUpsell source="trial_score_preview" targetDocumentId={scoreId} />
           <div className="button-row">
             <Link href={`${APP_ROUTES.scores}#free-scan`} className="button button-tertiary">
               {copy.back}

@@ -6,7 +6,6 @@ import { ScoreWorkspace, WorkspacePanel } from "./ScoreWorkspace";
 import { ScoreImportStatus } from "./ScoreImportStatus";
 import { ProcessingProgress } from "@score/ui";
 import { useFlowMessages } from "../lib/flow-messages/client";
-import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { trackFunnelEvent } from "../lib/analytics";
 import { notifyScoreReviewsChanged } from "../lib/pending-omr-reviews";
 import { useParams } from "next/navigation";
@@ -15,6 +14,7 @@ import { formatDateTime, formatMessage, formatNumber, localizeApiError, type Sup
 import { pitchClassLabel, semitoneCount } from "../lib/music-labels";
 import { APP_ROUTES, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
 import type {
+  CheckoutIntendedAction,
   AssignmentPracticeSettings,
   JianpuAccidentalStrategy,
   JianpuDocument,
@@ -52,6 +52,9 @@ import { checkExportQuote, exportQuoteOption, type ScoreExportQuote } from "../l
 import { hasUsableScoreOutputs, readScoreDownload } from "../lib/download-score-file";
 import { ScoreTransferError } from "../lib/score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
+import { getScorePassCopy } from "../lib/billing-messages/client";
+import { isCreditUpgradeError, scoreCheckoutPath, takeContinuationNotice } from "../lib/score-pass-checkout";
+import { ScorePassUpgradeModal } from "./ScorePassUpgradeModal";
 
 type ScoreRevision = {
   id: string;
@@ -417,10 +420,12 @@ const TRANSPOSE_INTERVAL_OPTIONS = [
 
 export function ScoreDetailClient({ ensemble = false }: { ensemble?: boolean }) {
   const params = useParams();
-  return <ScoreOperationBoundary key={String(params.id)}><ScoreDetailContent ensemble={ensemble} /></ScoreOperationBoundary>;
+  const { locale } = useAppLocale();
+  const [upgrade, setUpgrade] = useState<{ documentId: string; action?: CheckoutIntendedAction; topUp: boolean } | null>(null);
+  return <ScoreOperationBoundary key={String(params.id)}><ScoreDetailContent ensemble={ensemble} onUpgrade={(action, topUp) => setUpgrade({ documentId: String(params.id), action, topUp })} />{upgrade && upgrade.documentId === String(params.id) ? <ScorePassUpgradeModal documentId={upgrade.documentId} action={upgrade.action} topUp={upgrade.topUp} locale={locale} onClose={() => setUpgrade(null)} /> : null}</ScoreOperationBoundary>;
 }
 
-function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
+function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgrade: (action: CheckoutIntendedAction | undefined, topUp: boolean) => void }) {
   const params = useParams();
   const scoreId = typeof params.id === "string" ? params.id : "";
   const token = useMemo(() => getStoredToken(), []);
@@ -428,6 +433,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const { locale } = useAppLocale();
   const transferCopy = scoreTransferCopy(locale);
   const flow = useFlowMessages();
+  const scorePassCopy = getScorePassCopy(locale);
   const [exportFormat, setExportFormat] = useState("pdf");
   const [exportQuote, setExportQuote] = useState<ScoreExportQuote | null>(null);
   const [exportQuoteError, setExportQuoteError] = useState<string | null>(null);
@@ -527,6 +533,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const [omrDiagnostics, setOmrDiagnostics] = useState<OmrDiagnostic[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState<string | null>(null);
+  const [continuationError, setContinuationError] = useState<string | null>(null);
   const [jobsNotice, setJobsNotice] = useState<string | null>(null);
   const jobsReadAbort = useRef<AbortController | null>(null);
   const jobsHadError = useRef(false);
@@ -537,6 +544,12 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     downloadReads.current.clear();
   }, [scoreId, token]);
   const [jobActionId, setJobActionId] = useState<string | null>(null);
+  useEffect(() => {
+    const notice = takeContinuationNotice(scoreId);
+    if (!notice) return;
+    const message = localizeApiError({ error: notice.error, code: notice.code, status: notice.statusCode }, locale);
+    setContinuationError(message); setExportStatus(message); setExportStatusKind("error");
+  }, [scoreId, locale]);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const [revisionStatus, setRevisionStatus] = useState<string | null>(null);
   const [revisionStatusKind, setRevisionStatusKind] = useState<"success" | "error" | null>(null);
@@ -799,6 +812,17 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   const selectedExportRunning = isExportRunning(exportFormat);
   const selectedExportQuote = exportQuoteOption(exportQuote, exportFormat);
   const exportCreditState = scoreJobs.map(job => `${job.id}:${job.status}`).join("|");
+  const [passRemaining, setPassRemaining] = useState<number | null>(null);
+  useEffect(() => {
+    if (!token || !scoreId) return;
+    const controller = new AbortController();
+    void apiRequest<{ user: { scorePasses?: { documentId: string | null; documentIds?: string[]; remaining: number }[] } }>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }).then(result => {
+      if (!result.ok || controller.signal.aborted) return;
+      const pass = result.data.user.scorePasses?.find(item => item.documentId === scoreId || item.documentIds?.includes(scoreId));
+      setPassRemaining(pass?.remaining ?? null);
+    });
+    return () => controller.abort();
+  }, [scoreId, token, exportCreditState]);
 
   const refreshExportQuote = useCallback(async () => {
     if (!token || !scoreId) return null;
@@ -811,6 +835,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       });
       if (!result.ok) { setExportQuote(null); setExportQuoteError(result.error); return null; }
       setExportQuote(result.data); setExportQuoteError(null);
+      if (result.data.scorePass) setPassRemaining(result.data.scorePass.remaining);
       return result.data;
     } finally { window.clearTimeout(timeout); setExportQuoteLoading(false); }
   }, [scoreId, token]);
@@ -822,16 +847,18 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   function exportCostHint(format: string) {
     const option = exportQuoteOption(exportQuote, format);
     if (!option || !exportQuote) return exportQuoteError ? exportCostCopy.unavailable : exportCostCopy.checking;
+    const shared = exportQuote.balance.creditSource === "score_pass" ? ` · ${formatMessage(scorePassCopy.sharedBalance, { balance: formatNumber(exportQuote.balance.available, locale) })}` : "";
     return `${formatMessage(option.creditCost === 1 ? exportCostCopy.costSingle : exportCostCopy.costMultiple, { count: formatNumber(option.creditCost, locale) })} · ${formatMessage(exportCostCopy.balance, {
       source: exportCostCopy.sources[exportQuote.balance.creditSource], balance: formatNumber(exportQuote.balance.available, locale),
-    })}`;
+    })}${shared}`;
   }
 
-  async function confirmExportQuote(format: string) {
+  async function confirmExportQuote(format: string, intendedAction?: CheckoutIntendedAction) {
     const shown = exportQuote;
     const fresh = await refreshExportQuote();
     const check = checkExportQuote(shown, fresh, format);
     if (check !== "ready") {
+      if (check === "insufficient") onUpgrade(intendedAction, passRemaining !== null || fresh?.balance.creditSource === "score_pass");
       setExportStatus(check === "changed" ? exportCostCopy.priceChanged : check === "restricted" ? exportCostCopy.passFormatUnavailable : check === "insufficient" ? exportCostCopy.insufficient : exportCostCopy.unavailable);
       setExportStatusKind("error");
       return null;
@@ -987,7 +1014,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
       <h1 className="page-title">{score.title}</h1>
       <h2 className="card-title">{flow.upgrade}</h2>
       <div className="button-row">
-        <Link href={upgradePath(currentWorkPath())} className="button button-primary" onClick={() => trackFunnelEvent("upgrade_click", { source: "score_detail_locked" })}>{flow.upgrade}</Link>
+        <Link href={scoreCheckoutPath(scoreId)} className="button button-primary" onClick={() => trackFunnelEvent("upgrade_click", { source: "score_detail_locked" })}>{flow.upgrade}</Link>
         <Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link>
       </div>
     </section>;
@@ -1131,6 +1158,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     });
     setJobActionId(null);
     if (!result.ok) {
+      if (action === "retry" && isCreditUpgradeError(result)) onUpgrade({ kind: "retry", jobId: job.id }, passRemaining !== null);
       setJobsError(result.error);
       return;
     }
@@ -2270,7 +2298,8 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
     try {
     setExportStatus(null);
     setExportStatusKind(null);
-    const confirmedQuote = await confirmExportQuote(format);
+    const intendedAction: CheckoutIntendedAction = { kind: "export", format, options };
+    const confirmedQuote = await confirmExportQuote(format, intendedAction);
     if (!confirmedQuote) return;
     const result = await apiRequest<ScoreExportQueuePayload>(`/api/scores/${scoreId}/exports`, {
       method: "POST",
@@ -2286,6 +2315,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
         setExportQuote(changedQuote); setExportQuoteError(null);
         setExportStatus(exportCostCopy.priceChanged); setExportStatusKind("error"); return;
       }
+      if (isCreditUpgradeError(result)) onUpgrade(intendedAction, passRemaining !== null);
       await refreshExportQuote();
       setExportStatus(scoreGenerationError({ error: result.error, code: (result.data as { code?: string } | undefined)?.code }, locale) ?? result.error);
       setExportStatusKind("error");
@@ -2323,6 +2353,17 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
           }
         : {}),
     };
+  }
+
+  function currentExportAction(): CheckoutIntendedAction | undefined {
+    if (["jianpu", "score-json"].includes(exportFormat)) return undefined;
+    const format = exportFormat as ScoreExportFormat;
+    const options: ScoreExportOptions = format === "midi" ? practiceExportOptions()
+      : format === "wav" ? practiceExportOptions(true)
+      : format === "mp3" ? { ...practiceExportOptions(true), bitrateKbps: audioBitrateKbps }
+      : format === "pdf" ? { pageSize: renderPageSize, marginPreset: renderMarginPreset }
+      : format === "svg" || format === "png" ? { imageResolutionDpi: format === "png" ? renderImageDpi : undefined, trimImage: trimRenderedImage, trimImageMargin: renderTrimMargin, pageSize: renderPageSize, marginPreset: renderMarginPreset } : {};
+    return { kind: "export", format, options };
   }
 
   async function handleExportMidi() {
@@ -2490,7 +2531,7 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
         onAccept={(coverageReviewed) => void handleCandidateDecision("accept", coverageReviewed)}
         onReject={() => void handleCandidateDecision("reject")}
         submittingAction={candidateAction}
-        actionError={candidateActionError}
+        actionError={candidateActionError ?? continuationError}
         onCandidateUpdated={refreshScoreSnapshot}
         onUndo={() => void handleUndoRevision()}
         onRedo={() => void handleRedoRevision()}
@@ -2508,13 +2549,14 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
   if (!score.currentRevision) {
     const importJob = scoreJobs.find((job) => job.jobType === "omr_import" || job.jobType === "audio_transcribe");
     return <ScoreImportStatus title={score.title} locale={locale} job={importJob}
-      busy={jobsLoading || Boolean(jobActionId)} error={jobsError}
+      busy={jobsLoading || Boolean(jobActionId)} error={continuationError ?? jobsError}
       onRetry={() => { if (importJob) void handleScoreJobAction(importJob, "retry"); }}
       onRefresh={() => void refreshScoreWorkspace()} />;
   }
 
   return (
     <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
+{continuationError ? <p className="form-status error" role="alert">{continuationError}</p> : null}
 {downloadError ? <p className="form-status error">{downloadError}</p> : null}
 <ProcessingProgress active={downloadCount > 0} label={getPercentProgressMessages(locale).downloading} error={Boolean(downloadError)} locale={locale} />
 <WorkspacePanel name="edit">{currentScoreJson ? (
@@ -2984,13 +3026,14 @@ function ScoreDetailContent({ ensemble }: { ensemble: boolean }) {
         </section>
       )}</WorkspacePanel>
 <WorkspacePanel name="export"><section className="surface-panel stack-lg flow-export"><h2 className="card-title">{flow.export}</h2>
+{passRemaining !== null ? <p className="helper-copy">{formatMessage(scorePassCopy.sharedBalance, { balance: formatNumber(passRemaining, locale) })}</p> : null}
 <label className="field-group"><span>{flow.format}</span><select aria-label={flow.format} className="field-select" value={exportFormat} onChange={event => setExportFormat(event.target.value)}>
 {["pdf", "musicxml", "midi", "wav", "mp3", "svg", "png", "jianpu", "score-json"].map(format => <option key={format} value={format}>{format === "jianpu" ? flow.jianpu : format === "score-json" ? "Score JSON" : format.toUpperCase()}</option>)}
 </select></label>
 <p className="helper-copy" aria-live="polite">{exportCostHint(exportFormat)}</p>
 <ProcessingProgress active={exportQuoteLoading} label={exportCostCopy.checking} error={Boolean(exportQuoteError)} locale={locale} />
 {exportQuoteError ? <div className="stack-sm"><p className="form-status error">{exportCostCopy.unavailable}</p><button type="button" className="button button-secondary" onClick={() => void refreshExportQuote()}>{exportCostCopy.retryQuote}</button></div> : null}
-{selectedExportQuote && !selectedExportQuote.canSubmit ? <div className="stack-sm"><p className="form-status error">{selectedExportQuote.reason === "SCORE_PASS_QUEUED_EXPORT_REQUIRED" ? exportCostCopy.passFormatUnavailable : exportCostCopy.insufficient}</p><Link className="button button-secondary" href={upgradePath(currentWorkPath())}>{flow.upgrade}</Link></div> : null}
+{selectedExportQuote && !selectedExportQuote.canSubmit ? <div className="stack-sm"><button type="button" className="button button-primary" onClick={() => onUpgrade(currentExportAction(), passRemaining !== null)}>{scorePassCopy.title}</button><Link className="micro-copy" href={scoreCheckoutPath(scoreId, currentExportAction(), passRemaining !== null)}>{scorePassCopy.fallback}</Link></div> : null}
 <button type="button" className="button button-primary" disabled={!currentScoreJson || !selectedExportQuote?.canSubmit || requestingExport || selectedExportRunning} onClick={() => {
 const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMusicXml, midi: handleExportMidi, pdf: handleExportPdf, wav: handleExportWav, mp3: handleExportMp3, svg: () => handleExportRenderedImage("svg"), png: () => handleExportRenderedImage("png"), jianpu: handleExportJianpu, "score-json": handleExportScoreJson }; void actions[exportFormat]();
 }}>{requestingExport || selectedExportRunning ? `${flow.scoreOperations.exporting} ${exportFormat.toUpperCase()}` : formatMessage(exportCostCopy.generate, { format: exportFormat === "jianpu" ? `${flow.jianpu} TXT` : exportFormat === "score-json" ? "Score JSON" : exportFormat.toUpperCase() })}</button>
@@ -3270,6 +3313,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
               <input type="checkbox" checked={extractApplyClefs} onChange={(event) => setExtractApplyClefs(event.target.checked)} />
             </label>
             <div className="button-row wide">
+              {exportQuote?.balance.creditSource === "score_pass" ? <p className="helper-copy">{scorePassCopy.sharedCredits}</p> : null}
               <button type="submit" className="button button-primary" disabled={extractingParts || extractPartIds.length === 0}>
                 {extractingParts ? partExtractCopy.working : partExtractCopy.submit}
               </button>

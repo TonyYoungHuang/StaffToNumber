@@ -95,7 +95,7 @@ test("free lifetime trial remains simple-only and cannot submit complex through 
   assert.equal(getPlanQuotaUsage(user.id).jobs.used, 0);
 });
 
-test("a paid single-score pass spends five for complex, refunds failure, and retry still checks its balance after membership activates", () => {
+test("a paid single-score pass spends five for complex, releases failure, and membership funds its retry first", () => {
   const { user, input } = fixture(); buyPass(user.id);
   assert.equal(getRecognitionOptions(user.id).options[1].creditSource, "score_pass");
   const complex = createOmrImportScoreDocument({ ...input, scorePass: true, recognitionMode: "complex" });
@@ -108,9 +108,11 @@ test("a paid single-score pass spends five for complex, refunds failure, and ret
   assert.equal(listScorePasses(db, user.id)[0].remaining, 5);
   createScoreExportJob({ userId: user.id, documentId: complex.document!.id, params: {} });
   activate(user.id);
-  assert.throws(() => retryScoreJob({ userId: user.id, documentId: complex.document!.id, jobId: complex.job!.id }), ScorePassError);
+  const retry = retryScoreJob({ userId: user.id, documentId: complex.document!.id, jobId: complex.job!.id });
+  assert.ok(retry);
+  assert.equal(JSON.parse(retry.params_json!).creditCost, 5);
   assert.equal(listScorePasses(db, user.id)[0].remaining, 4);
-  assert.equal(getPlanQuotaUsage(user.id).jobs.used, 0);
+  assert.equal(getPlanQuotaUsage(user.id).jobs.used, 5);
 });
 
 test("retrying an old-month complex job reserves the original five credits in the current month", () => {

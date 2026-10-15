@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const ruBillingMessages = {
+  scorePass: getScorePassCopy("ru"),
   reviewNotice: "Текст об оплате ниже — черновой перевод, ещё не прошедший профессиональную проверку. При расхождениях применяются условия на английском языке и страница платёжного сервиса.",
   activation: {
     page: { title: "Активировать код", description: "Введите код, полученный после покупки, чтобы открыть доступ к нотному пространству на один год." },

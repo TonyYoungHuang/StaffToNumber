@@ -1,4 +1,4 @@
-import { assertScorePassCredit, bindScorePass, lockScorePassAccount, recordScorePassJob, scorePassForDocument } from "../lib/score-passes.js";
+import { assertScorePassCredit, bindScorePass, lockScorePassAccount, mapExtractedScorePassDocument, recordScorePassJob, scorePassForDocument, ScorePassError } from "../lib/score-passes.js";
 import type {
   AssignmentPracticeSettings,
   JobStatus,
@@ -519,6 +519,7 @@ export function createScoreDocumentFromDerivedScoreJson(input: {
   title: string;
   scoreJson: ScoreJson;
   createdFrom: ScoreRevisionSource;
+  sourceDocumentId?: string;
 }) {
   const timestamp = nowIso();
   const documentId = createId();
@@ -535,6 +536,15 @@ export function createScoreDocumentFromDerivedScoreJson(input: {
   db.exec("BEGIN");
 
   try {
+    lockScorePassAccount(db, input.userId);
+    if (input.sourceDocumentId && input.createdFrom !== "part_extract") throw new Error("Only server-extracted parts may inherit score pass coverage.");
+    if (input.sourceDocumentId) {
+      const source = db.prepare("SELECT id FROM score_documents WHERE id = ? AND user_id = ? AND status NOT IN ('deleted', 'archived')").get(input.sourceDocumentId, input.userId);
+      if (!source) throw new ScorePassError("SCORE_PASS_DOCUMENT_INVALID", "The source score is no longer available.");
+      if (getUserProfile(input.userId)?.entitlement.status !== "active" && !scorePassForDocument(db, input.userId, input.sourceDocumentId)) {
+        throw new ScorePassError("SCORE_PASS_REQUIRED", "A score pass or active membership is required to extract parts.");
+      }
+    }
     db.prepare(
       `
         INSERT INTO score_documents (
@@ -553,6 +563,7 @@ export function createScoreDocumentFromDerivedScoreJson(input: {
       `,
     ).run(revisionId, documentId, JSON.stringify(scoreJson), input.createdFrom, timestamp);
 
+    if (input.sourceDocumentId) mapExtractedScorePassDocument(db, input.userId, input.sourceDocumentId, documentId);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -655,7 +666,6 @@ export function createOmrImportScoreDocument(input: {
     }
     const freeTrial = !isPaid && !usePass;
     const quota = assertProcessingQuota(input.userId, usePass, creditCost);
-    const passId = usePass ? bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
     if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
     db.prepare(
       `
@@ -665,6 +675,7 @@ export function createOmrImportScoreDocument(input: {
         VALUES (?, ?, ?, NULL, ?, 'candidate', ?, ?)
       `,
     ).run(documentId, input.userId, input.title, input.sourceFileId, timestamp, timestamp);
+    const passId = usePass ? bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
 
     db.prepare(
       `
@@ -2430,8 +2441,9 @@ export function createScoreExportJob(input: {
   userId: string;
   documentId: string;
   params: Record<string, unknown>;
+  inTransaction?: boolean;
 }) {
-  db.exec("BEGIN IMMEDIATE");
+  if (!input.inTransaction) db.exec("BEGIN IMMEDIATE");
   try {
   lockScorePassAccount(db, input.userId);
   const allowance = getPlanQuotaUsage(input.userId);
@@ -2453,9 +2465,9 @@ export function createScoreExportJob(input: {
   ).run(jobId, input.userId, input.documentId, JSON.stringify({ ...input.params, creditReservedAt: timestamp }), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
   if (passId) recordScorePassJob(db, passId, jobId);
   else recordProcessingCredit(input.userId, "score", jobId, quota);
-  db.exec("COMMIT");
+  if (!input.inTransaction) db.exec("COMMIT");
   return findScoreJobById(jobId);
-  } catch (error) { db.exec("ROLLBACK"); throw error; }
+  } catch (error) { if (!input.inTransaction) db.exec("ROLLBACK"); throw error; }
 }
 
 export function cancelScoreJob(input: { jobId: string; userId: string; documentId: string }) {
@@ -2472,13 +2484,13 @@ export function cancelScoreJob(input: { jobId: string; userId: string; documentI
   return result.changes === 1 ? findScoreJobById(input.jobId) : undefined;
 }
 
-export function retryScoreJob(input: { jobId: string; userId: string; documentId: string }) {
-  db.exec("BEGIN IMMEDIATE");
+export function retryScoreJob(input: { jobId: string; userId: string; documentId: string; inTransaction?: boolean; recognitionMode?: ScoreRecognitionMode; restartRecognition?: boolean }) {
+  if (!input.inTransaction) db.exec("BEGIN IMMEDIATE");
   try {
     lockScorePassAccount(db, input.userId);
     const existing = findScoreJobById(input.jobId);
-    if (!existing || existing.user_id !== input.userId || existing.document_id !== input.documentId || !["failed", "cancelled"].includes(existing.status)) {
-      db.exec("COMMIT");
+    if (!existing || existing.user_id !== input.userId || existing.document_id !== input.documentId || (!["failed", "cancelled"].includes(existing.status) && !(input.restartRecognition && existing.job_type === "omr_import" && existing.status === "completed"))) {
+      if (!input.inTransaction) db.exec("COMMIT");
       return undefined;
     }
     const params = processingJobParams(existing.params_json);
@@ -2488,33 +2500,44 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
       // clicks under the account lock so they cannot reserve credits twice.
       const pendingRetry = listScoreJobsByDocumentId(input.documentId).find(candidate =>
         processingJobParams(candidate.params_json).recoveryOfJobId === existing.id &&
+        (input.recognitionMode === undefined || (processingJobParams(candidate.params_json).recognitionMode ?? "simple") === input.recognitionMode) &&
         ["queued", "processing", "completed"].includes(candidate.status));
-      if (pendingRetry) { db.exec("COMMIT"); return pendingRetry; }
+      if (pendingRetry && !input.restartRecognition) { if (!input.inTransaction) db.exec("COMMIT"); return pendingRetry; }
       if (!existing.input_file_id || !db.prepare("SELECT id FROM files WHERE id = ? AND user_id = ?").get(existing.input_file_id, input.userId)) {
-        db.exec("COMMIT"); return undefined;
+        if (!input.inTransaction) db.exec("COMMIT"); return undefined;
       }
     }
     const retryJobId = newOmrAttempt ? createId() : existing.id;
-    const recognitionMode = existing.job_type === "omr_import" ? normalizeRecognitionMode(params.recognitionMode) : "simple";
-    const creditCost = processingJobCreditCost(existing);
+    const recognitionMode = existing.job_type === "omr_import" ? normalizeRecognitionMode(input.recognitionMode ?? params.recognitionMode) : "simple";
+    const creditCost = existing.job_type === "omr_import" && input.recognitionMode !== undefined ? recognitionCreditCost(recognitionMode) : processingJobCreditCost(existing);
     const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
-    if (existing.job_type === "omr_import" && params.freeTrial === true && !isPaid) {
+    const allowance = getPlanQuotaUsage(input.userId);
+    const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
+    if (existing.job_type === "omr_import" && params.freeTrial === true && !isPaid && !usePass) {
       // A failed attempt releases the allowance. Retrying it must reserve that
       // allowance again so another queued/successful free project cannot overlap.
       assertFreeTrialOmrAvailable(input.userId);
     }
-    const reservedPass = db.prepare("SELECT purchase_id FROM score_pass_jobs WHERE job_id = ?").get(existing.id) as { purchase_id: string } | undefined;
-    const usePass = Boolean(reservedPass) || (!isPaid && Boolean(scorePassForDocument(db, input.userId, input.documentId)));
     if (existing.job_type === "omr_import" && recognitionMode === "complex" && !isPaid && !usePass) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
     const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
     const quota = assertProcessingQuota(input.userId, Boolean(passId), creditCost);
     if (passId) recordScorePassJob(db, passId, retryJobId);
-    else recordProcessingCredit(input.userId, "score", retryJobId, quota, creditCost);
+    else {
+      // A failed pass reservation is released. An upgrade may now pay from the account pool.
+      if (!newOmrAttempt) db.prepare("DELETE FROM score_pass_jobs WHERE job_id = ?").run(retryJobId);
+      if (!newOmrAttempt && quota.monthly.remaining >= creditCost) {
+        // The old attempt released this reservation. Monthly credits from a
+        // subsequent upgrade now take priority over that prepaid pool.
+        db.prepare("DELETE FROM prepaid_credit_charges WHERE job_family = 'score' AND job_id = ? AND user_id = ? AND status = 'released'")
+          .run(retryJobId, input.userId);
+      }
+      recordProcessingCredit(input.userId, "score", retryJobId, quota, creditCost);
+    }
     const timestamp = nowIso();
     const nextParams = JSON.stringify({ ...params, creditReservedAt: timestamp,
-      ...(newOmrAttempt ? { recognitionMode, creditCost, recoveryOfJobId: existing.id } : {}) });
+      ...(newOmrAttempt ? { recognitionMode, creditCost, recoveryOfJobId: existing.id, creditSource: passId ? "score_pass" : isPaid ? "plan" : "free_trial", freeTrial: !isPaid && !passId && params.freeTrial === true } : {}) });
     let changed: number;
     if (newOmrAttempt) {
       changed = db.prepare(`INSERT INTO score_jobs (
@@ -2531,10 +2554,10 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
         WHERE id = ? AND user_id = ? AND document_id = ? AND status IN ('failed', 'cancelled')`)
         .run(timestamp, nextParams, retryJobId, input.userId, input.documentId).changes;
     }
-    db.exec("COMMIT");
+    if (!input.inTransaction) db.exec("COMMIT");
     return changed === 1 ? findScoreJobById(retryJobId) : undefined;
   } catch (error) {
-    db.exec("ROLLBACK");
+    if (!input.inTransaction) db.exec("ROLLBACK");
     throw error;
   }
 }

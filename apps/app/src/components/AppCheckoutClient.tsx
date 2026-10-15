@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
-import { getPurchaseOptionsCopy, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
+import { getPurchaseOptionsCopy, type CheckoutIntendedAction, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
@@ -15,6 +15,7 @@ import { useFlowMessages } from "../lib/flow-messages/client";
 import { getOneScoreUpsellCopy } from "../lib/one-score-upsell-copy";
 import styles from "./AppCheckout.module.css";
 import { getPaymentRecoveryCopy } from "@score/shared";
+import { getScorePassCopy } from "../lib/billing-messages/client";
 
 type CheckoutPayload = {
   provider: PaymentProvider;
@@ -120,12 +121,16 @@ const schoolCheckoutAvailable = process.env.NEXT_PUBLIC_SCHOOL_CHECKOUT_AVAILABL
 export function AppCheckoutClient({
   billingKind = "one_time",
   returnTo = "/scores",
+  targetDocumentId,
+  intendedAction,
   selectedPlan,
   authMessages,
   locale,
   copy,
 }: {
   returnTo?: string;
+  targetDocumentId?: string;
+  intendedAction?: CheckoutIntendedAction;
   billingKind?: CheckoutBillingKind;
   selectedPlan: SelectedCheckoutPlan;
   authMessages: AuthMessageCatalog["form"];
@@ -135,7 +140,11 @@ export function AppCheckoutClient({
   const [sessionState, setSessionState] = useState<"checking" | "ready" | "signedOut">("checking");
   const [provider, setProvider] = useState<PaymentProvider>(billingKind === "one_time" ? "stripe" : defaultProvider);
   const flow = useFlowMessages();
-  const checkoutPath = `/checkout?${new URLSearchParams({ plan: selectedPlan.code, billing: billingKind, next: workReturnPath(returnTo) })}`;
+  const checkoutParams = new URLSearchParams({ plan: selectedPlan.code, billing: billingKind, next: workReturnPath(returnTo) });
+  if (targetDocumentId) checkoutParams.set("targetDocumentId", targetDocumentId);
+  if (intendedAction) checkoutParams.set("intendedAction", JSON.stringify(intendedAction));
+  const checkoutPath = `/checkout?${checkoutParams}`;
+  const scorePassCopy = getScorePassCopy(locale);
   const purchaseCopy = getPurchaseOptionsCopy(locale);
   const recoveryCopy = getPaymentRecoveryCopy(locale);
   const availableProviders = billingKind === "one_time" ? providers.filter(item => item === "stripe") : providers;
@@ -158,7 +167,7 @@ export function AppCheckoutClient({
       setSessionState("signedOut");
       return;
     }
-    resumeCheckout.current = new URLSearchParams(window.location.search).get("continue") === "1" && selectedPlan.code === "single-score";
+    resumeCheckout.current = new URLSearchParams(window.location.search).get("continue") === "1";
     setSessionState("ready");
   }, []);
 
@@ -209,7 +218,7 @@ export function AppCheckoutClient({
 
     let navigating = false;
     try {
-      const signature = JSON.stringify({ provider, billingKind, locale, planCode: selectedPlan.code, planKind, organizationId, seatQuantity });
+      const signature = JSON.stringify({ provider, billingKind, locale, planCode: selectedPlan.code, planKind, organizationId, seatQuantity, targetDocumentId, intendedAction });
       if (checkoutIntent.current?.signature !== signature) {
         checkoutIntent.current = { signature, key: crypto.randomUUID() };
       }
@@ -225,6 +234,8 @@ export function AppCheckoutClient({
           billingKind,
           locale,
           planCode: selectedPlan.code,
+          targetDocumentId,
+          intendedAction,
           organizationId: planKind === "school" ? organizationId : undefined,
           seatQuantity: planKind === "school" ? seatQuantity : 1,
         }),
@@ -330,13 +341,14 @@ export function AppCheckoutClient({
         <p className="eyebrow">{copy.checkoutEyebrow}</p>
         <h2 id="checkout-payment-title" className={styles.sectionHeading}>{copy.title}</h2>
         <p className="body-copy large">{copy.body}</p>
-        <p className={styles.purchaseNotice}>{selectedPlan.code === "single-score" ? getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
+        <p className={styles.purchaseNotice}>{selectedPlan.code === "single-score" ? targetDocumentId ? scorePassCopy.sharedCredits : getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
         <div className={styles.checkoutSelection}>
           <span>{copy.selectedPlan}</span>
           <strong>{selectedPlan.name} · {selectedPlan.cycle}</strong>
           <small>{selectedPlan.price} · {selectedPlan.credits}</small>
         </div>
         <p className="helper-copy">{copy.accountNote}</p>
+        {targetDocumentId ? <p className="helper-copy">{scorePassCopy.passTarget} {scorePassCopy.sharedCredits}</p> : null}
 
       </div>
 

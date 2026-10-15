@@ -8,7 +8,8 @@ const QUEUED_EXPORT_FORMATS = ["musicxml", "midi", "pdf", "svg", "png", "wav", "
 type ScoreExportOptionsQuote = {
   balance: { available: number; creditSource: "monthly" | "prepaid" | "score_pass" };
   downloadCreditCost: number;
-  options: { format: string; creditCost: number; canSubmit: boolean; reason?: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" }[];
+  scorePass?: { rootDocumentId: string | null; remaining: number; sharedWithParts: true };
+  options: { format: string; creditCost: number; canSubmit: boolean }[];
 };
 
 /** Read-only quote of the existing export paths. Reservation still happens in createScoreExportJob. */
@@ -27,13 +28,12 @@ export function getScoreExportOptions(userId: string, documentId: string): Score
   return {
     balance: { available, creditSource },
     downloadCreditCost: 0,
+    ...(pass ? { scorePass: { rootDocumentId: pass.documentId, remaining: pass.remaining, sharedWithParts: true as const } } : {}),
     options: [
       ...QUEUED_EXPORT_FORMATS.map(format => ({ format, creditCost, canSubmit })),
       // These direct TXT/JSON routes create assets without a processing job.
-      // Existing access rules block legacy /export/* routes for pass-only users.
       ...["jianpu", "score-json"].map(format => ({
-        format, creditCost: 0, canSubmit: !pass || paid,
-        ...(!paid && pass ? { reason: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" as const } : {}),
+        format, creditCost: 0, canSubmit: true,
       })),
     ],
   };

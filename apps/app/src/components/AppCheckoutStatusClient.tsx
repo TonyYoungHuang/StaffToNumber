@@ -16,6 +16,8 @@ import { trackFunnelEventOnce } from "../lib/analytics";
 import { rawApiErrorOrFallback, formatBillingDateTime } from "../lib/billing-messages/client";
 import type { BillingMessageCatalog } from "../lib/billing-messages/types";
 import { getPaymentRecoveryCopy, type PaymentVerification } from "@score/shared";
+import { saveContinuationNotice, type CheckoutContinuationResult } from "../lib/score-pass-checkout";
+import { getScorePassCopy } from "../lib/billing-messages/client";
 
 type PublicOrder = {
   id: string;
@@ -32,6 +34,7 @@ type PublicOrder = {
   accessEndsAt?: string | null;
   planCode?: string | null;
   purchaseStatus?: string | null;
+  continuation?: { documentId: string; available: boolean; consumed: boolean; result?: CheckoutContinuationResult | null } | null;
 };
 
 type OrderPayload = { order: PublicOrder | null; verification?: PaymentVerification };
@@ -68,6 +71,8 @@ export function AppCheckoutStatusClient({
   const [verification, setVerification] = useState<PaymentVerification | null>(null);
   const [pollingStopped, setPollingStopped] = useState(false);
   const recoveryCopy = getPaymentRecoveryCopy(locale);
+  const scorePassCopy = getScorePassCopy(locale);
+  const [continuing, setContinuing] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -120,7 +125,7 @@ export function AppCheckoutStatusClient({
     const controller = new AbortController();
     const verifyAccess = async () => {
       const authToken = getStoredToken();
-      const result = await apiRequest<{ user: { id: string; scorePasses?: Array<{ id: string }>; entitlement: { status: string } } }>("/api/auth/me", {
+      const result = await apiRequest<{ user: { id: string; scorePasses?: Array<{ id: string; documentId?: string | null; documentIds?: string[] }>; entitlement: { status: string } } }>("/api/auth/me", {
         signal: controller.signal,
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
       });
@@ -133,9 +138,29 @@ export function AppCheckoutStatusClient({
       if (!result.ok) { setAccessState("error"); return; }
       if (!result.data?.user?.entitlement) { setAccessState("error"); return; }
       if (result.ok && result.data.user.id !== order.userId) { setAccessState("mismatch"); return; }
-      if (result.ok && (result.data.user.entitlement.status === "active" || (order.planCode === "single-score" && result.data.user.scorePasses?.some(pass => pass.id === orderId)))) {
-        setAccessState("ready");
-        router.replace(readCheckoutReturn(orderId, returnTo).next);
+      const targetId = order.continuation?.documentId;
+      const passReady = order.planCode === "single-score" && result.data.user.scorePasses?.some(pass => pass.id === orderId || Boolean(targetId && (pass.documentIds?.includes(targetId) || pass.documentId === targetId)));
+      if (result.data.user.entitlement.status === "active" || passReady) {
+        if (order.continuation?.available) {
+          setContinuing(true);
+          const continued = await apiRequest<CheckoutContinuationResult>(`/api/payments/orders/${orderId}/continue`, {
+            method: "POST", signal: controller.signal,
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+            body: JSON.stringify({ token }),
+          });
+          if (disposed) return;
+          setContinuing(false);
+          if (!continued.ok || !continued.data?.documentId) {
+            setAccessState("error"); setError(continued.ok ? scorePassCopy.continueFailed : continued.error); return;
+          }
+          saveContinuationNotice(continued.data);
+          if (continued.data.error || continued.data.code) setError(continued.data.error ?? scorePassCopy.continueFailed);
+          setAccessState("ready");
+          router.replace(`/scores/${encodeURIComponent(continued.data.documentId)}`);
+        } else {
+          setAccessState("ready");
+          router.replace(targetId ? `/scores/${encodeURIComponent(targetId)}` : readCheckoutReturn(orderId, returnTo).next);
+        }
         router.refresh();
         return;
       }
@@ -145,7 +170,7 @@ export function AppCheckoutStatusClient({
     setAccessState("waiting");
     void verifyAccess();
     return () => { disposed = true; controller.abort(); if (timer) window.clearTimeout(timer); };
-  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn, verification?.status, returnTo]);
+  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn, verification?.status, returnTo, token, scorePassCopy.continueFailed]);
 
 
   useEffect(() => {
@@ -177,6 +202,7 @@ export function AppCheckoutStatusClient({
 
   return (
     <div className="surface-panel stack-lg" lang={locale}>
+      {continuing ? <p className="body-copy" role="status" aria-live="polite">{scorePassCopy.continuing}</p> : null}
       {loading ? <p className="body-copy large" role="status" aria-live="polite">{copy.loading}</p> : null}
       {error ? <p className="form-status error" role="alert">{error}</p> : null}
       {pollingStopped ? <p className="form-status error" role="alert">{recoveryCopy.pollingStopped}</p> : null}
@@ -198,7 +224,7 @@ export function AppCheckoutStatusClient({
             {accessState === "mismatch" ? <button className="button button-secondary" onClick={() => { clearStoredToken(); signIn("login", () => setRetryCount(n => n + 1)); }}>{flow.accountMismatch}</button> : null}
           </div> : null}
           {isPaid && order?.billingKind === "one_time" ? <div className="stack-sm">
-            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "single-score" ? getSingleScorePassCopy(locale).paid : purchaseCopy.oneTimeNote}</p>
+            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "single-score" ? order.continuation ? scorePassCopy.passTarget : getSingleScorePassCopy(locale).paid : purchaseCopy.oneTimeNote}</p>
             {order.accessStartsAt ? <p>{formatMessage(purchaseCopy.startsTemplate, { date: formatBillingDateTime(order.accessStartsAt, locale) })}</p> : null}
             {order.accessEndsAt ? <p>{formatMessage(purchaseCopy.expiresTemplate, { date: formatBillingDateTime(order.accessEndsAt, locale) })}</p> : null}
           </div> : null}

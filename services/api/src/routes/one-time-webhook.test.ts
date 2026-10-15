@@ -17,15 +17,17 @@ const { prepareOneTimePurchase, findOneTimePurchase } = await import("../reposit
 const { getPlanQuotaUsage } = await import("../lib/plan-quotas.js");
 const stripe = new Stripe("sk_test_local_fixture");
 
-test("signed $2.99 payment delivers exactly one score pass, and refund revokes it without a subscription", async () => {
+test("signed $2.99 payment binds an existing score once, and refund revokes it without a subscription", async () => {
   initDb();
   const app = Fastify();
   await app.register(rawBody, { global: false, encoding: false });
   await app.register(paymentWebhookRoutes, { prefix: "/api" });
   const user = createUser(`${crypto.randomUUID()}@example.invalid`, "hash", "salt")!;
-  const order = createPaymentOrder({ userId: user.id, provider: "stripe", billingKind: "one_time", entitlementDays: 0 })!;
+  const documentId = crypto.randomUUID(), now = new Date().toISOString();
+  db.prepare("INSERT INTO score_documents (id,user_id,title,status,created_at,updated_at) VALUES (?,?,'Existing score','ready',?,?)").run(documentId, user.id, now, now);
+  const order = createPaymentOrder({ userId: user.id, provider: "stripe", billingKind: "one_time", entitlementDays: 0, targetDocumentId: documentId })!;
   const metadata = { billingKind: "one_time", orderId: order.id, userId: user.id, planCode: "single-score" as const, priceId: "price_score_pass" };
-  prepareOneTimePurchase(db, { orderId: order.id, userId: user.id, planCode: metadata.planCode, priceId: metadata.priceId });
+  prepareOneTimePurchase(db, { orderId: order.id, userId: user.id, planCode: metadata.planCode, priceId: metadata.priceId, targetDocumentId: documentId });
   const id = `cs_${crypto.randomUUID()}`, intent = `pi_${crypto.randomUUID()}`;
   attachStripeCheckoutSession(order.id, id, null);
   const session = { id, object: "checkout.session", mode: "payment", status: "complete", payment_status: "paid", amount_total: 299, currency: "usd", payment_intent: intent, metadata };
@@ -39,6 +41,8 @@ test("signed $2.99 payment delivers exactly one score pass, and refund revokes i
     const profile = getUserProfile(user.id)!;
     assert.equal(profile.entitlement.status, "inactive");
     assert.equal(profile.scorePasses.length, 1); assert.equal(profile.scorePasses[0].remaining, 10);
+    assert.equal(profile.scorePasses[0].documentId, documentId);
+    assert.equal((db.prepare("SELECT count(*) AS n FROM score_pass_documents WHERE document_id = ?").get(documentId) as { n: number }).n, 1);
     assert.equal(findPaymentOrderById(order.id)?.status, "paid");
     assert.equal(findPaymentOrderById(order.id)?.activation_code_id, null);
     assert.equal(findOneTimePurchase(db, order.id)?.ends_at, null);

@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const frBillingMessages = {
+  scorePass: getScorePassCopy("fr"),
   reviewNotice: "Les textes de paiement ci-dessous sont une traduction provisoire en attente d’une révision professionnelle. En cas de divergence, les conditions en anglais et la page du prestataire de paiement prévalent.",
   activation: {
     page: { title: "Utiliser un code d’activation", description: "Saisissez le code reçu après l’achat pour activer l’espace de travail de partitions pendant un an." },

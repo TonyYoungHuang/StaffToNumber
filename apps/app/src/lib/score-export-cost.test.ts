@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SUPPORTED_LOCALES } from "@score/i18n";
+import { localizeApiError, SUPPORTED_LOCALES } from "@score/i18n";
+import { isCreditUpgradeError, scoreCheckoutPath, readCheckoutAction, saveContinuationNotice, takeContinuationNotice } from "./score-pass-checkout";
+import { getScorePassCopy } from "./billing-messages/client";
 import { getScoreDetailMessages } from "./score-detail-messages";
 import { checkExportQuote, type ScoreExportQuote } from "./score-export-cost";
 
@@ -40,5 +42,64 @@ test("all nine locales explain generation, downloads, balances and changed-price
       assert.notEqual(cost[key], english[key], `${locale}: ${key}`);
     }
     for (const source of ["monthly", "prepaid", "score_pass"] as const) assert.ok(cost.sources[source].trim());
+  }
+});
+
+
+test("pass-covered TXT and Score JSON quotes remain submit-ready after all group credits are spent", () => {
+  const exhausted: ScoreExportQuote = { balance: { available: 0, creditSource: "score_pass" }, downloadCreditCost: 0,
+    options: [{ format: "jianpu", creditCost: 0, canSubmit: true }, { format: "score-json", creditCost: 0, canSubmit: true }, { format: "pdf", creditCost: 1, canSubmit: false }] };
+  for (const format of ["jianpu", "score-json"]) assert.equal(checkExportQuote(exhausted, exhausted, format), "ready");
+  assert.equal(checkExportQuote(exhausted, exhausted, "pdf"), "insufficient");
+});
+
+test("credit quota errors have native text in all nine locales", () => {
+  const english = localizeApiError({ code: "PLAN_JOB_QUOTA_EXCEEDED", status: 429 }, "en");
+  for (const locale of SUPPORTED_LOCALES) {
+    const text = localizeApiError({ code: "PLAN_JOB_QUOTA_EXCEEDED", error: "internal details", status: 429 }, locale);
+    assert.ok(text && text !== "internal details");
+    if (locale !== "en") assert.notEqual(text, english, locale);
+  }
+});
+
+
+test("checkout transport preserves export choices and validates the two exhausted-credit modal triggers", () => {
+  const action = { kind: "export" as const, format: "wav" as const, options: { sampleRate: 96000 as const, audioChannels: 2 as const, mutedPartIds: ["part-2"], tempoBpm: 80 } };
+  const params = new URL(scoreCheckoutPath("part 1", action, true), "https://app.example").searchParams;
+  assert.equal(params.get("targetDocumentId"), "part 1");
+  assert.equal(params.get("passMode"), "top_up");
+  assert.deepEqual(readCheckoutAction(params.get("intendedAction") ?? undefined), action);
+  assert.equal(readCheckoutAction("{invalid"), undefined);
+  assert.equal(readCheckoutAction("x".repeat(16_385)), undefined);
+  assert.ok(isCreditUpgradeError({ status: 403, code: "SCORE_PASS_CREDITS_EXHAUSTED" }));
+  assert.ok(isCreditUpgradeError({ status: 429, data: { code: "PLAN_JOB_QUOTA_EXCEEDED" } }));
+  assert.equal(isCreditUpgradeError({ status: 403, code: "SCORE_PASS_REQUIRED" }), false);
+  assert.equal(isCreditUpgradeError({ status: 429, code: "RATE_LIMITED" }), false);
+});
+
+test("a failed consumed continuation shows once and does not become another payment or job request", () => {
+  const original = globalThis.window;
+  const entries = new Map<string, string>();
+  globalThis.window = { sessionStorage: { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => entries.set(key, value), removeItem: (key: string) => entries.delete(key) } } as unknown as Window & typeof globalThis;
+  try {
+    const result = { documentId: "score-1", error: "Original failure", code: "SCORE_PASS_CREDITS_EXHAUSTED", statusCode: 403 };
+    saveContinuationNotice(result);
+    assert.equal(takeContinuationNotice("another-score"), null);
+    assert.deepEqual(takeContinuationNotice("score-1"), result);
+    assert.equal(takeContinuationNotice("score-1"), null);
+  } finally { globalThis.window = original; }
+});
+
+test("all nine upgrade catalogs explain score-and-parts credit sharing and offer native continuation copy", () => {
+  const english = getScorePassCopy("en");
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getScorePassCopy(locale);
+    for (const key of Object.keys(english) as (keyof typeof english)[]) {
+      assert.ok(copy[key].trim(), `${locale}/${key}`);
+      if (locale !== "en") assert.notEqual(copy[key], english[key], `${locale}/${key}`);
+    }
+    assert.match(copy.sharedBalance, /\{balance\}/u);
+    assert.match(copy.topUp, /\{price\}/u);
+    assert.match(copy.newPass, /\{price\}/u);
   }
 });

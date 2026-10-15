@@ -19,6 +19,10 @@ export type PaymentOrderRow = {
   organization_id: string | null;
   seat_quantity: number;
   idempotency_key_hash: string | null;
+  target_document_id: string | null;
+  intended_action_json: string | null;
+  resume_consumed_at: string | null;
+  resume_result_json: string | null;
   checkout_session_id: string | null;
   transaction_id: string | null;
   checkout_url: string | null;
@@ -36,6 +40,7 @@ export type PaymentOrderRow = {
 const paymentOrderSelect = `
   SELECT po.id, po.public_token, po.user_id, po.provider, po.status, po.customer_email, po.locale, po.entitlement_days,
          po.billing_kind, po.organization_id, po.seat_quantity, po.idempotency_key_hash,
+         po.target_document_id, po.intended_action_json, po.resume_consumed_at, po.resume_result_json,
          po.checkout_session_id, po.transaction_id, po.checkout_url, po.amount_minor, po.currency,
          po.activation_code_id, po.paid_at, po.cancelled_at, po.failure_reason, po.created_at, po.updated_at,
          ac.code AS activation_code
@@ -53,6 +58,8 @@ export function createPaymentOrder(input: {
   organizationId?: string | null;
   seatQuantity?: number;
   idempotencyKeyHash?: string | null;
+  targetDocumentId?: string | null;
+  intendedActionJson?: string | null;
 }) {
   const id = createId();
   const publicToken = randomBytes(18).toString("hex");
@@ -62,11 +69,11 @@ export function createPaymentOrder(input: {
     `
       INSERT INTO payment_orders (
         id, public_token, user_id, provider, status, customer_email, locale, entitlement_days,
-        billing_kind, organization_id, seat_quantity, idempotency_key_hash,
+        billing_kind, organization_id, seat_quantity, idempotency_key_hash, target_document_id, intended_action_json,
         checkout_session_id, transaction_id, checkout_url, amount_minor, currency,
         activation_code_id, paid_at, cancelled_at, failure_reason, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)
     `,
   ).run(
     id,
@@ -80,6 +87,8 @@ export function createPaymentOrder(input: {
     input.organizationId ?? null,
     Math.max(1, Math.min(input.seatQuantity ?? 1, 100_000)),
     input.idempotencyKeyHash ?? null,
+    input.targetDocumentId ?? null,
+    input.intendedActionJson ?? null,
     timestamp,
     timestamp,
   );
@@ -264,6 +273,12 @@ export function mapPaymentOrderForPublic(order: PaymentOrderRow) {
     accessEndsAt: purchase?.ends_at ?? null,
     purchaseStatus: purchase?.status ?? null,
     planCode: purchase?.plan_code ?? null,
+    continuation: order.target_document_id ? {
+      documentId: order.target_document_id,
+      available: Boolean(order.intended_action_json),
+      consumed: Boolean(order.resume_consumed_at),
+      result: order.resume_result_json ? JSON.parse(order.resume_result_json) as unknown : null,
+    } : null,
     cancelledAt: order.cancelled_at,
     createdAt: order.created_at,
     updatedAt: order.updated_at,

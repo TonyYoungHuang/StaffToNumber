@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const esBillingMessages = {
+  scorePass: getScorePassCopy("es"),
   reviewNotice: "Los textos de pago siguientes son un borrador de traducción pendiente de revisión profesional. Si hay discrepancias, prevalecen las condiciones en inglés y la página del proveedor de pago.",
   activation: {
     page: { title: "Canjear código de activación", description: "Canjea el código de tu compra para activar en tu cuenta el plan y el periodo de acceso correspondientes." },

@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const zhCNBillingMessages = {
+  scorePass: getScorePassCopy("zh-CN"),
   reviewNotice: "以下支付文案为翻译草案，尚待专业复核；如有冲突，以英文条款和支付平台页面为准。",
   activation: {
     page: {

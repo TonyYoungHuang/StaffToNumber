@@ -1,3 +1,4 @@
+import { creditQuotaError } from "./quota-errors.ts";
 import { scorePassError } from "./score-pass-errors.ts";
 import { normalizeLocale } from "./locales.ts";
 import { localizeDeRuError } from "./de-ru-errors.ts";
@@ -52,6 +53,8 @@ const frenchLegacyErrors: Record<string, string> = {
 
 export function localizeApiError(input: { error?: string | null; code?: string | null; status?: number }, locale?: string | null): string {
   const selectedLocale = normalizeLocale(locale);
+  const quotaMessage = creditQuotaError(input.code, selectedLocale ?? "en");
+  if (quotaMessage) return quotaMessage;
   const passMessage = scorePassError(input.code, selectedLocale ?? "en");
   if (passMessage) return passMessage;
   if (selectedLocale === "en" || selectedLocale === "es") return localizeEnEsError(input, selectedLocale);

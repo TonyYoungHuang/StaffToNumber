@@ -6,6 +6,7 @@ import styles from "../../components/AppCheckout.module.css";
 import { getAuthMessages } from "../../lib/auth-messages";
 import { getBillingMessages, getLocalizedPricingPlanCatalog } from "../../lib/billing-messages";
 import { readAppLocale } from "../../lib/locale";
+import { readCheckoutAction } from "../../lib/score-pass-checkout";
 
 type CheckoutSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -63,7 +64,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
         returnTo={typeof params.next === "string" ? params.next : undefined}
         plans={plans}
         initialPlanCode={initialPlanCode}
-        initialBillingKind={!initialPlanCode || initialPlanCode === "single-score" || params.billing === "one_time" ? "one_time" : "subscription"}
+        targetDocumentId={typeof params.targetDocumentId === "string" ? params.targetDocumentId : undefined}
+        intendedAction={readCheckoutAction(typeof params.intendedAction === "string" ? params.intendedAction : undefined)}
+        isTopUp={params.passMode === "top_up"}
+        initialBillingKind={initialPlanCode === "single-score" || params.billing === "one_time" ? "one_time" : "subscription"}
         locale={locale}
         copy={copy.checkout}
         authMessages={authMessages}

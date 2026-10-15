@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const zhTWBillingMessages = {
+  scorePass: getScorePassCopy("zh-TW"),
   reviewNotice: "以下付款文案為翻譯草案，尚待專業複核；如有衝突，以英文條款與支付平台頁面為準。",
   activation: {
     page: { title: "兌換啟用碼", description: "輸入購買後取得的啟用碼，為目前的樂譜工作台開通一年使用權限。" },

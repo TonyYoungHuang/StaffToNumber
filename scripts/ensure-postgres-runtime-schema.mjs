@@ -18,6 +18,7 @@ process.env.STORAGE_DIR = storageDir;
 process.env.NODE_ENV = "development";
 
 const { db, initDb } = await import("../services/api/src/db.ts");
+const { SCORE_PASS_DOCUMENTS_SQL, SCORE_PASS_BACKFILL_SQL } = await import("../services/api/src/lib/score-pass-schema.ts");
 initDb();
 
 function quoteIdentifier(value) {
@@ -55,6 +56,11 @@ const client = new pg.Client({ connectionString, statement_timeout: 60_000 });
 await client.connect();
 let addedColumns = [];
 try {
+  // Schema 27 adds a table, not just columns. The portable definition is shared
+  // with SQLite and the full migration runner so incremental upgrades agree.
+  await client.query("BEGIN");
+  await client.query(`SET LOCAL search_path TO ${quoteIdentifier(targetSchema)}, public`);
+  await client.query(SCORE_PASS_DOCUMENTS_SQL);
   const catalog = await client.query(`
     SELECT table_name, column_name
     FROM information_schema.columns
@@ -73,8 +79,6 @@ try {
     throw new Error(`PostgreSQL runtime schema is missing tables: ${missingTables.join(", ")}. Run the full schema migration first.`);
   }
 
-  await client.query("BEGIN");
-  await client.query(`SET LOCAL search_path TO ${quoteIdentifier(targetSchema)}, public`);
   for (const table of expectedTables) {
     const actual = actualColumns.get(table);
     for (const column of expectedColumns.get(table)) {
@@ -107,6 +111,29 @@ try {
   await client.query(`CREATE INDEX IF NOT EXISTS idx_jobs_trace_id ON ${quoteIdentifier(targetSchema)}.jobs(trace_id)`);
   await client.query(`CREATE INDEX IF NOT EXISTS idx_score_jobs_trace_id ON ${quoteIdentifier(targetSchema)}.score_jobs(trace_id)`);
   await client.query(`CREATE INDEX IF NOT EXISTS idx_score_collaboration_updates_trace_id ON ${quoteIdentifier(targetSchema)}.score_collaboration_updates(trace_id)`);
+  await client.query("CREATE INDEX IF NOT EXISTS idx_score_passes_group ON score_passes(group_pass_id)");
+  const groupForeignKey = await client.query(`SELECT 1 FROM pg_constraint constraint_row
+    JOIN pg_class table_row ON table_row.oid = constraint_row.conrelid
+    JOIN pg_namespace namespace_row ON namespace_row.oid = table_row.relnamespace
+    JOIN pg_attribute column_row ON column_row.attrelid = table_row.oid AND column_row.attnum = ANY(constraint_row.conkey)
+    WHERE constraint_row.contype = 'f' AND namespace_row.nspname = $1
+      AND table_row.relname = 'score_passes' AND column_row.attname = 'group_pass_id'`, [targetSchema]);
+  if (groupForeignKey.rows.length === 0) await client.query(`ALTER TABLE score_passes
+    ADD CONSTRAINT score_passes_group_pass_id_fkey FOREIGN KEY(group_pass_id) REFERENCES score_passes(purchase_id)`);
+  await client.query(SCORE_PASS_BACKFILL_SQL);
+  await client.query("REVOKE ALL ON score_pass_documents FROM PUBLIC");
+  const passGrants = await client.query(`SELECT grantee, privilege_type FROM information_schema.role_table_grants
+    WHERE table_schema = $1 AND table_name = 'score_passes'
+      AND grantee <> 'PUBLIC'
+      AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')`, [targetSchema]);
+  for (const grant of passGrants.rows) {
+    await client.query(`GRANT ${grant.privilege_type} ON score_pass_documents TO ${quoteIdentifier(grant.grantee)}`);
+  }
+  await client.query(`ALTER TABLE IF EXISTS public.score_payment_orders
+    ADD COLUMN IF NOT EXISTS target_document_id TEXT,
+    ADD COLUMN IF NOT EXISTS intended_action_json TEXT,
+    ADD COLUMN IF NOT EXISTS resume_consumed_at TEXT,
+    ADD COLUMN IF NOT EXISTS resume_result_json TEXT`);
   await client.query("COMMIT");
 
   const verification = await client.query(`

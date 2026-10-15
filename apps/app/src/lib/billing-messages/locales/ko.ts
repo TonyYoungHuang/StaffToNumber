@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const koBillingMessages = {
+  scorePass: getScorePassCopy("ko"),
   reviewNotice: "아래 결제 문구는 전문 검토 전 번역 초안입니다. 내용이 다르면 영어 약관과 결제 서비스 페이지가 우선합니다.",
   activation: {
     page: { title: "활성화 코드 사용", description: "구매 후 받은 코드를 입력하여 현재 악보 작업 공간을 1년 동안 활성화하세요." },

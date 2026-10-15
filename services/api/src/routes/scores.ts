@@ -1,3 +1,7 @@
+import { CheckoutContinuationError, consumeCheckoutContinuation } from "../lib/checkout-continuation.js";
+import { normalizeScoreExportRequest } from "../lib/score-export-request.js";
+import { saveDurablePaymentOrder } from "../lib/payment-order-durable-store.js";
+import { findPaymentOrderById } from "../repositories/payment-repository.js";
 import { ScoreUploadReceipts, UploadReceiptError } from "../lib/score-upload-receipts.js";
 import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
 import { normalizeScoreTransposeTitle } from "@score/shared";
@@ -21,8 +25,6 @@ import {
   type JianpuMode,
   type JianpuPitchSystem,
   type ScoreJson,
-  type ScoreExportFormat,
-  type ScoreExportOptions,
   type ScoreExportSnapshot,
   type ScoreProjectSettings,
   type StoredFileKind,
@@ -199,100 +201,6 @@ function deriveTitle(filename: string) {
 function deriveExportBaseName(title: string) {
   return sanitizeFilename(normalizeScoreTransposeTitle(title).trim().replace(/\s+/g, "-") || "score");
 }
-
-const SCORE_EXPORT_FORMATS = new Set<ScoreExportFormat>(["musicxml", "midi", "pdf", "svg", "png", "wav", "mp3"]);
-
-function normalizeScoreExportRequest(input: unknown): { format: ScoreExportFormat; options: ScoreExportOptions } {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    throw new Error("Export request must be a JSON object.");
-  }
-
-  const body = input as Record<string, unknown>;
-  const format = typeof body.format === "string" ? body.format.toLowerCase() : "";
-  if (!SCORE_EXPORT_FORMATS.has(format as ScoreExportFormat)) {
-    throw new Error("Export format must be musicxml, midi, pdf, svg, png, wav, or mp3.");
-  }
-
-  const rawOptions = body.options && typeof body.options === "object" && !Array.isArray(body.options)
-    ? (body.options as Record<string, unknown>)
-    : {};
-  const options: ScoreExportOptions = {};
-  const assignNumber = (key: keyof ScoreExportOptions, min: number, max: number, integer = false) => {
-    const value = rawOptions[key];
-    if (value === undefined) return;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
-      throw new Error(`${String(key)} must be a number from ${min} to ${max}.`);
-    }
-    (options as Record<string, unknown>)[key] = integer ? Math.round(value) : value;
-  };
-  const assignBoolean = (key: keyof ScoreExportOptions) => {
-    if (rawOptions[key] !== undefined) (options as Record<string, unknown>)[key] = Boolean(rawOptions[key]);
-  };
-  const assignStringArray = (key: "soloPartIds" | "mutedPartIds") => {
-    const value = rawOptions[key];
-    if (value === undefined) return;
-    if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-      throw new Error(`${key} must be an array of part IDs.`);
-    }
-    options[key] = [...new Set(value.map((item) => item.trim()).filter(Boolean))];
-  };
-  const assignNumberMap = (key: "partVolumes" | "partPans", min: number, max: number) => {
-    const value = rawOptions[key];
-    if (value === undefined) return;
-    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${key} must be an object.`);
-    const entries = Object.entries(value).map(([partId, amount]) => {
-      if (typeof amount !== "number" || !Number.isFinite(amount) || amount < min || amount > max) {
-        throw new Error(`${key}.${partId} must be from ${min} to ${max}.`);
-      }
-      return [partId, amount] as const;
-    });
-    options[key] = Object.fromEntries(entries);
-  };
-
-  assignNumber("tempoBpm", 40, 240, true);
-  assignNumber("loopStartBeat", 0, 100000);
-  assignNumber("loopEndBeat", 0.25, 100000);
-  assignNumber("soundFontGain", 0.05, 5);
-  assignNumber("loudnessTargetLufs", -24, -9);
-  assignNumber("imageResolutionDpi", 72, 1200, true);
-  assignNumber("trimImageMargin", 0, 2000, true);
-  assignNumber("scoreScalePercent", 50, 200, true);
-  assignNumber("staffSpacingMm", 4, 20);
-  assignStringArray("soloPartIds");
-  assignStringArray("mutedPartIds");
-  assignNumberMap("partVolumes", 0, 1.5);
-  assignNumberMap("partPans", -1, 1);
-  for (const key of ["countIn", "metronome", "loopEnabled", "reverbEnabled", "chorusEnabled", "normalizeLoudness", "trimImage"] as const) {
-    assignBoolean(key);
-  }
-
-  if (rawOptions.sampleRate !== undefined) {
-    if (![44100, 48000, 96000].includes(rawOptions.sampleRate as number)) throw new Error("sampleRate must be 44100, 48000, or 96000.");
-    options.sampleRate = rawOptions.sampleRate as 44100 | 48000 | 96000;
-  }
-  if (rawOptions.audioChannels !== undefined) {
-    if (rawOptions.audioChannels !== 1 && rawOptions.audioChannels !== 2) throw new Error("audioChannels must be 1 or 2.");
-    options.audioChannels = rawOptions.audioChannels;
-  }
-  if (rawOptions.bitrateKbps !== undefined) {
-    if (![128, 192, 256, 320].includes(rawOptions.bitrateKbps as number)) throw new Error("bitrateKbps must be 128, 192, 256, or 320.");
-    options.bitrateKbps = rawOptions.bitrateKbps as 128 | 192 | 256 | 320;
-  }
-  if (rawOptions.pageSize !== undefined) {
-    if (!["default", "a4", "letter"].includes(rawOptions.pageSize as string)) throw new Error("pageSize must be default, a4, or letter.");
-    options.pageSize = rawOptions.pageSize as ScoreExportOptions["pageSize"];
-  }
-  if (rawOptions.marginPreset !== undefined) {
-    if (!["default", "narrow", "normal", "wide"].includes(rawOptions.marginPreset as string)) throw new Error("marginPreset must be default, narrow, normal, or wide.");
-    options.marginPreset = rawOptions.marginPreset as ScoreExportOptions["marginPreset"];
-  }
-  if (options.loopEnabled && options.loopEndBeat !== undefined && options.loopEndBeat <= (options.loopStartBeat ?? 0)) {
-    throw new Error("loopEndBeat must be greater than loopStartBeat.");
-  }
-
-  return { format: format as ScoreExportFormat, options };
-}
-
 async function checkExternalTool(input: { id: string; label: string; command: string; versionArgs?: string[]; timeoutMs?: number }) {
   if (!input.command) {
     return {
@@ -1544,7 +1452,69 @@ function mapOwnedScoreSummaryForAccess(document: Parameters<typeof mapScoreDocum
   return { ...mapped, sourceFileId: null, currentRevision: redactRevision(mapped.currentRevision), pendingRevision: redactRevision(mapped.pendingRevision) };
 }
 
+function prepareQueuedScoreExport(document: NonNullable<ReturnType<typeof findScoreDocumentById>>, exportRequest: ReturnType<typeof normalizeScoreExportRequest>) {
+  const revision = findCurrentRevisionForDocument(document);
+  if (!revision) {
+    const response = scoreNotReadyResponse(document);
+    throw Object.assign(new Error(response.error), { code: response.code, statusCode: 409, response });
+  }
+
+  const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
+  const needsPlayback = ["midi", "wav", "mp3"].includes(exportRequest.format);
+  const needsMusicXml = ["musicxml", "pdf", "svg", "png"].includes(exportRequest.format);
+  const playback = needsPlayback ? scoreJsonToPlayback(scoreJson) : undefined;
+  if (needsPlayback && (!playback || playback.events.length === 0)) {
+    const response = { code: "EXPORT_EMPTY_SELECTION", error: "The current score revision does not contain playable note events. Select a range with notes and retry." };
+    throw Object.assign(new Error(response.error), { code: response.code, statusCode: 400, response });
+  }
+
+  const renderedOptions: RenderedScoreExportOptions = {
+    imageResolutionDpi: exportRequest.options.imageResolutionDpi,
+    trimImage: exportRequest.options.trimImage,
+    trimImageMargin: exportRequest.options.trimImageMargin,
+    pageSize: exportRequest.options.pageSize === "default" ? undefined : exportRequest.options.pageSize,
+    marginPreset: exportRequest.options.marginPreset === "default" ? undefined : exportRequest.options.marginPreset,
+  };
+  const snapshot: ScoreExportSnapshot = {
+    schemaVersion: 1,
+    format: exportRequest.format,
+    revisionId: revision.id,
+    revisionNumber: revision.revision_number,
+    title: scoreJson.title,
+    musicXml: needsMusicXml ? scoreJsonToMusicXml(scoreJson, { pageLayout: renderedExportPageLayout(renderedOptions) }) : undefined,
+    playback,
+    options: exportRequest.options,
+  };
+  return snapshot;
+}
+
 export async function scoreRoutes(app: FastifyInstance) {
+  app.post("/payments/orders/:id/continue", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const token = (request.body as { token?: unknown } | null)?.token;
+    try {
+      const result = consumeCheckoutContinuation({ userId: request.authUserId!, orderId: id, token,
+        execute: (action, documentId) => {
+          const document = findScoreDocumentById(documentId)!;
+          const job = action.kind === "export"
+            ? createScoreExportJob({ userId: request.authUserId!, documentId,
+                params: prepareQueuedScoreExport(document, action) as unknown as Record<string, unknown>, inTransaction: true })
+            : retryScoreJob({ jobId: action.jobId, userId: request.authUserId!, documentId,
+                recognitionMode: action.recognitionMode, restartRecognition: action.restartRecognition, inTransaction: true });
+          if (!job) throw new CheckoutContinuationError("CHECKOUT_ACTION_NOT_RETRYABLE", "The score operation can no longer be retried.", 409);
+          return { job: { id: job.id, documentId: job.document_id, jobType: job.job_type, status: job.status } };
+        },
+      });
+      // Primary state already committed with the job. A mirror outage must not
+      // turn a successful automatic retry into another charge or job.
+      try { await saveDurablePaymentOrder(findPaymentOrderById(id)!); }
+      catch (error) { request.log.warn({ error, orderId: id }, "Checkout continuation mirror could not be refreshed."); }
+      return reply.send(result);
+    } catch (error) {
+      if (error instanceof CheckoutContinuationError) return reply.code(error.statusCode).send({ code: error.code, error: error.message });
+      throw error;
+    }
+  });
   const uploadRequests = new WeakMap<FastifyRequest, { key: string; scoreId: string }>();
   const receipts = new ScoreUploadReceipts(path.join(config.storageDir, ".upload-receipts"), (id, userId) => {
     const document = findScoreDocumentById(id);
@@ -1898,7 +1868,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/extract-parts",
     {
-      preHandler: app.requireActiveEntitlement,
+      preHandler: app.requireScoreEditingAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -1906,6 +1876,10 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       if (!document || document.user_id !== request.authUserId) {
         return reply.code(404).send({ error: "Score document not found." });
+      }
+
+      if (getUserProfile(request.authUserId!)?.entitlement.status !== "active" && !scorePassForDocument(db, request.authUserId!, document.id)) {
+        return reply.code(403).send({ code: "SCORE_PASS_REQUIRED", error: "A score pass or active membership is required to extract parts." });
       }
 
       const revision = findCurrentRevisionForDocument(document);
@@ -1945,6 +1919,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         title: extractedScoreJson.title,
         scoreJson: extractedScoreJson,
         createdFrom: "part_extract",
+        sourceDocumentId: document.id,
       });
 
       if (!extractedDocument) {
@@ -3229,36 +3204,13 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(409).send({ code: "EXPORT_PRICE_CHANGED", error: "The export price changed. Review the current price and confirm again.", ...quote });
       }
 
-      const revision = findCurrentRevisionForDocument(document);
-      if (!revision) {
-        return reply.code(409).send(scoreNotReadyResponse(document));
+      let snapshot;
+      try { snapshot = prepareQueuedScoreExport(document, exportRequest); }
+      catch (error) {
+        const problem = error as { statusCode?: number; response?: object };
+        if (problem.statusCode && problem.response) return reply.code(problem.statusCode).send(problem.response);
+        throw error;
       }
-
-      const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
-      const needsPlayback = ["midi", "wav", "mp3"].includes(exportRequest.format);
-      const needsMusicXml = ["musicxml", "pdf", "svg", "png"].includes(exportRequest.format);
-      const playback = needsPlayback ? scoreJsonToPlayback(scoreJson) : undefined;
-      if (needsPlayback && (!playback || playback.events.length === 0)) {
-        return reply.code(400).send({ code: "EXPORT_EMPTY_SELECTION", error: "The current score revision does not contain playable note events. Select a range with notes and retry." });
-      }
-
-      const renderedOptions: RenderedScoreExportOptions = {
-        imageResolutionDpi: exportRequest.options.imageResolutionDpi,
-        trimImage: exportRequest.options.trimImage,
-        trimImageMargin: exportRequest.options.trimImageMargin,
-        pageSize: exportRequest.options.pageSize === "default" ? undefined : exportRequest.options.pageSize,
-        marginPreset: exportRequest.options.marginPreset === "default" ? undefined : exportRequest.options.marginPreset,
-      };
-      const snapshot: ScoreExportSnapshot = {
-        schemaVersion: 1,
-        format: exportRequest.format,
-        revisionId: revision.id,
-        revisionNumber: revision.revision_number,
-        title: scoreJson.title,
-        musicXml: needsMusicXml ? scoreJsonToMusicXml(scoreJson, { pageLayout: renderedExportPageLayout(renderedOptions) }) : undefined,
-        playback,
-        options: exportRequest.options,
-      };
       const job = createScoreExportJob({
         userId: request.authUserId!,
         documentId: document.id,

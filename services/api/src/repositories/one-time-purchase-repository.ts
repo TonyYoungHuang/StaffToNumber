@@ -1,5 +1,6 @@
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import { isPurchasePlanCode, type PurchasePlanCode } from "@score/shared";
+import { assertScorePassDocumentOwnership, assertScorePassPurchaseTarget, bindPurchasedScorePass } from "../lib/score-passes.js";
 
 export type OneTimePurchase = {
   id: string; user_id: string | null; plan_code: PurchasePlanCode; plan_ref: string;
@@ -7,6 +8,7 @@ export type OneTimePurchase = {
   checkout_session_id: string | null; payment_intent_id: string | null;
   starts_at: string | null; ends_at: string | null; paid_at: string | null;
   amount_minor: number | null; currency: string | null; amount_refunded_minor: number;
+  target_document_id: string | null;
 };
 
 export function addPurchaseMonths(start: string, months: number) {
@@ -23,14 +25,18 @@ export function findOneTimePurchase(db: RuntimeDatabaseLike, orderId: string) {
   return db.prepare("SELECT * FROM billing_one_time_purchases WHERE id = ?").get(orderId) as OneTimePurchase | undefined;
 }
 
-export function prepareOneTimePurchase(db: RuntimeDatabaseLike, input: { orderId: string; userId: string; planCode: PurchasePlanCode; priceId: string }) {
+export function prepareOneTimePurchase(db: RuntimeDatabaseLike, input: { orderId: string; userId: string; planCode: PurchasePlanCode; priceId: string; targetDocumentId?: string | null }) {
   const now = new Date().toISOString();
+  if (input.targetDocumentId) {
+    assertScorePassDocumentOwnership(db, input.userId, input.targetDocumentId);
+    if (input.planCode === "single-score") assertScorePassPurchaseTarget(db, input.userId, input.targetDocumentId);
+  }
   db.prepare(`INSERT INTO billing_one_time_purchases
-    (id, user_id, plan_code, plan_ref, status, amount_refunded_minor, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 'pending', 0, ?, ?) ON CONFLICT(id) DO NOTHING`)
-    .run(input.orderId, input.userId, input.planCode, input.priceId, now, now);
+    (id, user_id, plan_code, plan_ref, status, amount_refunded_minor, created_at, updated_at, target_document_id)
+    VALUES (?, ?, ?, ?, 'pending', 0, ?, ?, ?) ON CONFLICT(id) DO NOTHING`)
+    .run(input.orderId, input.userId, input.planCode, input.priceId, now, now, input.targetDocumentId ?? null);
   const purchase = findOneTimePurchase(db, input.orderId)!;
-  if (purchase.user_id !== input.userId || purchase.plan_code !== input.planCode || purchase.plan_ref !== input.priceId) {
+  if (purchase.user_id !== input.userId || purchase.plan_code !== input.planCode || purchase.plan_ref !== input.priceId || purchase.target_document_id !== (input.targetDocumentId ?? null)) {
     throw new Error("One-time order does not match its original purchase.");
   }
   return purchase;
@@ -87,6 +93,9 @@ export function fulfillOneTimePurchase(db: RuntimeDatabaseLike, session: PaidSes
       // max_pages is a legacy schema column; its default is no longer enforced.
       db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, created_at)
         VALUES (?, NULL, 10, ?) ON CONFLICT(purchase_id) DO NOTHING`).run(orderId, now);
+      // The immutable target comes from the order created before payment, never
+      // from webhook metadata or an uploaded/exported score file.
+      if (locked.target_document_id && locked.status !== "refunded") bindPurchasedScorePass(db, userId, orderId, locked.target_document_id);
     }
     db.exec("COMMIT");
     return findOneTimePurchase(db, orderId)!;

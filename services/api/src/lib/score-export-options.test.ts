@@ -66,8 +66,7 @@ test("a bound pass preserves priority and exhaustion rules; an unbound pass cann
   for (const format of ["jianpu", "score-json"]) {
     const option = quote.options.find(o => o.format === format)!;
     assert.equal(option.creditCost, 0);
-    assert.equal(option.canSubmit, false);
-    assert.equal(option.reason, "SCORE_PASS_QUEUED_EXPORT_REQUIRED");
+    assert.equal(option.canSubmit, true);
   }
   const other = fixture();
   const code = generateActivationCodes({ planCode: "single-score", quantity: 1, entitlementDays: 30 }).codes[0]!;
@@ -135,9 +134,8 @@ test("API quote, changed-price rejection, generated exports and direct TXT/JSON 
     const passToken = createToken();
     createSession(pass.userId, passToken, 1);
     for (const format of ["jianpu", "score-json"]) {
-      const restricted = await app.inject({ method: "POST", url: `/api/scores/${pass.documentId}/export/${format}`, headers: { authorization: `Bearer ${passToken}` } });
-      assert.equal(restricted.statusCode, 409, restricted.body);
-      assert.equal(restricted.json().code, "SCORE_PASS_QUEUED_EXPORT_REQUIRED");
+      const direct = await app.inject({ method: "POST", url: `/api/scores/${pass.documentId}/export/${format}`, headers: { authorization: `Bearer ${passToken}` } });
+      assert.equal(direct.statusCode, 201, direct.body);
       assert.equal(getScoreExportOptions(pass.userId, pass.documentId).balance.available, 10);
     }
   } finally { await app.close(); }

@@ -3,7 +3,7 @@ import { processingJobCreditCost } from "./plan-quotas.js";
 
 export class ScorePassError extends Error {
   readonly statusCode: number;
-  constructor(readonly code: "SCORE_PASS_REQUIRED" | "SCORE_PASS_CREDITS_EXHAUSTED" | "SCORE_SOURCE_PAGE_COUNT_INVALID", message: string) {
+  constructor(readonly code: "SCORE_PASS_REQUIRED" | "SCORE_PASS_CREDITS_EXHAUSTED" | "SCORE_SOURCE_PAGE_COUNT_INVALID" | "SCORE_PASS_DOCUMENT_INVALID" | "SCORE_PASS_ALREADY_BOUND", message: string) {
     super(message);
     this.statusCode = code === "SCORE_SOURCE_PAGE_COUNT_INVALID" ? 422 : 403;
   }
@@ -15,19 +15,55 @@ export function assertScoreSourcePageCount(pageCount: number) {
   }
 }
 
-type Pass = { purchase_id: string; document_id: string | null; credit_limit: number };
+type Pass = { purchase_id: string; document_id: string | null; credit_limit: number; group_pass_id: string | null };
+
+function ensureLegacyMappings(db: RuntimeDatabaseLike, userId?: string, documentId?: string) {
+  // Lazily upgrades passes sold before schema 27, including fixtures and a
+  // fulfillment that raced the migration. This never changes credit_limit.
+  const missing = db.prepare(`SELECT p.purchase_id, p.document_id, p.created_at FROM score_passes p
+    JOIN billing_one_time_purchases b ON b.id = p.purchase_id JOIN score_documents d ON d.id = p.document_id
+    WHERE p.document_id IS NOT NULL AND p.group_pass_id IS NULL
+      ${userId ? "AND b.user_id = ?" : ""} ${documentId ? "AND p.document_id = ?" : ""}
+      AND NOT EXISTS (SELECT 1 FROM score_pass_documents mapped WHERE mapped.document_id = p.document_id)`).all(...[userId, documentId].filter((id): id is string => Boolean(id))) as Array<{ purchase_id: string; document_id: string; created_at: string }>;
+  for (const pass of missing) db.prepare(`INSERT INTO score_pass_documents (pass_id, document_id, role, created_at)
+    VALUES (?, ?, 'root', ?) ON CONFLICT(document_id) DO NOTHING`).run(pass.purchase_id, pass.document_id, pass.created_at);
+}
+
+export function assertScorePassDocumentOwnership(db: RuntimeDatabaseLike, userId: string, documentId: string) {
+  const document = db.prepare("SELECT id FROM score_documents WHERE id = ? AND user_id = ? AND status NOT IN ('deleted', 'archived')").get(documentId, userId);
+  if (!document) throw new ScorePassError("SCORE_PASS_DOCUMENT_INVALID", "Choose an existing score owned by this account.");
+  ensureLegacyMappings(db, undefined, documentId);
+  const owner = db.prepare(`SELECT b.user_id FROM score_pass_documents d
+    JOIN billing_one_time_purchases b ON b.id = d.pass_id WHERE d.document_id = ?`).get(documentId) as { user_id: string | null } | undefined;
+  if (owner && owner.user_id !== userId) throw new ScorePassError("SCORE_PASS_ALREADY_BOUND", "This score belongs to another score pass account.");
+}
+
+export function assertScorePassPurchaseTarget(db: RuntimeDatabaseLike, userId: string, documentId: string) {
+  assertScorePassDocumentOwnership(db, userId, documentId);
+  const group = db.prepare(`SELECT b.status FROM score_pass_documents d JOIN billing_one_time_purchases b ON b.id = d.pass_id
+    WHERE d.document_id = ?`).get(documentId) as { status: string } | undefined;
+  if (group && group.status !== "active") throw new ScorePassError("SCORE_PASS_REQUIRED", "The original score pass was refunded. Contact support before buying more credits.");
+}
 
 export function listScorePasses(db: RuntimeDatabaseLike, userId: string) {
+  ensureLegacyMappings(db, userId);
   // Legacy max_pages values remain in storage for schema compatibility only.
   // A pass covers one document regardless of its page count.
-  const passes = db.prepare(`SELECT p.purchase_id, p.document_id, p.credit_limit FROM score_passes p JOIN billing_one_time_purchases b ON b.id = p.purchase_id
+  const passes = db.prepare(`SELECT p.purchase_id, p.document_id, p.credit_limit, p.group_pass_id FROM score_passes p JOIN billing_one_time_purchases b ON b.id = p.purchase_id
     WHERE b.user_id = ? AND b.status = 'active' AND b.paid_at IS NOT NULL ORDER BY p.created_at, p.purchase_id`).all(userId) as Pass[];
-  return passes.map(p => ({ id: p.purchase_id, documentId: p.document_id, credits: p.credit_limit,
-    remaining: Math.max(0, p.credit_limit - creditsUsed(db, p.purchase_id)) }));
+  return passes.filter(p => !p.group_pass_id).map(p => {
+    const credits = passes.filter(funding => funding.purchase_id === p.purchase_id || funding.group_pass_id === p.purchase_id)
+      .reduce((sum, funding) => sum + funding.credit_limit, 0);
+    const documentIds = (db.prepare("SELECT document_id FROM score_pass_documents WHERE pass_id = ?").all(p.purchase_id) as Array<{ document_id: string }>).map(d => d.document_id);
+    return { id: p.purchase_id, documentId: p.document_id, documentIds, credits, remaining: Math.max(0, credits - creditsUsed(db, p.purchase_id)) };
+  });
 }
 
 export function scorePassForDocument(db: RuntimeDatabaseLike, userId: string, documentId: string) {
-  return listScorePasses(db, userId).find(p => p.documentId === documentId);
+  ensureLegacyMappings(db, userId, documentId);
+  const document = db.prepare("SELECT id FROM score_documents WHERE id = ? AND user_id = ? AND status NOT IN ('deleted', 'archived')").get(documentId, userId);
+  if (!document) return undefined;
+  return listScorePasses(db, userId).find(p => p.documentIds.includes(documentId));
 }
 
 function creditsUsed(db: RuntimeDatabaseLike, passId: string) {
@@ -45,19 +81,65 @@ export function lockScorePassAccount(db: RuntimeDatabaseLike, userId: string) {
 }
 
 export function bindScorePass(db: RuntimeDatabaseLike, userId: string, documentId: string, pageCount: number, creditCost = 1) {
+  assertScorePassDocumentOwnership(db, userId, documentId);
+  if (db.prepare("SELECT pass_id FROM score_pass_documents WHERE document_id = ?").get(documentId)) {
+    throw new ScorePassError("SCORE_PASS_ALREADY_BOUND", "A score pass is already bound to this score.");
+  }
   const available = listScorePasses(db, userId).filter(p => !p.documentId);
   const pass = available.find(p => p.remaining >= creditCost);
   if (!pass && available.length) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "This score pass does not have enough processing credits.");
   if (!pass) throw new ScorePassError("SCORE_PASS_REQUIRED", "Buy a One Score Pass or choose a subscription to process another score.");
   assertScoreSourcePageCount(pageCount);
   db.prepare("UPDATE score_passes SET document_id = ? WHERE purchase_id = ? AND document_id IS NULL").run(documentId, pass.id);
+  db.prepare("INSERT INTO score_pass_documents (pass_id, document_id, role, created_at) VALUES (?, ?, 'root', ?)")
+    .run(pass.id, documentId, new Date().toISOString());
   return pass.id;
+}
+
+// Caller owns the fulfillment transaction and holds the account lock. A second
+// purchase becomes funding of the existing immutable group, including if bought
+// from one of its extracted parts.
+export function bindPurchasedScorePass(db: RuntimeDatabaseLike, userId: string, passId: string, documentId: string) {
+  assertScorePassDocumentOwnership(db, userId, documentId);
+  const purchased = db.prepare(`SELECT p.purchase_id, p.document_id, p.group_pass_id, b.user_id FROM score_passes p
+    JOIN billing_one_time_purchases b ON b.id = p.purchase_id WHERE p.purchase_id = ?`).get(passId) as (Pass & { user_id: string | null }) | undefined;
+  if (!purchased) throw new Error("Paid score pass is missing.");
+  if (purchased.user_id !== userId) throw new ScorePassError("SCORE_PASS_REQUIRED", "This score pass belongs to another account.");
+  const mapping = db.prepare("SELECT pass_id FROM score_pass_documents WHERE document_id = ?").get(documentId) as { pass_id: string } | undefined;
+  if (purchased.document_id || purchased.group_pass_id) {
+    const groupId = purchased.group_pass_id ?? purchased.purchase_id;
+    if (mapping?.pass_id !== groupId) throw new ScorePassError("SCORE_PASS_ALREADY_BOUND", "A purchased pass cannot be moved to another score.");
+    return groupId;
+  }
+  if (mapping) {
+    const group = db.prepare(`SELECT p.purchase_id FROM score_passes p JOIN billing_one_time_purchases b ON b.id = p.purchase_id
+      WHERE p.purchase_id = ? AND b.user_id = ? AND b.status = 'active' AND b.paid_at IS NOT NULL`).get(mapping.pass_id, userId);
+    if (!group) throw new ScorePassError("SCORE_PASS_REQUIRED", "The original score pass was refunded. Contact support before buying more credits.");
+    db.prepare("UPDATE score_passes SET group_pass_id = ? WHERE purchase_id = ? AND document_id IS NULL AND group_pass_id IS NULL").run(mapping.pass_id, passId);
+    return mapping.pass_id;
+  }
+  db.prepare("UPDATE score_passes SET document_id = ? WHERE purchase_id = ? AND document_id IS NULL AND group_pass_id IS NULL").run(documentId, passId);
+  db.prepare("INSERT INTO score_pass_documents (pass_id, document_id, role, created_at) VALUES (?, ?, 'root', ?)")
+    .run(passId, documentId, new Date().toISOString());
+  return passId;
+}
+
+// Only server extraction calls this, in the same transaction that inserts the
+// derived document. Import endpoints never accept a pass/group ID from a file.
+export function mapExtractedScorePassDocument(db: RuntimeDatabaseLike, userId: string, sourceDocumentId: string, partDocumentId: string) {
+  const pass = scorePassForDocument(db, userId, sourceDocumentId);
+  if (!pass) return;
+  assertScorePassDocumentOwnership(db, userId, partDocumentId);
+  const existing = db.prepare("SELECT pass_id FROM score_pass_documents WHERE document_id = ?").get(partDocumentId) as { pass_id: string } | undefined;
+  if (existing && existing.pass_id !== pass.id) throw new ScorePassError("SCORE_PASS_ALREADY_BOUND", "This part is already covered by another score pass.");
+  if (!existing) db.prepare("INSERT INTO score_pass_documents (pass_id, document_id, role, created_at) VALUES (?, ?, 'part_extract', ?)")
+    .run(pass.id, partDocumentId, new Date().toISOString());
 }
 
 export function assertScorePassCredit(db: RuntimeDatabaseLike, userId: string, documentId: string, creditCost = 1) {
   const pass = scorePassForDocument(db, userId, documentId);
   if (!pass) throw new ScorePassError("SCORE_PASS_REQUIRED", "This score needs an active One Score Pass or subscription.");
-  if (pass.remaining < creditCost) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "The 10 processing credits for this score have been used or are insufficient for this operation. Choose a subscription for more processing.");
+  if (pass.remaining < creditCost) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", `The ${pass.credits} processing credits shared by this score and its parts have been used or are insufficient for this operation. Choose a subscription or add more credits to this score.`);
   return pass.id;
 }
 

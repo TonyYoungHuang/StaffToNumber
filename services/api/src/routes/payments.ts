@@ -4,6 +4,8 @@ import { isPurchasePlanCode, isCheckoutBillingKind, type CheckoutBillingKind, ty
 import { findOneTimePurchase, fulfillOneTimePurchase, hasRenewingSubscription, prepareOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { config } from "../config.js";
 import { getPlanQuotaUsage } from "../lib/plan-quotas.js";
+import { CheckoutContinuationError, normalizeCheckoutContinuation } from "../lib/checkout-continuation.js";
+import { assertScorePassPurchaseTarget, ScorePassError } from "../lib/score-passes.js";
 import { findUserByEmail, getUserProfile } from "../repositories/auth-repository.js";
 import {
   cancelPaddleSubscription,
@@ -76,11 +78,13 @@ function checkoutIdempotencyHash(input: {
   billingKind?: CheckoutBillingKind;
   organizationId?: string | null;
   seatQuantity?: number;
+  targetDocumentId?: string | null;
+  intendedActionJson?: string | null;
 }) {
   const key = normalizedIdempotencyKey(input.header);
   if (!key) return null;
   return createHash("sha256")
-    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), ...(input.billingKind === "one_time" ? ["one_time"] : []), key].join(":"))
+    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), ...(input.billingKind === "one_time" ? ["one_time"] : []), ...(input.targetDocumentId ? [input.targetDocumentId, input.intendedActionJson ?? ""] : []), key].join(":"))
     .digest("hex");
 }
 
@@ -194,6 +198,10 @@ function recoverStripePaymentOrder(
     organization_id: session.metadata?.organizationId ?? null,
     seat_quantity: seatQuantity,
     idempotency_key_hash: null,
+    target_document_id: null,
+    intended_action_json: null,
+    resume_consumed_at: null,
+    resume_result_json: null,
     checkout_session_id: session.id,
     transaction_id: null,
     checkout_url: session.url,
@@ -322,7 +330,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       preHandler: app.requireAuth,
     },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; billingKind?: unknown; organizationId?: string; seatQuantity?: number; returnTo?: unknown };
+      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; billingKind?: unknown; organizationId?: string; seatQuantity?: number; returnTo?: unknown; targetDocumentId?: unknown; intendedAction?: unknown };
 
       if (!isProvider(body.provider)) {
         return reply.code(400).send({ error: "Payment provider is required." });
@@ -340,6 +348,22 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       const customerEmail = profile?.email ?? null;
       if (!customerEmail) {
         return reply.code(400).send({ error: "A registered account is required before payment." });
+      }
+
+      let targetDocumentId: string | null = null;
+      let intendedActionJson: string | null = null;
+      try {
+        if (body.targetDocumentId !== undefined && body.targetDocumentId !== null) {
+          if (typeof body.targetDocumentId !== "string" || !body.targetDocumentId.trim()) return reply.code(400).send({ error: "A valid target score is required." });
+          targetDocumentId = body.targetDocumentId.trim();
+        }
+        if (body.intendedAction && !targetDocumentId) return reply.code(400).send({ error: "An intended action requires a target score." });
+        const action = normalizeCheckoutContinuation(request.authUserId!, targetDocumentId, body.intendedAction);
+        if (targetDocumentId && planCode === "single-score") assertScorePassPurchaseTarget(db, request.authUserId!, targetDocumentId);
+        intendedActionJson = action ? JSON.stringify(action) : null;
+      } catch (error) {
+        const typed = error instanceof ScorePassError || error instanceof CheckoutContinuationError;
+        return reply.code(typed ? error.statusCode : 400).send({ error: error instanceof Error ? error.message : "Invalid checkout continuation.", code: typed ? error.code : "CHECKOUT_CONTINUATION_INVALID" });
       }
 
       const organizationId = typeof body.organizationId === "string" && body.organizationId.trim() ? body.organizationId.trim() : null;
@@ -370,6 +394,8 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
           billingKind,
           organizationId,
           seatQuantity,
+          targetDocumentId,
+          intendedActionJson,
         });
       } catch (error) {
         return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid idempotency key." });
@@ -391,6 +417,8 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         organizationId,
         seatQuantity,
         idempotencyKeyHash,
+        targetDocumentId,
+        intendedActionJson,
       });
 
       if (!order) {
@@ -445,7 +473,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
 
       try {
         if (body.provider === "stripe") {
-          if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: request.authUserId!, planCode, priceId: priceId! });
+          if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: request.authUserId!, planCode, priceId: priceId!, targetDocumentId });
           const session = await services.createStripeCheckoutSession({
           locale: body.locale,
             billingKind, planCode,

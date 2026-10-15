@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const enBillingMessages = {
+  scorePass: getScorePassCopy("en"),
   reviewNotice: "",
   activation: {
     page: {

@@ -21,6 +21,7 @@ type CheckoutPayload = { orderId: string; url: string; code?: string };
 export function OneScorePassUpsell({
   source,
   returnTo,
+  targetDocumentId,
   beforeCheckout,
   onSubscriptionClick,
   showNote = true,
@@ -28,6 +29,7 @@ export function OneScorePassUpsell({
 }: {
   source: string;
   returnTo?: string;
+  targetDocumentId?: string;
   /** Runs before checkout or plan navigation (e.g. persist an import draft). Return false to abort. */
   beforeCheckout?: () => Promise<boolean>;
   /** Overrides the default subscription link (caller handles navigation and its own tracking). */
@@ -42,7 +44,8 @@ export function OneScorePassUpsell({
   const lock = useRef(false);
   const intent = useRef<string | null>(null);
   const next = () => workReturnPath(returnTo ?? currentWorkPath());
-  const passCheckoutHref = () => `${upgradePath(next())}&plan=single-score&billing=one_time&continue=1`;
+  const targetQuery = targetDocumentId ? `&targetDocumentId=${encodeURIComponent(targetDocumentId)}` : "";
+  const passCheckoutHref = () => `${upgradePath(next())}&plan=single-score&billing=one_time&continue=1${targetQuery}`;
 
   async function buyPass() {
     if (lock.current) return;
@@ -57,7 +60,7 @@ export function OneScorePassUpsell({
       const result = await apiRequest<CheckoutPayload>("/api/payments/checkout/authenticated", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": intent.current },
-        body: JSON.stringify({ provider: "stripe", billingKind: "one_time", locale, planCode: SINGLE_SCORE_PASS.code, seatQuantity: 1 }),
+        body: JSON.stringify({ provider: "stripe", billingKind: "one_time", locale, planCode: SINGLE_SCORE_PASS.code, seatQuantity: 1, targetDocumentId }),
       });
       if (!result.ok) {
         const code = (result.data as { code?: string } | undefined)?.code;
@@ -94,7 +97,7 @@ export function OneScorePassUpsell({
       </button>
       {onSubscriptionClick
         ? <button type="button" className="button button-secondary" data-plan-type="subscription" disabled={busy || disabled} onClick={() => { trackSubscription(); onSubscriptionClick(); }}>{copy.subscriptionCta}</button>
-        : <Link href={`${upgradePath(next())}&plan=starter-monthly&billing=subscription`} className="button button-secondary" data-plan-type="subscription" onClick={trackSubscription}>{copy.subscriptionCta}</Link>}
+        : <Link href={`${upgradePath(next())}&plan=starter-monthly&billing=subscription${targetQuery}`} className="button button-secondary" data-plan-type="subscription" onClick={trackSubscription}>{copy.subscriptionCta}</Link>}
     </div>
     {showNote ? <p className="micro-copy">{copy.passNote}</p> : null}
     {!checkoutAvailable ? <p className="micro-copy" role="status">{copy.building}</p> : null}

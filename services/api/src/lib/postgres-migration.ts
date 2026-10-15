@@ -527,13 +527,18 @@ export async function migrateSqliteToPostgres(input: {
 
     const columnsByTable = new Map<string, SqliteColumn[]>();
     for (const table of tables) {
-      if (/\b(?:CHECK|GENERATED)\b|WITHOUT\s+ROWID/iu.test(table.sql)) {
+      // Schema 27's finite role check has an identical PostgreSQL definition.
+      // Keep rejecting arbitrary checks rather than silently dropping them.
+      const portableRoleCheck = table.name === "score_pass_documents" && /CHECK\s*\(role IN \('root', 'part_extract'\)\)/u.test(table.sql);
+      const remainingSql = portableRoleCheck ? table.sql.replace(/CHECK\s*\(role IN \('root', 'part_extract'\)\)/u, "") : table.sql;
+      if (/\b(?:CHECK|GENERATED)\b|WITHOUT\s+ROWID/iu.test(remainingSql)) {
         throw new Error(`Table ${table.name} contains a constraint that requires a manual PostgreSQL migration.`);
       }
       const columns = tableColumns(input.source, table.name);
       if (columns.length === 0) throw new Error(`Table ${table.name} has no columns.`);
       columnsByTable.set(table.name, columns);
       await input.target.query(createTableSql(table.name, columns));
+      if (portableRoleCheck) await input.target.query("ALTER TABLE score_pass_documents ADD CONSTRAINT score_pass_documents_role_check CHECK (role IN ('root', 'part_extract'))");
     }
 
     const reports: PostgresMigrationTableReport[] = [];

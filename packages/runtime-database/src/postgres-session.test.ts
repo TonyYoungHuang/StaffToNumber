@@ -8,7 +8,30 @@ test("classifies transaction control statements", () => {
   assert.equal(transactionControl("COMMIT;"), "commit");
   assert.equal(transactionControl("END"), "commit");
   assert.equal(transactionControl("ROLLBACK"), "rollback");
+  assert.equal(transactionControl("ROLLBACK TO SAVEPOINT checkout_action"), null);
+  assert.equal(transactionControl("ROLLBACK WORK TO checkout_action"), null);
   assert.equal(transactionControl("SELECT 1"), null);
+});
+
+test("a failed action rolls back to its savepoint without committing the surrounding checkout", async () => {
+  const calls: string[] = [];
+  const executor = createSchemaScopedPostgresExecutor("scoretransposer", async sql => {
+    calls.push(sql);
+    if (sql === "INSERT failed_action") throw new Error("action failed");
+    return { rows: [] };
+  });
+  await executor.query("BEGIN");
+  await executor.query("UPDATE users SET updated_at = updated_at WHERE id = $1", ["buyer"]);
+  await executor.query("SAVEPOINT checkout_action");
+  await assert.rejects(() => executor.query("INSERT failed_action"), /action failed/);
+  await executor.query("ROLLBACK TO SAVEPOINT checkout_action");
+  await executor.query("RELEASE SAVEPOINT checkout_action");
+  await executor.query("UPDATE payment_orders SET resume_consumed_at = $1", ["now"]);
+  await executor.query("COMMIT");
+  assert.deepEqual(calls, ["BEGIN", "SELECT set_config('search_path', $1, true)",
+    "UPDATE users SET updated_at = updated_at WHERE id = $1", "SAVEPOINT checkout_action", "INSERT failed_action",
+    "ROLLBACK TO SAVEPOINT checkout_action", "RELEASE SAVEPOINT checkout_action",
+    "UPDATE payment_orders SET resume_consumed_at = $1", "COMMIT"]);
 });
 
 test("pins every standalone query to a schema-scoped transaction", async () => {

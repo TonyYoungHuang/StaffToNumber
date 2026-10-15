@@ -92,7 +92,7 @@ export const authPlugin = fp(async (app) => {
 
     const documentId = (request.params as { id?: unknown } | null)?.id;
     if (typeof documentId === "string" && scorePassForDocument(db, request.authUserId, documentId)
-      && request.routeOptions.url?.includes("/export/")) {
+      && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
       // The current editor uses /exports, where reservations, failures and
       // retries are metered. Do not allow the legacy synchronous API to bypass it.
       reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" });

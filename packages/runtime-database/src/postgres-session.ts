@@ -68,6 +68,9 @@ export function transactionControl(sql: string): "begin" | "commit" | "rollback"
   const normalized = sql.trimStart();
   if (/^BEGIN(?:\s|;|$)/iu.test(normalized)) return "begin";
   if (/^(?:COMMIT|END)(?:\s|;|$)/iu.test(normalized)) return "commit";
+  // Rolling back an action savepoint keeps the enclosing checkout transaction
+  // open, including its account lock and durable consumed result.
+  if (/^ROLLBACK(?:\s+WORK)?\s+TO(?:\s|;|$)/iu.test(normalized)) return null;
   if (/^ROLLBACK(?:\s|;|$)/iu.test(normalized)) return "rollback";
   return null;
 }

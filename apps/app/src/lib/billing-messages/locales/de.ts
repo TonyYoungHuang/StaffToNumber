@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const deBillingMessages = {
+  scorePass: getScorePassCopy("de"),
   reviewNotice: "Die folgenden Zahlungstexte sind ein Übersetzungsentwurf und noch nicht fachlich geprüft. Bei Abweichungen gelten die englischen Bedingungen und die Seite des Zahlungsanbieters.",
   activation: {
     page: { title: "Aktivierungscode einlösen", description: "Geben Sie den beim Kauf erhaltenen Code ein, um den Notenarbeitsbereich ein Jahr lang zu aktivieren." },

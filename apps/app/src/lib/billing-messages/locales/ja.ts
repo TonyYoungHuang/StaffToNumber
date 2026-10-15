@@ -1,6 +1,8 @@
+import { getScorePassCopy } from "../score-pass-copy";
 import type { BillingMessageCatalog } from "../types";
 
 export const jaBillingMessages = {
+  scorePass: getScorePassCopy("ja"),
   reviewNotice: "以下の決済文言は翻訳草案で、専門家による確認前です。相違がある場合は、英語の条件と決済サービスの画面が優先されます。",
   activation: {
     page: { title: "アクティベーションコードを利用", description: "購入時に受け取ったコードを入力し、現在の楽譜ワークスペースを1年間利用できるようにします。" },

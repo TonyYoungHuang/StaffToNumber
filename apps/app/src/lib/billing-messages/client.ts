@@ -48,3 +48,5 @@ export function mappedBillingStatus<TStatus extends string>(
 ) {
   return labels[status as TStatus] ?? status;
 }
+
+export { getScorePassCopy } from "./score-pass-copy";

@@ -4,6 +4,7 @@ import { createRuntimeDatabase } from "@score/runtime-database";
 import { config } from "./config.js";
 import { DATABASE_SCHEMA_VERSION } from "./schema-version.js";
 import { PREPAID_TABLES_SQL, PREPAID_SQLITE_TRIGGERS } from "./lib/prepaid-schema.js";
+import { SCORE_PASS_DOCUMENTS_SQL, SCORE_PASS_BACKFILL_SQL } from "./lib/score-pass-schema.js";
 
 if (config.runtimeDatabasePrimary === "sqlite") fs.mkdirSync(path.dirname(config.dbFile), { recursive: true });
 fs.mkdirSync(config.storageDir, { recursive: true });
@@ -1110,6 +1111,12 @@ export function initDb() {
   ensureColumn("payment_orders", "organization_id", "TEXT");
   ensureColumn("payment_orders", "seat_quantity", "INTEGER NOT NULL DEFAULT 1");
   ensureColumn("payment_orders", "idempotency_key_hash", "TEXT");
+  ensureColumn("payment_orders", "target_document_id", "TEXT");
+  ensureColumn("payment_orders", "intended_action_json", "TEXT");
+  ensureColumn("payment_orders", "resume_consumed_at", "TEXT");
+  ensureColumn("payment_orders", "resume_result_json", "TEXT");
+  ensureColumn("billing_one_time_purchases", "target_document_id", "TEXT");
+  ensureColumn("score_passes", "group_pass_id", "TEXT REFERENCES score_passes(purchase_id)");
   ensureColumn("payment_orders", "checkout_session_id", "TEXT");
   ensureColumn("payment_orders", "transaction_id", "TEXT");
   ensureColumn("payment_orders", "checkout_url", "TEXT");
@@ -1373,6 +1380,8 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_users_account_status_deletion ON users(account_status, scheduled_deletion_at);
   `);
   db.exec(PREPAID_TABLES_SQL + PREPAID_SQLITE_TRIGGERS);
+  db.exec(SCORE_PASS_DOCUMENTS_SQL + SCORE_PASS_BACKFILL_SQL);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_score_passes_group ON score_passes(group_pass_id);");
   db.exec(`PRAGMA user_version = ${DATABASE_SCHEMA_VERSION};`);
 }
 
@@ -1388,6 +1397,7 @@ function validatePostgresSchema() {
     "billing_one_time_purchases",
     "score_passes",
     "score_pass_jobs",
+    "score_pass_documents",
     "prepaid_credit_grants",
     "prepaid_credit_charges",
     "job_dispatch_outbox",

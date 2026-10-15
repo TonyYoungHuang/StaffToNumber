@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, getPurchaseOptionsCopy, getSingleScorePassCopy, SINGLE_SCORE_PASS, type CheckoutBillingKind, type PurchasePlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
+import { APP_ROUTES, getPurchaseOptionsCopy, getSingleScorePassCopy, SINGLE_SCORE_PASS, type CheckoutIntendedAction, type CheckoutBillingKind, type PurchasePlanCode, type PricingPlanCode, type PricingPlanDisplay } from "@score/shared";
 import { CreditPlanCard, CreditPlanGrid } from "@score/ui";
 import { trackFunnelEvent } from "../lib/analytics";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
@@ -12,6 +12,8 @@ import { AppCheckoutClient } from "./AppCheckoutClient";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { workReturnPath } from "../lib/flow-return";
 import styles from "./AppCheckout.module.css";
+import { defaultCheckoutPlan } from "../lib/score-pass-checkout";
+import { getScorePassCopy } from "../lib/billing-messages/client";
 
 type CheckoutCopy = BillingMessageCatalog["checkout"];
 
@@ -20,11 +22,17 @@ export function CheckoutPlanSelector({
   locale,
   copy,
   initialPlanCode,
-  initialBillingKind = "one_time",
+  initialBillingKind = "subscription",
+  targetDocumentId,
+  intendedAction,
+  isTopUp = false,
   authMessages,
   returnTo = "/scores",
 }: {
   returnTo?: string;
+  targetDocumentId?: string;
+  intendedAction?: CheckoutIntendedAction;
+  isTopUp?: boolean;
   plans: readonly PricingPlanDisplay[];
   locale: SupportedLocale;
   copy: CheckoutCopy;
@@ -32,12 +40,15 @@ export function CheckoutPlanSelector({
   initialBillingKind?: CheckoutBillingKind;
   authMessages: AuthMessageCatalog["form"];
 }) {
-  const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | PurchasePlanCode>(initialPlanCode ?? SINGLE_SCORE_PASS.code);
+  const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | PurchasePlanCode>(defaultCheckoutPlan(initialPlanCode));
   const [billingKind, setBillingKind] = useState<CheckoutBillingKind>(initialBillingKind);
-  const [plansOpen, setPlansOpen] = useState(Boolean(initialPlanCode && initialPlanCode !== SINGLE_SCORE_PASS.code));
+  const [plansOpen, setPlansOpen] = useState(defaultCheckoutPlan(initialPlanCode) !== SINGLE_SCORE_PASS.code);
   const flow = useFlowMessages();
   const purchaseCopy = getPurchaseOptionsCopy(locale);
   const passCopy = getSingleScorePassCopy(locale);
+  const scorePassCopy = getScorePassCopy(locale);
+  const passPrice = `US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`;
+  const passTitle = targetDocumentId ? formatMessage(isTopUp ? scorePassCopy.topUp : scorePassCopy.newPass, { price: passPrice }) : `${passCopy.name} · ${passPrice}`;
   const displayPlans = billingKind === "subscription" ? plans : plans.map(plan => {
     if (plan.code === "free") return plan;
     const duration = plan.code.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month;
@@ -46,7 +57,7 @@ export function CheckoutPlanSelector({
       resources: [...plan.resources.slice(0, 3), purchaseCopy.oneTimeNote] };
   });
   const selectedPlan = selectedPlanCode === SINGLE_SCORE_PASS.code ? {
-    code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: "US$2.99", credits: passCopy.benefits[1],
+    code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: passPrice, credits: passCopy.benefits[1],
   } : displayPlans.find((plan) => plan.code === selectedPlanCode);
   const selectedBillingKind = selectedPlanCode === SINGLE_SCORE_PASS.code ? "one_time" : billingKind;
   const planListTracked = useRef(false);
@@ -95,11 +106,12 @@ export function CheckoutPlanSelector({
     <>
       <Link className="button button-secondary flow-return" href={workReturnPath(returnTo)}>{flow.resume}</Link>
       <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
-        <div className="stack-sm" data-primary-plan="single-score">
-          <h2 className={styles.sectionHeading}>{passCopy.name} · US$2.99</h2>
-          <p className="body-copy">{passCopy.body}</p>
+        <div className="stack-sm" data-primary-plan={selectedPlanCode}>
+          <h2 className={styles.sectionHeading}>{passTitle}</h2>
+          <p className="body-copy">{targetDocumentId ? scorePassCopy.passTarget : passCopy.body}</p>
+          {targetDocumentId ? <p className="helper-copy">{scorePassCopy.sharedCredits}</p> : null}
           <p className="micro-copy">{passCopy.once}</p>
-          {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <button type="button" className="button button-secondary" onClick={() => choosePlan(SINGLE_SCORE_PASS.code)}>{passCopy.name} · US$2.99</button> : null}
+          {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <button type="button" className="button button-secondary" onClick={() => choosePlan(SINGLE_SCORE_PASS.code)}>{passTitle}</button> : null}
         </div>
         <details className="flow-details" open={plansOpen} onToggle={event => setPlansOpen(event.currentTarget.open)}>
           <summary>{purchaseCopy.subscription} · {purchaseCopy.oneTime}</summary>
@@ -163,6 +175,8 @@ export function CheckoutPlanSelector({
           <AppCheckoutClient
             key={`${selectedBillingKind}:${selectedPlan.code}`}
             returnTo={returnTo}
+            targetDocumentId={targetDocumentId}
+            intendedAction={intendedAction}
             billingKind={selectedBillingKind}
             locale={locale}
             copy={copy.client}

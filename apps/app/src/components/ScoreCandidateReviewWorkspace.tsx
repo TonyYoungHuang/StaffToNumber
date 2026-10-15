@@ -146,7 +146,7 @@ export function ScoreCandidateReviewWorkspace({
             {copy.back}
           </Link>
           {freeEditing ? (
-            <OneScorePassUpsell source="free_omr_review" />
+            <OneScorePassUpsell source="free_omr_review" targetDocumentId={scoreId} />
           ) : (
             <>
               <button type="button" className="button button-secondary" onClick={onReject} disabled={navigationLocked || submittingAction !== null}>

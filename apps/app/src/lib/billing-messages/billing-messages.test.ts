@@ -64,7 +64,7 @@ test("all nine locales describe single-score card, Alipay and Link without promi
   }
 });
 
-test("checkout and upsells make the One Score Pass primary and omit activation in every locale", () => {
+test("checkout supports an explicit One Score Pass and defaults to Starter without activation", () => {
   const upsell = source("../../components/OneScorePassUpsell.tsx");
   const checkout = source("../../components/AppCheckoutClient.tsx");
   const selector = source("../../components/CheckoutPlanSelector.tsx");
@@ -77,7 +77,7 @@ test("checkout and upsells make the One Score Pass primary and omit activation i
   assert.match(upsell, /plan=starter-monthly&billing=subscription/u);
   assert.match(checkout, /resumeCheckout\.current = true/u);
   assert.match(checkout, /selectedPlan\.code === "single-score" \? getOneScoreUpsellCopy\(locale\)\.passCta/u);
-  assert.match(selector, /initialPlanCode \?\? SINGLE_SCORE_PASS\.code/u);
+  assert.match(selector, /defaultCheckoutPlan\(initialPlanCode\)/u);
   assert.match(selector, /<details className="flow-details" open=\{plansOpen\}/u);
   assert.match(page, /isPurchasePlanCode\(requestedPlan\)/u);
   for (const locale of SUPPORTED_LOCALES) {
@@ -248,7 +248,7 @@ test("payment completion keeps a safe work destination without a public-app redi
   assert.match(status, /result\.data\.user\.id !== order\.userId/u);
   assert.match(status, /entitlement\.status === "active"/u);
   assert.match(status, /order\.planCode === "single-score"[\s\S]*pass\.id === orderId/u);
-  assert.match(status, /router\.replace\(readCheckoutReturn\(orderId, returnTo\)\.next\)/u);
+  assert.match(status, /router\.replace\(targetId \?[^;]+readCheckoutReturn\(orderId, returnTo\)\.next\)/u);
   assert.equal(readCheckoutReturn("missing-order", "/scores/original#export-center").next, "/scores/original#export-center");
   assert.equal(readCheckoutReturn("missing-order", "https://external.invalid").next, "/scores");
   for (const [file, component] of [["success", "AppCheckoutStatusClient"], ["cancel", "AppCheckoutCancelClient"]]) {

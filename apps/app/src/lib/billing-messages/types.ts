@@ -1,3 +1,4 @@
+import type { ScorePassCopy } from "./score-pass-copy";
 import type { PaymentProvider, PricingPlanCode } from "@score/shared";
 
 export const BILLING_SUBSCRIPTION_STATUSES = [
@@ -163,6 +164,7 @@ export type BillingManagerCopy = {
 };
 
 export type BillingMessageCatalog = {
+  scorePass: ScorePassCopy;
   reviewNotice: string;
   activation: {
     page: { title: string; description: string };
