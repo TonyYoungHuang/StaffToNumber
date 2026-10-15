@@ -2,7 +2,9 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { config } from "../config.js";
 import { createSalt, createToken, hashPassword, verifyPassword } from "../lib/auth.js";
 import { buildPasswordResetEmail, buildPasswordResetUrl, sendTransactionalEmail } from "../lib/email.js";
-import { verifyGoogleCredential } from "../lib/google-auth.js";
+import { googleCredentialRequestError, verifyGoogleCredential, type GoogleAccount } from "../lib/google-auth.js";
+import { googleAllowedOrigins } from "../lib/google-oauth.js";
+import { registerGoogleOAuthRoutes } from "./google-oauth.js";
 import { buildExpiredSessionCookie, buildSessionCookie } from "../lib/session-cookie.js";
 import {
   completePasswordReset,
@@ -45,7 +47,22 @@ function attachSessionCookie(reply: FastifyReply, token: string) {
   }));
 }
 
+function createGoogleSession(account: GoogleAccount) {
+  let user = findUserByEmail(account.email);
+  const isNewUser = !user;
+  if (!user) {
+    const salt = createSalt();
+    user = createUser(account.email, hashPassword(createToken(), salt), salt);
+  }
+  if (!user) throw new Error("Could not create the Google account.");
+  const token = createToken();
+  createSession(user.id, token, config.sessionDays);
+  return { token, user: getUserProfile(user.id), isNewUser };
+}
+
 export async function authRoutes(app: FastifyInstance) {
+  const googleOrigins = googleAllowedOrigins(config);
+  await registerGoogleOAuthRoutes(app, { config, authenticate: account => createGoogleSession(account).token });
   app.post("/auth/activation-code", async (request, reply) => {
     reply.header("Cache-Control", "no-store");
     const body = (request.body ?? {}) as { code?: unknown };
@@ -132,6 +149,9 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post("/auth/google", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const requestError = googleCredentialRequestError(request.headers, googleOrigins);
+    if (requestError) return reply.code(requestError.status).send({ error: requestError.error });
     const body = (request.body ?? {}) as { credential?: string };
     if (!config.googleClientId) {
       return reply.code(503).send({ error: "Google sign-in is not configured." });
@@ -143,31 +163,14 @@ export async function authRoutes(app: FastifyInstance) {
     let googleAccount;
     try {
       googleAccount = await verifyGoogleCredential(body.credential.trim(), config.googleClientId);
-    } catch (error) {
-      request.log.warn({ error }, "Google credential verification failed.");
+    } catch {
+      request.log.warn({ event: "auth.google_credential_failed" }, "Google credential verification failed.");
       return reply.code(401).send({ error: "Google sign-in could not be verified. Please try again." });
     }
 
-    let user = findUserByEmail(googleAccount.email);
-    const isNewUser = !user;
-    if (!user) {
-      const salt = createSalt();
-      const passwordHash = hashPassword(createToken(), salt);
-      user = createUser(googleAccount.email, passwordHash, salt);
-    }
-    if (!user) {
-      return reply.code(500).send({ error: "Could not create the Google account." });
-    }
-
-    const token = createToken();
-    createSession(user.id, token, config.sessionDays);
-    attachSessionCookie(reply, token);
-
-    return reply.code(isNewUser ? 201 : 200).send({
-      token,
-      user: getUserProfile(user.id),
-      isNewUser,
-    });
+    const session = createGoogleSession(googleAccount);
+    attachSessionCookie(reply, session.token);
+    return reply.code(session.isNewUser ? 201 : 200).send(session);
   });
 
   app.get(

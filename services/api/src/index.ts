@@ -10,6 +10,7 @@ import { validateRuntimeConfig } from "./config.js";
 import { db, initDb } from "./db.js";
 import { registerApiObservability } from "./lib/observability.js";
 import { registerApiRateLimiting } from "./lib/rate-limit.js";
+import { sanitizeAuthLogUrl } from "./lib/google-oauth.js";
 import { startJobBrokerDispatcher } from "./lib/job-broker.js";
 import { safeJobBrokerErrorMessage } from "./lib/job-broker-connection.js";
 import { authPlugin } from "./plugins/auth.js";
@@ -41,7 +42,10 @@ import {
 } from "./repositories/account-lifecycle-repository.js";
 
 validateRuntimeConfig();
-const app = Fastify({ logger: true, trustProxy: config.trustProxy });
+const app = Fastify({ logger: {
+  // Fastify's default incoming-request serializer otherwise records callback code/state.
+  serializers: { req: request => ({ method: request.method, url: sanitizeAuthLogUrl(request.url), hostname: request.hostname, remoteAddress: request.ip }) },
+}, trustProxy: config.trustProxy });
 if (config.uploadMalwareScan === "off") {
   app.log.warn({ event: "upload.malware_scan_disabled", flag: "UPLOAD_MALWARE_SCAN=off" }, "Upload malware scanning is disabled; format, size, page and media checks remain enabled.");
 }

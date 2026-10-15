@@ -70,6 +70,7 @@ export const config = {
     .filter(Boolean),
   resetPasswordUrlBase: process.env.RESET_PASSWORD_URL_BASE ?? `${process.env.PUBLIC_APP_URL ?? "http://localhost:3001"}/reset-password`,
   googleClientId: process.env.GOOGLE_CLIENT_ID?.trim() ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "",
   sessionDays: Number(process.env.SESSION_DAYS ?? 30),
   entitlementDays: Number(process.env.DEFAULT_ENTITLEMENT_DAYS ?? 365),
   passwordResetTokenHours: Number(process.env.PASSWORD_RESET_TOKEN_HOURS ?? 2),

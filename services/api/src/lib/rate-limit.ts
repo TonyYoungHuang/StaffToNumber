@@ -27,7 +27,9 @@ export function resolveApiRateLimitPolicy(method: string, url: string): ApiRateL
     return { id: "activation", max: 10, timeWindowMs: 15 * MINUTE };
   }
 
-  if (normalizedMethod === "POST" && /^\/api\/auth\/(google|login|register|activation-code|enable-code-login)$/u.test(path)) {
+  if (normalizedMethod === "POST" && /^\/api\/auth\/(google|login|register|activation-code|enable-code-login)$/u.test(path)
+    || ["GET", "POST"].includes(normalizedMethod) && path === "/api/auth/google/start"
+    || normalizedMethod === "GET" && path === "/api/auth/google/callback") {
     return { id: "auth", max: 10, timeWindowMs: 15 * MINUTE };
   }
   if (normalizedMethod === "POST" && /^\/api\/auth\/(forgot-password|reset-password)$/u.test(path)) {

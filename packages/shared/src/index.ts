@@ -1,4 +1,5 @@
 import type { SupportedLocale } from "@score/i18n";
+export * from "./google-login.ts";
 
 export {
   DEFAULT_LOCALE,
