@@ -23,7 +23,10 @@ async function ensureStoreReady() {
   // Schema changes belong to deployment migrations. The runtime role intentionally
   // has table DML access without permission to create or replace database objects.
   storeReadyPromise ??= activePool
-    .query(`SELECT 1 FROM public.score_payment_orders LIMIT 1`)
+    .query(`SELECT target_document_id, intended_action_json, resume_consumed_at, resume_result_json,
+      checkout_intent_hash, checkout_plan_code, pass_mode, return_site, return_path, return_state_json,
+      return_token_hash, return_token_expires_at, return_token_consumed_at, provider_checkout_started_at
+      FROM public.score_payment_orders LIMIT 1`)
     .then(() => undefined);
   await storeReadyPromise;
   return true;
@@ -63,6 +66,16 @@ function mapRow(row: QueryResultRow, publicToken: string): PaymentOrderRow {
     organization_id: nullableString(row.organization_id),
     seat_quantity: Number(row.seat_quantity),
     idempotency_key_hash: nullableString(row.idempotency_key_hash),
+    checkout_intent_hash: nullableString(row.checkout_intent_hash),
+    checkout_plan_code: nullableString(row.checkout_plan_code),
+    pass_mode: nullableString(row.pass_mode),
+    provider_checkout_started_at: nullableString(row.provider_checkout_started_at),
+    return_site: nullableString(row.return_site),
+    return_path: nullableString(row.return_path),
+    return_state_json: nullableString(row.return_state_json),
+    return_token_hash: nullableString(row.return_token_hash),
+    return_token_expires_at: nullableString(row.return_token_expires_at),
+    return_token_consumed_at: nullableString(row.return_token_consumed_at),
     target_document_id: nullableString(row.target_document_id),
     intended_action_json: nullableString(row.intended_action_json),
     resume_consumed_at: nullableString(row.resume_consumed_at),
@@ -95,10 +108,12 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
         entitlement_days, billing_kind, organization_id, seat_quantity,
         checkout_session_id, transaction_id, checkout_url, amount_minor, currency,
         activation_code, paid_at, cancelled_at, failure_reason, created_at, updated_at,
-        target_document_id, intended_action_json, resume_consumed_at, resume_result_json
+        target_document_id, intended_action_json, resume_consumed_at, resume_result_json,
+        checkout_intent_hash, return_site, return_path, return_state_json, return_token_hash, return_token_expires_at, return_token_consumed_at, checkout_plan_code, pass_mode, idempotency_key_hash, provider_checkout_started_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-        $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+        $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+        $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
       )
       ON CONFLICT (id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
@@ -120,6 +135,17 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
         failure_reason = EXCLUDED.failure_reason,
         target_document_id = EXCLUDED.target_document_id,
         intended_action_json = EXCLUDED.intended_action_json,
+        checkout_intent_hash = EXCLUDED.checkout_intent_hash,
+        idempotency_key_hash = EXCLUDED.idempotency_key_hash,
+        checkout_plan_code = EXCLUDED.checkout_plan_code,
+        pass_mode = EXCLUDED.pass_mode,
+        provider_checkout_started_at = COALESCE(score_payment_orders.provider_checkout_started_at, EXCLUDED.provider_checkout_started_at),
+        return_site = EXCLUDED.return_site,
+        return_path = EXCLUDED.return_path,
+        return_state_json = EXCLUDED.return_state_json,
+        return_token_hash = EXCLUDED.return_token_hash,
+        return_token_expires_at = EXCLUDED.return_token_expires_at,
+        return_token_consumed_at = COALESCE(score_payment_orders.return_token_consumed_at, EXCLUDED.return_token_consumed_at),
         resume_consumed_at = COALESCE(score_payment_orders.resume_consumed_at, EXCLUDED.resume_consumed_at),
         resume_result_json = COALESCE(score_payment_orders.resume_result_json, EXCLUDED.resume_result_json),
         updated_at = EXCLUDED.updated_at
@@ -151,6 +177,17 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
       order.intended_action_json,
       order.resume_consumed_at,
       order.resume_result_json,
+      order.checkout_intent_hash,
+      order.return_site,
+      order.return_path,
+      order.return_state_json,
+      order.return_token_hash,
+      order.return_token_expires_at,
+      order.return_token_consumed_at,
+      order.checkout_plan_code,
+      order.pass_mode,
+      order.idempotency_key_hash,
+      order.provider_checkout_started_at,
     ],
   );
 }

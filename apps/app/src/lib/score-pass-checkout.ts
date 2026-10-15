@@ -1,5 +1,8 @@
 import { getPricingPlanCatalog, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
 import type { SupportedLocale } from "@score/i18n";
+import { currentWorkPath } from "./flow-return";
+import { checkoutReturnContext } from "./checkout-flow";
+import type { CheckoutReturnState } from "@score/shared";
 
 export function getScoreUpgradePlans(locale: SupportedLocale) { return getPricingPlanCatalog(locale); }
 
@@ -7,8 +10,9 @@ export function defaultCheckoutPlan(initial: PurchasePlanCode | undefined): Purc
   return initial ?? "starter-monthly";
 }
 
-export function scoreCheckoutPath(documentId: string, action?: CheckoutIntendedAction, topUp = false) {
-  const params = new URLSearchParams({ targetDocumentId: documentId, next: `/scores/${encodeURIComponent(documentId)}`, plan: "starter-monthly", billing: "subscription" });
+export function scoreCheckoutPath(documentId: string, action?: CheckoutIntendedAction, topUp = false, returnTo?: string, state?: Partial<CheckoutReturnState>) {
+  const context = checkoutReturnContext(returnTo ?? (typeof window === "undefined" ? `/scores/${encodeURIComponent(documentId)}` : currentWorkPath()), action, state);
+  const params = new URLSearchParams({ targetDocumentId: documentId, next: context.returnPath, returnState: JSON.stringify(context.returnState), plan: "starter-monthly", billing: "subscription" });
   if (action) params.set("intendedAction", JSON.stringify(action));
   if (topUp) params.set("passMode", "top_up");
   return `/checkout?${params}`;
@@ -25,10 +29,9 @@ export function isCreditUpgradeError(result: { status: number; code?: string; da
   return (result.status === 403 && code === "SCORE_PASS_CREDITS_EXHAUSTED") || (result.status === 429 && code === "PLAN_JOB_QUOTA_EXCEEDED");
 }
 
-export type CheckoutContinuationResult = { documentId: string; job?: { id: string }; error?: string; code?: string; statusCode?: number };
+export type CheckoutContinuationResult = { documentId: string; job?: { id: string }; error?: string; code?: string; statusCode?: number; actionType?: string };
 const CONTINUATION_NOTICE_KEY = "score_checkout_continuation:";
 export function saveContinuationNotice(result: CheckoutContinuationResult) {
-  if (!result.error && !result.code) return;
   try { window.sessionStorage.setItem(`${CONTINUATION_NOTICE_KEY}${result.documentId}`, JSON.stringify(result)); } catch { /* The return page still displays failures when storage is unavailable. */ }
 }
 export function takeContinuationNotice(documentId: string): CheckoutContinuationResult | null {

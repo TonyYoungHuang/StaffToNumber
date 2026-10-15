@@ -17,6 +17,31 @@ const { prepareOneTimePurchase, findOneTimePurchase } = await import("../reposit
 const { getPlanQuotaUsage } = await import("../lib/plan-quotas.js");
 const stripe = new Stripe("sk_test_local_fixture");
 
+test("signed expired and failed asynchronous checkout events release unpaid draft holds without cancelling paid orders", async () => {
+  initDb();
+  const app = Fastify(); await app.register(rawBody, { global: false, encoding: false }); await app.register(paymentWebhookRoutes, { prefix: "/api" });
+  const { hashPaymentOrderToken } = await import("../lib/payments.js");
+  const user = createUser(`${crypto.randomUUID()}@example.invalid`, "hash", "salt")!;
+  const post = (type: string, object: unknown) => {
+    const payload = JSON.stringify({ id: `evt_${crypto.randomUUID()}`, object: "event", type, livemode: false, data: { object } });
+    return app.inject({ method: "POST", url: "/api/webhooks/stripe", payload, headers: { "content-type": "application/json", "stripe-signature": stripe.webhooks.generateTestHeaderString({ payload, secret: "whsec_local_fixture" }) } });
+  };
+  try {
+    for (const type of ["checkout.session.expired", "checkout.session.async_payment_failed"]) {
+      const order = createPaymentOrder({ userId: user.id, provider: "stripe", entitlementDays: 0 })!;
+      const id = `cs_${crypto.randomUUID()}`; attachStripeCheckoutSession(order.id, id, null);
+      const session = { id, object: "checkout.session", status: "expired", payment_status: "unpaid", metadata: { orderId: order.id, orderTokenHash: hashPaymentOrderToken(order.public_token) } };
+      assert.equal((await post(type, { ...session, metadata: { ...session.metadata, orderTokenHash: "incorrect" } })).statusCode, 200);
+      assert.equal(findPaymentOrderById(order.id)?.status, "pending");
+      assert.equal((await post(type, session)).statusCode, 200);
+      assert.equal(findPaymentOrderById(order.id)?.status, "cancelled");
+      db.prepare("UPDATE payment_orders SET status = 'paid', paid_at = ? WHERE id = ?").run(new Date().toISOString(), order.id);
+      assert.equal((await post(type, session)).statusCode, 200);
+      assert.equal(findPaymentOrderById(order.id)?.status, "paid");
+    }
+  } finally { await app.close(); }
+});
+
 test("signed $2.99 payment binds an existing score once, and refund revokes it without a subscription", async () => {
   initDb();
   const app = Fastify();

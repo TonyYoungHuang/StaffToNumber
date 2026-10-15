@@ -1,15 +1,18 @@
 import { resolveAuthReturnPath } from "./auth-return";
+import { validateCheckoutReturnPath } from "@score/shared";
 
 export function workReturnPath(value: string | null | undefined) {
-  const safe = resolveAuthReturnPath(value ?? undefined);
-  return safe && !/^\/(checkout|activate)(\/|\?|#|$)/.test(safe) ? safe : "/scores";
+  return validateCheckoutReturnPath("app", value ?? "") ?? "/scores";
 }
 export function currentWorkPath() {
   if (typeof window === "undefined") return "/scores";
   return workReturnPath(`${window.location.pathname}${window.location.search}${window.location.hash}`);
 }
 export function upgradePath(next: string) {
-  return `/checkout?${new URLSearchParams({ next: workReturnPath(next) })}`;
+  const safe = workReturnPath(next); const params = new URLSearchParams({ next: safe });
+  const documentId = /^\/scores\/(?!new(?:[/?#]|$)|shared(?:[/?#]|$))([^/?#]+)/u.exec(safe)?.[1];
+  if (documentId) params.set("targetDocumentId", decodeURIComponent(documentId));
+  return `/checkout?${params}`;
 }
 type CheckoutReturn = { next: string; retry: string; createdAt: number };
 const prefix = "score-checkout-return:";

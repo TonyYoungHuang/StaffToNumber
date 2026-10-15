@@ -376,6 +376,7 @@ export async function createPaddleTransaction(input: {
       collection_mode: "automatic",
       custom_data: {
         orderId: input.orderId,
+        orderTokenHash: createHash("sha256").update(input.publicToken).digest("hex"),
         userId: input.userId ?? undefined,
         organizationId: input.organizationId ?? undefined,
         seatQuantity: Math.max(1, input.seatQuantity ?? 1),

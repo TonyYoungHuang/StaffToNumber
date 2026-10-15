@@ -33,6 +33,7 @@ function componentHarness(relative: string, mocks: Record<string, unknown> = {},
   const location = { origin: "https://scoretransposer.com", href: "", pathname: "/scores/score-1", search: "", hash: "#transpose-score", assign(value: string) { this.href = value; }, replace(value: string) { this.href = value; } };
   const browser = {
     location,
+    localStorage: storage(),
     setTimeout(callback: () => void, delay: number) { const id = nextTimer++; timers.set(id, { callback, delay }); return id; },
     clearTimeout(id: number) { timers.delete(id); },
     addEventListener(name: string, listener: (event: any) => void) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name)!.add(listener); },
@@ -58,14 +59,28 @@ function componentHarness(relative: string, mocks: Record<string, unknown> = {},
   };
   const exports: Record<string, any> = {};
   const realRequire = createRequire(filename);
+  class EventElement {
+    constructor(readonly anchor: unknown) {}
+    closest() { return this.anchor; }
+  }
   vm.runInNewContext(source, {
-    exports, require(id: string) { return id === "react" ? hooks : Object.hasOwn(mocks, id) ? mocks[id] : realRequire(id); },
+    exports, require(id: string) {
+      if (id === "../lib/checkout-flow" && !Object.hasOwn(mocks, id)) return {
+        prepareCheckout: async () => true,
+        completeCheckoutIntent() {},
+        checkoutLoginPath: (path: string, values: Record<string, string>) => { const url = new URL(path, location.origin); for (const [key, value] of Object.entries(values)) if (value !== undefined) url.searchParams.set(key, value); return `${url.pathname}${url.search}`; },
+        checkoutReturnContext: (path?: string, action?: unknown, state?: unknown) => ({ returnSite: "app", returnPath: path ?? `${location.pathname}${location.search}${location.hash}`, returnState: state ?? { version: 1, intent: action ? "continue_action" : "restore_view" } }),
+        lookupAndStartCheckout: (payload: object, token: string) => (mocks["../lib/api"] as any).apiRequest("/api/payments/checkout/authenticated", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": "persisted-fixture-intent" }, body: JSON.stringify(payload) }),
+      };
+      return id === "react" ? hooks : Object.hasOwn(mocks, id) ? mocks[id] : realRequire(id);
+    },
     element(type: unknown, props: object | null, ...children: unknown[]) { return { type, props: { ...props, children } }; }, fragment: "fragment",
     window: browser, document: { body: {} }, process: { env: { ...process.env, NEXT_PUBLIC_GOOGLE_CLIENT_ID: "fixture.apps.googleusercontent.com", ...env } },
-    URL, URLSearchParams, AbortController, Event, crypto: globalThis.crypto,
+    URL, URLSearchParams, AbortController, Event, Element: EventElement, crypto: globalThis.crypto,
   }, { filename });
   return {
     exports, browser, timers,
+    eventElement(anchor: unknown) { return new EventElement(anchor); },
     render(name: string, props: object): Tree { cursor = 0; return exports[name](props); },
     flushEffects() { while (queued.length) queued.shift()!(); },
     expireTimers() { for (const [id, timer] of [...timers]) { timers.delete(id); timer.callback(); } },
@@ -212,8 +227,10 @@ test("One Score Pass is the primary upsell in every locale and routes authentica
     assert.doesNotMatch(JSON.stringify(tree), /\/activate|activation_code/u);
     primary[0].props.onClick(); await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests.length, 1); assert.equal(requests[0].path, "/api/payments/checkout/authenticated");
-    assert.deepEqual(JSON.parse(String(requests[0].init.body)), { provider: "stripe", billingKind: "one_time", locale, planCode: "single-score", seatQuantity: 1 });
-    assert.deepEqual(saved, [["order-1", next, next]]); assert.equal(harness.browser.location.href, "https://checkout.stripe.com/fixture");
+    const payload = JSON.parse(String(requests[0].init.body));
+    assert.equal(payload.provider, "stripe"); assert.equal(payload.billingKind, "one_time"); assert.equal(payload.planCode, "single-score"); assert.equal(payload.locale, locale);
+    assert.equal(payload.returnSite, "app"); assert.equal(payload.returnPath, next); assert.equal(payload.returnState.intent, "restore_view");
+    assert.equal(saved[0][0], "order-1"); assert.equal(saved[0][1], next); assert.match(String(saved[0][2]), /^\/checkout\?/u); assert.equal(harness.browser.location.href, "https://checkout.stripe.com/fixture");
   }
 });
 
@@ -258,6 +275,8 @@ test("public checkout resumes the pending pass automatically after Google sign-i
       requests.push({ path, init });
       if (path === "/api/auth/google") loggedIn = true;
       if (path.startsWith("/api/auth/")) return loggedIn ? { ok: true, data: { user: { id: "user-1", email: "fixture@example.test" }, isNewUser: true } } : { ok: false, status: 401, error: "Sign in" };
+      if (path.startsWith("/api/payments/orders/by-intent?")) return { ok: false, status: 404, error: "No prior order" };
+      if (path === "/api/payments/orders?pending=1") return { ok: true, data: { orders: [] } };
       return { ok: true, data: { orderId: "order-1", url: "https://checkout.stripe.com/fixture" } };
     } },
     "../lib/purchase-flow": {
@@ -289,6 +308,40 @@ test("public checkout resumes the pending pass automatically after Google sign-i
   assert.equal(JSON.parse(String(checkout.init?.body)).provider, "stripe");
   assert.equal(harness.browser.location.href, "https://checkout.stripe.com/fixture");
   assert.equal(pending, null);
+});
+
+test("public normal pricing navigation intercepts Next Link and carries the complete originating page", () => {
+  const harness = componentHarness("../../../www/src/components/PublicChrome.tsx", {
+    "next/link": "a", "next/navigation": { usePathname: () => "/features" },
+    "./SiteLocaleProvider": { useSiteLocale: () => ({ locale: "en" }) },
+    "./PurchaseFlowProvider": { usePurchaseFlow: () => ({ user: { email: "fixture@example.test" }, signIn() {} }) },
+    "../lib/site": { siteConfig: { appUrl: "https://app.scoretransposer.com", release: { checkoutAvailable: true }, discordInviteUrl: "" },
+      getAppLoginUrl: () => "https://app.scoretransposer.com/login", getAppScoreProjectsUrl: () => "https://app.scoretransposer.com/scores", getAppStartConversionUrl: () => "https://app.scoretransposer.com/scores", getCheckoutUrl: () => "/pricing" },
+  });
+  Object.assign(harness.browser.location, { href: "https://scoretransposer.com/features?instrument=piano#exports", pathname: "/features", search: "?instrument=piano", hash: "#exports" });
+  const tree = harness.render("PublicChrome", { children: null, announcement: null, copy: {} });
+  let prevented = false;
+  const anchor = { href: "https://scoretransposer.com/pricing", target: "", closest: () => null, hasAttribute: () => false };
+  tree.props.onClickCapture({ target: harness.eventElement(anchor), button: 0, preventDefault() { prevented = true; }, stopPropagation() {} });
+  assert.equal(prevented, true);
+  const target = new URL(harness.browser.location.href, "https://scoretransposer.com");
+  assert.equal(target.pathname, "/pricing");
+  assert.equal(target.searchParams.get("returnPath"), "/features?instrument=piano#exports");
+});
+
+test("www cancel preserves confirmed-payment fulfillment failures on the status route", async () => {
+  const requests: string[] = [];
+  const harness = componentHarness("../../../www/src/components/CheckoutCancelClient.tsx", {
+    "./SiteLocaleProvider": { useSiteLocale: () => ({ locale: "en" }) },
+    "../lib/site": { siteConfig: { appUrl: "https://app.scoretransposer.com", siteUrl: "https://scoretransposer.com" }, getCheckoutUrl: () => "/pricing", getSupportUrl: () => "/support" },
+    "../lib/api": { apiRequest: async (path: string) => { requests.push(path); return { ok: true, data: { order: { status: "pending" }, verification: { status: "fulfillment_failed", retryable: true } } }; } },
+  });
+  harness.render("CheckoutCancelClient", { orderId: "pending-original", token: "public-token", provider: "stripe", copy: { nextSteps: [] }, translationNotice: "" });
+  harness.flushEffects();
+  await new Promise(resolve => setImmediate(resolve));
+  const destination = new URL(harness.browser.location.href);
+  assert.match(destination.searchParams.get("next") ?? "", /^\/checkout\/success\?/u);
+  assert.equal(requests.length, 1, "uncertain fulfillment cannot consume a cancellation handoff or create another order");
 });
 
 
@@ -338,6 +391,7 @@ test("upgrade modal recommends Starter and one click sends the score and exact e
     assert.ok(buttons[2].props.className.includes("button-secondary"));
     const index = ["starter-monthly", "converter-pro-monthly", "single-score"].indexOf(code);
     buttons[index].props.onClick(); buttons[index].props.onClick();
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(calls.length, 1, "rapid duplicate clicks create one checkout");
     const payload = JSON.parse(String(calls[0].init?.body));
     assert.equal(payload.targetDocumentId, "score-1"); assert.deepEqual(payload.intendedAction, action);
@@ -378,7 +432,7 @@ test("payment return recognizes top-ups by group membership and resumes only whe
   await new Promise(resolve => setImmediate(resolve));
   harness.render("AppCheckoutStatusClient", props); harness.flushEffects();
   await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(routes, ["/scores/part-1"]);
+  assert.deepEqual(routes, ["/scores/part-1?checkoutOrderId=topup-order"]);
   const continuations = requests.filter(request => request.path.endsWith("/continue"));
   assert.equal(continuations.length, available ? 1 : 0);
   if (available) {
@@ -388,4 +442,84 @@ test("payment return recognizes top-ups by group membership and resumes only whe
   assert.equal(requests.filter(request => request.path.includes("/exports") || request.path.includes("/retry")).length, 0, "browser delegates the retry and credit idempotency to the server");
   harness.dispose();
  }
+});
+
+test("server return path restores its query and panel, and upload recognition waits for an explicit click", async () => {
+  for (const requiresConfirmation of [true, false]) {
+    const routes: string[] = [], requests: Array<{ path: string; init?: RequestInit }> = [];
+    const context = { site: "app", path: "/scores/score-1?tab=custom#export-center", successSite: "app", successPath: "/scores/score-1?tab=custom#export-center", state: { version: 1, intent: "continue_action", panel: "export-center", ...(requiresConfirmation ? { confirmation: "required", uploadDraftId: "draft-1" } : {}) } };
+    const router = { replace: (path: string) => routes.push(path), refresh() {} }; const signIn = () => {};
+    const harness = componentHarness("../components/AppCheckoutStatusClient.tsx", {
+      "next/link": "a", "next/navigation": { useRouter: () => router }, "./AppAuthModal": { useAppAuthModal: () => signIn },
+      "../lib/auth-storage": { getStoredToken: () => null, clearStoredToken() {} },
+      "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
+      "../lib/flow-return": { readCheckoutReturn: () => ({ next: "/scores/cache#wrong", retry: "/checkout", createdAt: 1 }) },
+      "../lib/analytics": { trackFunnelEventOnce() {} },
+      "../lib/api": { apiRequest: async (path: string, init?: RequestInit) => {
+        requests.push({ path, init });
+        if (path === "/api/auth/me") return { ok: true, data: { user: { id: "owner", entitlement: { status: "active" } } } };
+        if (path.endsWith("/return")) return { ok: true, data: { returnContext: context } };
+        if (path.endsWith("/continue")) return { ok: true, data: { documentId: "score-1", job: { id: "only-job" } } };
+        return { ok: true, data: { verification: { status: "ready" }, order: { id: "order", userId: "owner", status: "paid", planCode: "starter-monthly", returnContext: context, continuation: { documentId: "score-1", available: true, consumed: false } } } };
+      } },
+    });
+    const props = { orderId: "order", token: "locator", returnToken: "one-time", provider: "stripe", locale: "en", copy: getBillingMessages("en").checkout.status };
+    harness.render("AppCheckoutStatusClient", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+    harness.render("AppCheckoutStatusClient", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(routes, ["/scores/score-1?tab=custom&checkoutOrderId=order#export-center"]);
+    assert.equal(requests.filter(request => request.path.endsWith("/continue")).length, requiresConfirmation ? 0 : 1);
+    const handoff = requests.find(request => request.path.endsWith("/return"))!;
+    assert.deepEqual(JSON.parse(String(handoff.init?.body)), { returnToken: "one-time" });
+    assert.ok(requests.some(request => request.path.endsWith("/owned")));
+    harness.dispose();
+  }
+});
+
+test("cancel authenticates by cookie, consumes only during POST handoff and restores server origin", async () => {
+  const routes: string[] = [], requests: Array<{ path: string; init?: RequestInit }> = [];
+  const context = { site: "app", path: "/scores/score-1?tab=edit#export-center", successSite: "app", successPath: "/scores/score-1", state: { version: 1, intent: "restore_view" } };
+  const router = { replace: (path: string) => routes.push(path) }; const signIn = () => { throw new Error("cookie session must not prompt login"); };
+  const harness = componentHarness("../components/AppCheckoutCancelClient.tsx", {
+    "next/link": "a", "next/navigation": { useRouter: () => router }, "./AppAuthModal": { useAppAuthModal: () => signIn }, "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+    "../lib/auth-storage": { getStoredToken: () => null }, "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
+    "../lib/flow-return": { readCheckoutReturn: () => ({ next: "/scores/cache", retry: "/checkout", createdAt: 1 }) },
+    "../lib/api": { apiRequest: async (path: string, init?: RequestInit) => { requests.push({ path, init }); return path.endsWith("/return") ? { ok: true, data: { returnContext: context } } : { ok: true, data: { order: { status: "pending", planCode: "single-score", billingKind: "one_time", returnContext: context } } }; } },
+  });
+  harness.render("AppCheckoutCancelClient", { orderId: "order", token: "locator", returnToken: "once", title: "Cancelled", body: "Original work" }); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests[0].path, "/api/payments/orders/order/owned"); assert.equal(requests[0].init?.method, undefined);
+  assert.equal(requests[1].init?.method, "POST"); assert.deepEqual(JSON.parse(String(requests[1].init?.body)), { returnToken: "once" });
+  assert.match(routes[0], /^\/scores\/score-1\?tab=edit&checkoutOrderId=order&checkoutResult=cancelled/u); assert.ok(routes[0].endsWith("#export-center")); assert.doesNotMatch(routes[0], /once|locator/);
+  harness.dispose();
+});
+
+test("owned order recovery includes paid subscriptions after return tokens expire", async () => {
+  const calls: string[] = [];
+  const harness = componentHarness("../components/OwnedCheckoutRecovery.tsx", {
+    "../lib/auth-storage": { getStoredToken: () => null },
+    "../lib/api": { apiRequest: async (path: string) => { calls.push(path); return { ok: true, data: { orders: [{ id: "paid", provider: "stripe", token: "owned-locator", status: "paid", planCode: "starter-annual", createdAt: "2026-10-15T00:00:00Z" }, { id: "refunded", provider: "stripe", token: "old", status: "paid", purchaseStatus: "refunded", createdAt: "2026-10-15T00:00:00Z" }] } }; } },
+  });
+  harness.render("OwnedCheckoutRecovery", { locale: "en" }); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  const links = nodes(harness.render("OwnedCheckoutRecovery", { locale: "en" })).filter(node => node.type === "a");
+  assert.deepEqual(calls, ["/api/payments/orders"]); assert.equal(links.length, 1); assert.match(links[0].props.href, /order_id=paid&token=owned-locator&provider=stripe/u);
+  harness.dispose();
+});
+
+test("cancel preserves unresolved payment verification without announcing cancellation or consuming return handoff", async () => {
+  for (const status of ["waiting_fulfillment", "fulfillment_failed", "verification_failed"]) {
+    const routes: string[] = [], requests: Array<{ path: string; init?: RequestInit }> = [];
+    const router = { replace: (path: string) => routes.push(path) }; const signIn = () => {};
+    const harness = componentHarness("../components/AppCheckoutCancelClient.tsx", {
+      "next/link": "a", "next/navigation": { useRouter: () => router }, "./AppAuthModal": { useAppAuthModal: () => signIn }, "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+      "../lib/auth-storage": { getStoredToken: () => null }, "../lib/flow-messages/client": { useFlowMessages: () => ({ waitingAccess: "Checking original order" }) },
+      "../lib/flow-return": { readCheckoutReturn: () => ({ next: "/scores/original", retry: "/checkout", createdAt: 1 }) },
+      "../lib/api": { apiRequest: async (path: string, init?: RequestInit) => { requests.push({ path, init }); return { ok: true, data: { order: { status: "pending" }, token: "owner-token", verification: { status } } }; } },
+    });
+    const props = { orderId: "order", returnToken: "unused-once", title: "Cancelled notice", body: "Cancelled body" };
+    harness.render("AppCheckoutCancelClient", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(requests.map(request => request.path), ["/api/payments/orders/order/owned"]);
+    assert.equal(requests.some(request => request.init?.method === "POST"), false);
+    assert.deepEqual(routes, ["/checkout/success?order_id=order&token=owner-token&provider=stripe&return_token=unused-once"]);
+    assert.doesNotMatch(text(harness.render("AppCheckoutCancelClient", props)), /Cancelled notice|Cancelled body/u);
+    harness.dispose();
+  }
 });

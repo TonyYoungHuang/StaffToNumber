@@ -18,7 +18,7 @@ process.env.STORAGE_DIR = storageDir;
 process.env.NODE_ENV = "development";
 
 const { db, initDb } = await import("../services/api/src/db.ts");
-const { SCORE_PASS_DOCUMENTS_SQL, SCORE_PASS_BACKFILL_SQL } = await import("../services/api/src/lib/score-pass-schema.ts");
+const { SCORE_PASS_DOCUMENTS_SQL, SCORE_PASS_BACKFILL_SQL, SCORE_UPLOAD_DRAFTS_SQL, PAYMENT_RETURN_COLUMNS } = await import("../services/api/src/lib/score-pass-schema.ts");
 initDb();
 
 function quoteIdentifier(value) {
@@ -60,7 +60,7 @@ try {
   // with SQLite and the full migration runner so incremental upgrades agree.
   await client.query("BEGIN");
   await client.query(`SET LOCAL search_path TO ${quoteIdentifier(targetSchema)}, public`);
-  await client.query(SCORE_PASS_DOCUMENTS_SQL);
+  await client.query(SCORE_PASS_DOCUMENTS_SQL + SCORE_UPLOAD_DRAFTS_SQL);
   const catalog = await client.query(`
     SELECT table_name, column_name
     FROM information_schema.columns
@@ -112,6 +112,7 @@ try {
   await client.query(`CREATE INDEX IF NOT EXISTS idx_score_jobs_trace_id ON ${quoteIdentifier(targetSchema)}.score_jobs(trace_id)`);
   await client.query(`CREATE INDEX IF NOT EXISTS idx_score_collaboration_updates_trace_id ON ${quoteIdentifier(targetSchema)}.score_collaboration_updates(trace_id)`);
   await client.query("CREATE INDEX IF NOT EXISTS idx_score_passes_group ON score_passes(group_pass_id)");
+  await client.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_checkout_intent ON payment_orders(user_id, provider, checkout_intent_hash) WHERE checkout_intent_hash IS NOT NULL");
   const groupForeignKey = await client.query(`SELECT 1 FROM pg_constraint constraint_row
     JOIN pg_class table_row ON table_row.oid = constraint_row.conrelid
     JOIN pg_namespace namespace_row ON namespace_row.oid = table_row.relnamespace
@@ -121,19 +122,29 @@ try {
   if (groupForeignKey.rows.length === 0) await client.query(`ALTER TABLE score_passes
     ADD CONSTRAINT score_passes_group_pass_id_fkey FOREIGN KEY(group_pass_id) REFERENCES score_passes(purchase_id)`);
   await client.query(SCORE_PASS_BACKFILL_SQL);
-  await client.query("REVOKE ALL ON score_pass_documents FROM PUBLIC");
+  await client.query("REVOKE ALL ON score_pass_documents, score_document_derivations, score_upload_drafts FROM PUBLIC");
   const passGrants = await client.query(`SELECT grantee, privilege_type FROM information_schema.role_table_grants
     WHERE table_schema = $1 AND table_name = 'score_passes'
       AND grantee <> 'PUBLIC'
       AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')`, [targetSchema]);
   for (const grant of passGrants.rows) {
-    await client.query(`GRANT ${grant.privilege_type} ON score_pass_documents TO ${quoteIdentifier(grant.grantee)}`);
+    await client.query(`GRANT ${grant.privilege_type} ON score_pass_documents, score_document_derivations, score_upload_drafts TO ${quoteIdentifier(grant.grantee)}`);
   }
   await client.query(`ALTER TABLE IF EXISTS public.score_payment_orders
     ADD COLUMN IF NOT EXISTS target_document_id TEXT,
     ADD COLUMN IF NOT EXISTS intended_action_json TEXT,
     ADD COLUMN IF NOT EXISTS resume_consumed_at TEXT,
-    ADD COLUMN IF NOT EXISTS resume_result_json TEXT`);
+    ADD COLUMN IF NOT EXISTS resume_result_json TEXT,
+    ADD COLUMN IF NOT EXISTS checkout_intent_hash TEXT,
+    ADD COLUMN IF NOT EXISTS checkout_plan_code TEXT,
+    ADD COLUMN IF NOT EXISTS pass_mode TEXT,
+    ADD COLUMN IF NOT EXISTS provider_checkout_started_at TEXT,
+    ADD COLUMN IF NOT EXISTS return_site TEXT,
+    ADD COLUMN IF NOT EXISTS return_path TEXT,
+    ADD COLUMN IF NOT EXISTS return_state_json TEXT,
+    ADD COLUMN IF NOT EXISTS return_token_hash TEXT,
+    ADD COLUMN IF NOT EXISTS return_token_expires_at TEXT,
+    ADD COLUMN IF NOT EXISTS return_token_consumed_at TEXT`);
   await client.query("COMMIT");
 
   const verification = await client.query(`
@@ -146,12 +157,18 @@ try {
     columns.filter((column) => !verified.has(`${table}.${column.name}`)).map((column) => `${table}.${column.name}`),
   );
   if (stillMissing.length > 0) throw new Error(`PostgreSQL runtime schema remains incomplete: ${stillMissing.join(", ")}.`);
+  const mirrorVerification = await client.query(`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'score_payment_orders'`);
+  const mirrorColumns = new Set(mirrorVerification.rows.map(row => row.column_name));
+  const requiredMirrorColumns = ["target_document_id", "intended_action_json", "resume_consumed_at", "resume_result_json", "idempotency_key_hash", ...PAYMENT_RETURN_COLUMNS];
+  const missingMirrorColumns = requiredMirrorColumns.filter(column => !mirrorColumns.has(column));
+  if (missingMirrorColumns.length) throw new Error(`Payment recovery mirror is incomplete (${missingMirrorColumns.join(", ")}). Run payment-order-durable-store.sql and the schema 27 additive migration.`);
 
   console.log(JSON.stringify({
     schema: targetSchema,
     expectedTables: expectedTables.length,
     expectedColumns: [...expectedColumns.values()].reduce((total, columns) => total + columns.length, 0),
     addedColumns,
+    verifiedMirrorColumns: requiredMirrorColumns.length,
     verified: true,
   }));
 } catch (error) {

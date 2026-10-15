@@ -4,9 +4,11 @@ import { normalizeRecognitionMode } from "./recognition-options.js";
 import { normalizeScoreExportRequest } from "./score-export-request.js";
 import { lockScorePassAccount, scorePassForDocument } from "./score-passes.js";
 import { getUserProfile } from "../repositories/auth-repository.js";
+import { scoreUploadDraftForDocument } from "./score-upload-drafts.js";
 
 export type NormalizedCheckoutAction =
   | ({ kind: "export" } & ReturnType<typeof normalizeScoreExportRequest>)
+  | { kind: "recognition"; uploadDraftId: string; mode: ScoreRecognitionMode; confirmation: "required" }
   | { kind: "retry"; jobId: string; recognitionMode?: ScoreRecognitionMode; restartRecognition?: true };
 
 export class CheckoutContinuationError extends Error {
@@ -17,7 +19,7 @@ export type CheckoutContinuationResult = { documentId: string; job?: unknown; er
 
 /** The action, reservation, dispatch outbox and consumed result commit together. */
 export function consumeCheckoutContinuation(input: {
-  userId: string; orderId: string; token: unknown;
+  userId: string; orderId: string; token: unknown; confirmed?: unknown;
   execute: (action: NormalizedCheckoutAction, documentId: string) => { job: unknown };
 }): CheckoutContinuationResult {
   db.exec("BEGIN IMMEDIATE");
@@ -36,6 +38,13 @@ export function consumeCheckoutContinuation(input: {
       db.exec("COMMIT");
       return stored;
     }
+    const action = JSON.parse(order.intended_action_json) as NormalizedCheckoutAction;
+    // The server-owned draft record requires confirmation even if an old or
+    // altered order snapshot tries to request automatic recognition.
+    const uploadDraft = scoreUploadDraftForDocument(input.userId, order.target_document_id);
+    if ((action.kind === "recognition" || (uploadDraft && !uploadDraft.task_id)) && input.confirmed !== true) {
+      throw new CheckoutContinuationError("CHECKOUT_CONFIRMATION_REQUIRED", "Select Continue recognition to start this upload.", 409);
+    }
     const documentId = order.target_document_id;
     if (!db.prepare("SELECT id FROM score_documents WHERE id = ? AND user_id = ? AND status NOT IN ('deleted', 'archived')").get(documentId, input.userId)) {
       throw new CheckoutContinuationError("CHECKOUT_SCORE_NOT_FOUND", "Score document not found.", 404);
@@ -46,7 +55,7 @@ export function consumeCheckoutContinuation(input: {
     let result: CheckoutContinuationResult;
     db.exec("SAVEPOINT checkout_action");
     try {
-      result = { documentId, ...input.execute(JSON.parse(order.intended_action_json) as NormalizedCheckoutAction, documentId) };
+      result = { documentId, ...input.execute(action, documentId) };
       db.exec("RELEASE SAVEPOINT checkout_action");
     } catch (error) {
       db.exec("ROLLBACK TO SAVEPOINT checkout_action");
@@ -81,6 +90,15 @@ export function normalizeCheckoutContinuation(userId: string, targetDocumentId: 
   let recognitionMode: ScoreRecognitionMode | undefined;
   if (body.kind === "recognition") {
     recognitionMode = normalizeRecognitionMode(body.mode);
+    const draft = scoreUploadDraftForDocument(userId, targetDocumentId);
+    if (draft && !draft.task_id) {
+      if (body.uploadDraftId !== undefined && body.uploadDraftId !== draft.id) throw new CheckoutContinuationError("UPLOAD_DRAFT_NOT_FOUND", "This upload draft is not available for your account.", 404);
+      if (recognitionMode !== draft.recognition_mode) throw new CheckoutContinuationError("INVALID_CHECKOUT_ACTION", "The saved upload recognition mode cannot be changed by checkout.");
+      const source = db.prepare(`SELECT f.id FROM score_documents d JOIN files f ON f.id = d.source_file_id
+        WHERE d.id = ? AND d.user_id = ? AND f.user_id = ?`).get(targetDocumentId, userId, userId);
+      if (!source) throw new CheckoutContinuationError("CHECKOUT_SOURCE_NOT_FOUND", "The original score source is no longer available.", 404);
+      return { kind: "recognition", uploadDraftId: draft.id, mode: recognitionMode, confirmation: "required" };
+    }
     const source = db.prepare(`SELECT id FROM score_jobs WHERE document_id = ? AND user_id = ? AND job_type = 'omr_import'
       AND input_file_id IS NOT NULL ORDER BY created_at DESC, id DESC LIMIT 1`).get(targetDocumentId, userId) as { id: string } | undefined;
     jobId = source?.id;

@@ -1,4 +1,4 @@
-import { APP_ROUTES, scoreTaskEntryPath, scoreTaskForSource, type CheckoutPlanCode, type ScoreTaskTarget, type SupportedLocale } from "@score/shared";
+import { APP_ROUTES, scoreTaskEntryPath, scoreTaskForSource, validateCheckoutReturnPath, type CheckoutPlanCode, type ScoreTaskTarget, type SupportedLocale } from "@score/shared";
 import { localizePathname } from "@score/i18n";
 
 const defaultSiteUrl = "https://scoretransposer.com";
@@ -138,10 +138,12 @@ export const siteConfig = {
 export const publicContentLastUpdated = "2026-08-25";
 export const legalLastUpdated = "2026-08-25";
 
-export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode, billingKind?: "subscription" | "one_time") {
+export function getCheckoutUrl(locale: SupportedLocale, planCode?: CheckoutPlanCode, billingKind?: "subscription" | "one_time", sourcePath?: string) {
   const params = new URLSearchParams();
   if (planCode) params.set("plan", planCode);
   if (billingKind) params.set("billing", billingKind);
+  const source = sourcePath ? validateCheckoutReturnPath("www", sourcePath) : null;
+  if (source) { params.set("returnSite", "www"); params.set("returnPath", source); }
   return localizePathname(`/pricing${params.size ? `?${params}` : ""}`, locale);
 }
 

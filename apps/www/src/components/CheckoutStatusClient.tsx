@@ -45,6 +45,7 @@ export function CheckoutStatusClient({
   token,
   provider,
   sessionId,
+  returnToken,
   copy,
   translationNotice,
 }: {
@@ -52,6 +53,7 @@ export function CheckoutStatusClient({
   token: string;
   provider: PaymentProvider;
   sessionId?: string;
+  returnToken?: string;
   copy: CheckoutStatusCopy;
   translationNotice: string;
 }) {
@@ -112,12 +114,13 @@ export function CheckoutStatusClient({
     if (!order?.userId) return;
     const query = new URLSearchParams({ order_id: orderId, token, provider });
     if (sessionId) query.set("session_id", sessionId);
+    if (returnToken) query.set("return_token", returnToken);
     query.set("next", readPurchaseReturn(orderId));
     const destination = new URL("/api/locale", `${siteConfig.appUrl}/`);
     destination.searchParams.set("locale", locale);
     destination.searchParams.set("next", `/checkout/success?${query}`);
     window.location.replace(destination.toString());
-  }, [order?.userId, orderId, token, provider, sessionId, locale]);
+  }, [order?.userId, order?.status, orderId, token, provider, sessionId, returnToken, locale]);
 
 
   useEffect(() => {

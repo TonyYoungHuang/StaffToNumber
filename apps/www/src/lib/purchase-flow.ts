@@ -31,13 +31,16 @@ export function defaultPurchaseSelection(search = ""): PurchaseSelection {
 
 export function readPurchaseSelection(search: string): PurchaseSelection | null {
   const params = new URLSearchParams(search);
-  const planCode = params.get("plan");
+  const returned = params.get("checkoutResult") === "cancelled";
+  const planCode = returned ? params.get("checkoutPlan") ?? params.get("plan") : params.get("plan");
   if (!isPurchasePlanCode(planCode)) return null;
-  const billingKind = planCode === "single-score" || params.get("billing") === "one_time" ? "one_time" : "subscription";
+  const selectedBilling = returned ? params.get("checkoutBilling") ?? params.get("billing") : params.get("billing");
+  const selectedProvider = returned ? params.get("checkoutProvider") ?? params.get("provider") : params.get("provider");
+  const billingKind = planCode === "single-score" || selectedBilling === "one_time" ? "one_time" : "subscription";
   return {
     planCode,
     billingKind,
-    provider: billingKind === "subscription" && params.get("provider") === "paddle" ? "paddle" : "stripe",
+    provider: billingKind === "subscription" && selectedProvider === "paddle" ? "paddle" : "stripe",
   };
 }
 

@@ -16,6 +16,9 @@ import { getOneScoreUpsellCopy } from "../lib/one-score-upsell-copy";
 import styles from "./AppCheckout.module.css";
 import { getPaymentRecoveryCopy } from "@score/shared";
 import { getScorePassCopy } from "../lib/billing-messages/client";
+import type { CheckoutReturnState } from "@score/shared";
+import { checkoutReturnContext, lookupAndStartCheckout, prepareCheckout, checkoutLoginPath } from "../lib/checkout-flow";
+import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
 
 type CheckoutPayload = {
   provider: PaymentProvider;
@@ -123,6 +126,11 @@ export function AppCheckoutClient({
   returnTo = "/scores",
   targetDocumentId,
   intendedAction,
+  returnState,
+  isTopUp = false,
+  continueAfterLogin = false,
+  originalOrderId,
+  originalOrderToken,
   selectedPlan,
   authMessages,
   locale,
@@ -131,6 +139,11 @@ export function AppCheckoutClient({
   returnTo?: string;
   targetDocumentId?: string;
   intendedAction?: CheckoutIntendedAction;
+  returnState?: CheckoutReturnState;
+  isTopUp?: boolean;
+  continueAfterLogin?: boolean;
+  originalOrderId?: string;
+  originalOrderToken?: string;
   billingKind?: CheckoutBillingKind;
   selectedPlan: SelectedCheckoutPlan;
   authMessages: AuthMessageCatalog["form"];
@@ -143,12 +156,18 @@ export function AppCheckoutClient({
   const checkoutParams = new URLSearchParams({ plan: selectedPlan.code, billing: billingKind, next: workReturnPath(returnTo) });
   if (targetDocumentId) checkoutParams.set("targetDocumentId", targetDocumentId);
   if (intendedAction) checkoutParams.set("intendedAction", JSON.stringify(intendedAction));
+  if (returnState) checkoutParams.set("returnState", JSON.stringify(returnState));
+  if (isTopUp) checkoutParams.set("passMode", "top_up");
+  if (continueAfterLogin) checkoutParams.set("continue", "1");
+  if (originalOrderId) checkoutParams.set("order_id", originalOrderId);
+  if (originalOrderToken) checkoutParams.set("token", originalOrderToken);
   const checkoutPath = `/checkout?${checkoutParams}`;
   const scorePassCopy = getScorePassCopy(locale);
   const purchaseCopy = getPurchaseOptionsCopy(locale);
   const recoveryCopy = getPaymentRecoveryCopy(locale);
   const availableProviders = billingKind === "one_time" ? providers.filter(item => item === "stripe") : providers;
   const [status, setStatus] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [recoverableOrders, setRecoverableOrders] = useState<Array<{ id: string; provider: string; token: string; status: string; planCode?: string; billingKind: string; targetDocumentId?: string; checkoutUrl?: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [planKind, setPlanKind] = useState<"individual" | "school">("individual");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -161,11 +180,25 @@ export function AppCheckoutClient({
     resumeCheckout.current = true;
     setSessionState("ready");
   }, []);
+  useEffect(() => {
+    if (sessionState !== "ready") return;
+    const authToken = getStoredToken(); const controller = new AbortController();
+    void apiRequest<{ orders: typeof recoverableOrders }>("/api/payments/orders?pending=1", { signal: controller.signal, headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined }).then(result => {
+      if (!result.ok || controller.signal.aborted) return;
+      setRecoverableOrders(result.data.orders.filter(order => order.planCode === selectedPlan.code && order.billingKind === billingKind && (order.targetDocumentId ?? null) === (targetDocumentId ?? null)));
+    });
+    return () => controller.abort();
+  }, [sessionState, selectedPlan.code, billingKind, targetDocumentId]);
 
   useEffect(() => {
     if (!getStoredToken()) {
-      setSessionState("signedOut");
-      return;
+      let active = true;
+      void apiRequest("/api/auth/me").then(result => {
+        if (!active) return;
+        resumeCheckout.current = new URLSearchParams(window.location.search).get("continue") === "1";
+        setSessionState(result.ok ? "ready" : "signedOut");
+      });
+      return () => { active = false; };
     }
     resumeCheckout.current = new URLSearchParams(window.location.search).get("continue") === "1";
     setSessionState("ready");
@@ -196,10 +229,10 @@ export function AppCheckoutClient({
       });
   }, [sessionState]);
 
-  async function startCheckout() {
+  async function startCheckout(explicitPurchase = false) {
     if (checkoutLock.current) return;
-    const token = getStoredToken();
-    if (!token) {
+    const token = getStoredToken() ?? "";
+    if (!token && sessionState !== "ready") {
       setSessionState("signedOut");
       return;
     }
@@ -218,30 +251,29 @@ export function AppCheckoutClient({
 
     let navigating = false;
     try {
-      const signature = JSON.stringify({ provider, billingKind, locale, planCode: selectedPlan.code, planKind, organizationId, seatQuantity, targetDocumentId, intendedAction });
-      if (checkoutIntent.current?.signature !== signature) {
-        checkoutIntent.current = { signature, key: crypto.randomUUID() };
+      if (originalOrderId) {
+        const original = await apiRequest<{ order: { status: string; checkoutUrl?: string } }>(`/api/payments/orders/${encodeURIComponent(originalOrderId)}/owned`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        if (!original.ok) { setStatus({ message: original.error, tone: "error" }); return; }
+        navigating = true;
+        window.location.assign(original.data.order.status === "pending" && original.data.order.checkoutUrl ? original.data.order.checkoutUrl : checkoutLoginPath("/checkout/success", { order_id: originalOrderId, token: originalOrderToken, provider }));
+        return;
       }
-
-      const result = await apiRequest<CheckoutPayload>("/api/payments/checkout/authenticated", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Idempotency-Key": checkoutIntent.current.key,
-        },
-        body: JSON.stringify({
+      if (!(await prepareCheckout())) { setStatus({ message: scorePassCopy.continueFailed, tone: "error" }); return; }
+      const result = await lookupAndStartCheckout({
           provider,
           billingKind,
           locale,
           planCode: selectedPlan.code,
+          passMode: isTopUp ? "top_up" : undefined,
           targetDocumentId,
           intendedAction,
+          ...checkoutReturnContext(returnTo, intendedAction, returnState),
           organizationId: planKind === "school" ? organizationId : undefined,
           seatQuantity: planKind === "school" ? seatQuantity : 1,
-        }),
-      });
+      }, token, undefined, undefined, explicitPurchase);
 
       if (!result.ok) {
+        if (result.data?.code === "CHECKOUT_RECOVERY_REQUIRED") { setStatus({ message: getCheckoutReturnCopy(locale).recover, tone: "error" }); return; }
         if ((result.data as { code?: string } | undefined)?.code === "ACTIVE_RECURRING_SUBSCRIPTION") {
           clearPendingCheckout();
           setStatus({ message: purchaseCopy.subscriptionConflict, tone: "error" });
@@ -261,7 +293,7 @@ export function AppCheckoutClient({
         return;
       }
 
-      if (!result.data?.url || !/^https?:\/\//u.test(result.data.url)) {
+      if (!result.data?.url || !/^(https?:\/\/|\/checkout\/success\?)/u.test(result.data.url)) {
         setStatus({ message: recoveryCopy.preparingFailed, tone: "error" });
         return;
       }
@@ -294,7 +326,7 @@ export function AppCheckoutClient({
 
   function handleCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void startCheckout();
+    void startCheckout(true);
   }
 
   useEffect(() => {
@@ -326,7 +358,7 @@ export function AppCheckoutClient({
         <div className="auth-card stack-lg">
           <AuthForm
             mode="login"
-            redirectTo={checkoutPath}
+            redirectTo={checkoutLoginPath(checkoutPath, { continue: "1" })}
             onAuthenticated={handleAuthenticated}
             messages={authMessages}
           />
@@ -351,6 +383,8 @@ export function AppCheckoutClient({
         {targetDocumentId ? <p className="helper-copy">{scorePassCopy.passTarget} {scorePassCopy.sharedCredits}</p> : null}
 
       </div>
+
+      {recoverableOrders.length ? <div className="stack-sm"><p>{getCheckoutReturnCopy(locale).recover}</p><div className="button-row">{recoverableOrders.map(order => <a key={order.id} href={order.status === "pending" && order.checkoutUrl ? order.checkoutUrl : `/checkout/success?${new URLSearchParams({ order_id: order.id, token: order.token, provider: order.provider })}`} className="button button-secondary">{order.planCode} · {order.id.slice(-8)}</a>)}</div></div> : null}
 
       <form className="form-grid" onSubmit={handleCheckout} aria-label={copy.title}>
         {schoolCheckoutAvailable && billingKind === "subscription" ? (

@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
-import { getSingleScorePassCopy, SINGLE_SCORE_PASS, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
+import { getSingleScorePassCopy, SINGLE_SCORE_PASS, isPurchasePlanCode, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { saveCheckoutReturn } from "../lib/flow-return";
 import { getScoreUpgradePlans, scoreCheckoutPath } from "../lib/score-pass-checkout";
 import { getScorePassCopy } from "../lib/billing-messages/client";
 import styles from "./ScorePassUpgradeModal.module.css";
+import { checkoutReturnContext, lookupAndStartCheckout, prepareCheckout } from "../lib/checkout-flow";
 
 type CheckoutResult = { orderId: string; url: string };
 
@@ -22,7 +23,10 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
   const intent = useRef<{ signature: string; key: string } | null>(null);
   const [loading, setLoading] = useState<PurchasePlanCode | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fallback = scoreCheckoutPath(documentId, action, topUp);
+  const [restoredPlan] = useState(() => { const plan = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("checkoutPlan") : null; return isPurchasePlanCode(plan) ? plan : undefined; });
+  const fallbackQuery = new URLSearchParams(scoreCheckoutPath(documentId, action, topUp).split("?")[1]);
+  if (restoredPlan) { fallbackQuery.set("plan", restoredPlan); fallbackQuery.set("billing", restoredPlan === "single-score" ? "one_time" : "subscription"); }
+  const fallback = `/checkout?${fallbackQuery}`;
   const plans = getScoreUpgradePlans(locale);
   const passPrice = `US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`;
 
@@ -46,24 +50,21 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
     lock.current = true; setLoading(planCode); setError(null);
     let navigating = false;
     try {
-      const signature = JSON.stringify({ documentId, action, planCode });
-      if (intent.current?.signature !== signature) intent.current = { signature, key: crypto.randomUUID() };
-      const result = await apiRequest<CheckoutResult>("/api/payments/checkout/authenticated", {
-        method: "POST", headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": intent.current.key },
-        body: JSON.stringify({ provider: "stripe", billingKind, locale, planCode, targetDocumentId: documentId, intendedAction: action }),
-      });
+      if (!(await prepareCheckout())) { setError(copy.continueFailed); return; }
+      const context = checkoutReturnContext(undefined, action);
+      const result = await lookupAndStartCheckout({ provider: "stripe", billingKind, locale, planCode, passMode: topUp ? "top_up" : undefined, targetDocumentId: documentId, intendedAction: action, ...context }, token, undefined, undefined, true);
       if (!result.ok) {
         if (result.status === 401) { navigating = true; window.location.assign(selectedFallback); return; }
         setError(result.error); return;
       }
-      if (!/^https?:\/\//u.test(result.data?.url ?? "")) { setError(copy.continueFailed); return; }
-      saveCheckoutReturn(result.data.orderId, `/scores/${encodeURIComponent(documentId)}`, selectedFallback);
+      if (!/^(https?:\/\/|\/checkout\/success\?)/u.test(result.data?.url ?? "")) { setError(copy.continueFailed); return; }
+      saveCheckoutReturn(result.data.orderId, context.returnPath, selectedFallback);
       navigating = true; window.location.assign(result.data.url);
     } catch { setError(copy.continueFailed); }
     finally { if (!navigating) { lock.current = false; setLoading(null); } }
   }
 
-  return <dialog ref={dialog} className={styles.dialog} aria-labelledby="score-upgrade-title" aria-describedby="score-upgrade-body" onCancel={event => { event.preventDefault(); if (!loading) onClose(); }} onClick={event => { if (event.target === event.currentTarget && !loading) onClose(); }}>
+  return <dialog data-checkout-control ref={dialog} className={styles.dialog} aria-labelledby="score-upgrade-title" aria-describedby="score-upgrade-body" onCancel={event => { event.preventDefault(); if (!loading) onClose(); }} onClick={event => { if (event.target === event.currentTarget && !loading) onClose(); }}>
     <div className="stack-lg">
       <div className={styles.heading}><h2 id="score-upgrade-title" className="card-title">{copy.title}</h2><button type="button" className="button button-tertiary" disabled={Boolean(loading)} onClick={onClose}>{copy.close}</button></div>
       <p id="score-upgrade-body">{copy.body}</p><p className="helper-copy">{copy.sharedCredits}</p>
@@ -73,7 +74,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
           {code === "starter-monthly" ? <strong className={styles.badge}>{copy.recommended}</strong> : null}
           <strong>{plan.name} · US{plan.price}/{copy.monthly}</strong>
           <p>{code === "starter-monthly" ? copy.starterBody : copy.converterBody}</p>
-          <button type="button" className={`button ${code === "starter-monthly" ? "button-primary" : "button-secondary"}`} disabled={Boolean(loading)} onClick={() => void checkout(code)}>{loading === code ? copy.preparing : copy.continuePayment}</button>
+          <button type="button" aria-pressed={restoredPlan === code} className={`button ${code === "starter-monthly" ? "button-primary" : "button-secondary"}`} disabled={Boolean(loading)} onClick={() => void checkout(code)}>{loading === code ? copy.preparing : copy.continuePayment}</button>
         </div>;
       })}
       <div className={styles.option}><strong>{formatMessage(topUp ? copy.topUp : copy.newPass, { price: passPrice })}</strong><p>{copy.passTarget}</p><p>{topUp ? formatMessage(copy.topUpBody, { credits: SINGLE_SCORE_PASS.credits }) : getSingleScorePassCopy(locale).benefits[1]}</p><button type="button" className="button button-secondary" disabled={Boolean(loading)} onClick={() => void checkout(SINGLE_SCORE_PASS.code)}>{loading === SINGLE_SCORE_PASS.code ? copy.preparing : copy.continuePayment}</button></div>

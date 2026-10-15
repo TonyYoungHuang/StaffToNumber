@@ -1,4 +1,6 @@
 "use client";
+import { registerCheckoutSave, waitForCheckoutSave } from "../lib/checkout-flow";
+import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
 
 import { ProcessingProgress } from "@score/ui";
 import { useScoreActivity } from "./ScoreOperationBoundary";
@@ -255,10 +257,18 @@ export function ScoreVisualEditorPanel({
   latestDraftKeyRef.current = draftKey;
   const deferredSelectionRef = useRef<string[] | null>(null);
   const hasUnsavedChanges = Boolean(selectedNote) && draftKey !== draftBaseKey;
+  const checkoutSaveRef = useRef({ busy: false, dirty: false, blocked: false, save: async () => false });
   const latestOwnHistoryCommand = historyCommands.find((command) => command.isCurrentActor && command.status !== "conflict") ?? null;
   const undoTarget = latestOwnHistoryCommand && latestOwnHistoryCommand.commandType !== "history.undo" ? latestOwnHistoryCommand : null;
   const redoTarget = latestOwnHistoryCommand?.commandType === "history.undo" ? latestOwnHistoryCommand : null;
   const busy = saving || mutating !== null || historyMutating !== null || syncingOfflineQueue || resolvingConflict;
+  checkoutSaveRef.current = { busy: busy || saveLockRef.current, dirty: hasUnsavedChanges, blocked: Boolean(pendingConflict) || offlineQueueCount > 0, save: saveVisualEdit };
+  useEffect(() => registerCheckoutSave(async () => {
+    if (!(await waitForCheckoutSave(() => checkoutSaveRef.current))) {
+      setStatus(getCheckoutReturnCopy(locale).saveFailed); setStatusKind("error"); return false;
+    }
+    return true;
+  }), [locale]);
   const hasOperationBoundary = useScoreActivity(busy, hasUnsavedChanges || Boolean(pendingConflict) || offlineQueueCount > 0, flow.scoreOperations.saving, statusKind === "error");
 
   useEffect(() => {
@@ -314,7 +324,7 @@ export function ScoreVisualEditorPanel({
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     const beforeNavigate = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest("a[href], button, select") : null;
-      if (!target || target.closest('[data-score-draft-editor]')) return;
+      if (!target || target.closest('[data-score-draft-editor], [data-checkout-control]') || (target instanceof HTMLAnchorElement && new URL(target.href).pathname === "/checkout")) return;
       event.preventDefault(); event.stopPropagation();
       setStatus(flow.saveBeforeLeave); setStatusKind("error");
     };
@@ -565,15 +575,16 @@ export function ScoreVisualEditorPanel({
     return true;
   }
 
-  async function saveVisualEdit() {
-    if (saveLockRef.current || busy || pendingConflict || offlineQueueCount > 0 || !hasUnsavedChanges) return;
+  async function saveVisualEdit(): Promise<boolean> {
+    if (saveLockRef.current || busy || pendingConflict || offlineQueueCount > 0) return false;
+    if (!hasUnsavedChanges) return true;
     saveLockRef.current = true;
     try {
     const requestBaseRevisionId = draftRevisionRef.current;
     if ((!hasOwnerAuth && !shareToken) || !selectedNote) {
       setStatus(copy.failed);
       setStatusKind("error");
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -615,18 +626,18 @@ export function ScoreVisualEditorPanel({
           queuedDraftRef.current = { key: draftKey, operationId };
           setStatus(formatMessage(copy.queuedOffline, { count: formatNumber(count, locale) }));
           setStatusKind("success");
-          return;
+          return false;
         }
         setStatus(copy.queueFailed);
         setStatusKind("error");
-        return;
+        return false;
       }
       if (operationId && canonicalCommand && result.status === 409 && result.data?.status === "conflict" && result.data.score.currentRevisionId) {
         setPendingConflict({ payload: result.data, command: canonicalCommand, targetEventIds: [selectedNote.id] });
       }
       setStatus(result.error || copy.failed);
       setStatusKind("error");
-      return;
+      return false;
     }
 
     setDraftBaseKey(draftKey);
@@ -640,6 +651,7 @@ export function ScoreVisualEditorPanel({
         ? { operationId, baseRevisionId: requestBaseRevisionId, resultRevisionId: result.data.revision?.id, mergeStatus: successfulMergeStatus(result.data.status) }
         : {}),
     });
+    return true;
       } finally { saveLockRef.current = false; setSaving(false); }
   }
 

@@ -23,6 +23,8 @@ import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { recognitionOption, type RecognitionMode, type RecognitionOptions } from "../lib/recognition-options";
 import { boundedScoreTransfer, fetchScoreUpload, forgetUploadReceipt, getUploadReceipt, latestUploadReceipt, ScoreTransferError } from "../lib/score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
+import { uploadDraftCheckoutContext, uploadDraftCopy, uploadDraftPrepareKey, type UploadCheckoutDraft, type UploadCheckoutOrder } from "../lib/upload-draft-checkout";
+import { scoreCheckoutPath, saveContinuationNotice, type CheckoutContinuationResult } from "../lib/score-pass-checkout";
 type ScoreDocument = {
   id: string;
   title: string;
@@ -60,6 +62,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const signIn = useAppAuthModal();
   const taskCopy = getScoreTaskMessages(locale);
   const transferCopy = scoreTransferCopy(locale);
+  const serverDraftCopy = uploadDraftCopy(locale);
+  const draftFailure = (problem: { error?: string; code?: string; status?: number }) =>
+    ["UPLOAD_DRAFT_NOT_FOUND", "CHECKOUT_SOURCE_NOT_FOUND", "STAGED_UPLOAD_EXPIRED", "STAGED_UPLOAD_NOT_FOUND", "STAGED_UPLOAD_CONSUMED"].includes(problem.code ?? "")
+      ? serverDraftCopy.unavailable : problem.code === "CHECKOUT_NOT_READY" ? serverDraftCopy.waiting : localizeBrowserApiError(problem);
   const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);
   const taskIntentRef = useRef<ScoreTaskIntent | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -96,6 +102,30 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const submitLock = useRef(false);
   const uploadAbort = useRef<AbortController | null>(null);
   const [uploadRecovery, setUploadRecovery] = useState<{ key: string; identity: string } | null>(null);
+  const [serverDraft, setServerDraft] = useState<UploadCheckoutDraft | null>(null);
+  const [draftOrder, setDraftOrder] = useState<UploadCheckoutOrder | null>(null);
+  const [draftRestoreAttempt, setDraftRestoreAttempt] = useState(0);
+  useEffect(() => {
+    if (!access || !token) return;
+    const query = new URLSearchParams(window.location.search);
+    const id = query.get("uploadDraft");
+    if (!id) return;
+    let active = true;
+    const orderId = query.get("checkoutOrderId");
+    void apiRequest<{ draft: UploadCheckoutDraft; order?: UploadCheckoutOrder }>(`/api/scores/upload-drafts/${encodeURIComponent(id)}${orderId ? `?checkoutOrderId=${encodeURIComponent(orderId)}` : ""}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(result => {
+      if (!active) return;
+      if (!result.ok) { setStatus(draftFailure(result)); setFailed(true); return; }
+      setServerDraft(result.data.draft); setDraftOrder(result.data.order ?? null);
+      edited.current = true;
+      setSelectedRecognitionMode(result.data.draft.mode);
+      const resumed = result.data.order?.resumeResult;
+      setStatus(resumed?.error ? draftFailure(resumed) : (result.data.draft.taskId ? serverDraftCopy.queued : serverDraftCopy.ready));
+      setFailed(Boolean(resumed?.error));
+    });
+    return () => { active = false; };
+  }, [access?.id, token, draftRestoreAttempt, serverDraftCopy.unavailable, serverDraftCopy.ready, serverDraftCopy.queued]);
   useEffect(() => () => { uploadAbort.current?.abort(); }, [token, view]);
   useEffect(() => {
     if (!access) { setUploadRecovery(null); return; }
@@ -185,7 +215,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   }, [token, accessAttempt, quoteAttempt]);
   const kind = file ? detectScoreImport(file.name) : null;
   useEffect(() => {
-    if (mode !== "file" || kind !== "omr" || !file || !access) {
+    if (mode !== "file" || kind !== "omr" || !file || !access || serverDraft || new URLSearchParams(window.location.search).has("uploadDraft")) {
       preflightGuard.current.invalidate();
       setPreflight({ status: "idle", file: null });
       return;
@@ -226,7 +256,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     })();
     return () => { clearTimeout(waiting); preflightGuard.current.invalidate(); };
   // Changing display language must not replay bytes after failure or cancellation.
-  }, [file, kind, mode, access?.id, token, preflightAttempt]);
+  }, [file, kind, mode, access?.id, token, preflightAttempt, serverDraft?.id]);
   const recognitionQuote = selectedRecognitionMode ? recognitionOption(recognitionOptions, selectedRecognitionMode) : null;
   const simpleQuote = recognitionOption(recognitionOptions, "simple");
   const recognitionReady = canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
@@ -240,6 +270,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const hasUnusedPass = access?.scorePasses?.some(p => !p.documentId) ?? false;
   const canImport = mode === "file" && kind === "omr" ? recognitionQuote?.canSubmit === true : access?.entitlement.status === "active";
   function chooseFile(selected: File | null) {
+    setServerDraft(null); setDraftOrder(null);
+    const sourceUrl = new URL(window.location.href);
+    sourceUrl.searchParams.delete("uploadDraft"); sourceUrl.searchParams.delete("checkoutOrderId");
+    window.history.replaceState(window.history.state, "", sourceUrl.pathname + sourceUrl.search + sourceUrl.hash);
     preflightGuard.current.invalidate(); setPreflight({ status: "idle", file: null }); setSelectedRecognitionMode(null); setShowAdvancedModes(false);
     edited.current = true; setStatus(null); setFailed(false); setDraftFailed(false);
     if (selected && (!detectScoreImport(selected.name) || (recognitionMode === "complex" && !["omr", "musicxml", "score-json"].includes(detectScoreImport(selected.name) ?? "")) || (detectScoreImport(selected.name) === "audio" && !audioAvailable))) {
@@ -251,10 +285,27 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   async function saveDraftBeforePass() {
     if (!access) return false;
     try {
+      if (serverDraft) return uploadDraftCheckoutContext(serverDraft, currentWorkPath());
+      if (mode === "file" && kind === "omr") {
+        if (preflight.status !== "ready" || !selectedRecognitionMode || !token) throw new Error(preflightCopy.notReady);
+        // The server source is sufficient for payment recovery; IndexedDB only
+        // provides a convenient local fallback and must not block promotion.
+        await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined }).catch(() => setDraftFailed(true));
+        const key = uploadDraftPrepareKey(access.id, preflight.stagedUploadId, selectedRecognitionMode, title);
+        const result = await apiRequest<{ draft: UploadCheckoutDraft }>("/api/scores/upload-drafts/prepare", {
+          method: "POST", headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": key },
+          body: JSON.stringify({ stagedUploadId: preflight.stagedUploadId, recognitionMode: selectedRecognitionMode, title }),
+        });
+        if (!result.ok) throw new Error(draftFailure(result));
+        setServerDraft(result.data.draft);
+        const context = uploadDraftCheckoutContext(result.data.draft, currentWorkPath());
+        window.history.replaceState(window.history.state, "", context.returnPath);
+        return context;
+      }
       await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
       return true;
-    } catch {
-      setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
+    } catch (error) {
+      setDraftFailed(true); setStatus(error instanceof Error ? error.message : flow.fileLost); setFailed(true);
       return false;
     }
   }
@@ -264,11 +315,29 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     // upgrade_click for this path is tracked by OneScorePassUpsell as score_import_subscription.
     submitLock.current = true; setBusy(true);
     try {
-      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
-      router.push(upgradePath(currentWorkPath()));
+      const prepared = await saveDraftBeforePass();
+      if (!prepared) return;
+      router.push(typeof prepared === "object" ? scoreCheckoutPath(prepared.targetDocumentId, prepared.intendedAction, false, prepared.returnPath, prepared.returnState) : upgradePath(currentWorkPath()));
     } catch {
       setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
     } finally { submitLock.current = false; setBusy(false); }
+  }
+  async function confirmServerDraft() {
+    if (!serverDraft || !draftOrder || !token || submitLock.current) return;
+    if (draftOrder.status !== "paid") { setStatus(serverDraftCopy.waiting); setFailed(false); return; }
+    submitLock.current = true; setBusy(true); setFailed(false);
+    try {
+      const result = await apiRequest<CheckoutContinuationResult>(`/api/payments/orders/${encodeURIComponent(draftOrder.id)}/continue`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ token: draftOrder.token, confirmed: true }),
+      });
+      if (!result.ok) throw new Error(draftFailure(result));
+      if (result.data.error) throw new Error(draftFailure({ error: result.data.error, code: result.data.code, status: result.data.statusCode }));
+      saveContinuationNotice({ ...result.data, actionType: "recognition" });
+      setStatus(serverDraftCopy.queued);
+      await clearImportDraft(access!.id).catch(() => undefined);
+      router.push(scoreTaskDocumentPath(serverDraft.documentId, taskIntent, serverDraft.mode === "complex"));
+    } catch (error) { setStatus(error instanceof Error ? error.message : serverDraftCopy.unavailable); setFailed(true); }
+    finally { submitLock.current = false; setBusy(false); }
   }
   function releaseUploadReceipt(key: string) {
     if (!access) return;
@@ -414,6 +483,20 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   return <div className="page-stack flow-library">
     <section id="free-scan" className="surface-panel stack-lg flow-import">
       <h2 className="card-title">{taskIntent ? taskCopy.tasks[taskIntent.task] : flow.importTitle}</h2>
+      {serverDraft ? <div className="stack-sm" data-server-upload-draft={serverDraft.id}>
+        <p className="body-copy">{serverDraftCopy.ready}</p>
+        <p>{serverDraft.filename} · {serverDraft.mode === "complex" ? preflightCopy.complexTitle : preflightCopy.simpleTitle} · {serverDraftCopy.credits}: {formatNumber(serverDraft.creditCost, locale)}</p>
+        <div className="button-row">
+          {serverDraft.taskId ? <Link href={scoreTaskDocumentPath(serverDraft.documentId, taskIntent, serverDraft.mode === "complex")} className="button button-primary">{copy.list.open}</Link>
+            : draftOrder?.status === "paid" ? <button type="button" className="button button-primary" disabled={busy} onClick={() => void confirmServerDraft()}>{serverDraftCopy.continue}</button>
+            : draftOrder?.status === "pending" ? <Link href={`/checkout/success?order_id=${encodeURIComponent(draftOrder.id)}&token=${encodeURIComponent(draftOrder.token)}`} className="button button-primary">{flow.retry}</Link>
+            : <button type="button" className="button button-primary" disabled={busy} onClick={() => {
+              const context = uploadDraftCheckoutContext(serverDraft, currentWorkPath());
+              router.push(scoreCheckoutPath(context.targetDocumentId, context.intendedAction, false, context.returnPath, context.returnState));
+            }}>{flow.upgrade}</button>}
+          <button type="button" className="button button-secondary" disabled={busy} onClick={() => setDraftRestoreAttempt(n => n + 1)}>{flow.retry}</button>
+        </div>
+      </div> : null}
       {taskIntent ? <div className="stack-sm" data-score-task={taskIntent.task}>
         <p className="body-copy">{taskCopy.body}</p>
         {taskIntent.targetTonic ? <p className="helper-copy">{formatMessage(taskCopy.target, { target: taskIntent.targetTonic })}</p> : taskIntent.semitones !== undefined ? <p className="helper-copy">{formatMessage(taskCopy.shift, { value: formatNumber(taskIntent.semitones, locale) })}</p> : null}
@@ -422,11 +505,11 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
           {view === "library" && access ? <a className="button button-secondary" href="#saved-scores">{taskCopy.existing}</a> : null}
         </div>
       </div> : null}
-      <div className="button-row" role="group" aria-label={flow.importTitle}>
+      <div className="button-row" role="group" aria-label={flow.importTitle} hidden={Boolean(serverDraft)}>
         <button type="button" disabled={busy} className={`button ${mode === "file" ? "button-primary" : "button-secondary"}`} aria-pressed={mode === "file"} onClick={() => { edited.current = true; if (mode !== "file") { preflightGuard.current.invalidate(); setPreflight({ status: "idle", file: null }); } setMode("file"); }}>{flow.chooseFile}</button>
         {recognitionMode === "simple" ? <button type="button" disabled={busy} className={`button ${mode === "jianpu" ? "button-primary" : "button-secondary"}`} aria-pressed={mode === "jianpu"} onClick={() => { edited.current = true; preflightGuard.current.invalidate(); setPreflight({ status: "idle", file: null }); setSelectedRecognitionMode(null); setMode("jianpu"); }}>{copy.jianpu.title}</button> : null}
       </div>
-      <form onSubmit={submit} className="stack-lg" onKeyDown={event => {
+      <form onSubmit={submit} className="stack-lg" hidden={Boolean(serverDraft)} onKeyDown={event => {
         if (mode !== "file" || kind !== "omr" || event.key !== "Enter" || event.nativeEvent.isComposing) return;
         const target = event.target as HTMLElement;
         // Native Enter on a control such as a mode radio must not implicitly confirm a paid recognition.

@@ -6,6 +6,8 @@ import { ScoreUploadReceipts, UploadReceiptError } from "../lib/score-upload-rec
 import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from "../lib/score-passes.js";
 import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
+import { registerScoreUploadDraftRoutes } from "./score-upload-drafts.js";
+import { startScoreUploadDraftRecognition } from "../lib/score-upload-drafts.js";
 import { claimStagedOmrUpload, StagedOmrUploadError } from "../lib/staged-omr-uploads.js";
 import { countTiffPages } from "../lib/score-pass-pages.js";
 import { assertRecognitionQuote, getRecognitionOptions, normalizeRecognitionMode, RecognitionAccessError, RecognitionPriceChangedError, resolveRecognitionAccess } from "../lib/recognition-options.js";
@@ -1491,14 +1493,17 @@ function prepareQueuedScoreExport(document: NonNullable<ReturnType<typeof findSc
 export async function scoreRoutes(app: FastifyInstance) {
   app.post("/payments/orders/:id/continue", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const token = (request.body as { token?: unknown } | null)?.token;
+    const body = request.body as { token?: unknown; confirmed?: unknown } | null;
+    const token = body?.token;
     try {
-      const result = consumeCheckoutContinuation({ userId: request.authUserId!, orderId: id, token,
+      const result = consumeCheckoutContinuation({ userId: request.authUserId!, orderId: id, token, confirmed: body?.confirmed,
         execute: (action, documentId) => {
           const document = findScoreDocumentById(documentId)!;
           const job = action.kind === "export"
             ? createScoreExportJob({ userId: request.authUserId!, documentId,
                 params: prepareQueuedScoreExport(document, action) as unknown as Record<string, unknown>, inTransaction: true })
+            : action.kind === "recognition"
+              ? startScoreUploadDraftRecognition({ userId: request.authUserId!, draftId: action.uploadDraftId, documentId, orderId: id })
             : retryScoreJob({ jobId: action.jobId, userId: request.authUserId!, documentId,
                 recognitionMode: action.recognitionMode, restartRecognition: action.restartRecognition, inTransaction: true });
           if (!job) throw new CheckoutContinuationError("CHECKOUT_ACTION_NOT_RETRYABLE", "The score operation can no longer be retried.", 409);
@@ -1577,6 +1582,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   });
 
   registerScoreStructurePreflightRoute(app);
+  registerScoreUploadDraftRoutes(app);
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof StagedOmrUploadError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreCoverageReviewRequiredError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });

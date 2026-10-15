@@ -55,6 +55,9 @@ import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-m
 import { getScorePassCopy } from "../lib/billing-messages/client";
 import { isCreditUpgradeError, scoreCheckoutPath, takeContinuationNotice } from "../lib/score-pass-checkout";
 import { ScorePassUpgradeModal } from "./ScorePassUpgradeModal";
+import { registerCheckoutState } from "../lib/checkout-flow";
+import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
+import type { CheckoutReturnContext, CheckoutReturnState } from "@score/shared";
 
 type ScoreRevision = {
   id: string;
@@ -422,7 +425,7 @@ export function ScoreDetailClient({ ensemble = false }: { ensemble?: boolean }) 
   const params = useParams();
   const { locale } = useAppLocale();
   const [upgrade, setUpgrade] = useState<{ documentId: string; action?: CheckoutIntendedAction; topUp: boolean } | null>(null);
-  return <ScoreOperationBoundary key={String(params.id)}><ScoreDetailContent ensemble={ensemble} onUpgrade={(action, topUp) => setUpgrade({ documentId: String(params.id), action, topUp })} />{upgrade && upgrade.documentId === String(params.id) ? <ScorePassUpgradeModal documentId={upgrade.documentId} action={upgrade.action} topUp={upgrade.topUp} locale={locale} onClose={() => setUpgrade(null)} /> : null}</ScoreOperationBoundary>;
+  return <><ScoreOperationBoundary key={String(params.id)}><ScoreDetailContent ensemble={ensemble} onUpgrade={(action, topUp) => setUpgrade({ documentId: String(params.id), action, topUp })} /></ScoreOperationBoundary>{upgrade && upgrade.documentId === String(params.id) ? <ScorePassUpgradeModal documentId={upgrade.documentId} action={upgrade.action} topUp={upgrade.topUp} locale={locale} onClose={() => setUpgrade(null)} /> : null}</>;
 }
 
 function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgrade: (action: CheckoutIntendedAction | undefined, topUp: boolean) => void }) {
@@ -547,9 +550,74 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   useEffect(() => {
     const notice = takeContinuationNotice(scoreId);
     if (!notice) return;
+    if (!notice.error && !notice.code) {
+      const message = getCheckoutReturnCopy(locale).exportQueued;
+      setExportStatus(message); setExportStatusKind("success");
+      if (notice.job) setLastExportJobId(notice.job.id);
+      return;
+    }
     const message = localizeApiError({ error: notice.error, code: notice.code, status: notice.statusCode }, locale);
     setContinuationError(message); setExportStatus(message); setExportStatusKind("error");
   }, [scoreId, locale]);
+  const checkoutSnapshot = useRef<Partial<CheckoutReturnState>>({});
+  checkoutSnapshot.current = {
+    documentRevisionId: payload?.score.currentRevisionId ?? undefined,
+    transpose: { mode: transposeMode, semitones: transposeSemitones, targetTonic, targetMode, instrumentProfileId, spellingPolicy: transposeSpellingPolicy, pitchMode: transposePitchMode, intervalId: transposeIntervalId, intervalDirection: String(transposeIntervalDirection), rangeProfileId, rangePartId, partRangeProfileIds },
+    exportOptions: { format: exportFormat, imageDpi: renderImageDpi, trim: trimRenderedImage, trimMargin: renderTrimMargin, pageSize: renderPageSize, marginPreset: renderMarginPreset, sampleRate: audioSampleRate, channels: audioChannels, gain: soundFontGain, reverb: audioReverbEnabled, chorus: audioChorusEnabled, normalizeLoudness: audioNormalizeLoudness, loudnessTarget: audioLoudnessTarget, bitrateKbps: audioBitrateKbps },
+  };
+  useEffect(() => registerCheckoutState(() => checkoutSnapshot.current), [scoreId]);
+  const restoredCheckout = useRef<string | null>(null);
+  useEffect(() => {
+    const orderId = new URLSearchParams(window.location.search).get("checkoutOrderId");
+    if (!orderId || !payload?.score.currentRevisionId || restoredCheckout.current === orderId) return;
+    const controller = new AbortController();
+    void apiRequest<{ order: { status: string; intendedAction?: CheckoutIntendedAction; passMode?: string; returnContext?: CheckoutReturnContext; continuation?: { result?: { job?: { id: string }; error?: string; code?: string } } } }>(`/api/payments/orders/${encodeURIComponent(orderId)}/owned`, { signal: controller.signal, headers: token ? { Authorization: `Bearer ${token}` } : undefined }).then(result => {
+      if (!result.ok || controller.signal.aborted) return;
+      restoredCheckout.current = orderId;
+      const state = result.data.order.returnContext?.state;
+      if (!state) return;
+      if (state.documentRevisionId && state.documentRevisionId !== payload.score.currentRevisionId) {
+        setContinuationError(getCheckoutReturnCopy(locale).revisionChanged); return;
+      }
+      const t = state.transpose;
+      if (t) {
+        if (["semitones", "interval", "targetKey", "instrument"].includes(t.mode ?? "")) setTransposeMode(t.mode as typeof transposeMode);
+        if (typeof t.semitones === "number") setTransposeSemitones(t.semitones);
+        if (t.targetTonic) setTargetTonic(t.targetTonic);
+        if (TARGET_MODE_OPTIONS.includes(t.targetMode as typeof targetMode)) setTargetMode(t.targetMode as typeof targetMode);
+        if (t.instrumentProfileId) setInstrumentProfileId(t.instrumentProfileId);
+        if (["auto", "preserve", "prefer-sharps", "prefer-flats"].includes(t.spellingPolicy ?? "")) setTransposeSpellingPolicy(t.spellingPolicy as typeof transposeSpellingPolicy);
+        if (["concert-to-written", "written-to-concert"].includes(t.pitchMode ?? "")) setTransposePitchMode(t.pitchMode as typeof transposePitchMode);
+        if (TRANSPOSE_INTERVAL_OPTIONS.some(option => option.id === t.intervalId)) setTransposeIntervalId(t.intervalId as typeof transposeIntervalId);
+        if (t.intervalDirection === "1" || t.intervalDirection === "-1") setTransposeIntervalDirection(Number(t.intervalDirection) as 1 | -1);
+        if (t.rangeProfileId) setRangeProfileId(t.rangeProfileId);
+        if (t.rangePartId) setRangePartId(t.rangePartId);
+        if (t.partRangeProfileIds) setPartRangeProfileIds(t.partRangeProfileIds);
+      }
+      const o = state.exportOptions;
+      if (o) {
+        if (typeof o.format === "string") setExportFormat(o.format);
+        if (typeof o.imageDpi === "number") setRenderImageDpi(o.imageDpi);
+        if (typeof o.trim === "boolean") setTrimRenderedImage(o.trim);
+        if (typeof o.trimMargin === "number") setRenderTrimMargin(o.trimMargin);
+        if (["default", "a4", "letter"].includes(String(o.pageSize))) setRenderPageSize(o.pageSize as typeof renderPageSize);
+        if (["default", "narrow", "normal", "wide"].includes(String(o.marginPreset))) setRenderMarginPreset(o.marginPreset as typeof renderMarginPreset);
+        if ([44100, 48000, 96000].includes(Number(o.sampleRate))) setAudioSampleRate(o.sampleRate as typeof audioSampleRate);
+        if (o.channels === 1 || o.channels === 2) setAudioChannels(o.channels);
+        if (typeof o.gain === "number") setSoundFontGain(o.gain);
+        if (typeof o.reverb === "boolean") setAudioReverbEnabled(o.reverb);
+        if (typeof o.chorus === "boolean") setAudioChorusEnabled(o.chorus);
+        if (typeof o.normalizeLoudness === "boolean") setAudioNormalizeLoudness(o.normalizeLoudness);
+        if (typeof o.loudnessTarget === "number") setAudioLoudnessTarget(o.loudnessTarget);
+        if ([128,192,256,320].includes(Number(o.bitrateKbps))) setAudioBitrateKbps(o.bitrateKbps as typeof audioBitrateKbps);
+      }
+      if (state.panel && !window.location.hash) { window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#${state.panel}`); window.dispatchEvent(new HashChangeEvent("hashchange")); }
+      const continued = result.data.order.continuation?.result;
+      if (continued?.job) { setLastExportJobId(continued.job.id); setExportStatus(getCheckoutReturnCopy(locale).exportQueued); setExportStatusKind("success"); }
+      if (result.data.order.status !== "paid") onUpgrade(result.data.order.intendedAction, result.data.order.passMode === "top_up");
+    });
+    return () => controller.abort();
+  }, [scoreId, token, payload?.score.currentRevisionId, locale]);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const [revisionStatus, setRevisionStatus] = useState<string | null>(null);
   const [revisionStatusKind, setRevisionStatusKind] = useState<"success" | "error" | null>(null);

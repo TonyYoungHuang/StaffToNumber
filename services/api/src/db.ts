@@ -4,7 +4,7 @@ import { createRuntimeDatabase } from "@score/runtime-database";
 import { config } from "./config.js";
 import { DATABASE_SCHEMA_VERSION } from "./schema-version.js";
 import { PREPAID_TABLES_SQL, PREPAID_SQLITE_TRIGGERS } from "./lib/prepaid-schema.js";
-import { SCORE_PASS_DOCUMENTS_SQL, SCORE_PASS_BACKFILL_SQL } from "./lib/score-pass-schema.js";
+import { SCORE_PASS_DOCUMENTS_SQL, SCORE_PASS_BACKFILL_SQL, SCORE_UPLOAD_DRAFTS_SQL, PAYMENT_RETURN_COLUMNS } from "./lib/score-pass-schema.js";
 
 if (config.runtimeDatabasePrimary === "sqlite") fs.mkdirSync(path.dirname(config.dbFile), { recursive: true });
 fs.mkdirSync(config.storageDir, { recursive: true });
@@ -38,9 +38,14 @@ export function initDb() {
     return;
   }
   if (currentSchemaVersion() === DATABASE_SCHEMA_VERSION) {
+    db.exec("BEGIN");
+    try { ensureSchema27Additions(); db.exec("COMMIT"); }
+    catch (error) { db.exec("ROLLBACK"); throw error; }
     return;
   }
 
+  db.exec("BEGIN");
+  try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -1115,6 +1120,8 @@ export function initDb() {
   ensureColumn("payment_orders", "intended_action_json", "TEXT");
   ensureColumn("payment_orders", "resume_consumed_at", "TEXT");
   ensureColumn("payment_orders", "resume_result_json", "TEXT");
+  for (const column of PAYMENT_RETURN_COLUMNS) ensureColumn("payment_orders", column, "TEXT");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_checkout_intent ON payment_orders(user_id, provider, checkout_intent_hash) WHERE checkout_intent_hash IS NOT NULL");
   ensureColumn("billing_one_time_purchases", "target_document_id", "TEXT");
   ensureColumn("score_passes", "group_pass_id", "TEXT REFERENCES score_passes(purchase_id)");
   ensureColumn("payment_orders", "checkout_session_id", "TEXT");
@@ -1380,9 +1387,23 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_users_account_status_deletion ON users(account_status, scheduled_deletion_at);
   `);
   db.exec(PREPAID_TABLES_SQL + PREPAID_SQLITE_TRIGGERS);
-  db.exec(SCORE_PASS_DOCUMENTS_SQL + SCORE_PASS_BACKFILL_SQL);
+  db.exec(SCORE_PASS_DOCUMENTS_SQL + SCORE_UPLOAD_DRAFTS_SQL + SCORE_PASS_BACKFILL_SQL);
   db.exec("CREATE INDEX IF NOT EXISTS idx_score_passes_group ON score_passes(group_pass_id);");
   db.exec(`PRAGMA user_version = ${DATABASE_SCHEMA_VERSION};`);
+  db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function ensureSchema27Additions() {
+  for (const column of ["target_document_id", "intended_action_json", "resume_consumed_at", "resume_result_json", ...PAYMENT_RETURN_COLUMNS]) ensureColumn("payment_orders", column, "TEXT");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_checkout_intent ON payment_orders(user_id, provider, checkout_intent_hash) WHERE checkout_intent_hash IS NOT NULL");
+  ensureColumn("billing_one_time_purchases", "target_document_id", "TEXT");
+  ensureColumn("score_passes", "group_pass_id", "TEXT REFERENCES score_passes(purchase_id)");
+  db.exec(SCORE_PASS_DOCUMENTS_SQL + SCORE_UPLOAD_DRAFTS_SQL + SCORE_PASS_BACKFILL_SQL);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_score_passes_group ON score_passes(group_pass_id)");
 }
 
 function validatePostgresSchema() {
@@ -1398,6 +1419,8 @@ function validatePostgresSchema() {
     "score_passes",
     "score_pass_jobs",
     "score_pass_documents",
+    "score_document_derivations",
+    "score_upload_drafts",
     "prepaid_credit_grants",
     "prepaid_credit_charges",
     "job_dispatch_outbox",
@@ -1414,4 +1437,10 @@ function validatePostgresSchema() {
   if (missing.length > 0) {
     throw new Error(`PostgreSQL runtime schema is incomplete (${missing.join(", ")}). Run and verify the PostgreSQL migration before starting API traffic.`);
   }
+  const requiredColumns = [...PAYMENT_RETURN_COLUMNS.map(column => `payment_orders.${column}`), "payment_orders.target_document_id", "payment_orders.intended_action_json", "payment_orders.resume_consumed_at", "payment_orders.resume_result_json", "score_passes.group_pass_id", "billing_one_time_purchases.target_document_id"];
+  requiredColumns.push(...["id", "user_id", "document_id", "prepare_intent_id", "recognition_mode", "status", "created_at", "updated_at", "expires_at", "confirmed_order_id", "task_id"].map(column => `score_upload_drafts.${column}`), ...["document_id", "source_document_id", "user_id", "derivation_kind", "created_at"].map(column => `score_document_derivations.${column}`));
+  const columns = db.prepare("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()").all() as Array<{ table_name: string; column_name: string }>;
+  const availableColumns = new Set(columns.map(column => `${column.table_name}.${column.column_name}`));
+  const missingColumns = requiredColumns.filter(column => !availableColumns.has(column));
+  if (missingColumns.length) throw new Error(`PostgreSQL runtime columns are incomplete (${missingColumns.join(", ")}). Run the schema 27 additive migration before starting API traffic.`);
 }

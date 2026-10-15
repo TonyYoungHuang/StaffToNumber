@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
+import { timingSafeEqual } from "node:crypto";
 import type { PaymentOrderRow } from "../repositories/payment-repository.js";
-import { findPaymentOrderById, findPaymentOrderByCheckoutSessionId, findPaymentOrderByTransactionId, completePaymentOrder } from "../repositories/payment-repository.js";
-import { cancelPaddleSubscription, cancelStripeSubscription, stripeCredentialMode, verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
+import { findPaymentOrderById, findPaymentOrderByCheckoutSessionId, findPaymentOrderByTransactionId, completePaymentOrder, attachPaddleTransaction } from "../repositories/payment-repository.js";
+import { buildLocalizedPublicCheckoutUrl, buildPaddleCheckoutRedirectUrl, localizePublicPaddleCheckoutPageUrl, cancelPaddleSubscription, cancelStripeSubscription, stripeCredentialMode, verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
 import { normalizePaddleBillingEvent, normalizeStripeBillingEvent } from "../lib/billing-events.js";
 import { findBillingSubscriptionForRefund, processBillingWebhookEvent } from "../repositories/billing-repository.js";
 import { db } from "../db.js";
@@ -9,6 +10,7 @@ import { applyOneTimeRefund, fulfillOneTimePurchase } from "../repositories/one-
 import { buildPaymentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
 import { config } from "../config.js";
 import { retryOperatorNotification } from "../lib/operator-notification.js";
+import { hashPaymentOrderToken, stripeSessionMatchesPaymentOrder } from "../lib/payments.js";
 import {
   completeDurablePaymentOrder,
   findDurablePaymentOrderByCheckoutSessionId,
@@ -59,6 +61,16 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
 
       try {
         const event = verifyStripeWebhook(rawRequest.rawBody, signature);
+        if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
+          const session = event.data.object;
+          const order = findPaymentOrderByCheckoutSessionId(session.id);
+          if (order && session.payment_status !== "paid" && stripeSessionMatchesPaymentOrder(session, { orderId: order.id, publicToken: order.public_token, sessionId: session.id })) {
+            const timestamp = new Date().toISOString();
+            const changed = db.prepare("UPDATE payment_orders SET status = 'cancelled', cancelled_at = ?, updated_at = ? WHERE id = ? AND status = 'pending' AND paid_at IS NULL")
+              .run(timestamp, timestamp, order.id);
+            if (changed.changes === 1) await saveDurablePaymentOrder(findPaymentOrderById(order.id)!);
+          }
+        }
         if (event.type === "charge.refunded") applyOneTimeRefund(db, event.data.object);
 
         const billingEvent = normalizeStripeBillingEvent(event, rawRequest.rawBody);
@@ -140,6 +152,8 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
             status?: string;
             custom_data?: {
               orderId?: string;
+              userId?: string;
+              orderTokenHash?: string;
             };
             details?: {
               totals?: {
@@ -149,6 +163,30 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
             };
           };
         };
+
+        // Paddle transaction creation has no provider idempotency key. A signed
+        // lifecycle event recovers the original response after a lost POST;
+        // it never creates another transaction or accepts a supplied redirect.
+        if (["transaction.created", "transaction.ready", "transaction.updated"].includes(payload.event_type ?? "")) {
+          const orderId = payload.data?.custom_data?.orderId;
+          const transactionId = payload.data?.id;
+          const proof = payload.data?.custom_data;
+          const order = orderId ? findPaymentOrderById(orderId) : undefined;
+          if (order && transactionId && order.provider === "paddle" && order.status === "pending"
+            && order.provider_checkout_started_at && order.user_id && proof?.userId === order.user_id
+            && (!order.transaction_id || order.transaction_id === transactionId)
+            && typeof proof.orderTokenHash === "string" && /^[a-f0-9]{64}$/u.test(proof.orderTokenHash)
+            && timingSafeEqual(Buffer.from(hashPaymentOrderToken(order.public_token), "hex"), Buffer.from(proof.orderTokenHash, "hex"))) {
+            const successUrl = buildLocalizedPublicCheckoutUrl({ baseUrl: config.publicSiteUrl, pathname: "/checkout/success", locale: order.locale,
+              searchParams: { provider: "paddle", order_id: order.id, token: order.public_token } });
+            const checkoutUrl = buildPaddleCheckoutRedirectUrl({
+              checkoutUrl: localizePublicPaddleCheckoutPageUrl({ checkoutUrl: config.paddleDefaultPaymentLink, publicSiteUrl: config.publicSiteUrl, locale: order.locale }),
+              transactionId, orderId: order.id, publicToken: order.public_token, successUrl,
+            });
+            const attached = attachPaddleTransaction(order.id, transactionId, checkoutUrl);
+            if (attached?.transaction_id === transactionId) await saveDurablePaymentOrder(attached);
+          }
+        }
 
         const billingEvent = normalizePaddleBillingEvent(payload, rawRequest.rawBody);
         if (billingEvent?.refund?.fullyRefunded) {

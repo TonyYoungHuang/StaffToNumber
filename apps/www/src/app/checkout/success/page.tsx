@@ -39,6 +39,7 @@ export default async function CheckoutSuccessPage({
           token={token}
           provider={provider}
           sessionId={sessionId}
+          returnToken={typeof params.return_token === "string" ? params.return_token : undefined}
           copy={messages.status}
           translationNotice={messages.translationNotice}
         />

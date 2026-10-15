@@ -108,6 +108,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
 }
 
 export function ProductionAnalytics({ copy }: { copy: AnalyticsConsentMessages }) {
+  const pathname = usePathname();
   const { locale } = useSiteLocale();
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true";
@@ -124,7 +125,7 @@ export function ProductionAnalytics({ copy }: { copy: AnalyticsConsentMessages }
     setConsent(resolved);
   }, []);
 
-  if (!analyticsEnabled || (!gaId && !clarityId)) return null;
+  if (/^\/checkout(?:\/|$)/u.test(stripPublicLocalePrefix(pathname)) || !analyticsEnabled || (!gaId && !clarityId)) return null;
   if (consent === "granted") return <AnalyticsScripts gaId={gaId} clarityId={clarityId} />;
   if (consent === "denied") return null;
 

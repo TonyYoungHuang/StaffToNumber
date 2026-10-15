@@ -22,6 +22,7 @@ import type {
   BillingSubscriptionStatus,
 } from "../lib/billing-messages/types";
 import { accountActivationRoute } from "../lib/release";
+import { OwnedCheckoutRecovery } from "./OwnedCheckoutRecovery";
 
 type Subscription = {
   id: string;
@@ -203,6 +204,7 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
 
   return (
     <div className="page-stack" lang={locale}>
+      <OwnedCheckoutRecovery locale={locale} />
       <section className="surface-panel stack-lg subscription-management" id="subscriptions">
         <div className="section-heading-row">
           <div className="stack-xs">

@@ -37,6 +37,8 @@ export function writeAnalyticsConsent(value: "granted" | "denied") {
 
 export function trackFunnelEvent(name: string, parameters: AnalyticsEventParameters = {}) {
   if (typeof window === "undefined") return false;
+  // Hosted payment return locators must never reach analytics providers.
+  if (/^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?checkout(?:\/|$)/iu.test(window.location.pathname)) return false;
   if (!window.gtag) {
     window.addEventListener(analyticsReadyEvent, () => trackFunnelEvent(name, parameters), { once: true });
     return false;

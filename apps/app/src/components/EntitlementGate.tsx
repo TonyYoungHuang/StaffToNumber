@@ -5,7 +5,8 @@ import { useAppAuthModal } from "./AppAuthModal";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { APP_ROUTES } from "@score/shared";
+import { APP_ROUTES, type CheckoutIntendedAction } from "@score/shared";
+import { scoreCheckoutPath } from "../lib/score-pass-checkout";
 import { getStoredToken } from "../lib/auth-storage";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { apiRequest } from "../lib/api";
@@ -27,11 +28,15 @@ export function EntitlementGate({
   children,
   allowFreePreview = false,
   deniedMode = "redirect",
+  targetDocumentId,
+  intendedAction,
   copy,
 }: {
   children: ReactNode;
   allowFreePreview?: boolean;
   deniedMode?: "redirect" | "panel";
+  targetDocumentId?: string;
+  intendedAction?: CheckoutIntendedAction;
   copy: AuthMessageCatalog["entitlement"];
 }) {
   const router = useRouter();
@@ -43,6 +48,7 @@ export function EntitlementGate({
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "redirecting" | "signin" | "guest">("checking");
   const deniedAction = copy.unlockAction;
+  const checkoutPath = () => targetDocumentId ? scoreCheckoutPath(targetDocumentId, intendedAction) : upgradePath(currentWorkPath());
 
   useEffect(() => {
     setError(null);
@@ -70,13 +76,13 @@ export function EntitlementGate({
           return;
         }
         setStatus("redirecting");
-        router.replace(upgradePath(currentWorkPath()));
+        router.replace(checkoutPath());
         return;
       }
 
       setStatus("allowed");
     });
-  }, [allowFreePreview, deniedMode, router, attempt, signIn]);
+  }, [allowFreePreview, deniedMode, router, attempt, signIn, targetDocumentId, intendedAction]);
 
   if (error) {
     return (
@@ -118,7 +124,7 @@ export function EntitlementGate({
         </div>
         <div className="button-row">
           <Link
-            href={upgradePath(currentWorkPath())}
+            href={checkoutPath()}
             className="button button-primary"
             onClick={() => trackFunnelEvent("upgrade_click", { source: "entitlement_gate" })}
           >

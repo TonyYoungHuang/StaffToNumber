@@ -4,6 +4,12 @@ export const analyticsConsentKey = "scoretransposer_analytics_consent";
 export const analyticsReadyEvent = "scoretransposer:analytics-ready";
 
 export type AnalyticsEventParameters = Record<string, unknown>;
+export function analyticsSafeUrl(value: string) {
+  const url = new URL(value);
+  for (const key of [...url.searchParams.keys()]) if (/^(?:token|return_token|returnToken|access_token|refresh_token|id_token|password|secret|code|session_id)$/iu.test(key)) url.searchParams.delete(key);
+  return url.toString();
+}
+export function analyticsSensitiveRoute(path: string) { return /^\/checkout(?:\/|$)/u.test(path); }
 
 declare global {
   interface Window {
@@ -37,17 +43,19 @@ export function writeAnalyticsConsent(value: "granted" | "denied") {
 
 export function trackFunnelEvent(name: string, parameters: AnalyticsEventParameters = {}) {
   if (typeof window === "undefined") return false;
+  if (analyticsSensitiveRoute(window.location.pathname)) return false;
   if (!window.gtag) {
     window.addEventListener(analyticsReadyEvent, () => trackFunnelEvent(name, parameters), { once: true });
     return false;
   }
-  window.gtag("event", name, parameters);
+  window.gtag("event", name, { ...parameters, page_location: analyticsSafeUrl(window.location.href) });
   window.clarity?.("event", name);
   return true;
 }
 
 export function trackFunnelEventOnce(key: string, name: string, parameters: AnalyticsEventParameters = {}) {
   if (typeof window === "undefined") return false;
+  if (analyticsSensitiveRoute(window.location.pathname)) return false;
   if (!window.gtag) {
     window.addEventListener(analyticsReadyEvent, () => trackFunnelEventOnce(key, name, parameters), { once: true });
     return false;

@@ -85,7 +85,44 @@ test("a topup refund removes its credits; a root refund revokes every part even 
   original.refund(); original.pay();
   assert.equal(scorePassForDocument(db, user.id, root), undefined);
   assert.equal(scorePassForDocument(db, user.id, part), undefined);
-  assert.throws(() => purchase(user.id, part), /refunded/);
+  const replacement = purchase(user.id, root); replacement.pay(); replacement.pay();
+  assert.equal(scorePassForDocument(db, user.id, root)!.id, replacement.order.id);
+  assert.equal(scorePassForDocument(db, user.id, root)!.credits, 10);
+  assert.equal(scorePassForDocument(db, user.id, root)!.remaining, 10);
+  assert.equal(findOneTimePurchase(db, original.order.id)!.status, "refunded");
+  assert.equal((db.prepare("SELECT group_pass_id FROM score_passes WHERE purchase_id = ?").get(next.order.id) as { group_pass_id: string }).group_pass_id, original.order.id);
+});
+
+test("self-service rebuy retains old charges and never revives old refunded credits or active topups", () => {
+  const user = account(), root = document(user.id), original = purchase(user.id, root); original.pay();
+  createScoreExportJob({ userId: user.id, documentId: root, params: {} });
+  const oldTopup = purchase(user.id, root); oldTopup.pay(); original.refund();
+  const replacement = purchase(user.id, root); replacement.pay();
+  assert.equal(scorePassForDocument(db, user.id, root)!.remaining, 10);
+  assert.equal((db.prepare("SELECT count(*) AS n FROM score_pass_jobs WHERE purchase_id = ?").get(original.order.id) as { n: number }).n, 1);
+  assert.equal(findOneTimePurchase(db, original.order.id)!.target_document_id, root);
+  assert.equal(findPaymentOrderById(original.order.id)!.target_document_id, root);
+  original.pay(); oldTopup.pay(); replacement.pay();
+  assert.equal(scorePassForDocument(db, user.id, root)!.credits, 10);
+  const freshTopup = purchase(user.id, root); freshTopup.pay(); freshTopup.pay();
+  assert.equal(scorePassForDocument(db, user.id, root)!.credits, 20);
+  assert.equal(listScorePasses(db, user.id).length, 1);
+});
+
+test("pre-purchase historical parts join only with server provenance, same owner and no other group; they grant zero credits", () => {
+  const user = account(), root = document(user.id), proven = document(user.id), nested = document(user.id), unproven = document(user.id), otherGroupPart = document(user.id);
+  mapExtractedScorePassDocument(db, user.id, root, proven);
+  mapExtractedScorePassDocument(db, user.id, proven, nested);
+  mapExtractedScorePassDocument(db, user.id, root, otherGroupPart);
+  const other = purchase(user.id, otherGroupPart); other.pay();
+  const original = purchase(user.id, root); original.pay();
+  assert.deepEqual(new Set(scorePassForDocument(db, user.id, root)!.documentIds), new Set([root, proven, nested]));
+  assert.equal(scorePassForDocument(db, user.id, root)!.credits, 10);
+  assert.equal(scorePassForDocument(db, user.id, unproven), undefined);
+  assert.equal(scorePassForDocument(db, user.id, otherGroupPart)!.id, other.order.id);
+  assert.throws(() => mapExtractedScorePassDocument(db, user.id, unproven, proven), /different server-recorded source/);
+  const foreign = account(), foreignPart = document(foreign.id);
+  assert.throws(() => mapExtractedScorePassDocument(db, user.id, root, foreignPart), /owned by this account/);
 });
 
 test("sold legacy passes backfill root mapping without extra credits or lost charges; documents cannot join two groups", () => {

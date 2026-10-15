@@ -641,6 +641,8 @@ export function createOmrImportScoreDocument(input: {
   pageCount?: number;
   recognitionMode?: ScoreRecognitionMode;
   expectedCreditCost?: number;
+  existingDraft?: boolean;
+  inTransaction?: boolean;
 }) {
   const recognitionMode = normalizeRecognitionMode(input.recognitionMode);
   const creditCost = recognitionCreditCost(recognitionMode);
@@ -651,7 +653,7 @@ export function createOmrImportScoreDocument(input: {
   const diagnosticsId = createId();
   const context = currentRequestContext();
 
-  db.exec("BEGIN IMMEDIATE");
+  if (!input.inTransaction) db.exec("BEGIN IMMEDIATE");
 
   try {
     lockScorePassAccount(db, input.userId);
@@ -659,7 +661,8 @@ export function createOmrImportScoreDocument(input: {
     const allowance = getPlanQuotaUsage(input.userId);
     // HTTP callers do not select a credit source. Re-resolve after locking the
     // account: a purchase or another upload may have changed access meanwhile.
-    const requestedPass = input.scorePass ?? (input.freeTrial === undefined && resolveRecognitionAccess(input.userId, recognitionMode).creditSource === "score_pass");
+    const existingPass = input.existingDraft ? scorePassForDocument(db, input.userId, documentId) : null;
+    const requestedPass = input.scorePass ?? (Boolean(existingPass) || (input.freeTrial === undefined && resolveRecognitionAccess(input.userId, recognitionMode).creditSource === "score_pass"));
     const usePass = requestedPass && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
     if (recognitionMode === "complex" && !isPaid && (!usePass || input.freeTrial)) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
@@ -667,7 +670,12 @@ export function createOmrImportScoreDocument(input: {
     const freeTrial = !isPaid && !usePass;
     const quota = assertProcessingQuota(input.userId, usePass, creditCost);
     if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
-    db.prepare(
+    if (input.existingDraft) {
+      const updated = db.prepare(`UPDATE score_documents SET status = 'candidate', updated_at = ?
+        WHERE id = ? AND user_id = ? AND source_file_id = ? AND current_revision_id IS NULL AND pending_revision_id IS NULL
+        AND status NOT IN ('deleted', 'archived')`).run(timestamp, documentId, input.userId, input.sourceFileId);
+      if (updated.changes !== 1) throw new Error("The upload draft is no longer available for recognition.");
+    } else db.prepare(
       `
         INSERT INTO score_documents (
           id, user_id, title, current_revision_id, source_file_id, status, created_at, updated_at
@@ -675,9 +683,9 @@ export function createOmrImportScoreDocument(input: {
         VALUES (?, ?, ?, NULL, ?, 'candidate', ?, ?)
       `,
     ).run(documentId, input.userId, input.title, input.sourceFileId, timestamp, timestamp);
-    const passId = usePass ? bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
+    const passId = usePass ? existingPass ? assertScorePassCredit(db, input.userId, documentId, creditCost) : bindScorePass(db, input.userId, documentId, input.pageCount ?? 0, creditCost) : null;
 
-    db.prepare(
+    if (!input.existingDraft) db.prepare(
       `
         INSERT INTO score_assets (id, document_id, file_id, asset_kind, created_at)
         VALUES (?, ?, ?, ?, ?)
@@ -735,9 +743,9 @@ export function createOmrImportScoreDocument(input: {
 
     if (passId) recordScorePassJob(db, passId, jobId);
     else recordProcessingCredit(input.userId, "score", jobId, quota, creditCost);
-    db.exec("COMMIT");
+    if (!input.inTransaction) db.exec("COMMIT");
   } catch (error) {
-    db.exec("ROLLBACK");
+    if (!input.inTransaction) db.exec("ROLLBACK");
     throw error;
   }
 

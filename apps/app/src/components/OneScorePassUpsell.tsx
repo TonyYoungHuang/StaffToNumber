@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { SINGLE_SCORE_PASS } from "@score/shared";
+import { SINGLE_SCORE_PASS, type CheckoutIntendedAction, type CheckoutReturnState } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken } from "../lib/auth-storage";
@@ -10,6 +10,7 @@ import { currentWorkPath, saveCheckoutReturn, upgradePath, workReturnPath } from
 import { getOneScoreUpsellCopy } from "../lib/one-score-upsell-copy";
 import { checkoutAvailable } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
+import { checkoutReturnContext, lookupAndStartCheckout, prepareCheckout } from "../lib/checkout-flow";
 
 type CheckoutPayload = { orderId: string; url: string; code?: string };
 
@@ -31,7 +32,7 @@ export function OneScorePassUpsell({
   returnTo?: string;
   targetDocumentId?: string;
   /** Runs before checkout or plan navigation (e.g. persist an import draft). Return false to abort. */
-  beforeCheckout?: () => Promise<boolean>;
+  beforeCheckout?: () => Promise<boolean | { targetDocumentId: string; intendedAction?: CheckoutIntendedAction; returnPath?: string; returnState?: CheckoutReturnState }>;
   /** Overrides the default subscription link (caller handles navigation and its own tracking). */
   onSubscriptionClick?: () => void;
   showNote?: boolean;
@@ -45,7 +46,13 @@ export function OneScorePassUpsell({
   const intent = useRef<string | null>(null);
   const next = () => workReturnPath(returnTo ?? currentWorkPath());
   const targetQuery = targetDocumentId ? `&targetDocumentId=${encodeURIComponent(targetDocumentId)}` : "";
-  const passCheckoutHref = () => `${upgradePath(next())}&plan=single-score&billing=one_time&continue=1${targetQuery}`;
+  const passCheckoutHref = (prepared?: { targetDocumentId: string; intendedAction?: CheckoutIntendedAction; returnPath?: string; returnState?: CheckoutReturnState }) => {
+    const query = new URLSearchParams({ next: prepared?.returnPath ?? next(), plan: "single-score", billing: "one_time", continue: "1" });
+    if (prepared?.targetDocumentId ?? targetDocumentId) query.set("targetDocumentId", (prepared?.targetDocumentId ?? targetDocumentId)!);
+    if (prepared?.intendedAction) query.set("intendedAction", JSON.stringify(prepared.intendedAction));
+    if (prepared?.returnState) query.set("returnState", JSON.stringify(prepared.returnState));
+    return `/checkout?${query}`;
+  };
 
   async function buyPass() {
     if (lock.current) return;
@@ -53,23 +60,21 @@ export function OneScorePassUpsell({
     lock.current = true; setBusy(true); setStatus(null);
     let navigating = false;
     try {
-      if (beforeCheckout && !(await beforeCheckout())) return;
+      const preparation = beforeCheckout ? await beforeCheckout() : true;
+      if (!preparation) return;
+      const prepared = typeof preparation === "object" ? preparation : undefined;
+      if (!(await prepareCheckout())) { setStatus({ text: copy.failed, error: true }); return; }
       const token = getStoredToken();
-      if (!token) { navigating = true; window.location.assign(passCheckoutHref()); return; }
-      intent.current ??= crypto.randomUUID();
-      const result = await apiRequest<CheckoutPayload>("/api/payments/checkout/authenticated", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": intent.current },
-        body: JSON.stringify({ provider: "stripe", billingKind: "one_time", locale, planCode: SINGLE_SCORE_PASS.code, seatQuantity: 1, targetDocumentId }),
-      });
+      if (!token) { navigating = true; window.location.assign(passCheckoutHref(prepared)); return; }
+      const context = checkoutReturnContext(prepared?.returnPath ?? next(), prepared?.intendedAction, prepared?.returnState);
+      const result = await lookupAndStartCheckout({ provider: "stripe", billingKind: "one_time", locale, planCode: SINGLE_SCORE_PASS.code, seatQuantity: 1, targetDocumentId: prepared?.targetDocumentId ?? targetDocumentId, intendedAction: prepared?.intendedAction, ...context }, token, undefined, undefined, true);
       if (!result.ok) {
         const code = (result.data as { code?: string } | undefined)?.code;
-        if (result.status === 401) { navigating = true; window.location.assign(passCheckoutHref()); return; }
-        intent.current = null;
+        if (result.status === 401) { navigating = true; window.location.assign(passCheckoutHref(prepared)); return; }
         setStatus({ text: code === "PAYMENT_PROVIDER_BUILDING" ? copy.building : result.error?.trim() || copy.failed, error: code !== "PAYMENT_PROVIDER_BUILDING" });
         return;
       }
-      if (!result.data.url) { intent.current = null; setStatus({ text: copy.failed, error: true }); return; }
+      if (!result.data.url) { setStatus({ text: copy.failed, error: true }); return; }
       trackFunnelEvent("begin_checkout", {
         payment_type: "stripe",
         plan_code: SINGLE_SCORE_PASS.code,
@@ -78,11 +83,10 @@ export function OneScorePassUpsell({
         source: `${source}_one_score`,
         items: [{ item_id: SINGLE_SCORE_PASS.code, item_name: "One Score Pass", item_variant: "one_time", quantity: 1 }],
       });
-      saveCheckoutReturn(result.data.orderId, next(), next());
+      saveCheckoutReturn(result.data.orderId, context.returnPath, passCheckoutHref(prepared));
       navigating = true;
       window.location.href = result.data.url;
     } catch {
-      intent.current = null;
       setStatus({ text: copy.failed, error: true });
     } finally {
       if (!navigating) { lock.current = false; setBusy(false); }
@@ -90,7 +94,7 @@ export function OneScorePassUpsell({
   }
 
   const trackSubscription = () => trackFunnelEvent("upgrade_click", { source: `${source}_subscription`, plan_type: "subscription" });
-  return <div className="stack-sm" data-one-score-upsell={source}>
+  return <div className="stack-sm" data-checkout-control data-one-score-upsell={source}>
     <div className="button-row">
       <button type="button" className="button button-primary" data-plan-type="one_score" disabled={busy || disabled || !checkoutAvailable} onClick={() => { void buyPass(); }}>
         {busy ? copy.loading : copy.passCta}

@@ -55,6 +55,9 @@ import type { PaymentOrderRow } from "../repositories/payment-repository.js";
 import { buildCheckoutIntentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
 import { retryOperatorNotification } from "../lib/operator-notification.js";
 import { normalizeStripeBillingEvent } from "../lib/billing-events.js";
+import { readSessionCookie } from "../lib/session-cookie.js";
+import { validateCheckoutReturn, issueCheckoutReturnToken, consumeCheckoutReturnToken, orderCheckoutReturnContext } from "../lib/checkout-return.js";
+import { findPaymentOrderByIntent, listPaymentOrdersForUser, claimPaddleCheckoutCreation } from "../repositories/payment-repository.js";
 import type { PaymentVerification, PaymentVerificationStatus } from "@score/shared";
 
 function isProvider(value: unknown): value is PaymentProvider {
@@ -80,15 +83,16 @@ function checkoutIdempotencyHash(input: {
   seatQuantity?: number;
   targetDocumentId?: string | null;
   intendedActionJson?: string | null;
+  returnContextJson?: string | null;
 }) {
   const key = normalizedIdempotencyKey(input.header);
   if (!key) return null;
   return createHash("sha256")
-    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), ...(input.billingKind === "one_time" ? ["one_time"] : []), ...(input.targetDocumentId ? [input.targetDocumentId, input.intendedActionJson ?? ""] : []), key].join(":"))
+    .update([input.userId, input.provider, input.planCode ?? "legacy-plan", input.organizationId ?? "personal", String(input.seatQuantity ?? 1), ...(input.billingKind === "one_time" ? ["one_time"] : []), ...(input.targetDocumentId ? [input.targetDocumentId, input.intendedActionJson ?? ""] : []), ...(input.returnContextJson ? [input.returnContextJson] : []), key].join(":"))
     .digest("hex");
 }
 
-function checkoutResponse(order: PaymentOrderRow) {
+function checkoutResponse(order: PaymentOrderRow, includePrivate = false) {
   return {
     provider: order.provider,
     orderId: order.id,
@@ -96,6 +100,7 @@ function checkoutResponse(order: PaymentOrderRow) {
     url: order.checkout_url,
     status: order.status,
     reused: true,
+    order: mapPaymentOrderForPublic(order, includePrivate),
   };
 }
 
@@ -198,6 +203,16 @@ function recoverStripePaymentOrder(
     organization_id: session.metadata?.organizationId ?? null,
     seat_quantity: seatQuantity,
     idempotency_key_hash: null,
+    checkout_intent_hash: null,
+    checkout_plan_code: session.metadata?.planCode ?? null,
+    pass_mode: null,
+    provider_checkout_started_at: null,
+    return_site: null,
+    return_path: null,
+    return_state_json: null,
+    return_token_hash: null,
+    return_token_expires_at: null,
+    return_token_consumed_at: null,
     target_document_id: null,
     intended_action_json: null,
     resume_consumed_at: null,
@@ -219,11 +234,12 @@ function recoverStripePaymentOrder(
 
 export async function paymentRoutes(app: FastifyInstance, options: { paymentServices?: Partial<{
   createStripeCheckoutSession: typeof createStripeCheckoutSession;
+  createPaddleTransaction: typeof createPaddleTransaction;
   retrieveStripeCheckoutSession: typeof retrieveStripeCheckoutSession;
   retrieveStripeSubscription: typeof retrieveStripeSubscription;
   sendTransactionalEmail: typeof sendTransactionalEmail;
 }> } = {}) {
-  const services = { createStripeCheckoutSession, retrieveStripeCheckoutSession, retrieveStripeSubscription, sendTransactionalEmail, ...options.paymentServices };
+  const services = { createStripeCheckoutSession, createPaddleTransaction, retrieveStripeCheckoutSession, retrieveStripeSubscription, sendTransactionalEmail, ...options.paymentServices };
   const orderChecks = new Map<string, Promise<PaymentVerification>>();
 
   const verifyAndFulfill = async (order: PaymentOrderRow, publicToken: string, sessionId?: string, transactionId?: string): Promise<PaymentVerification> => {
@@ -330,7 +346,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       preHandler: app.requireAuth,
     },
     async (request, reply) => {
-      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; billingKind?: unknown; organizationId?: string; seatQuantity?: number; returnTo?: unknown; targetDocumentId?: unknown; intendedAction?: unknown };
+      const body = (request.body ?? {}) as { provider?: PaymentProvider; locale?: string; planCode?: unknown; passMode?: unknown; billingKind?: unknown; organizationId?: string; seatQuantity?: number; returnTo?: unknown; returnSite?: unknown; returnPath?: unknown; returnState?: unknown; targetDocumentId?: unknown; intendedAction?: unknown };
 
       if (!isProvider(body.provider)) {
         return reply.code(400).send({ error: "Payment provider is required." });
@@ -366,6 +382,20 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         return reply.code(typed ? error.statusCode : 400).send({ error: error instanceof Error ? error.message : "Invalid checkout continuation.", code: typed ? error.code : "CHECKOUT_CONTINUATION_INVALID" });
       }
 
+      let returnContext;
+      try {
+        returnContext = validateCheckoutReturn(body, targetDocumentId, Boolean(intendedActionJson));
+        delete returnContext.state.uploadDraftId;
+        delete returnContext.state.confirmation;
+        const draft = targetDocumentId ? db.prepare("SELECT id FROM score_upload_drafts WHERE document_id = ? AND user_id = ? AND status <> 'expired'").get(targetDocumentId, request.authUserId!) as { id: string } | undefined : undefined;
+        if (draft && intendedActionJson && JSON.parse(intendedActionJson).kind === "recognition") {
+          returnContext.state.uploadDraftId = draft.id;
+          returnContext.state.confirmation = "required";
+          returnContext = validateCheckoutReturn({ returnSite: returnContext.site, returnPath: returnContext.path, returnState: returnContext.state }, targetDocumentId, true);
+        }
+        else returnContext = validateCheckoutReturn({ returnSite: returnContext.site, returnPath: returnContext.path, returnState: returnContext.state }, targetDocumentId, Boolean(intendedActionJson));
+      } catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid return context.", code: "CHECKOUT_RETURN_INVALID" }); }
+
       const organizationId = typeof body.organizationId === "string" && body.organizationId.trim() ? body.organizationId.trim() : null;
       const seatQuantity = organizationId ? Math.max(2, Math.min(Number(body.seatQuantity) || 2, 100_000)) : 1;
       if (billingKind === "one_time" && (organizationId || (planCode !== "single-score" && hasRenewingSubscription(db, request.authUserId!)))) {
@@ -396,16 +426,24 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
           seatQuantity,
           targetDocumentId,
           intendedActionJson,
+          returnContextJson: JSON.stringify(returnContext),
         });
       } catch (error) {
         return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid idempotency key." });
       }
+      const intentKey = normalizedIdempotencyKey(request.headers["idempotency-key"]);
+      const checkoutIntentHash = intentKey ? createHash("sha256").update(intentKey).digest("hex") : null;
+      const byIntent = checkoutIntentHash ? findPaymentOrderByIntent(request.authUserId!, body.provider, checkoutIntentHash) : undefined;
+      if (byIntent && byIntent.idempotency_key_hash !== idempotencyKeyHash) return reply.code(409).send({ error: "This purchase intent already belongs to a different checkout. Restore the original order or explicitly start a new purchase.", code: "CHECKOUT_INTENT_CONFLICT", ...checkoutResponse(byIntent, true) });
+      if (byIntent && !["pending", "paid"].includes(byIntent.status)) return reply.code(409).send({ error: "This checkout is closed. Start a new purchase explicitly.", code: "CHECKOUT_INTENT_CLOSED", ...checkoutResponse(byIntent, true) });
       const reusable = idempotencyKeyHash ? findReusablePaymentOrder({
         userId: request.authUserId!,
         provider: body.provider,
         idempotencyKeyHash,
       }) : undefined;
-      if (reusable?.checkout_url || reusable?.status === "paid") return reply.send(checkoutResponse(reusable));
+      if (reusable?.checkout_url || reusable?.status === "paid") return reply.send(checkoutResponse(reusable, true));
+
+      let returnCredential = reusable ? null : issueCheckoutReturnToken();
 
       const order = reusable ?? createPaymentOrder({
         userId: request.authUserId!,
@@ -419,10 +457,22 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         idempotencyKeyHash,
         targetDocumentId,
         intendedActionJson,
+        checkoutIntentHash,
+        checkoutPlanCode: planCode,
+        passMode: body.passMode === "top_up" && planCode === "single-score" && targetDocumentId ? "top_up" : null,
+        returnSite: returnContext.site,
+        returnPath: returnContext.path,
+        returnStateJson: JSON.stringify(returnContext.state),
+        returnTokenHash: returnCredential?.hash,
+        returnTokenExpiresAt: returnCredential?.expiresAt,
       });
 
       if (!order) {
         return reply.code(500).send({ error: "Unable to create payment order." });
+      }
+      if (returnCredential && order.return_token_hash !== returnCredential.hash) {
+        returnCredential = null;
+        if (order.checkout_url || order.status === "paid") return reply.send(checkoutResponse(order, true));
       }
 
       try {
@@ -433,7 +483,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       }
 
       const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
-      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode, billingKind);
+      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode, billingKind) && (body.provider !== "paddle" || Boolean(config.paddleApiKey && config.paddleDefaultPaymentLink));
       if (!reusable) {
         void retryOperatorNotification({
           orderId: order.id,
@@ -456,20 +506,25 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         });
       }
 
-      const returnParams = { provider: body.provider, order_id: order.id, token: order.public_token };
+      const returnParams = { provider: body.provider, order_id: order.id, token: order.public_token, ...(returnCredential ? { return_token: returnCredential.token } : {}) };
       const successBase = buildLocalizedPublicCheckoutUrl({
         baseUrl: config.publicSiteUrl,
         pathname: "/checkout/success",
         locale: body.locale,
         searchParams: returnParams,
       });
-      const cancelBase = buildCheckoutCancelUrl({
+      let cancelBase = buildCheckoutCancelUrl({
         baseUrl: config.publicSiteUrl,
         locale: body.locale,
         returnTo: body.returnTo,
         planCode, billingKind, provider: body.provider,
         orderId: order.id, publicToken: order.public_token,
       });
+      if (returnCredential) {
+        const cancelUrl = new URL(cancelBase);
+        cancelUrl.searchParams.set("return_token", returnCredential.token);
+        cancelBase = cancelUrl.toString();
+      }
 
       try {
         if (body.provider === "stripe") {
@@ -494,11 +549,14 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
             provider: "stripe",
             orderId: order.id,
             token: order.public_token,
+            returnToken: returnCredential?.token,
             url: session.url,
           });
         }
 
-        const transaction = await createPaddleTransaction({
+        if (!claimPaddleCheckoutCreation(order.id)) return reply.code(503).send({ error: "This checkout creation is still being recovered. Check the original order; do not start another payment.", code: "CHECKOUT_PREPARATION_PENDING", ...checkoutResponse(findPaymentOrderById(order.id) ?? order, true) });
+        await persistLocalPaymentOrder(order.id);
+        const transaction = await services.createPaddleTransaction({
           orderId: order.id,
           publicToken: order.public_token,
           customerEmail,
@@ -525,6 +583,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
           provider: "paddle",
           orderId: order.id,
           token: order.public_token,
+          returnToken: returnCredential?.token,
           url: checkoutUrl,
         });
       } catch (error) {
@@ -538,7 +597,8 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
   );
 
   app.post("/payments/checkout", async (request, reply) => {
-    const body = (request.body ?? {}) as { provider?: PaymentProvider; email?: string; locale?: string; planCode?: unknown; billingKind?: unknown };
+    const body = (request.body ?? {}) as { provider?: PaymentProvider; email?: string; locale?: string; planCode?: unknown; billingKind?: unknown; returnSite?: unknown; returnPath?: unknown; returnState?: unknown; targetDocumentId?: unknown; intendedAction?: unknown };
+    if (body.targetDocumentId || body.intendedAction) return reply.code(401).send({ error: "Sign in before purchasing for an existing score.", code: "AUTH_REQUIRED" });
 
     if (!isProvider(body.provider)) {
       return reply.code(400).send({ error: "Payment provider is required." });
@@ -553,7 +613,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     }
 
     const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
-    if (!isPaymentProviderEnabled(body.provider, planCode, billingKind) || !priceId) {
+    if (!isPaymentProviderEnabled(body.provider, planCode, billingKind) || !priceId || body.provider === "paddle" && (!config.paddleApiKey || !config.paddleDefaultPaymentLink)) {
       return reply.code(400).send({ error: "This payment provider is not enabled." });
     }
 
@@ -571,6 +631,11 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     if (billingKind === "one_time" && planCode !== "single-score" && hasRenewingSubscription(db, account.id)) {
       return reply.code(409).send({ error: "Cancel future subscription renewals in Billing before buying a one-time plan.", code: "ACTIVE_RECURRING_SUBSCRIPTION" });
     }
+    let returnContext;
+    try { returnContext = validateCheckoutReturn({ ...body, returnSite: body.returnSite ?? "www" }, null, false); }
+    catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid return context.", code: "CHECKOUT_RETURN_INVALID" }); }
+    delete returnContext.state.uploadDraftId;
+    delete returnContext.state.confirmation;
     let idempotencyKeyHash: string | null;
     try {
       idempotencyKeyHash = checkoutIdempotencyHash({
@@ -579,16 +644,24 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         provider: body.provider,
         planCode,
         billingKind,
+        returnContextJson: JSON.stringify(returnContext),
       });
     } catch (error) {
       return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid idempotency key." });
     }
+    const intentKey = normalizedIdempotencyKey(request.headers["idempotency-key"]);
+    const checkoutIntentHash = intentKey ? createHash("sha256").update(intentKey).digest("hex") : null;
+    const byIntent = checkoutIntentHash ? findPaymentOrderByIntent(account.id, body.provider, checkoutIntentHash) : undefined;
+    if (byIntent && byIntent.idempotency_key_hash !== idempotencyKeyHash) return reply.code(409).send({ error: "Restore the original checkout or explicitly start a new purchase.", code: "CHECKOUT_INTENT_CONFLICT" });
+    if (byIntent && !["pending", "paid"].includes(byIntent.status)) return reply.code(409).send({ error: "This checkout is closed. Start a new purchase explicitly.", code: "CHECKOUT_INTENT_CLOSED" });
     const reusable = idempotencyKeyHash ? findReusablePaymentOrder({
       userId: account.id,
       provider: body.provider,
       idempotencyKeyHash,
     }) : undefined;
     if (reusable?.checkout_url || reusable?.status === "paid") return reply.send(checkoutResponse(reusable));
+
+    let returnCredential = reusable ? null : issueCheckoutReturnToken();
 
     const order = reusable ?? createPaymentOrder({
       userId: account.id,
@@ -598,10 +671,21 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       entitlementDays: config.entitlementDays,
       billingKind,
       idempotencyKeyHash,
+      checkoutIntentHash,
+      checkoutPlanCode: planCode,
+      returnSite: returnContext.site,
+      returnPath: returnContext.path,
+      returnStateJson: JSON.stringify(returnContext.state),
+      returnTokenHash: returnCredential?.hash,
+      returnTokenExpiresAt: returnCredential?.expiresAt,
     });
 
     if (!order) {
       return reply.code(500).send({ error: "Unable to create payment order." });
+    }
+    if (returnCredential && order.return_token_hash !== returnCredential.hash) {
+      returnCredential = null;
+      if (order.checkout_url || order.status === "paid") return reply.send(checkoutResponse(order));
     }
 
     try {
@@ -611,7 +695,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       return reply.code(503).send({ error: "Unable to persist the payment order safely." });
     }
 
-    const returnParams = { provider: body.provider, order_id: order.id, token: order.public_token };
+    const returnParams = { provider: body.provider, order_id: order.id, token: order.public_token, ...(returnCredential ? { return_token: returnCredential.token } : {}) };
     const successBase = buildLocalizedPublicCheckoutUrl({
       baseUrl: config.publicSiteUrl,
       pathname: "/checkout/success",
@@ -646,11 +730,14 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
           provider: "stripe",
           orderId: order.id,
           token: order.public_token,
+          returnToken: returnCredential?.token,
           url: session.url,
         });
       }
 
-      const transaction = await createPaddleTransaction({
+      if (!claimPaddleCheckoutCreation(order.id)) return reply.code(503).send({ error: "This checkout creation is still being recovered. Check the original order; do not start another payment.", code: "CHECKOUT_PREPARATION_PENDING", ...checkoutResponse(findPaymentOrderById(order.id) ?? order) });
+      await persistLocalPaymentOrder(order.id);
+      const transaction = await services.createPaddleTransaction({
         orderId: order.id,
         publicToken: order.public_token,
         customerEmail: account.email,
@@ -675,6 +762,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         provider: "paddle",
         orderId: order.id,
         token: order.public_token,
+        returnToken: returnCredential?.token,
         url: checkoutUrl,
       });
     } catch (error) {
@@ -686,7 +774,54 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     }
   });
 
+  app.get("/payments/orders/by-intent", { preHandler: app.requireAuth }, async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const query = request.query as { provider?: PaymentProvider; intent_id?: string };
+    if (!isProvider(query.provider)) return reply.code(400).send({ error: "Invalid provider." });
+    let key;
+    try { key = normalizedIdempotencyKey(query.intent_id); } catch { return reply.code(400).send({ error: "Invalid purchase intent." }); }
+    if (!key) return reply.code(400).send({ error: "Purchase intent is required." });
+    const order = findPaymentOrderByIntent(request.authUserId!, query.provider, createHash("sha256").update(key).digest("hex"));
+    if (!order) return reply.code(404).send({ error: "Purchase intent not found." });
+    return reply.send(checkoutResponse(order, true));
+  });
+  app.get("/payments/orders", { preHandler: app.requireAuth }, async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const query = request.query as { pending?: string };
+    return reply.send({ orders: listPaymentOrdersForUser(request.authUserId!, query.pending === "1").map(order => ({ ...mapPaymentOrderForPublic(order, true), token: order.public_token })) });
+  });
+  app.post("/payments/orders/:id/return", { preHandler: app.requireAuth }, async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const { id } = request.params as { id: string };
+    const body = (request.body ?? {}) as { returnToken?: unknown };
+    const order = findPaymentOrderById(id);
+    if (!order || order.user_id !== request.authUserId) return reply.code(404).send({ error: "Payment order not found." });
+    const returnContext = orderCheckoutReturnContext(order);
+    if (body.returnToken !== undefined && (typeof body.returnToken !== "string" || !consumeCheckoutReturnToken(db, id, request.authUserId!, body.returnToken))) return reply.code(409).send({ error: "Return link expired or already used. Restore this order from your account.", code: "CHECKOUT_RETURN_TOKEN_INVALID" });
+    await persistLocalPaymentOrder(id);
+    return reply.send({ returnContext });
+  });
+  app.get("/payments/orders/:id/owned", { preHandler: app.requireAuth }, async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const order = findPaymentOrderById((request.params as { id: string }).id);
+    if (!order || order.user_id !== request.authUserId) return reply.code(404).send({ error: "Payment order not found." });
+    let check = orderChecks.get(order.id);
+    if (!check) {
+      check = verifyAndFulfill(order, order.public_token);
+      orderChecks.set(order.id, check);
+      const cleanup = () => { if (orderChecks.get(order.id) === check) orderChecks.delete(order.id); };
+      void check.then(cleanup, cleanup);
+    }
+    const verification = await check;
+    const refreshed = findPaymentOrderById(order.id) ?? order;
+    return reply.send({ order: { ...mapPaymentOrderForPublic(refreshed, true), token: refreshed.public_token }, token: refreshed.public_token, verification });
+  });
   app.get("/payments/orders/:id", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    if (request.headers.authorization || readSessionCookie(request, config.publicApiUrl)) {
+      await app.requireAuth(request, reply);
+      if (reply.sent) return;
+    }
     const params = request.params as { id: string };
     const query = (request.query ?? {}) as {
       token?: string;
@@ -732,7 +867,8 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     const verification = await check;
 
     const refreshed = await findPaymentOrderForPublicDurably(params.id, query.token);
-    return reply.send({ order: mapPaymentOrderForPublic(refreshed ?? order), verification });
+    const current = refreshed ?? order;
+    return reply.send({ order: mapPaymentOrderForPublic(current, Boolean(request.authUserId && request.authUserId === current.user_id)), verification });
   });
 
   app.post("/payments/orders/:id/cancel", async (request, reply) => {

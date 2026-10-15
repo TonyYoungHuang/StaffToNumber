@@ -32,6 +32,7 @@ import { educationRoutes } from "./routes/education.js";
 import { ltiRoutes } from "./routes/lti.js";
 import { pruneSecurityAuditEvents } from "./repositories/security-audit-repository.js";
 import { pruneEnabledClassroomResourceRetentionPolicies } from "./repositories/classroom-resource-retention-repository.js";
+import { cleanupExpiredScoreUploadDrafts, reconcileExpiredUploadDraftOrders } from "./lib/score-upload-drafts.js";
 import { processStorageDeletionQueue } from "./repositories/storage-deletion-repository.js";
 import {
   pruneExpiredOrphanFiles,
@@ -105,9 +106,26 @@ if (auditPruneResult.deleted > 0) {
   app.log.info({ event: "security.audit_retention_pruned", ...auditPruneResult });
 }
 
+let uploadDraftCleanup: Promise<void> | null = null;
+function runUploadDraftCleanup() {
+  if (uploadDraftCleanup || shuttingDown) return uploadDraftCleanup ?? Promise.resolve();
+  uploadDraftCleanup = (async () => {
+    try {
+      const paymentOrders = await reconcileExpiredUploadDraftOrders();
+      const drafts = cleanupExpiredScoreUploadDrafts();
+      const storageDeletions = await processStorageDeletionQueue(db);
+      if (drafts.deleted || drafts.retained || paymentOrders.resolved || storageDeletions.attempted) {
+        app.log.info({ event: "privacy.upload_draft_cleanup", drafts, paymentOrders, storageDeletions });
+      }
+    } catch (error) { app.log.error({ event: "privacy.upload_draft_cleanup_failed", error }); }
+  })().finally(() => { uploadDraftCleanup = null; });
+  return uploadDraftCleanup;
+}
+
 async function runLifecycleCleanup() {
   try {
     const resourceVersions = pruneEnabledClassroomResourceRetentionPolicies(db);
+    await runUploadDraftCleanup();
     const [accounts, files, quarantine] = await Promise.all([
       purgeDueAccountDeletions(),
       pruneExpiredOrphanFiles(),
@@ -125,6 +143,7 @@ async function runLifecycleCleanup() {
 type JobBrokerDispatcher = Awaited<ReturnType<typeof startJobBrokerDispatcher>>;
 
 let lifecycleCleanupTimer: NodeJS.Timeout | null = null;
+let uploadDraftCleanupTimer: NodeJS.Timeout | null = null;
 let jobBrokerRetryTimer: NodeJS.Timeout | null = null;
 let jobBrokerDispatcher: JobBrokerDispatcher | null = null;
 let shuttingDown = false;
@@ -143,8 +162,10 @@ async function initializeJobBroker() {
 app.addHook("onClose", async () => {
   shuttingDown = true;
   if (lifecycleCleanupTimer) clearInterval(lifecycleCleanupTimer);
+  if (uploadDraftCleanupTimer) clearInterval(uploadDraftCleanupTimer);
   if (jobBrokerRetryTimer) clearTimeout(jobBrokerRetryTimer);
   await jobBrokerDispatcher?.close();
+  await uploadDraftCleanup;
   db.close();
 });
 for (const code of config.seedActivationCodes) {
@@ -196,6 +217,8 @@ async function start() {
       void runLifecycleCleanup();
       lifecycleCleanupTimer = setInterval(() => void runLifecycleCleanup(), config.lifecycleCleanupIntervalMs);
       lifecycleCleanupTimer.unref();
+      uploadDraftCleanupTimer = setInterval(() => void runUploadDraftCleanup(), Math.min(config.lifecycleCleanupIntervalMs, 15 * 60 * 1000));
+      uploadDraftCleanupTimer.unref();
     }
   } catch (error) {
     app.log.error(error);

@@ -9,6 +9,7 @@ import type { CheckoutStartCopy } from "../lib/checkout-localization";
 import { localizePublicHref } from "../lib/locale-routing";
 import { getSupportUrl } from "../lib/site";
 import { useSiteLocale } from "./SiteLocaleProvider";
+import { persistentPurchaseIntent, purchaseReturnContext, rememberPurchaseOrder } from "../lib/checkout-return";
 
 type CheckoutPayload = {
   provider: PaymentProvider;
@@ -35,36 +36,42 @@ export function CheckoutClient({
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const recoveryCopy = getPaymentRecoveryCopy(locale);
-  const checkoutIntent = useRef<{ signature: string; key: string } | null>(null);
+  const checkoutLock = useRef(false);
 
   async function handleCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (checkoutLock.current) return;
+    checkoutLock.current = true;
     setLoading(true);
     setStatus(null);
 
     const normalizedEmail = email.trim().toLowerCase();
     const signature = JSON.stringify({ provider, locale, email: normalizedEmail });
-    if (checkoutIntent.current?.signature !== signature) {
-      checkoutIntent.current = { signature, key: crypto.randomUUID() };
-    }
-
+    let intent: ReturnType<typeof persistentPurchaseIntent>;
+    try { intent = persistentPurchaseIntent(signature, window.localStorage); }
+    catch { checkoutLock.current = false; setLoading(false); setStatus(recoveryCopy.preparingFailed); return; }
     const result = await apiRequest<CheckoutPayload>("/api/payments/checkout", {
       method: "POST",
-      headers: { "Idempotency-Key": checkoutIntent.current.key },
-      body: JSON.stringify({ provider, email: normalizedEmail, locale }),
+      headers: { "Idempotency-Key": intent.key },
+      body: JSON.stringify({ provider, email: normalizedEmail, locale, ...purchaseReturnContext(window.location) }),
     });
 
     if (!result.ok) {
       setLoading(false);
+      checkoutLock.current = false;
       setStatus(`${recoveryCopy.preparingFailed} ${result.error}`);
       return;
     }
 
     if (!result.data?.url || !/^https?:\/\//u.test(result.data.url)) {
       setLoading(false);
+      checkoutLock.current = false;
       setStatus(recoveryCopy.preparingFailed);
       return;
     }
+
+    try { rememberPurchaseOrder(signature, intent, result.data.orderId, window.localStorage); }
+    catch { checkoutLock.current = false; setLoading(false); setStatus(recoveryCopy.preparingFailed); return; }
 
     trackFunnelEvent("begin_checkout", {
       payment_type: provider,

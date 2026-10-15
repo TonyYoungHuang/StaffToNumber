@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { formatNumber } from "@score/i18n";
 import { APP_ROUTES, getPurchaseOptionsCopy } from "@score/shared";
 import {
@@ -23,10 +23,34 @@ import { AppLocaleSwitcher } from "./AppLocaleSwitcher";
 import { useAppLocale } from "./AppLocaleProvider";
 import { PendingOmrReviewBanner } from "./PendingOmrReviewBanner";
 import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
+import { CheckoutReturnNotice } from "./CheckoutReturnNotice";
+import { prepareCheckout, checkoutReturnContext } from "../lib/checkout-flow";
 
 export function AppChrome({ children, copy, reviewEntryCopy }: { children: ReactNode; copy: AppShellCopy; reviewEntryCopy: ScoreEntryMessages["reviewEntry"] }) {
   const pathname = usePathname();
   const [returnPath, setReturnPath] = useState(pathname);
+  useEffect(() => {
+    let busy = false;
+    const saveThenNavigate = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || link.target === "_blank") return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname !== "/checkout") return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (busy) return;
+      busy = true;
+      void prepareCheckout().then(saved => {
+        if (!saved) return;
+        const context = checkoutReturnContext(url.searchParams.get("next") ?? undefined);
+        // Use the post-save snapshot; avoid carrying a stale editor revision.
+        url.searchParams.set("next", context.returnPath);
+        url.searchParams.set("returnState", JSON.stringify(context.returnState));
+        window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+      }).finally(() => { busy = false; });
+    };
+    document.addEventListener("click", saveThenNavigate, true);
+    return () => document.removeEventListener("click", saveThenNavigate, true);
+  }, []);
   useEffect(() => {
     const update = () => setReturnPath(window.location.pathname + window.location.search + window.location.hash);
     update(); window.addEventListener("hashchange", update);
@@ -103,7 +127,7 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
   const footerLinks = [
     { href: APP_ROUTES.register, label: copy.register },
     { href: APP_ROUTES.billing, label: copy.billing },
-    ...(checkoutAvailable ? [{ href: APP_ROUTES.checkout, label: copy.checkout }] : []),
+    ...(checkoutAvailable ? [{ href: upgradePath(returnPath), label: copy.checkout }] : []),
     { href: APP_ROUTES.scores, label: copy.scores },
     { href: publicHref("/about"), label: copy.about },
     { href: publicHref("/support"), label: copy.support },
@@ -125,7 +149,7 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
         closeMenuLabel={copy.closeMenu}
         linkComponent={Link}
       />
-      <main className="app-main"><PendingOmrReviewBanner copy={reviewEntryCopy} pathname={pathname} />{children}</main>
+      <main className="app-main"><Suspense fallback={null}><CheckoutReturnNotice /></Suspense><PendingOmrReviewBanner copy={reviewEntryCopy} pathname={pathname} />{children}</main>
       <SiteShellFooter
         title="ScoreTransposer"
         description={copy.footerDescription}

@@ -23,6 +23,7 @@ function ensureLegacyMappings(db: RuntimeDatabaseLike, userId?: string, document
   const missing = db.prepare(`SELECT p.purchase_id, p.document_id, p.created_at FROM score_passes p
     JOIN billing_one_time_purchases b ON b.id = p.purchase_id JOIN score_documents d ON d.id = p.document_id
     WHERE p.document_id IS NOT NULL AND p.group_pass_id IS NULL
+      AND b.status = 'active' AND b.paid_at IS NOT NULL
       ${userId ? "AND b.user_id = ?" : ""} ${documentId ? "AND p.document_id = ?" : ""}
       AND NOT EXISTS (SELECT 1 FROM score_pass_documents mapped WHERE mapped.document_id = p.document_id)`).all(...[userId, documentId].filter((id): id is string => Boolean(id))) as Array<{ purchase_id: string; document_id: string; created_at: string }>;
   for (const pass of missing) db.prepare(`INSERT INTO score_pass_documents (pass_id, document_id, role, created_at)
@@ -40,9 +41,44 @@ export function assertScorePassDocumentOwnership(db: RuntimeDatabaseLike, userId
 
 export function assertScorePassPurchaseTarget(db: RuntimeDatabaseLike, userId: string, documentId: string) {
   assertScorePassDocumentOwnership(db, userId, documentId);
-  const group = db.prepare(`SELECT b.status FROM score_pass_documents d JOIN billing_one_time_purchases b ON b.id = d.pass_id
-    WHERE d.document_id = ?`).get(documentId) as { status: string } | undefined;
-  if (group && group.status !== "active") throw new ScorePassError("SCORE_PASS_REQUIRED", "The original score pass was refunded. Contact support before buying more credits.");
+}
+
+function detachRefundedGroup(db: RuntimeDatabaseLike, documentId: string) {
+  const mapping = db.prepare(`SELECT d.pass_id, b.status FROM score_pass_documents d
+    JOIN billing_one_time_purchases b ON b.id = d.pass_id WHERE d.document_id = ?`).get(documentId) as { pass_id: string; status: string } | undefined;
+  if (mapping && mapping.status !== "active") {
+    // Do not revive or migrate any old funding/charges. Rebuy creates a fresh
+    // root, while every old topup remains attached to the revoked old group.
+    db.prepare("DELETE FROM score_pass_documents WHERE pass_id = ?").run(mapping.pass_id);
+    // The legacy schema also has a unique nullable score_passes.document_id.
+    // Retire that binding, keeping the original target in immutable purchase
+    // and order history before allowing the new root to claim the document.
+    const retired = db.prepare("SELECT document_id FROM score_passes WHERE purchase_id = ?").get(mapping.pass_id) as { document_id: string | null } | undefined;
+    if (retired?.document_id) {
+      db.prepare("UPDATE billing_one_time_purchases SET target_document_id = COALESCE(target_document_id, ?) WHERE id = ?").run(retired.document_id, mapping.pass_id);
+      db.prepare("UPDATE payment_orders SET target_document_id = COALESCE(target_document_id, ?) WHERE id = ?").run(retired.document_id, mapping.pass_id);
+      db.prepare("UPDATE score_passes SET document_id = NULL WHERE purchase_id = ?").run(mapping.pass_id);
+    }
+  }
+}
+
+function mapProvenHistoricalParts(db: RuntimeDatabaseLike, userId: string, passId: string, sourceDocumentId: string) {
+  const pending = [sourceDocumentId], visited = new Set<string>();
+  while (pending.length) {
+    const source = pending.shift()!;
+    if (visited.has(source)) continue;
+    visited.add(source);
+    const parts = db.prepare(`SELECT d.document_id FROM score_document_derivations d
+      JOIN score_documents child ON child.id = d.document_id
+      WHERE d.source_document_id = ? AND d.user_id = ? AND child.user_id = ?
+        AND child.status NOT IN ('deleted', 'archived') AND d.derivation_kind = 'part_extract'
+        AND NOT EXISTS (SELECT 1 FROM score_pass_documents mapping WHERE mapping.document_id = d.document_id)`)
+      .all(source, userId, userId) as Array<{ document_id: string }>;
+    for (const part of parts) {
+      db.prepare("INSERT INTO score_pass_documents (pass_id, document_id, role, created_at) VALUES (?, ?, 'part_extract', ?) ON CONFLICT(document_id) DO NOTHING").run(passId, part.document_id, new Date().toISOString());
+      pending.push(part.document_id);
+    }
+  }
 }
 
 export function listScorePasses(db: RuntimeDatabaseLike, userId: string) {
@@ -82,6 +118,7 @@ export function lockScorePassAccount(db: RuntimeDatabaseLike, userId: string) {
 
 export function bindScorePass(db: RuntimeDatabaseLike, userId: string, documentId: string, pageCount: number, creditCost = 1) {
   assertScorePassDocumentOwnership(db, userId, documentId);
+  detachRefundedGroup(db, documentId);
   if (db.prepare("SELECT pass_id FROM score_pass_documents WHERE document_id = ?").get(documentId)) {
     throw new ScorePassError("SCORE_PASS_ALREADY_BOUND", "A score pass is already bound to this score.");
   }
@@ -93,6 +130,7 @@ export function bindScorePass(db: RuntimeDatabaseLike, userId: string, documentI
   db.prepare("UPDATE score_passes SET document_id = ? WHERE purchase_id = ? AND document_id IS NULL").run(documentId, pass.id);
   db.prepare("INSERT INTO score_pass_documents (pass_id, document_id, role, created_at) VALUES (?, ?, 'root', ?)")
     .run(pass.id, documentId, new Date().toISOString());
+  mapProvenHistoricalParts(db, userId, pass.id, documentId);
   return pass.id;
 }
 
@@ -105,6 +143,7 @@ export function bindPurchasedScorePass(db: RuntimeDatabaseLike, userId: string, 
     JOIN billing_one_time_purchases b ON b.id = p.purchase_id WHERE p.purchase_id = ?`).get(passId) as (Pass & { user_id: string | null }) | undefined;
   if (!purchased) throw new Error("Paid score pass is missing.");
   if (purchased.user_id !== userId) throw new ScorePassError("SCORE_PASS_REQUIRED", "This score pass belongs to another account.");
+  if (!purchased.document_id && !purchased.group_pass_id) detachRefundedGroup(db, documentId);
   const mapping = db.prepare("SELECT pass_id FROM score_pass_documents WHERE document_id = ?").get(documentId) as { pass_id: string } | undefined;
   if (purchased.document_id || purchased.group_pass_id) {
     const groupId = purchased.group_pass_id ?? purchased.purchase_id;
@@ -114,19 +153,27 @@ export function bindPurchasedScorePass(db: RuntimeDatabaseLike, userId: string, 
   if (mapping) {
     const group = db.prepare(`SELECT p.purchase_id FROM score_passes p JOIN billing_one_time_purchases b ON b.id = p.purchase_id
       WHERE p.purchase_id = ? AND b.user_id = ? AND b.status = 'active' AND b.paid_at IS NOT NULL`).get(mapping.pass_id, userId);
-    if (!group) throw new ScorePassError("SCORE_PASS_REQUIRED", "The original score pass was refunded. Contact support before buying more credits.");
+    if (!group) throw new ScorePassError("SCORE_PASS_REQUIRED", "The original score pass is no longer active.");
     db.prepare("UPDATE score_passes SET group_pass_id = ? WHERE purchase_id = ? AND document_id IS NULL AND group_pass_id IS NULL").run(mapping.pass_id, passId);
     return mapping.pass_id;
   }
   db.prepare("UPDATE score_passes SET document_id = ? WHERE purchase_id = ? AND document_id IS NULL AND group_pass_id IS NULL").run(documentId, passId);
   db.prepare("INSERT INTO score_pass_documents (pass_id, document_id, role, created_at) VALUES (?, ?, 'root', ?)")
     .run(passId, documentId, new Date().toISOString());
+  mapProvenHistoricalParts(db, userId, passId, documentId);
   return passId;
 }
 
 // Only server extraction calls this, in the same transaction that inserts the
 // derived document. Import endpoints never accept a pass/group ID from a file.
 export function mapExtractedScorePassDocument(db: RuntimeDatabaseLike, userId: string, sourceDocumentId: string, partDocumentId: string) {
+  const source = db.prepare("SELECT id FROM score_documents WHERE id = ? AND user_id = ? AND status NOT IN ('deleted', 'archived')").get(sourceDocumentId, userId);
+  assertScorePassDocumentOwnership(db, userId, partDocumentId);
+  if (!source) throw new ScorePassError("SCORE_PASS_DOCUMENT_INVALID", "The source score is no longer available.");
+  const provenance = db.prepare("SELECT source_document_id, user_id FROM score_document_derivations WHERE document_id = ?").get(partDocumentId) as { source_document_id: string; user_id: string } | undefined;
+  if (provenance && (provenance.source_document_id !== sourceDocumentId || provenance.user_id !== userId)) throw new ScorePassError("SCORE_PASS_ALREADY_BOUND", "This part already has a different server-recorded source.");
+  db.prepare(`INSERT INTO score_document_derivations (document_id, source_document_id, user_id, derivation_kind, created_at)
+    VALUES (?, ?, ?, 'part_extract', ?) ON CONFLICT(document_id) DO NOTHING`).run(partDocumentId, sourceDocumentId, userId, new Date().toISOString());
   const pass = scorePassForDocument(db, userId, sourceDocumentId);
   if (!pass) return;
   assertScorePassDocumentOwnership(db, userId, partDocumentId);

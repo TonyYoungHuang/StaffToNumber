@@ -18,6 +18,9 @@ import type { BillingMessageCatalog } from "../lib/billing-messages/types";
 import { getPaymentRecoveryCopy, type PaymentVerification } from "@score/shared";
 import { saveContinuationNotice, type CheckoutContinuationResult } from "../lib/score-pass-checkout";
 import { getScorePassCopy } from "../lib/billing-messages/client";
+import type { CheckoutReturnContext } from "@score/shared";
+import { PUBLIC_SITE_URL } from "../lib/support";
+import { completeCheckoutIntent } from "../lib/checkout-flow";
 
 type PublicOrder = {
   id: string;
@@ -34,6 +37,7 @@ type PublicOrder = {
   accessEndsAt?: string | null;
   planCode?: string | null;
   purchaseStatus?: string | null;
+  returnContext?: CheckoutReturnContext | null;
   continuation?: { documentId: string; available: boolean; consumed: boolean; result?: CheckoutContinuationResult | null } | null;
 };
 
@@ -46,6 +50,7 @@ export function AppCheckoutStatusClient({
   provider,
   sessionId,
   returnTo,
+  returnToken,
   locale,
   copy,
 }: {
@@ -54,6 +59,7 @@ export function AppCheckoutStatusClient({
   provider: PaymentProvider;
   sessionId?: string;
   returnTo?: string;
+  returnToken?: string;
   locale: SupportedLocale;
   copy: CheckoutStatusCopy;
 }) {
@@ -85,7 +91,8 @@ export function AppCheckoutStatusClient({
       const params = new URLSearchParams({ token, provider });
       if (sessionId) params.set("sessionId", sessionId);
 
-      const result = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}?${params.toString()}`, { signal: controller.signal });
+      const authToken = getStoredToken();
+      const result = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}?${params.toString()}`, { signal: controller.signal, headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined });
       if (disposed) return;
 
       setLoading(false);
@@ -97,6 +104,7 @@ export function AppCheckoutStatusClient({
 
       setError(null);
       setOrder(result.data.order);
+      if (result.data.order.returnContext) setDestination(current => ({ ...current, next: result.data.order!.returnContext!.successPath }));
       setVerification(result.data.verification ?? null);
       const pending = result.data.verification
         ? ["waiting_payment", "waiting_fulfillment"].includes(result.data.verification.status)
@@ -141,7 +149,11 @@ export function AppCheckoutStatusClient({
       const targetId = order.continuation?.documentId;
       const passReady = order.planCode === "single-score" && result.data.user.scorePasses?.some(pass => pass.id === orderId || Boolean(targetId && (pass.documentIds?.includes(targetId) || pass.documentId === targetId)));
       if (result.data.user.entitlement.status === "active" || passReady) {
-        if (order.continuation?.available) {
+        const owned = await apiRequest<OrderPayload>(`/api/payments/orders/${orderId}/owned`, { signal: controller.signal, headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined });
+        if (!owned.ok || !owned.data.order) { setAccessState("error"); return; }
+        const authoritative = owned.data.order;
+        const context = authoritative.returnContext;
+        if (authoritative.continuation?.available && context?.state.confirmation !== "required") {
           setContinuing(true);
           const continued = await apiRequest<CheckoutContinuationResult>(`/api/payments/orders/${orderId}/continue`, {
             method: "POST", signal: controller.signal,
@@ -151,16 +163,26 @@ export function AppCheckoutStatusClient({
           if (disposed) return;
           setContinuing(false);
           if (!continued.ok || !continued.data?.documentId) {
-            setAccessState("error"); setError(continued.ok ? scorePassCopy.continueFailed : continued.error); return;
+            const failed = { documentId: authoritative.continuation!.documentId, error: continued.ok ? scorePassCopy.continueFailed : continued.error };
+            saveContinuationNotice(failed); setError(failed.error);
           }
-          saveContinuationNotice(continued.data);
-          if (continued.data.error || continued.data.code) setError(continued.data.error ?? scorePassCopy.continueFailed);
-          setAccessState("ready");
-          router.replace(`/scores/${encodeURIComponent(continued.data.documentId)}`);
-        } else {
-          setAccessState("ready");
-          router.replace(targetId ? `/scores/${encodeURIComponent(targetId)}` : readCheckoutReturn(orderId, returnTo).next);
+          if (continued.ok && continued.data?.documentId) {
+            saveContinuationNotice(continued.data);
+            if (continued.data.error || continued.data.code) setError(continued.data.error ?? scorePassCopy.continueFailed);
+          }
         }
+        const handoff = await apiRequest<{ returnContext: CheckoutReturnContext }>(`/api/payments/orders/${orderId}/return`, { method: "POST", signal: controller.signal, headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined, body: JSON.stringify(returnToken ? { returnToken } : {}) });
+        // An expired/used locator does not prevent the original owner recovering the order.
+        if (!handoff.ok && handoff.status !== 409) { setAccessState("error"); return; }
+        const restored = handoff.ok ? handoff.data.returnContext : context;
+        const path = restored?.successPath ?? (targetId ? `/scores/${encodeURIComponent(targetId)}` : readCheckoutReturn(orderId, returnTo).next);
+        const next = new URL(path, "https://app.scoretransposer.com");
+        next.searchParams.set("checkoutOrderId", orderId);
+        const destinationPath = `${next.pathname}${next.search}${next.hash}`;
+        setAccessState("ready");
+        completeCheckoutIntent(orderId);
+        if (restored?.successSite === "www") window.location.assign(new URL(destinationPath, PUBLIC_SITE_URL).toString());
+        else router.replace(destinationPath);
         router.refresh();
         return;
       }
@@ -170,7 +192,7 @@ export function AppCheckoutStatusClient({
     setAccessState("waiting");
     void verifyAccess();
     return () => { disposed = true; controller.abort(); if (timer) window.clearTimeout(timer); };
-  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn, verification?.status, returnTo, token, scorePassCopy.continueFailed]);
+  }, [isPaid, order?.userId, order?.purchaseStatus, orderId, retryCount, router, order?.planCode, signIn, verification?.status, returnTo, token, returnToken, provider, scorePassCopy.continueFailed]);
 
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { APP_ROUTES, isPurchasePlanCode } from "@score/shared";
+import { APP_ROUTES, isPurchasePlanCode, normalizeCheckoutReturnState } from "@score/shared";
 import { CheckoutPlanSelector } from "../../components/CheckoutPlanSelector";
 import styles from "../../components/AppCheckout.module.css";
 import { getAuthMessages } from "../../lib/auth-messages";
@@ -44,6 +44,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
   const params = await searchParams;
   const requestedPlan = Array.isArray(params.plan) ? params.plan[0] : params.plan;
   const initialPlanCode = isPurchasePlanCode(requestedPlan) ? requestedPlan : undefined;
+  let returnState;
+  try { returnState = normalizeCheckoutReturnState(typeof params.returnState === "string" ? JSON.parse(params.returnState) : undefined); } catch { returnState = undefined; }
 
   return (
     <section className={styles.checkoutShell}>
@@ -67,6 +69,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
         targetDocumentId={typeof params.targetDocumentId === "string" ? params.targetDocumentId : undefined}
         intendedAction={readCheckoutAction(typeof params.intendedAction === "string" ? params.intendedAction : undefined)}
         isTopUp={params.passMode === "top_up"}
+        returnState={returnState ?? undefined}
+        continueAfterLogin={params.continue === "1"}
+        originalOrderId={typeof params.order_id === "string" ? params.order_id : undefined}
+        originalOrderToken={typeof params.token === "string" ? params.token : undefined}
         initialBillingKind={initialPlanCode === "single-score" || params.billing === "one_time" ? "one_time" : "subscription"}
         locale={locale}
         copy={copy.checkout}

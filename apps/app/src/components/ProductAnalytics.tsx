@@ -10,6 +10,8 @@ import {
   readAnalyticsConsent,
   trackFunnelEvent,
   writeAnalyticsConsent,
+  analyticsSafeUrl,
+  analyticsSensitiveRoute,
 } from "../lib/analytics";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -19,7 +21,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
   useEffect(() => {
     const sendPageView = () => {
       trackFunnelEvent("page_view", {
-        page_location: window.location.href,
+        page_location: analyticsSafeUrl(window.location.href),
         page_path: pathname,
         page_title: document.title,
         page_hostname: window.location.hostname,
@@ -68,6 +70,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
 }
 
 export function ProductAnalytics({ copy }: { copy: AnalyticsConsentMessages }) {
+  const pathname = usePathname();
   const { locale } = useAppLocale();
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === "true";
@@ -87,7 +90,7 @@ export function ProductAnalytics({ copy }: { copy: AnalyticsConsentMessages }) {
     setConsent(resolved);
   }, []);
 
-  if (!analyticsEnabled || (!gaId && !clarityId)) return null;
+  if (!analyticsEnabled || (!gaId && !clarityId) || analyticsSensitiveRoute(pathname)) return null;
   if (consent === "granted") return <AnalyticsScripts gaId={gaId} clarityId={clarityId} />;
   if (consent === "denied") return null;
 

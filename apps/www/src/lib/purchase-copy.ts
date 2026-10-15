@@ -17,3 +17,31 @@ export function getPurchaseFlowCopy(locale: SupportedLocale) {
   return { title, authTitle, authBody, emailAction, selected, loading, signedIn, paymentOptions, failed, accountBody, forgotPassword };
 }
 export type PurchaseFlowCopy = ReturnType<typeof getPurchaseFlowCopy>;
+
+const recovery = {
+  en: ["You have an existing purchase. Check the original order before starting another.", "Check original order", "Start a separate new purchase"],
+  "zh-CN": ["已有购买订单，请先核验原订单；另购请选择新购买。", "核验原订单", "明确发起另一笔新购买"],
+  "zh-TW": ["已有購買訂單，請先核驗原訂單；另購請選擇新購買。", "核驗原訂單", "另行發起一筆新購買"],
+  ja: ["購入済みの注文があります。別の購入を始める前に元の注文を確認してください。", "元の注文を確認", "別の新しい購入を開始"],
+  ko: ["기존 구매 주문이 있습니다. 새로 구매하기 전에 기존 주문을 확인하세요.", "기존 주문 확인", "별도의 새 구매 시작"],
+  fr: ["Un achat existe déjà. Vérifiez la commande d’origine avant d’en commencer un autre.", "Vérifier la commande", "Commencer un autre achat"],
+  es: ["Ya tienes una compra. Comprueba el pedido original antes de iniciar otra.", "Comprobar el pedido", "Iniciar otra compra nueva"],
+  de: ["Ein Kauf ist bereits vorhanden. Prüfen Sie die ursprüngliche Bestellung vor einem weiteren Kauf.", "Bestellung prüfen", "Einen separaten neuen Kauf beginnen"],
+  ru: ["У вас уже есть покупка. Проверьте исходный заказ перед новой покупкой.", "Проверить исходный заказ", "Начать отдельную новую покупку"],
+} as const satisfies Record<SupportedLocale, readonly string[]>;
+
+export function getPurchaseRecoveryCopy(locale: SupportedLocale) {
+  const [found, resume, newPurchase] = recovery[locale];
+  const cancelled = {
+    en: "Checkout was cancelled. Your selection is restored; the original order remains available to check.",
+    "zh-CN": "已返回原购买位置并恢复选择。可继续核验原订单；如已付款，请勿重复购买。",
+    "zh-TW": "已返回原購買位置並恢復選擇。可繼續核驗原訂單；如已付款，請勿重複購買。",
+    ja: "元の購入画面と選択を復元しました。お支払い済みの場合は再購入せず元の注文をご確認ください。",
+    ko: "구매 위치와 선택을 복원했습니다. 결제했다면 다시 구매하지 말고 기존 주문을 확인하세요.",
+    fr: "Votre sélection et votre page ont été restaurées. Si vous avez payé, vérifiez la commande initiale avant tout nouvel achat.",
+    es: "Se han restaurado tu página y selección. Si ya has pagado, comprueba el pedido original antes de volver a comprar.",
+    de: "Seite und Auswahl wurden wiederhergestellt. Wenn Sie bezahlt haben, prüfen Sie die ursprüngliche Bestellung vor einem weiteren Kauf.",
+    ru: "Страница и выбор восстановлены. Если вы уже заплатили, проверьте исходный заказ перед новой покупкой.",
+  } satisfies Record<SupportedLocale, string>;
+  return { found, resume, newPurchase, cancelled: cancelled[locale] };
+}

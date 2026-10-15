@@ -25,6 +25,12 @@ export const publicLocaleRewrites = publicLocalePrefixes.flatMap(([locale, prefi
 const nextConfig: NextConfig = {
   ...(process.env.SCORE_SELF_HOSTED === "true" ? { output: "standalone", experimental: { cpus: 1 } } : {}),
   reactStrictMode: true,
+  async headers() {
+    return ["", ...publicLocalePrefixes.map(([, prefix]) => prefix)].map(prefix => ({
+      source: `${prefix}/checkout/:path*`,
+      headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "private, no-store" }],
+    }));
+  },
   outputFileTracingIncludes: {
     "/*": [
       "./public/social/**/*.png",

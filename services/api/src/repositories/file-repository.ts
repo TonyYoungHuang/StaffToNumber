@@ -29,6 +29,9 @@ export async function createStoredFile(input: {
   mimeType: string;
   sizeBytes: number;
   fileKind: StoredFileKind;
+  /** Persist the object first, then synchronously commit its record with the
+   * caller's related document records. Never await while a transaction is open. */
+  commitRecord?: (saveRecord: () => FileRow | undefined) => FileRow | undefined;
 }) {
   assertStorageQuota(input.userId, input.sizeBytes);
   const id = createId();
@@ -59,7 +62,7 @@ export async function createStoredFile(input: {
     throw new Error("Stored file size changed before persistence completed.");
   }
 
-  try {
+  const saveRecord = () => {
     db.prepare(
       `
         INSERT INTO files (
@@ -82,12 +85,15 @@ export async function createStoredFile(input: {
       input.fileKind,
       createdAt,
     );
+    return findStoredFileById(id);
+  };
+  try {
+    return input.commitRecord ? input.commitRecord(saveRecord) : saveRecord();
   } catch (error) {
     await objectStorage.delete(persisted.ref).catch(() => undefined);
     throw error;
   }
 
-  return findStoredFileById(id);
 }
 
 export function findStoredFileById(id: string) {

@@ -530,7 +530,10 @@ export async function migrateSqliteToPostgres(input: {
       // Schema 27's finite role check has an identical PostgreSQL definition.
       // Keep rejecting arbitrary checks rather than silently dropping them.
       const portableRoleCheck = table.name === "score_pass_documents" && /CHECK\s*\(role IN \('root', 'part_extract'\)\)/u.test(table.sql);
-      const remainingSql = portableRoleCheck ? table.sql.replace(/CHECK\s*\(role IN \('root', 'part_extract'\)\)/u, "") : table.sql;
+      const portableDerivationCheck = table.name === "score_document_derivations" && /CHECK\s*\(derivation_kind = 'part_extract'\)/u.test(table.sql);
+      let remainingSql = table.sql;
+      if (portableRoleCheck) remainingSql = remainingSql.replace(/CHECK\s*\(role IN \('root', 'part_extract'\)\)/u, "");
+      if (portableDerivationCheck) remainingSql = remainingSql.replace(/CHECK\s*\(derivation_kind = 'part_extract'\)/u, "");
       if (/\b(?:CHECK|GENERATED)\b|WITHOUT\s+ROWID/iu.test(remainingSql)) {
         throw new Error(`Table ${table.name} contains a constraint that requires a manual PostgreSQL migration.`);
       }
@@ -539,6 +542,7 @@ export async function migrateSqliteToPostgres(input: {
       columnsByTable.set(table.name, columns);
       await input.target.query(createTableSql(table.name, columns));
       if (portableRoleCheck) await input.target.query("ALTER TABLE score_pass_documents ADD CONSTRAINT score_pass_documents_role_check CHECK (role IN ('root', 'part_extract'))");
+      if (portableDerivationCheck) await input.target.query("ALTER TABLE score_document_derivations ADD CONSTRAINT score_document_derivations_kind_check CHECK (derivation_kind = 'part_extract')");
     }
 
     const reports: PostgresMigrationTableReport[] = [];

@@ -1568,7 +1568,7 @@ export type PurchasePlanCode = CheckoutPlanCode | typeof SINGLE_SCORE_PASS.code;
 export type CheckoutIntendedAction =
   | { kind: "export"; format: ScoreExportFormat; options?: ScoreExportOptions }
   | { kind: "retry"; jobId: string; recognitionMode?: ScoreRecognitionMode }
-  | { kind: "recognition"; mode: ScoreRecognitionMode };
+  | { kind: "recognition"; mode: ScoreRecognitionMode; uploadDraftId?: string };
 export function isPurchasePlanCode(value: unknown): value is PurchasePlanCode {
   return value === SINGLE_SCORE_PASS.code || isCheckoutPlanCode(value);
 }
@@ -1577,3 +1577,4 @@ export { getSingleScorePassCopy } from "./single-score-copy.ts";
 export { normalizeScoreTransposeTitle } from "./score-title.ts";
 export { sharedInFlightRequest, fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, scorePreflightFileKey, retryAfterMilliseconds, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS, SCORE_READ_TIMEOUT_MS } from "./client-request.ts";
 export * from "./payment-recovery-copy.ts";
+export * from "./checkout-return.ts";

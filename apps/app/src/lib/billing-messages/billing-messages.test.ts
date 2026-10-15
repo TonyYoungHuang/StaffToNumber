@@ -73,7 +73,7 @@ test("checkout supports an explicit One Score Pass and defaults to Starter witho
     assert.doesNotMatch(contents, /APP_ROUTES\.activate|activationCta|activationNote|data-plan-type="activation_code"/u);
   }
   assert.match(upsell, /className="button button-primary" data-plan-type="one_score"/u);
-  assert.match(upsell, /plan=single-score&billing=one_time&continue=1/u);
+  assert.match(upsell, /new URLSearchParams\(\{ next:[^\n]+plan: "single-score", billing: "one_time", continue: "1"/u);
   assert.match(upsell, /plan=starter-monthly&billing=subscription/u);
   assert.match(checkout, /resumeCheckout\.current = true/u);
   assert.match(checkout, /selectedPlan\.code === "single-score" \? getOneScoreUpsellCopy\(locale\)\.passCta/u);
@@ -202,8 +202,12 @@ test("checkout, activation, seat, portal, cancellation, and idempotency payloads
 
   assert.ok(activation.includes("/api/activation/redeem"));
   assert.match(activation, /body: JSON\.stringify\(\{ code \}\)/u);
-  assert.ok(checkout.includes("/api/payments/checkout/authenticated"));
-  assert.match(checkout, /"Idempotency-Key": checkoutIntent\.current\.key/u);
+  const checkoutFlow = source("../checkout-flow.ts");
+  assert.ok(checkoutFlow.includes("/api/payments/checkout/authenticated"));
+  assert.match(checkout, /lookupAndStartCheckout\(/u);
+  assert.match(checkoutFlow, /"Idempotency-Key": key/u);
+  assert.match(checkoutFlow, /persistedCheckoutIntent\(signature, intentId\)/u);
+  assert.match(checkoutFlow, /\/api\/payments\/orders\/by-intent/u);
   assert.match(checkout, /planCode: selectedPlan\.code/u);
   assert.match(checkout, /organizationId: planKind === "school" \? organizationId : undefined/u);
   assert.match(checkout, /seatQuantity: planKind === "school" \? seatQuantity : 1/u);
@@ -248,7 +252,9 @@ test("payment completion keeps a safe work destination without a public-app redi
   assert.match(status, /result\.data\.user\.id !== order\.userId/u);
   assert.match(status, /entitlement\.status === "active"/u);
   assert.match(status, /order\.planCode === "single-score"[\s\S]*pass\.id === orderId/u);
-  assert.match(status, /router\.replace\(targetId \?[^;]+readCheckoutReturn\(orderId, returnTo\)\.next\)/u);
+  assert.match(status, /restored\?\.successPath \?\? \(targetId \?[^;]+readCheckoutReturn\(orderId, returnTo\)\.next\)/u);
+  assert.match(status, /router\.replace\(destinationPath\)/u);
+  assert.match(status, /authoritative\.returnContext/u);
   assert.equal(readCheckoutReturn("missing-order", "/scores/original#export-center").next, "/scores/original#export-center");
   assert.equal(readCheckoutReturn("missing-order", "https://external.invalid").next, "/scores");
   for (const [file, component] of [["success", "AppCheckoutStatusClient"], ["cancel", "AppCheckoutCancelClient"]]) {

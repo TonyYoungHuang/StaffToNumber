@@ -13,10 +13,14 @@ import { siteConfig } from "../lib/site";
 import { GoogleOneTap } from "./GoogleOneTap";
 import { HomeGoogleSignIn } from "./HomeGoogleSignIn";
 import styles from "./PurchaseFlow.module.css";
+import { completePurchaseIntent, persistentPurchaseIntent, purchaseIntentSignature, purchaseReturnContext, rememberPurchaseOrder } from "../lib/checkout-return";
+import { getPurchaseRecoveryCopy } from "../lib/purchase-copy";
 
 type User = { id: string; email: string };
 type AuthPayload = { user: User; isNewUser?: boolean };
 type Purchase = PurchaseSelection & { name: string; cycle: string; price: string };
+type CheckoutResult = { url: string | null; orderId: string; token: string; status?: string; order?: { purchaseStatus?: string } };
+type RecoverableOrder = { id: string; token: string; provider: string; planCode?: string; billingKind: string; targetDocumentId?: string | null };
 type FlowContext = {
   user: User | null;
   selected: PurchaseSelection | null;
@@ -52,7 +56,9 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
   const dialog = useRef<HTMLDialogElement>(null);
   const authLock = useRef(false);
   const checkoutLock = useRef(false);
-  const intent = useRef<{ signature: string; key: string } | null>(null);
+  const [recoveryOrders, setRecoveryOrders] = useState<RecoverableOrder[]>([]);
+  const allowNewPurchase = useRef(false);
+  const recoveryCopy = getPurchaseRecoveryCopy(locale);
   const sessionRequest = useRef<ReturnType<typeof apiRequest<AuthPayload>> | null>(null);
   const pendingRef = useRef<Purchase | null>(null);
   const resumePurchase = useRef(false);
@@ -69,6 +75,8 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
   useEffect(() => {
     refreshSession();
     setSelected(readPurchaseSelection(window.location.search) ?? defaultPurchaseSelection(window.location.search));
+    const returned = new URLSearchParams(window.location.search);
+    if (returned.has("checkout_cancelled") || returned.get("checkoutResult") === "cancelled") setNotice({ text: recoveryCopy.cancelled });
     const sync = () => { void refreshSession(); };
     const restore = () => {
       checkoutLock.current = false; setBusy(false); setNotice(null); sync();
@@ -138,9 +146,10 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
     } finally { authLock.current = false; setAuthBusy(false); }
   }
 
-  async function purchase(plan: Purchase) {
+  async function purchase(plan: Purchase, explicitPurchase = false) {
     if (checkoutLock.current) return;
     checkoutLock.current = true; setBusy(true); setNotice(null);
+    const returnContext = purchaseReturnContext(window.location);
     pendingRef.current = plan;
     setSelected(plan); setPending(plan); rememberPurchaseSelection(plan); savePendingPurchase(plan);
     let navigating = false;
@@ -155,18 +164,46 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
         }
         account = result.data.user; setUser(account);
       }
-      const signature = `${account.id}:${locale}:${purchaseSelectionKey(plan)}`;
-      if (intent.current?.signature !== signature) intent.current = { signature, key: crypto.randomUUID() };
-      const result = await apiRequest<{ url: string | null; orderId: string }>("/api/payments/checkout/authenticated", {
-        method: "POST", headers: { "Idempotency-Key": intent.current.key },
-        body: JSON.stringify({ provider: plan.provider, locale, planCode: plan.planCode, billingKind: plan.billingKind, seatQuantity: 1, returnTo: "pricing" }),
+      const signature = purchaseIntentSignature(account.id, locale, purchaseSelectionKey(plan), returnContext);
+      let intent = persistentPurchaseIntent(signature, window.localStorage, undefined, returnContext);
+      let previous = await apiRequest<CheckoutResult>(`/api/payments/orders/by-intent?${new URLSearchParams({ provider: plan.provider, intent_id: intent.key })}`);
+      if (previous.ok && (explicitPurchase && previous.data.order?.purchaseStatus === "refunded" || allowNewPurchase.current && previous.data.status === "paid")) {
+        rememberPurchaseOrder(signature, intent, previous.data.orderId, window.localStorage);
+        completePurchaseIntent(previous.data.orderId, window.localStorage);
+        intent = persistentPurchaseIntent(signature, window.localStorage, undefined, returnContext);
+        previous = await apiRequest<CheckoutResult>(`/api/payments/orders/by-intent?${new URLSearchParams({ provider: plan.provider, intent_id: intent.key })}`);
+      }
+      const savedReturnContext = intent.returnContext ?? returnContext;
+      if (!previous.ok && previous.status !== 404) { setNotice({ text: previous.error, error: true }); return; }
+      if (previous.ok && previous.data.status === "paid" && explicitPurchase) {
+        setRecoveryOrders([{ id: previous.data.orderId, token: previous.data.token, provider: plan.provider, planCode: plan.planCode, billingKind: plan.billingKind, targetDocumentId: returnContext.targetDocumentId }]);
+        return;
+      }
+      if (!previous.ok && !allowNewPurchase.current) {
+        const owned = await apiRequest<{ orders: RecoverableOrder[] }>("/api/payments/orders?pending=1");
+        if (!owned.ok) { setNotice({ text: owned.error, error: true }); return; }
+        const candidates = owned.data.orders.filter(order => order.provider === plan.provider && order.billingKind === plan.billingKind
+          && order.planCode === plan.planCode && (order.targetDocumentId ?? null) === (returnContext.targetDocumentId ?? null));
+        if (candidates.length) { setRecoveryOrders(candidates); return; }
+      }
+      allowNewPurchase.current = false;
+      const result = previous.ok && (previous.data.url || previous.data.status === "paid") ? previous : await apiRequest<CheckoutResult>("/api/payments/checkout/authenticated", {
+        method: "POST", headers: { "Idempotency-Key": intent.key },
+        body: JSON.stringify({ provider: plan.provider, locale, planCode: plan.planCode, billingKind: plan.billingKind, seatQuantity: 1, ...savedReturnContext }),
       });
       if (!result.ok) {
         if (result.status === 401) { setUser(null); sessionRequest.current = null; showSignIn(plan); }
         else { clearPendingPurchase(); pendingRef.current = null; setPending(null); setNotice({ text: result.error, error: true }); }
         return;
       }
-      if (!result.data.url) { clearPendingPurchase(); pendingRef.current = null; setPending(null); setNotice({ text: copy.failed, error: true }); return; }
+      rememberPurchaseOrder(signature, intent, result.data.orderId, window.localStorage);
+      if (result.data.status === "paid") {
+        const query = new URLSearchParams({ order_id: result.data.orderId, token: result.data.token, provider: plan.provider });
+        window.location.assign(localizePublicHref(`/checkout/success?${query}`, locale));
+        navigating = true;
+        return;
+      }
+      if (!result.data.url) { setNotice({ text: copy.failed, error: true }); return; }
       savePurchaseReturn(result.data.orderId, window.location.search);
       clearPendingPurchase();
       pendingRef.current = null;
@@ -176,9 +213,6 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
       navigating = true;
       return;
     } catch {
-      clearPendingPurchase();
-      pendingRef.current = null;
-      setPending(null);
       setNotice({ text: copy.failed, error: true });
     } finally {
       if (!navigating) { checkoutLock.current = false; setBusy(false); }
@@ -193,8 +227,13 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
     void purchase(plan);
   }, [user]);
 
-  return <Context.Provider value={{ user, selected, busy, copy, signIn, select, purchase: plan => { void purchase(plan); } }}>
+  return <Context.Provider value={{ user, selected, busy, copy, signIn, select, purchase: plan => { void purchase(plan, true); } }}>
     {children}
+    {recoveryOrders.length ? <div className={styles.notice} role="status">
+      <span>{recoveryCopy.found}</span>
+      {recoveryOrders.map(order => <a key={order.id} href={`/checkout/success?${new URLSearchParams({ order_id: order.id, token: order.token, provider: order.provider })}`}>{recoveryCopy.resume} · {order.id}</a>)}
+      <button type="button" onClick={() => { setRecoveryOrders([]); allowNewPurchase.current = true; const plan = pendingRef.current; if (plan) void purchase(plan, true); }}>{recoveryCopy.newPurchase}</button>
+    </div> : null}
     <GoogleOneTap enabled={sessionReady && !user && !open} locale={locale} onDone={() => {
       void refreshSession().then(result => {
         if (!result.ok) return;

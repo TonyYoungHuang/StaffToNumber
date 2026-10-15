@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { siteConfig } from "../../../lib/site";
 import type { Metadata } from "next";
 import { Panel } from "@score/ui";
 import { CheckoutCancelClient } from "../../../components/CheckoutCancelClient";
@@ -20,19 +18,16 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function CheckoutCancelPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const locale = await readSiteLocale();
   const params = await searchParams;
-  if (typeof params.order_id === "string" && typeof params.token === "string") {
-    const query = new URLSearchParams({ order_id: params.order_id, token: params.token, provider: params.provider === "paddle" ? "paddle" : "stripe" });
-    const target = new URL("/api/locale", `${siteConfig.appUrl}/`);
-    target.searchParams.set("locale", locale);
-    target.searchParams.set("next", `/checkout/cancel?${query}`);
-    redirect(target.toString());
-  }
   const messages = getCheckoutMessages(locale);
   const copy = messages.cancelPage;
 
   return (
     <section className="public-container public-page stack-xl">
-      <CheckoutCancelClient copy={messages.cancel} translationNotice={messages.translationNotice} />
+      <CheckoutCancelClient copy={messages.cancel} translationNotice={messages.translationNotice}
+        orderId={typeof params.order_id === "string" ? params.order_id : undefined}
+        token={typeof params.token === "string" ? params.token : undefined}
+        provider={params.provider === "paddle" ? "paddle" : "stripe"}
+        returnToken={typeof params.return_token === "string" ? params.return_token : undefined} />
       <Panel variant="glass" className="stack-md">
         <h2 className="card-title">{copy.supportTitle}</h2>
         <p className="body-copy">{copy.supportBody}</p>

@@ -14,6 +14,7 @@ import { workReturnPath } from "../lib/flow-return";
 import styles from "./AppCheckout.module.css";
 import { defaultCheckoutPlan } from "../lib/score-pass-checkout";
 import { getScorePassCopy } from "../lib/billing-messages/client";
+import type { CheckoutReturnState } from "@score/shared";
 
 type CheckoutCopy = BillingMessageCatalog["checkout"];
 
@@ -26,6 +27,10 @@ export function CheckoutPlanSelector({
   targetDocumentId,
   intendedAction,
   isTopUp = false,
+  returnState,
+  continueAfterLogin,
+  originalOrderId,
+  originalOrderToken,
   authMessages,
   returnTo = "/scores",
 }: {
@@ -33,6 +38,10 @@ export function CheckoutPlanSelector({
   targetDocumentId?: string;
   intendedAction?: CheckoutIntendedAction;
   isTopUp?: boolean;
+  returnState?: CheckoutReturnState;
+  continueAfterLogin?: boolean;
+  originalOrderId?: string;
+  originalOrderToken?: string;
   plans: readonly PricingPlanDisplay[];
   locale: SupportedLocale;
   copy: CheckoutCopy;
@@ -177,6 +186,11 @@ export function CheckoutPlanSelector({
             returnTo={returnTo}
             targetDocumentId={targetDocumentId}
             intendedAction={intendedAction}
+            returnState={returnState}
+            isTopUp={isTopUp}
+            continueAfterLogin={continueAfterLogin}
+            originalOrderId={originalOrderId}
+            originalOrderToken={originalOrderToken}
             billingKind={selectedBillingKind}
             locale={locale}
             copy={copy.client}

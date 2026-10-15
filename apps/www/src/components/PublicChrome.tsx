@@ -20,6 +20,7 @@ import { getAppLoginUrl, getAppScoreProjectsUrl, getAppStartConversionUrl, getCh
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { SiteLocaleSwitcher } from "./SiteLocaleSwitcher";
 import { useSiteLocale } from "./SiteLocaleProvider";
+import { isPublicPricingDestination, withPurchaseOrigin } from "../lib/checkout-return";
 
 type NavigatorWithPerformanceSignals = Navigator & {
   connection?: { saveData?: boolean };
@@ -49,6 +50,23 @@ export function PublicChrome({
     pricing: localizePublicHref("/pricing", locale),
   } as const;
   const primaryActionLabel = siteConfig.release.productAppAvailable ? copy.editForFree : copy.launchStatus;
+
+  useEffect(() => {
+    const carryOrigin = () => {
+      for (const link of document.querySelectorAll<HTMLAnchorElement>(".public-frame a[href]")) {
+        const url = new URL(link.href, window.location.href);
+        if (url.origin !== window.location.origin || !isPublicPricingDestination(url.pathname, url.hash)) continue;
+        const href = withPurchaseOrigin(`${url.pathname}${url.search}${url.hash}`, window.location);
+        if (link.getAttribute("href") !== href) link.setAttribute("href", href);
+      }
+    };
+    carryOrigin();
+    const observer = new MutationObserver(carryOrigin);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["href"] });
+    window.addEventListener("hashchange", carryOrigin);
+    window.addEventListener("popstate", carryOrigin);
+    return () => { observer.disconnect(); window.removeEventListener("hashchange", carryOrigin); window.removeEventListener("popstate", carryOrigin); };
+  }, [pathname]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -136,10 +154,20 @@ export function PublicChrome({
 
   return (
     <div className="public-frame" onClickCapture={event => {
-      if (purchaseFlow.user || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (!link) return;
+      if (link.target === "_blank") return;
       const target = new URL(link.href, window.location.href);
+      // Next Link uses its React href when navigating. Intercept ordinary
+      // pricing navigation as well as publishing the real href for new tabs.
+      if (target.origin === window.location.origin && isPublicPricingDestination(target.pathname, target.hash)
+        && !link.closest("[data-plan]") && !link.hasAttribute("data-pricing-pass")) {
+        event.preventDefault(); event.stopPropagation();
+        window.location.assign(withPurchaseOrigin(`${target.pathname}${target.search}${target.hash}`, window.location));
+        return;
+      }
+      if (purchaseFlow.user) return;
       if (target.origin !== new URL(siteConfig.appUrl).origin) return;
       const path = target.pathname === "/api/locale" ? target.searchParams.get("next") || "" : target.pathname;
       const registration = /^\/register(?:[?#]|$)/u.test(path);
