@@ -86,3 +86,18 @@ test("Google render failure reports an error immediately", async t => {
   assert.equal(runtime.messages[0]?.type, "error");
   assert.equal(runtime.timers.size, 0);
 });
+
+test("the Google bridge uses the shared SDK and button locales for all nine languages", async t => {
+  env(t, "NEXT_PUBLIC_SITE_URL", "https://scoretransposer.com");
+  env(t, "NEXT_PUBLIC_GOOGLE_CLIENT_ID", "test-client");
+  for (const locale of ["en", "zh-CN", "zh-TW", "ja", "ko", "fr", "es", "de", "ru"]) {
+    const response = await GET(new Request(`https://app.scoretransposer.com/api/auth/google-button?parent=https%3A%2F%2Fscoretransposer.com&locale=${locale}`));
+    const html = await response.text();
+    const config = JSON.parse(html.match(/const config=(\{[^\n]+\});/u)![1]);
+    assert.equal(config.hl, locale);
+    assert.equal(config.buttonLocale, locale.replace("-", "_"));
+    assert.match(html, new RegExp(`<html lang="${locale}">`, "u"));
+    assert.match(html, /gsi\/client\?hl=/u);
+    assert.match(html, /locale:config\.buttonLocale/u);
+  }
+});

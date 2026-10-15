@@ -9,7 +9,7 @@ import { useFlowMessages } from "../lib/flow-messages/client";
 import { trackFunnelEvent } from "../lib/analytics";
 import { notifyScoreReviewsChanged } from "../lib/pending-omr-reviews";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeApiError, type SupportedLocale } from "@score/i18n";
 import { pitchClassLabel, semitoneCount } from "../lib/music-labels";
 import { APP_ROUTES, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
@@ -28,8 +28,7 @@ import type {
   TransposeSpellingPolicy,
 } from "@score/shared";
 import { API_BASE_URL, apiRequest } from "../lib/api";
-import { getScoreRequestWaitingMessages, getPercentProgressMessages } from "@score/i18n";
-import { getStoredToken } from "../lib/auth-storage";
+import { getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
@@ -47,7 +46,6 @@ import type { ScoreCollaborationOperation } from "../lib/score-collaboration-doc
 import type { ScoreDetailMessages } from "../lib/score-detail-messages/types";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { ScoreEnsembleWorkspace } from "./ScoreEnsembleWorkspace";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { checkExportQuote, exportQuoteOption, type ScoreExportQuote } from "../lib/score-export-cost";
 import { hasUsableScoreOutputs, readScoreDownload } from "../lib/download-score-file";
 import { ScoreTransferError } from "../lib/score-transfer-request";
@@ -431,7 +429,7 @@ export function ScoreDetailClient({ ensemble = false }: { ensemble?: boolean }) 
 function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgrade: (action: CheckoutIntendedAction | undefined, topUp: boolean) => void }) {
   const params = useParams();
   const scoreId = typeof params.id === "string" ? params.id : "";
-  const token = useMemo(() => getStoredToken(), []);
+  const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const performancePreviewUrlRef = useRef<Record<string, string>>({});
   const { locale } = useAppLocale();
   const transferCopy = scoreTransferCopy(locale);
@@ -1060,7 +1058,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   }, [currentScoreJson, selectedScoreEventId]);
 
   if (loading) {
-    return <div className="empty-state">{slowRead ? <p>{getScoreRequestWaitingMessages(locale).detail}</p> : null}</div>;
+    return <div className="empty-state">{slowRead ? <p>{flow.requestWaiting.detail}</p> : null}</div>;
   }
 
   if (error || !payload || !score) {
@@ -2583,7 +2581,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   if (score.pendingRevision) {
     return (
       <div className="page-stack">
-      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} fileId={score.pendingRevision.musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link>}
+      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} fileId={score.pendingRevision.musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link>}
       <ScoreCandidateReviewWorkspace
         returnTo={taskIntent ? scoreTaskEntryPath(taskIntent) : undefined}
         title={score.title}
@@ -2623,10 +2621,10 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   }
 
   return (
-    <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{getEnsembleMessages(locale).ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
+    <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
 {continuationError ? <p className="form-status error" role="alert">{continuationError}</p> : null}
 {downloadError ? <p className="form-status error">{downloadError}</p> : null}
-<ProcessingProgress active={downloadCount > 0} label={getPercentProgressMessages(locale).downloading} error={Boolean(downloadError)} locale={locale} />
+<ProcessingProgress active={downloadCount > 0} label={flow.percentProgress.downloading} error={Boolean(downloadError)} locale={locale} />
 <WorkspacePanel name="edit">{currentScoreJson ? (
         <>
           {ensemble && reviewRevision ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={currentScoreJson} fileId={musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={reviewRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview onSourceRegionFocus={handleSourceRegionFocus} /> : null}

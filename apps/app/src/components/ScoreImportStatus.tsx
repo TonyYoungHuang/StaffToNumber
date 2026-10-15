@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { ScoreProcessingPanel, type ScoreProgressJob } from "@score/ui";
 import type { SupportedLocale } from "@score/i18n";
-import { getScoreImportRecoveryMessages } from "../lib/score-readiness-messages";
-import { getScoreRecognitionSupportMessage, getScoreProcessingMessages } from "@score/i18n";
+import { selectImportRecovery } from "../lib/score-readiness-messages/client";
+import { getScoreRecognitionSupportMessage } from "@score/i18n";
 import { useFlowMessages } from "../lib/flow-messages/client";
 
 export function ScoreImportStatus({ title, locale, job, busy, error, onRetry, onRefresh }: {
@@ -19,7 +19,7 @@ export function ScoreImportStatus({ title, locale, job, busy, error, onRetry, on
   const flow = useFlowMessages();
   const copy = flow.scoreReadiness;
   const failed = job?.status === "failed" || job?.status === "cancelled";
-  const recovery = getScoreImportRecoveryMessages(locale, job?.errorMessage);
+  const recovery = selectImportRecovery(flow.importRecovery, job?.errorMessage);
   const pdfFailure = /PDF.*(pixel|safety|raster|budget)|PDF_(PAGE|TOTAL)_PIXEL_LIMIT/iu.test(job?.errorMessage ?? "");
   const finishedWithoutScore = job?.status === "completed";
   const terminal = failed || finishedWithoutScore;
@@ -28,7 +28,7 @@ export function ScoreImportStatus({ title, locale, job, busy, error, onRetry, on
     <h2 className="card-title" role={terminal ? "alert" : "status"} style={terminal ? { color: "var(--color-error, #b42318)" } : undefined}>{terminal ? copy.failed : copy.processing}</h2>
     <p className="body-copy">{finishedWithoutScore ? copy.newFile : failed ? recovery.recovery : copy.wait}</p>
     {failed && <div role="alert" className="form-status error" style={{ color: "#8f1d14", background: "#fff0ee", border: "2px solid #b42318" }}><strong>{pdfFailure ? getScoreRecognitionSupportMessage(locale, "PDF_PAGE_PIXEL_LIMIT") : recovery.reason}</strong></div>}
-    {!terminal && <ScoreProcessingPanel job={job} copy={getScoreProcessingMessages(locale)} locale={locale} connectionError={Boolean(error)} />}
+    {!terminal && <ScoreProcessingPanel job={job} copy={flow.processing} locale={locale} connectionError={Boolean(error)} />}
     {failed && job?.errorMessage && <details><summary>{flow.more}</summary><p className="helper-copy">{job.errorMessage}</p></details>}
     {error && <p className="form-status error" role="alert">{error}</p>}
     <div className="button-row">

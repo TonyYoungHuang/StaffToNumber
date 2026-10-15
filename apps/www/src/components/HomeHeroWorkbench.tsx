@@ -1,11 +1,11 @@
 "use client";
 
-import { formatMessage, formatNumber, getScorePreflightMessages, getScoreRecognitionSupportMessage, getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRequestWaitingMessages, getStagedUploadMessages, localizeApiError } from "@score/i18n";
+import { formatMessage, formatNumber, localizeApiError, type ScorePreflightMessages } from "@score/i18n";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
-import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
+import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getGoogleAuthCopy, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
@@ -14,8 +14,9 @@ import { getAppScoreUrl } from "../lib/site";
 import styles from "../app/home-page.module.css";
 import { HomeCandidatePreview } from "./HomeCandidatePreview";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
-import { SESSION_CHANGED_EVENT } from "../lib/purchase-flow";
 import { homeCommercialCopy } from "../lib/home-commercial-copy";
+import type { HomeRuntimeCopy } from "../lib/home-runtime-copy";
+import { homeProcessingFailure } from "../lib/home-runtime-client";
 
 type WorkbenchMode = "recognize" | "process" | "transcribe";
 type SessionState = "checking" | "anonymous" | "authenticated";
@@ -37,6 +38,9 @@ type HomeHeroWorkbenchProps = {
   copy: HomepageWorkbenchCopy;
   startUrl: string;
   audioAvailable: boolean;
+  preflightCopy: ScorePreflightMessages;
+  waitingCopy: { preflight: string; detail: string };
+  runtimeCopy: HomeRuntimeCopy;
 };
 
 const HOME_SCAN_EVENT = "scoretransposer:start-free-scan";
@@ -66,13 +70,14 @@ function apiErrorOrFallback(error: string | undefined, fallback: string) {
   return error?.trim() ? error : fallback;
 }
 
-export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: HomeHeroWorkbenchProps) {
+export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, preflightCopy, waitingCopy, runtimeCopy }: HomeHeroWorkbenchProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<WorkbenchMode>("recognize");
   const [pendingFileSelection, setPendingFileSelection] = useState(false);
   const [session, setSession] = useState<SessionState>("checking");
   const sessionAccountId = useRef<string | undefined>(undefined);
   const flow = usePurchaseFlow();
+  const googleCopy = getGoogleAuthCopy(locale);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [scoreId, setScoreId] = useState<string | null>(null);
@@ -82,9 +87,8 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   const [recognitionError, setRecognitionError] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  const progressCopy = getScoreProcessingMessages(locale);
-  const preflightCopy = getScorePreflightMessages(locale);
-  const stagedCopy = getStagedUploadMessages(locale);
+  const progressCopy = runtimeCopy.processing;
+  const stagedCopy = runtimeCopy.staged;
   const [preflightState, setPreflightState] = useState<PreflightState>("idle");
   const [preflight, setPreflight] = useState<ScoreStructurePreflight | null>(null);
   const [stagedUpload, setStagedUpload] = useState<ReturnType<typeof parseStagedPreflightMetadata>>(null);
@@ -100,6 +104,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   const waitingForLogin = useRef<File | null>(null);
   const currentFile = useRef<File | null>(null);
   const submissionLock = useRef(false);
+  const hashHandled = useRef(false);
   const importRequest = useRef<XMLHttpRequest | null>(null);
 
   const allModes = [
@@ -131,19 +136,31 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   }, [session, flow.signIn]);
 
   useEffect(() => {
-    const refresh = () => { void apiRequest<AuthPayload>("/api/auth/me").then(result => {
-      const accountId = result.ok ? result.data.user.id : undefined;
+      const accountId = flow.user?.id;
+      if (flow.session === "checking") { setSession("checking"); return; }
       if (sessionAccountId.current !== accountId) {
         preflightAbort.current?.abort(); importRequest.current?.abort();
         setStagedUpload(null); setPreflight(null); setPreflightState("idle"); setUploadProgress(null);
       }
       sessionAccountId.current = accountId;
-      setSession(result.ok ? "authenticated" : "anonymous");
-    }); };
-    refresh();
-    window.addEventListener(SESSION_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(SESSION_CHANGED_EVENT, refresh);
-  }, []);
+      setSession(flow.session === "signed-in" ? "authenticated" : "anonymous");
+  }, [flow.session, flow.user?.id]);
+
+  useEffect(() => {
+    try {
+      const savedAt = Number(window.sessionStorage.getItem("scoretransposer_home_file_reselect"));
+      if (savedAt > 0 && savedAt <= Date.now() && Date.now() - savedAt < 10 * 60_000) {
+        window.sessionStorage.removeItem("scoretransposer_home_file_reselect");
+        setPendingFileSelection(true); setRecognitionError(googleCopy.fileReselect);
+      }
+    } catch { /* The upload control remains available without storage. */ }
+    const redirect = () => {
+      if (!currentFile.current && !pendingFileSelection) return;
+      try { window.sessionStorage.setItem("scoretransposer_home_file_reselect", String(Date.now())); } catch { /* The file control is still visible after returning. */ }
+    };
+    window.addEventListener("scoretransposer:google-redirect", redirect);
+    return () => window.removeEventListener("scoretransposer:google-redirect", redirect);
+  }, [googleCopy.fileReselect, pendingFileSelection]);
 
   useEffect(() => {
     const listener = () => beginFileSelection();
@@ -166,7 +183,11 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
 
   useEffect(() => {
     const handleHashStart = () => {
-      if (session !== "checking" && window.location.hash === "#home-workbench") beginFileSelection();
+      if (session === "checking" || window.location.hash !== "#home-workbench" || hashHandled.current) return;
+      hashHandled.current = true;
+      setMode("recognize"); setPendingFileSelection(true);
+      document.getElementById("home-workbench")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (session === "anonymous") flow.signIn("login", { automatic: true });
     };
     if (!pendingFileSelection) handleHashStart();
     window.addEventListener("hashchange", handleHashStart);
@@ -227,7 +248,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
         waitingForLogin.current = file;
         setSession("anonymous");
         setPreflightState("idle");
-        flow.signIn();
+        flow.signIn("login", { automatic: true });
         return;
       }
       if (!response.ok || !payload.preflight || !optionsResult.ok) {
@@ -299,7 +320,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
         setPreflight(null);
         setStagedUpload(null);
         setRecognitionMode(null);
-        flow.signIn();
+        flow.signIn("login", { automatic: true });
         return;
       }
       if (xhr.status === 409 && payload && "code" in payload && payload.code === "OMR_PRICE_CHANGED") {
@@ -395,6 +416,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
       waitingForLogin.current = null;
       void startPreflight(file);
     }
+    else if (session === "anonymous" && waitingForLogin.current) flow.signIn("login", { automatic: true });
   }, [session, startPreflight]);
 
   async function retrySavedScore() {
@@ -419,7 +441,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
       setStagedUpload(null); setUploadProgress(null);
       setRecognitionMode(null);
       waitingForLogin.current = file;
-      flow.signIn();
+      if (session !== "checking") flow.signIn("login", { automatic: true });
       return;
     }
     void startPreflight(file);
@@ -430,6 +452,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
   const checking = preflightState === "checking" || preflightState === "waiting";
   const busy = confirming || retrying || uploading || job?.status === "queued" || job?.status === "processing";
   const chosenOption = recognitionOptions.find(option => option.mode === recognitionMode);
+  const failure = homeProcessingFailure(job?.errorMessage, runtimeCopy.failure);
 
   return (
     <div id="home-workbench" className={styles.workbench} aria-label={copy.workbenchLabel}>
@@ -452,7 +475,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
         {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
         <ProcessingProgress active={mode === "recognize" && uploading} label={progressCopy.uploadTitle} progressPercent={uploadProgress} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
-        <ProcessingProgress active={mode === "recognize" && checking && !uploading} label={preflightState === "waiting" ? getScoreRequestWaitingMessages(locale).preflight : preflightCopy.checking} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
+        <ProcessingProgress active={mode === "recognize" && checking && !uploading} label={preflightState === "waiting" ? waitingCopy.preflight : preflightCopy.checking} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
         <ProcessingProgress active={confirming || retrying} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
 
         {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking" || preflightState === "waiting"}>
@@ -463,7 +486,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
             <strong role="status">{!preflight.complete || preflight.recommendation === "uncertain" ? preflightCopy.recommendationUncertain : preflight.recommendation === "simple" ? preflightCopy.recommendedSimple : preflightCopy.recommendedComplex}</strong>
             <p>{formatMessage(preflightCopy.summary, { pages: formatNumber(preflight.sourcePageCount, locale), analyzed: formatNumber(preflight.pagesAnalyzed, locale), staves: formatNumber(Math.max(0, ...preflight.pages.map(page => page.maxStavesPerSystem)), locale), systems: formatNumber(preflight.pages.reduce((sum, page) => sum + page.systemCount, 0), locale) })}</p>
             {!preflight.complete ? <p>{preflightCopy.incomplete}</p> : null}
-            {preflight.recognitionSupport ? <p role={preflight.recognitionSupport.supported ? "status" : "alert"}>{getScoreRecognitionSupportMessage(locale, preflight.recognitionSupport.code)}</p> : null}
+            {preflight.recognitionSupport ? <p role={preflight.recognitionSupport.supported ? "status" : "alert"}>{runtimeCopy.support[preflight.recognitionSupport.code] ?? runtimeCopy.support.fallback}</p> : null}
             {preflight.reasonCodes.length ? <ul>{Array.from(new Set(preflight.reasonCodes.map(code => preflightCopy.reasonStrings[code] ?? preflightCopy.uncertainStructure))).map(reason => <li key={reason}>{reason}</li>)}</ul> : null}
             {!preflight.complete || preflight.recommendation === "uncertain" ? <p>{preflightCopy.manualChoice}</p> : null}
             <fieldset className={styles.preflightModes} disabled={busy}><legend>{preflightCopy.chooseMode}</legend>{(["simple", "complex"] as const).map(optionMode => {
@@ -479,7 +502,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable }: Ho
           <section className={styles.recognitionPanel} aria-live="polite">
             <div className={styles.recognitionHeading}><div><small>{copy.candidateTitle}</small><strong>{scoreTitle ?? activeMode.title}</strong></div><span className={recognitionError && !connectionError ? styles.statusError : job?.status === "completed" ? styles.statusDone : styles.statusWorking}>{recognitionError && !connectionError ? copy.failed : jobLabel}</span></div>
             {job && !["failed", "cancelled"].includes(job.status) ? <ScoreProcessingPanel job={job} copy={progressCopy} locale={locale} connectionError={connectionError} /> : null}
-            {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{getScoreProcessingFailureMessages(locale, job.errorMessage).reason}</strong></p><p>{getScoreProcessingFailureMessages(locale, job.errorMessage).recovery}</p>{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
+            {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{failure.reason}</strong></p><p>{failure.recovery}</p>{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
             {job?.status === "completed" ? <p>{copy.candidateBody}</p> : null}
             {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} locale={locale} /> : null}
             <div className={styles.recognitionActions}>{scoreId ? <a href={getAppScoreUrl(scoreId, locale, submittedMode)}>{copy.openProject}<ArrowNorthEastIcon width={15} height={15} /></a> : null}{!busy ? <button type="button" onClick={() => job && ["failed", "cancelled"].includes(job.status) ? void retrySavedScore() : beginFileSelection()}>{job && ["failed", "cancelled"].includes(job.status) ? savedOriginalRetryLabels[locale] : copy.retry}</button> : null}</div>

@@ -1,6 +1,8 @@
 "use client";
 
-import { formatMessage, formatNumber, getScorePreflightMessages } from "@score/i18n";
+import { useFlowMessages } from "../lib/flow-messages/client";
+
+import { formatMessage, formatNumber } from "@score/i18n";
 import { ProcessingProgress } from "@score/ui";
 import { useAppLocale } from "./AppLocaleProvider";
 import type { RecognitionMode, RecognitionOptions } from "../lib/recognition-options";
@@ -17,7 +19,8 @@ export function RecognitionModeCards({ options, selected, loading, error, onRetr
   disabled?: boolean;
 }) {
   const { locale } = useAppLocale();
-  const copy = getScorePreflightMessages(locale);
+  const flow = useFlowMessages();
+  const copy = flow.preflight;
   return <section className="stack-md" aria-label={copy.chooseMode}>
     <h2 className="card-title">{copy.chooseMode}</h2>
     <div className={styles.modeGrid} role="radiogroup" aria-label={copy.chooseMode}>

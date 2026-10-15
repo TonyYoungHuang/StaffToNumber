@@ -1,10 +1,11 @@
 "use client";
 
+import { useFlowMessages } from "../lib/flow-messages/client";
+
 import { ProcessingProgress } from "@score/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScoreJson, ScoreLyric, ScoreNoteEvent } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { useAppLocale } from "./AppLocaleProvider";
 import { useScoreActivity } from "./ScoreOperationBoundary";
 import styles from "./ScoreEnsembleWorkspace.module.css";
@@ -24,7 +25,8 @@ export function ScoreNotationProperties({ scoreId, scoreJson, revisionId, select
   onUpdated: () => Promise<void>;
 }) {
   const { locale } = useAppLocale();
-  const copy = getEnsembleMessages(locale);
+  const flow = useFlowMessages();
+  const copy = flow.ensemble;
   const note = useMemo(() => scoreJson.measures.flatMap(measure => measure.events).find((event): event is ScoreNoteEvent => event.id === selectedEventId && event.type === "note") ?? null, [scoreJson, selectedEventId]);
   const [technical, setTechnical] = useState<TechnicalDraft>(() => draftTechnical(note));
   const [lyrics, setLyrics] = useState<ScoreLyric[]>(note?.lyrics ?? []);

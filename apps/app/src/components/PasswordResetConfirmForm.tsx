@@ -7,6 +7,7 @@ import { APP_ROUTES } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { useAppAuthModal } from "./AppAuthModal";
+import { logoutLocally } from "../lib/auth-storage";
 
 export function PasswordResetConfirmForm({ copy }: { copy: AuthMessageCatalog["resetConfirm"] }) {
   const signIn = useAppAuthModal();
@@ -73,7 +74,8 @@ export function PasswordResetConfirmForm({ copy }: { copy: AuthMessageCatalog["r
 
     setStatus(copy.success);
     setStatusKind("success");
-    signIn("login");
+    logoutLocally();
+    signIn("login", undefined, { interactive: false });
   }
 
   if (tokenStatus === "loading") {

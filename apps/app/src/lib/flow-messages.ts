@@ -1,9 +1,19 @@
-import type { SupportedLocale } from "@score/i18n";
+import { getScorePreflightMessages, getScoreRequestWaitingMessages, getScoreProcessingMessages, getStagedUploadMessages, getPercentProgressMessages, type SupportedLocale } from "@score/i18n";
+import { getAuthMessages } from "./auth-messages";
+import { getEnsembleMessages } from "./ensemble-messages";
+import { getScoreTaskMessages } from "./score-task-messages";
+import { getScoreImportRecoveryCatalog } from "./score-readiness-messages";
 import { getScoreOperationMessages } from "./score-operation-messages";
 import { getScoreReadinessMessages } from "./score-readiness-messages";
 
 const keys = ["edit", "jianpu", "transpose", "play", "export", "more", "advanced", "share", "history", "teaching", "parts", "source", "close", "importTitle", "chooseFile", "formats", "start", "upgrade", "back", "format", "download", "retry", "processing", "savedFile", "fileLost", "unsupported", "tooLarge", "autoSave", "resume", "waitingAccess", "accountMismatch", "paymentOptions", "planDetails", "legacy", "saveBeforeLeave"] as const;
-export type FlowMessages = Record<typeof keys[number], string> & { scoreReadiness: ReturnType<typeof getScoreReadinessMessages>; scoreOperations: ReturnType<typeof getScoreOperationMessages> };
+export type FlowMessages = Record<typeof keys[number], string> & {
+  scoreReadiness: ReturnType<typeof getScoreReadinessMessages>; scoreOperations: ReturnType<typeof getScoreOperationMessages>;
+  preflight: ReturnType<typeof getScorePreflightMessages>; requestWaiting: ReturnType<typeof getScoreRequestWaitingMessages>;
+  ensemble: ReturnType<typeof getEnsembleMessages>; scoreTasks: ReturnType<typeof getScoreTaskMessages>;
+  signInLabel: string; importRecovery: readonly string[];
+  processing: ReturnType<typeof getScoreProcessingMessages>; stagedUpload: ReturnType<typeof getStagedUploadMessages>; percentProgress: ReturnType<typeof getPercentProgressMessages>;
+};
 const catalogs: Record<SupportedLocale, readonly string[]> = {
   en: ["Edit", "Jianpu", "Transpose", "Play", "Export", "More", "Advanced settings", "Share & comments", "Version history", "Teaching", "Parts", "Source & review", "Close", "Start with your score", "Choose a score file", "PDF, images, MusicXML, MIDI or a score backup · up to 20 MB", "Start processing", "Upgrade to continue", "Back to your score", "File format", "Download", "Try again", "Processing…", "Your file is ready. Continue when you are ready.", "Your browser could not keep this file. Please choose it again after returning.", "Choose a supported score file.", "This file exceeds 20 MB. Please choose a smaller file.", "Changes save automatically", "Continue your work", "Confirming account access…", "Sign in with the account used for this purchase.", "Payment options", "Plan details", "Previous conversion tasks", "Please save your changes before leaving."],
   "zh-CN": ["编辑", "简谱", "移调", "播放", "导出", "更多", "高级设置", "分享与批注", "版本历史", "教学", "声部分谱", "原件与校对", "关闭", "从你的乐谱开始", "选择乐谱文件", "PDF、图片、MusicXML、MIDI 或乐谱备份 · 最大 20 MB", "开始处理", "升级并继续", "返回当前乐谱", "文件格式", "下载", "重试", "正在处理…", "文件已保留，可以继续处理。", "浏览器未能保留文件，返回后请重新选择。", "请选择支持的乐谱文件。", "文件超过 20 MB，请选择较小的文件。", "修改自动保存", "继续刚才的操作", "正在确认账户权限…", "请使用此次购买的账户登录。", "其他支付方式", "套餐详情", "旧版转换任务", "离开前请先保存修改。"],
@@ -17,5 +27,9 @@ const catalogs: Record<SupportedLocale, readonly string[]> = {
 };
 export function getFlowMessages(locale: SupportedLocale): FlowMessages {
   const values = catalogs[locale];
-  return { ...Object.fromEntries(keys.map((key, i) => [key, values[i] ?? catalogs.en[i]])), scoreReadiness: getScoreReadinessMessages(locale), scoreOperations: getScoreOperationMessages(locale) } as FlowMessages;
+  return { ...Object.fromEntries(keys.map((key, i) => [key, values[i] ?? catalogs.en[i]])), scoreReadiness: getScoreReadinessMessages(locale), scoreOperations: getScoreOperationMessages(locale),
+    preflight: getScorePreflightMessages(locale), requestWaiting: getScoreRequestWaitingMessages(locale), ensemble: getEnsembleMessages(locale),
+    scoreTasks: getScoreTaskMessages(locale), signInLabel: getAuthMessages(locale).form.login.submit, importRecovery: getScoreImportRecoveryCatalog(locale),
+    processing: getScoreProcessingMessages(locale), stagedUpload: getStagedUploadMessages(locale), percentProgress: getPercentProgressMessages(locale),
+  } as FlowMessages;
 }

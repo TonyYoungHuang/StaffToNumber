@@ -1,11 +1,12 @@
 "use client";
 
+import { useFlowMessages } from "../lib/flow-messages/client";
+
 import { ProcessingProgress } from "@score/ui";
 import { useEffect, useRef, useState } from "react";
 import type { AlphaTabApi, model } from "@coderline/alphatab";
 import type { PlaybackDocument, ScoreJson } from "@score/shared";
 import { useAppLocale } from "./AppLocaleProvider";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { alphaTabEventMap } from "../lib/alpha-tab-event-map";
 import { playbackToAlphaMidi } from "../lib/alpha-tab-playback";
 import { apiRequest } from "../lib/api";
@@ -22,7 +23,8 @@ export function ScoreAlphaTabPanel({ scoreId, revisionId, isCandidate, token, mu
   onEventSelect: (eventId: string) => void;
 }) {
   const { locale } = useAppLocale();
-  const copy = getEnsembleMessages(locale);
+  const flow = useFlowMessages();
+  const copy = flow.ensemble;
   const container = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
   const onSelectRef = useRef(onEventSelect); onSelectRef.current = onEventSelect;

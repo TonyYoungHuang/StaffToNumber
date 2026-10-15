@@ -355,14 +355,14 @@ export function AppCheckoutClient({
           </ul>
           {sessionState === "checking" ? <p className="helper-copy" role="status" aria-live="polite">{copy.checking}</p> : null}
         </div>
-        <div className="auth-card stack-lg">
+        {sessionState === "signedOut" ? <div className="auth-card stack-lg">
           <AuthForm
             mode="login"
             redirectTo={checkoutLoginPath(checkoutPath, { continue: "1" })}
             onAuthenticated={handleAuthenticated}
             messages={authMessages}
           />
-        </div>
+        </div> : null}
       </section>
     );
   }

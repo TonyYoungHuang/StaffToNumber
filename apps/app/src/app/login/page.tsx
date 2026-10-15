@@ -25,7 +25,7 @@ export default async function LoginPage({
       description={continuesToCheckout ? copy.checkoutDescription : copy.description}
       copy={messages.shell}
     >
-      <AuthForm mode="login" redirectTo={redirectTo ?? undefined} messages={messages.form} />
+      <AuthForm mode="login" redirectTo={redirectTo ?? undefined} messages={messages.form} emailOnly={params.method === "email"} />
     </AuthShell>
   );
 }

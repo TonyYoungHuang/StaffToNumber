@@ -6,7 +6,7 @@ import { APP_ROUTES } from "@score/shared";
 import { formatDateTime } from "@score/i18n";
 import { CheckSealIcon, ClockPulseIcon, DownloadIcon, UserOrbitIcon, VaultIcon } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
-import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
+import { logoutLocally, getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { accountActivationRoute } from "../lib/release";
 import { OperationsPanel } from "./OperationsPanel";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -133,7 +133,7 @@ export function DashboardClient({
     } : current);
     setPrivacyPassword("");
     setDeletionConfirmation("");
-    clearStoredToken();
+    logoutLocally();
     setPrivacyMessage(copy.privacy.scheduled);
   }
 
@@ -333,8 +333,8 @@ export function DashboardClient({
             onClick={async () => {
               const result = await apiRequest("/api/auth/logout", { method: "POST" });
               if (!result.ok) { setPrivacyMessage(result.error); return; }
-              clearStoredToken();
-              signIn("login");
+              logoutLocally();
+              signIn("login", undefined, { interactive: false });
             }}
           >
             {copy.actions.signOut}

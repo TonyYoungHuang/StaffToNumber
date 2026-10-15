@@ -3,11 +3,11 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { APP_ROUTES } from "@score/shared";
-import { apiRequest } from "../lib/api";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { APP_ROUTES, clearGoogleAutoSignInSuppression, getGoogleAuthCopy, getGoogleLocale, isInAppBrowser, launchGoogleSignIn, prepareGoogleSignIn, rememberGoogleAccount } from "@score/shared";
+import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
-import { clearStoredToken, getStoredToken, setStoredToken, setPreferredLoginMethod } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges, restoreSessionFromCookie, setStoredToken, setPreferredLoginMethod } from "../lib/auth-storage";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import { shopError } from "../lib/shop-activation";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -32,6 +32,7 @@ declare global {
       accounts: {
         id: {
           initialize(options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }): void;
+          disableAutoSelect(): void;
           renderButton(
             parent: HTMLElement,
             options: { theme: "outline"; size: "large"; shape: "rectangular"; text: "continue_with"; width: number | string; locale: string },
@@ -48,15 +49,22 @@ export function AuthForm({
   onAuthenticated,
   messages,
   emailOnly = false,
+  googleFallbackOnly = false,
+  inAppBrowser = false,
 }: {
   mode: "register" | "login";
   redirectTo?: string;
   onAuthenticated?: () => void;
   messages: AuthMessageCatalog["form"];
   emailOnly?: boolean;
+  googleFallbackOnly?: boolean;
+  inAppBrowser?: boolean;
 }) {
   const router = useRouter();
   const { locale } = useAppLocale();
+  const authCopy = getGoogleAuthCopy(locale);
+  const googleLocale = getGoogleLocale(locale);
+  const sessionToken = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const [mode, setMode] = useState(initialMode);
   const googleClientId = emailOnly ? "" : process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
   const googleButtonRef = useRef<HTMLDivElement>(null);
@@ -68,7 +76,11 @@ export function AuthForm({
   const [googleReady, setGoogleReady] = useState(false);
   const [googleButtonFailed, setGoogleButtonFailed] = useState(false);
   const [googleButtonRendered, setGoogleButtonRendered] = useState(false);
-  const [showEmail, setShowEmail] = useState(emailOnly || !googleClientId);
+  const [showEmail, setShowEmail] = useState(emailOnly || !googleClientId || inAppBrowser);
+  const [gisFallback, setGisFallback] = useState(googleFallbackOnly);
+  const [inApp, setInApp] = useState(inAppBrowser);
+  const [copied, setCopied] = useState(false);
+  const launch = useRef<ReturnType<typeof launchGoogleSignIn>>(undefined);
   const emailFormId = useId();
   const sharedCopy = messages.shared;
   const copy = messages[mode];
@@ -78,6 +90,7 @@ export function AuthForm({
   const completeAuthentication = useCallback((payload: AuthPayload, method: "email" | "google") => {
     setPreferredLoginMethod(method);
     setStoredToken(payload.token);
+    if (method === "google") { rememberGoogleAccount(payload.user.email); clearGoogleAutoSignInSuppression(); }
     const isNewUser = method === "google" ? Boolean(payload.isNewUser) : mode === "register";
     trackFunnelEvent(isNewUser ? "sign_up" : "login", { method });
     setStatus(isNewUser ? messages.register.success : messages.login.success);
@@ -109,7 +122,42 @@ export function AuthForm({
       }
     });
     return () => { active = false; controller.abort(); };
-  }, [onAuthenticated, redirectTo, router]);
+  }, [onAuthenticated, redirectTo, router, sessionToken]);
+
+  useEffect(() => {
+    if (emailOnly) return;
+    void prepareGoogleSignIn(API_BASE_URL).then(available => { if (available === false) setGisFallback(true); });
+    if (isInAppBrowser(window.navigator.userAgent)) { setInApp(true); setShowEmail(true); }
+    if (new URLSearchParams(window.location.search).get("google_auth_error") === "disallowed_useragent") { setInApp(true); setShowEmail(true); }
+    return () => launch.current?.cancel();
+  }, [emailOnly]);
+
+  const startGoogle = () => {
+    if (inApp) { setShowEmail(true); return; }
+    launch.current?.cancel();
+    const returnUrl = new URL(window.location.href);
+    // The checkout caller adds continue=1 to an explicit purchase. Keep that
+    // continuation on a full-page fallback as well as in the popup callback.
+    if (redirectTo) {
+      const intended = new URL(redirectTo, window.location.origin);
+      if (intended.origin === window.location.origin && intended.pathname === returnUrl.pathname) {
+        intended.searchParams.forEach((value, key) => returnUrl.searchParams.set(key, value));
+        if (intended.hash) returnUrl.hash = intended.hash;
+      }
+    }
+    launch.current = launchGoogleSignIn({ apiBaseUrl: API_BASE_URL, locale,
+      returnPath: returnUrl.pathname + returnUrl.search + returnUrl.hash,
+      onSuccess: async () => {
+        if (await restoreSessionFromCookie() !== "signed-in") { setGisFallback(true); setShowEmail(true); return; }
+        const result = await apiRequest<{ user: AuthPayload["user"] }>("/api/auth/me");
+        const token = getStoredToken();
+        if (!result.ok || !token) { setGisFallback(true); setShowEmail(true); return; }
+        completeAuthentication({ token, user: result.data.user }, "google");
+      },
+      onFallback: reason => { setGisFallback(true); if (reason === "disallowed_useragent") { setInApp(true); setShowEmail(true); } },
+      onError: () => { setGisFallback(true); setShowEmail(true); },
+    });
+  };
 
   const showGoogleFallback = useCallback(() => {
     setGoogleButtonFailed(true);
@@ -125,10 +173,10 @@ export function AuthForm({
 
   // A blocked GSI request may never emit either load or error.
   useEffect(() => {
-    if (emailOnly || !googleClientId || googleReady) return;
+    if (emailOnly || !gisFallback || !googleClientId || googleReady) return;
     const timer = window.setTimeout(showGoogleFallback, 8000);
     return () => window.clearTimeout(timer);
-  }, [emailOnly, googleClientId, googleReady, showGoogleFallback]);
+  }, [emailOnly, gisFallback, googleClientId, googleReady, showGoogleFallback]);
 
   // If the GSI script was already loaded by a previous mount/navigation, onLoad will not fire again.
   useEffect(() => {
@@ -137,7 +185,7 @@ export function AuthForm({
   }, [googleClientId]);
 
   useEffect(() => {
-    if (!googleClientId || !googleReady || !window.google || !googleButtonRef.current) return;
+    if (!gisFallback || !googleClientId || !googleReady || !window.google || !googleButtonRef.current) return;
 
     const button = googleButtonRef.current;
     setGoogleButtonFailed(false);
@@ -188,7 +236,7 @@ export function AuthForm({
       renderedWidth = width;
       button.replaceChildren();
       try { window.google.accounts.id.renderButton(button, {
-        theme: "outline", size: "large", shape: "rectangular", text: "continue_with", width, locale: locale.replace("-", "_"),
+        theme: "outline", size: "large", shape: "rectangular", text: "continue_with", width, locale: googleLocale.buttonLocale,
       }); } catch { showGoogleFallback(); }
     };
     const labelGoogleFrames = () => {
@@ -217,7 +265,7 @@ export function AuthForm({
       observer.disconnect();
       frameObserver.disconnect();
     };
-  }, [completeAuthentication, googleClientId, googleReady, sharedCopy.googleFailed, sharedCopy.googleButtonRegionLabel, locale, showGoogleFallback]);
+  }, [completeAuthentication, gisFallback, googleClientId, googleReady, sharedCopy.googleFailed, sharedCopy.googleButtonRegionLabel, googleLocale.buttonLocale, showGoogleFallback]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -241,6 +289,16 @@ export function AuthForm({
     completeAuthentication(result.data, "email");
   }
 
+  async function copyCurrentLink() {
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(window.location.href); setCopied(true); return; } catch { /* Older in-app browsers use document copy. */ }
+    }
+    const field = document.createElement("textarea"); field.value = window.location.href;
+    field.style.position = "fixed"; field.style.opacity = "0";
+    document.body.append(field); field.select();
+    try { setCopied(document.execCommand("copy")); } finally { field.remove(); }
+  }
+
   return (
     <div className="stack-lg">
       <div className="stack-sm">
@@ -251,8 +309,11 @@ export function AuthForm({
 
       {googleClientId ? (
         <div className="stack-sm">
+          {!gisFallback && !inApp ? <button type="button" className="button button-primary" disabled={submitting} onClick={startGoogle}>{authCopy.googleSignIn}</button> : null}
+          {gisFallback && !inApp ? <>
           <Script
-            src="https://accounts.google.com/gsi/client"
+            key={locale}
+            src={`https://accounts.google.com/gsi/client?hl=${encodeURIComponent(googleLocale.hl)}`}
             strategy="afterInteractive"
             onLoad={handleGoogleReady}
             onReady={handleGoogleReady}
@@ -265,6 +326,8 @@ export function AuthForm({
             </> : null}
             {googleButtonFailed ? <p className="helper-copy">{sharedCopy.googleFailed}</p> : null}
           </section>
+          </> : null}
+          {inApp ? <div className="stack-sm"><p className="helper-copy">{authCopy.inAppBrowser}</p><button type="button" className="button button-secondary" onClick={() => { void copyCurrentLink(); }}>{copied ? authCopy.linkCopied : authCopy.copyLink}</button></div> : null}
         </div>
       ) : null}
 

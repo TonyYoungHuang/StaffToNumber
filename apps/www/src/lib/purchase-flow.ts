@@ -70,7 +70,7 @@ export function readPendingPurchase(): Omit<PendingPurchase, "savedAt"> | null {
     const raw = window.sessionStorage.getItem(PENDING_PURCHASE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingPurchase;
-    if (!parsed || typeof parsed.savedAt !== "number" || Date.now() - parsed.savedAt > PENDING_PURCHASE_TTL_MS) {
+    if (!parsed || typeof parsed.savedAt !== "number" || parsed.savedAt > Date.now() || Date.now() - parsed.savedAt > PENDING_PURCHASE_TTL_MS) {
       clearPendingPurchase();
       return null;
     }

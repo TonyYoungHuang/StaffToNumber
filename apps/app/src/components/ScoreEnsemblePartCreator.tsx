@@ -1,10 +1,11 @@
 "use client";
 
+import { useFlowMessages } from "../lib/flow-messages/client";
+
 import { ProcessingProgress } from "@score/ui";
 import { useEffect, useRef, useState } from "react";
 import type { ScoreJson } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { useAppLocale } from "./AppLocaleProvider";
 import { useScoreActivity } from "./ScoreOperationBoundary";
 import styles from "./ScoreEnsembleWorkspace.module.css";
@@ -16,7 +17,8 @@ export function ScoreEnsemblePartCreator({ scoreId, revisionId, token, missingSt
   missingStaff: MissingEnsembleStaff | null; onUpdated: () => Promise<void>; onClose: () => void;
 }) {
   const { locale } = useAppLocale();
-  const copy = getEnsembleMessages(locale);
+  const flow = useFlowMessages();
+  const copy = flow.ensemble;
   const [name, setName] = useState(missingStaff?.name ?? "");
   const [abbreviation, setAbbreviation] = useState("");
   const [kind, setKind] = useState<"pitched" | "percussion" | "tablature">(missingStaff?.kind === "tablature" || missingStaff?.kind === "percussion" ? missingStaff.kind : "pitched");

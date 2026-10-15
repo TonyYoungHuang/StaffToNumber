@@ -11,12 +11,15 @@ import { getScoreUpgradePlans, scoreCheckoutPath } from "../lib/score-pass-check
 import { getScorePassCopy } from "../lib/billing-messages/client";
 import styles from "./ScorePassUpgradeModal.module.css";
 import { checkoutReturnContext, lookupAndStartCheckout, prepareCheckout } from "../lib/checkout-flow";
+import { useAppAuthModal } from "./AppAuthModal";
+import { clearAuthIntent, consumeAuthIntent, saveAuthIntent } from "../lib/auth-intent";
 
 type CheckoutResult = { orderId: string; url: string };
 
 export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClose }: {
   documentId: string; action?: CheckoutIntendedAction; locale: SupportedLocale; topUp: boolean; onClose: () => void;
 }) {
+  const signIn = useAppAuthModal();
   const copy = getScorePassCopy(locale);
   const dialog = useRef<HTMLDialogElement>(null);
   const lock = useRef(false);
@@ -29,6 +32,12 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
   const fallback = `/checkout?${fallbackQuery}`;
   const plans = getScoreUpgradePlans(locale);
   const passPrice = `US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`;
+  useEffect(() => {
+    if (!getStoredToken()) return;
+    const pending = consumeAuthIntent<{ documentId: string; planCode: PurchasePlanCode }>("score-upgrade");
+    if (pending?.documentId === documentId && isPurchasePlanCode(pending.planCode)) void checkout(pending.planCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId]);
 
   useEffect(() => {
     const element = dialog.current;
@@ -46,7 +55,17 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
     params.set("plan", planCode); params.set("billing", billingKind); params.set("continue", "1");
     const selectedFallback = `/checkout?${params}`;
     const token = getStoredToken();
-    if (!token) { window.location.assign(selectedFallback); return; }
+    if (!token) {
+      saveAuthIntent("score-upgrade", { documentId, planCode });
+      signIn("login", () => { clearAuthIntent("score-upgrade"); void checkout(planCode); }, { beforeRedirect: async () => {
+        if (!(await prepareCheckout())) throw new Error("Checkout preparation failed");
+        const context = checkoutReturnContext(undefined, action);
+        params.set("next", context.returnPath); params.set("returnState", JSON.stringify(context.returnState));
+        saveAuthIntent("navigation", `/checkout?${params}`);
+        clearAuthIntent("score-upgrade");
+      } });
+      return;
+    }
     lock.current = true; setLoading(planCode); setError(null);
     let navigating = false;
     try {

@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { formatNumber } from "@score/i18n";
-import { APP_ROUTES, getPurchaseOptionsCopy } from "@score/shared";
+import { APP_ROUTES, getGoogleAuthCopy, getPurchaseOptionsCopy } from "@score/shared";
 import {
   ArrowNorthEastIcon,
   SiteShellFooter,
@@ -25,8 +25,11 @@ import { PendingOmrReviewBanner } from "./PendingOmrReviewBanner";
 import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
 import { CheckoutReturnNotice } from "./CheckoutReturnNotice";
 import { prepareCheckout, checkoutReturnContext } from "../lib/checkout-flow";
+import { useAppAuthModal } from "./AppAuthModal";
+import { saveAuthIntent } from "../lib/auth-intent";
 
 export function AppChrome({ children, copy, reviewEntryCopy }: { children: ReactNode; copy: AppShellCopy; reviewEntryCopy: ScoreEntryMessages["reviewEntry"] }) {
+  const signIn = useAppAuthModal();
   const pathname = usePathname();
   const [returnPath, setReturnPath] = useState(pathname);
   useEffect(() => {
@@ -39,18 +42,29 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
       event.preventDefault(); event.stopImmediatePropagation();
       if (busy) return;
       busy = true;
-      void prepareCheckout().then(saved => {
+      const navigate = () => { void prepareCheckout().then(saved => {
         if (!saved) return;
         const context = checkoutReturnContext(url.searchParams.get("next") ?? undefined);
         // Use the post-save snapshot; avoid carrying a stale editor revision.
         url.searchParams.set("next", context.returnPath);
         url.searchParams.set("returnState", JSON.stringify(context.returnState));
         window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-      }).finally(() => { busy = false; });
+      }).finally(() => { busy = false; }); };
+      if (!getStoredToken()) {
+        busy = false;
+        signIn("login", navigate, { beforeRedirect: async () => {
+          if (!(await prepareCheckout())) throw new Error("Checkout preparation failed");
+          const context = checkoutReturnContext(url.searchParams.get("next") ?? undefined);
+          url.searchParams.set("next", context.returnPath);
+          url.searchParams.set("returnState", JSON.stringify(context.returnState));
+          saveAuthIntent("navigation", `${url.pathname}${url.search}${url.hash}`);
+        } });
+      }
+      else navigate();
     };
     document.addEventListener("click", saveThenNavigate, true);
     return () => document.removeEventListener("click", saveThenNavigate, true);
-  }, []);
+  }, [signIn]);
   useEffect(() => {
     const update = () => setReturnPath(window.location.pathname + window.location.search + window.location.hash);
     update(); window.addEventListener("hashchange", update);
@@ -118,14 +132,15 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
     { label: copy.help, children: [{ href: publicHref("/library"), label: copy.library }, ...(teachingAvailable ? [{ href: APP_ROUTES.classrooms, label: copy.classes }] : []), { href: APP_ROUTES.billing, label: getPurchaseOptionsCopy(locale).manage }, { href: publicHref("/#workflow"), label: copy.guide }, { href: publicHref("/support"), label: copy.contact }] },
   ];
   const actions: SiteShellAction[] = [
-    remainingCredits === null
+    !token
       ? { href: loginHref, label: copy.login, tone: "secondary" }
-      : { href: APP_ROUTES.billing, label: `${copy.credits}: ${formatNumber(remainingCredits, locale)}`, tone: "credit", icon: <SparkIcon width={16} height={16} /> },
+      : { href: APP_ROUTES.billing, label: remainingCredits === null ? copy.credits : `${copy.credits}: ${formatNumber(remainingCredits, locale)}`, tone: "credit", icon: <SparkIcon width={16} height={16} /> },
     ...(checkoutAvailable ? [{ href: upgradePath(returnPath), label: copy.upgrade, tone: "tertiary" as const, onClick: () => { trackFunnelEvent("upgrade_click", { source: "app_header" }); } }] : []),
     { href: primaryHref, label: copy.primaryAction, tone: "primary", icon: <ArrowNorthEastIcon width={16} height={16} /> },
   ];
   const footerLinks = [
     { href: APP_ROUTES.register, label: copy.register },
+    ...(!token ? [{ href: `${preferredLoginPath(returnPath)}&method=email`, label: getGoogleAuthCopy(locale).emailSignIn }] : []),
     { href: APP_ROUTES.billing, label: copy.billing },
     ...(checkoutAvailable ? [{ href: upgradePath(returnPath), label: copy.checkout }] : []),
     { href: APP_ROUTES.scores, label: copy.scores },

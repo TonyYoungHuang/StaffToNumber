@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { formatDateTime, formatMessage, formatNumber, getScorePreflightMessages, getScoreProcessingMessages, getScoreRequestWaitingMessages, getStagedUploadMessages, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
+import { formatDateTime, formatMessage, formatNumber, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
 import { ProcessingProgress } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
@@ -11,7 +11,6 @@ import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { clearImportDraft, detectScoreImport, GUEST_IMPORT_OWNER_ID, loadImportDraft, resumeImportDraft, saveGuestImportDraft, saveImportDraft } from "../lib/import-draft";
-import { getScoreTaskMessages } from "../lib/score-task-messages";
 import { useAppAuthModal } from "./AppAuthModal";
 import type { ScoreEntryMessages } from "../lib/score-entry-messages/types";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -19,7 +18,6 @@ import { RecognitionModeCards } from "./RecognitionModeCards";
 import { OneScorePassUpsell } from "./OneScorePassUpsell";
 import { ScoreRecognitionPreflight } from "./ScoreRecognitionPreflight";
 import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, parseScoreRecognitionPreflight, PreflightRequestGuard, type ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { recognitionOption, type RecognitionMode, type RecognitionOptions } from "../lib/recognition-options";
 import { boundedScoreTransfer, fetchScoreUpload, forgetUploadReceipt, getUploadReceipt, latestUploadReceipt, ScoreTransferError } from "../lib/score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
@@ -54,13 +52,13 @@ type AccessUser = { id: string; entitlement: { status: string }; freeTrial: { av
 export type ScoreImportView = "library" | "musicxml" | "backup" | "midi" | "scan" | "audio" | "jianpu";
 export function ScoreLibraryManager({ view = "library", copy, recognitionMode = "simple" }: { view?: ScoreImportView; copy: ScoreEntryMessages["library"]; recognitionMode?: RecognitionMode }) {
   const { locale } = useAppLocale();
-  const recognitionCopy = getEnsembleMessages(locale);
-  const preflightCopy = getScorePreflightMessages(locale);
-  const stagedCopy = getStagedUploadMessages(locale);
   const flow = useFlowMessages();
+  const recognitionCopy = flow.ensemble;
+  const preflightCopy = flow.preflight;
+  const stagedCopy = flow.stagedUpload;
   const router = useRouter();
   const signIn = useAppAuthModal();
-  const taskCopy = getScoreTaskMessages(locale);
+  const taskCopy = flow.scoreTasks;
   const transferCopy = scoreTransferCopy(locale);
   const serverDraftCopy = uploadDraftCopy(locale);
   const draftFailure = (problem: { error?: string; code?: string; status?: number }) =>
@@ -378,13 +376,14 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     if (!access) {
       if (mode === "file" && !file) return;
       if (mode === "jianpu" && !jianpuText.trim()) return;
-      try {
-        await saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
-      } catch {
-        setDraftFailed(true); setStatus(flow.fileLost); setFailed(true); return;
-      }
       setStatus(copy.signInFirst); setFailed(false);
-      signIn("login", () => setAccessAttempt(n => n + 1));
+      const saved = saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
+      // Open Google in this submit gesture. Persisting the file runs alongside
+      // the popup and must complete before a blocked-popup redirect leaves.
+      signIn("login", () => {
+        void saved.then(() => setAccessAttempt(n => n + 1)).catch(() => { setDraftFailed(true); setStatus(flow.fileLost); setFailed(true); });
+      }, { beforeRedirect: () => saved.then(() => undefined) });
+      void saved.catch(() => { setDraftFailed(true); setStatus(flow.fileLost); setFailed(true); });
       return;
     }
     const isRecognition = mode === "file" && kind === "omr";
@@ -560,7 +559,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
           </div>
 
           <ProcessingProgress active={loading} label={copy.list.loading} error={failed && !loading} locale={locale} />
-          {loading && slowRead ? <p>{getScoreRequestWaitingMessages(locale).detail}</p> : null}
+          {loading && slowRead ? <p>{flow.requestWaiting.detail}</p> : null}
           {!loading && scores.length === 0 ? <div className="empty-state">{copy.list.empty}</div> : null}
 
           {!loading && scores.length > 0 ? (

@@ -1,10 +1,11 @@
 import { SingleScoreOffer } from "../components/SingleScoreOffer";
 import Image from "next/image";
 import Link from "next/link";
-import { getLocaleConfig } from "@score/i18n";
+import { getLocaleConfig, getScorePreflightMessages, getScoreRequestWaitingMessages } from "@score/i18n";
 import { getPricingPlanCatalog, getPurchaseOptionsCopy } from "@score/shared";
 import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
+import { getHomeRuntimeCopy } from "../lib/home-runtime-copy";
 import { HomeEntryActions } from "../components/HomeEntryActions";
 import { GuestSampleDemo } from "../components/GuestSampleDemo";
 import { ProductCommercialBackdrop } from "../components/ProductCommercialBackdrop";
@@ -120,6 +121,9 @@ export default async function HomePage() {
             copy={localization.workbench}
             startUrl={startUrl}
             audioAvailable={siteConfig.release.audioTranscriptionAvailable}
+            preflightCopy={getScorePreflightMessages(locale)}
+            waitingCopy={getScoreRequestWaitingMessages(locale)}
+            runtimeCopy={getHomeRuntimeCopy(locale)}
           />
         </div>
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>

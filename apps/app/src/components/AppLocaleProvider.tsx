@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { type SupportedLocale } from "@score/i18n";
+import { getGoogleLocale } from "@score/shared";
 
 type AppLocaleContextValue = {
   locale: SupportedLocale;
@@ -16,6 +17,8 @@ export function AppLocaleProvider({ locale, children }: { locale: SupportedLocal
   useEffect(() => {
     setCurrentLocale(locale);
   }, [locale]);
+
+  useEffect(() => { document.documentElement.lang = getGoogleLocale(currentLocale).htmlLang; }, [currentLocale]);
 
   const value = useMemo<AppLocaleContextValue>(
     () => ({

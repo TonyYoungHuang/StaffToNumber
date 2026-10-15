@@ -7,7 +7,7 @@ import { useAppLocale } from "./AppLocaleProvider";
 import { useRouter } from "next/navigation";
 import type { CheckoutReturnContext, PaymentVerification } from "@score/shared";
 import { apiRequest } from "../lib/api";
-import { getStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
 import { PUBLIC_SITE_URL } from "../lib/support";
 import { useAppAuthModal } from "./AppAuthModal";
 export function AppCheckoutCancelClient({ orderId, token = "", returnToken, provider = "stripe", title, body }: { orderId: string; token?: string; returnToken?: string; provider?: "stripe" | "paddle"; title: string; body: string }) {
@@ -25,7 +25,7 @@ export function AppCheckoutCancelClient({ orderId, token = "", returnToken, prov
    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
    void apiRequest<{ token?: string; verification?: PaymentVerification; order: { status: string; planCode?: string; billingKind?: string; passMode?: string; returnContext?: CheckoutReturnContext } }>(`/api/payments/orders/${encodeURIComponent(orderId)}/owned`, { headers }).then(async result => {
      if (disposed) return;
-     if (!result.ok) { if (result.status === 401) signIn("login", () => setAttempt(value => value + 1)); else setError(result.error); return; }
+     if (!result.ok) { if (result.status === 401) { if (getStoredToken() === authToken) clearStoredToken(); signIn("login", () => setAttempt(value => value + 1), { interactive: false }); } else setError(result.error); return; }
      if (result.data.order.status === "paid" || ["waiting_fulfillment", "fulfillment_failed", "verification_failed"].includes(result.data.verification?.status ?? "")) { router.replace(`/checkout/success?${new URLSearchParams({ order_id: orderId, token: token || result.data.token || "", provider, ...(returnToken ? { return_token: returnToken } : {}) })}`); return; }
      const handoff = await apiRequest<{ returnContext: CheckoutReturnContext }>(`/api/payments/orders/${encodeURIComponent(orderId)}/return`, { method: "POST", headers, body: JSON.stringify(returnToken ? { returnToken } : {}) });
      if (disposed) return;

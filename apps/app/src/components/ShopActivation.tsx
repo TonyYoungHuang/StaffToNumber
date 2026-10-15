@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiRequest } from "../lib/api";
-import { clearStoredToken, getStoredToken, setStoredToken, setPreferredLoginMethod } from "../lib/auth-storage";
+import { clearStoredToken, logoutLocally, getStoredToken, setStoredToken, setPreferredLoginMethod } from "../lib/auth-storage";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
 import type { ActivationFormCopy } from "../lib/billing-messages/types";
 import { workReturnPath } from "../lib/flow-return";
@@ -47,7 +47,7 @@ export function ShopActivation({ authCopy, activationCopy, returnTo }: { authCop
     const result = await apiRequest("/api/auth/logout", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined });
     setSubmitting(false);
     if (!result.ok && result.status !== 401) { setError(true); return; }
-    clearStoredToken(); setAccount(null); setUsage(null); setSuccess(null); setCode(""); setCodeError(null); setShowLegacyLogin(false);
+    logoutLocally(); setAccount(null); setUsage(null); setSuccess(null); setCode(""); setCodeError(null); setShowLegacyLogin(false);
   }
 
   async function submitCode(event: FormEvent<HTMLFormElement>) {

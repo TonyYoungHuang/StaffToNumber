@@ -1,5 +1,7 @@
 "use client";
 
+import { useFlowMessages } from "../lib/flow-messages/client";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
@@ -14,7 +16,6 @@ import { OneScorePassUpsell } from "./OneScorePassUpsell";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { useScoreNavigationLocked } from "./ScoreOperationBoundary";
 import { ensembleCoverage } from "../lib/ensemble-score-selection";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 
 type CandidateRevision = {
   id: string;
@@ -92,7 +93,8 @@ export function ScoreCandidateReviewWorkspace({
   const [syncScroll, setSyncScroll] = useState(true);
   const [coverageReviewed, setCoverageReviewed] = useState(false);
   const requiresCoverageReview = Boolean(ensembleCoverage(revision.scoreJson));
-  const ensembleCopy = getEnsembleMessages(locale);
+  const flow = useFlowMessages();
+  const ensembleCopy = flow.ensemble;
   useEffect(() => { setCoverageReviewed(false); }, [revision.id]);
 
   useEffect(() => {

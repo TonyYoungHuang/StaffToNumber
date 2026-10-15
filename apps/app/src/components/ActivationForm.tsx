@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useAppAuthModal } from "./AppAuthModal";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "../lib/api";
 import { workReturnPath } from "../lib/flow-return";
-import { getStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
+import { clearAuthIntent, consumeAuthIntent, saveAuthIntent } from "../lib/auth-intent";
 import { rawApiErrorOrFallback } from "../lib/billing-messages/client";
 import type { ActivationFormCopy } from "../lib/billing-messages/types";
 
@@ -21,12 +22,23 @@ export type ActivationPayload = {
 export function ActivationForm({ copy, returnTo, onActivated, errorMessage }: { copy: ActivationFormCopy; returnTo?: string; onActivated?: (payload: ActivationPayload) => void; errorMessage?: (error: string, status?: number) => string }) {
   const router = useRouter();
   const signIn = useAppAuthModal();
+  const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
+  const redeemLock = useRef(false);
+  const pendingCode = useRef<string | null>(null);
   const demoCode = process.env.NEXT_PUBLIC_DEMO_ACTIVATION_CODE?.trim() ?? "";
   const showDemoSeed = process.env.NODE_ENV !== "production" && Boolean(demoCode);
   const [code, setCode] = useState(showDemoSeed ? demoCode : "");
   const [status, setStatus] = useState<string | null>(null);
   const [statusKind, setStatusKind] = useState<"success" | "error" | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!token || onActivated) return;
+    const pending = consumeAuthIntent<{ code: string }>("activation");
+    if (pending?.code && typeof pending.code === "string") { pendingCode.current = null; setCode(pending.code); void redeem(pending.code); }
+    // A redirect continues only the explicit, short-lived submit from this tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,13 +51,22 @@ export function ActivationForm({ copy, returnTo, onActivated, errorMessage }: { 
       return;
     }
 
-    const token = getStoredToken();
-    if (!token && !onActivated) {
+    if (!getStoredToken() && !onActivated) {
       setStatus(copy.loginFirst);
       setStatusKind("error");
-      signIn();
+      saveAuthIntent("activation", { code });
+      pendingCode.current = code;
+      signIn("login", () => { if (pendingCode.current !== code) return; pendingCode.current = null; consumeAuthIntent("activation"); void redeem(code); });
       return;
     }
+
+    await redeem(code);
+  }
+
+  async function redeem(activationCode: string) {
+    if (redeemLock.current) return;
+    redeemLock.current = true;
+    const token = getStoredToken();
 
     setSubmitting(true);
     const result = await apiRequest<ActivationPayload>("/api/activation/redeem", {
@@ -53,15 +74,24 @@ export function ActivationForm({ copy, returnTo, onActivated, errorMessage }: { 
       headers: token ? {
         Authorization: `Bearer ${token}`,
       } : undefined,
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code: activationCode }),
     });
     setSubmitting(false);
+    redeemLock.current = false;
 
     if (!result.ok) {
       setStatus(errorMessage ? errorMessage(result.error, result.status) : rawApiErrorOrFallback(result.error, copy.fallbackError));
       setStatusKind("error");
+      if (result.status === 401 && !onActivated) {
+        if (getStoredToken() === token) clearStoredToken();
+        saveAuthIntent("activation", { code: activationCode });
+        pendingCode.current = activationCode;
+        signIn("login", () => { if (pendingCode.current !== activationCode) return; pendingCode.current = null; consumeAuthIntent("activation"); void redeem(activationCode); }, { interactive: false });
+      }
       return;
     }
+
+    clearAuthIntent("activation");
 
     setStatus(copy.success);
     setStatusKind("success");

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { formatDateTime, formatMessage, formatNumber } from "@score/i18n";
 import type { ConversionDirection } from "@score/shared";
 import { APP_ROUTES } from "@score/shared";
 import { DotIcon, DownloadIcon, FileStackIcon, ProcessingProgress, ScoreDownloadProgress, SparkIcon, StatusPill } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { boundedScoreTransfer } from "../lib/score-transfer-request";
-import { getStoredToken } from "../lib/auth-storage";
+import { getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { useAppLocale } from "./AppLocaleProvider";
 import { accountActivationRoute } from "../lib/release";
 import type { WorkspaceMessages } from "../lib/workspace-messages/types";
@@ -43,7 +43,7 @@ type CreateJobPayload = { job: JobItem };
 export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
   const router = useRouter();
   const { locale } = useAppLocale();
-  const token = useMemo(() => getStoredToken(), []);
+  const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [selectedFileId, setSelectedFileId] = useState("");
@@ -100,7 +100,7 @@ export function JobsManager({ copy }: { copy: WorkspaceMessages["jobs"] }) {
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!token) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SINGLE_SCORE_PASS, type CheckoutIntendedAction, type CheckoutReturnState } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
@@ -11,6 +11,8 @@ import { getOneScoreUpsellCopy } from "../lib/one-score-upsell-copy";
 import { checkoutAvailable } from "../lib/release";
 import { useAppLocale } from "./AppLocaleProvider";
 import { checkoutReturnContext, lookupAndStartCheckout, prepareCheckout } from "../lib/checkout-flow";
+import { useAppAuthModal } from "./AppAuthModal";
+import { clearAuthIntent, consumeAuthIntent, saveAuthIntent } from "../lib/auth-intent";
 
 type CheckoutPayload = { orderId: string; url: string; code?: string };
 
@@ -38,12 +40,19 @@ export function OneScorePassUpsell({
   showNote?: boolean;
   disabled?: boolean;
 }) {
+  const signIn = useAppAuthModal();
   const { locale } = useAppLocale();
   const copy = getOneScoreUpsellCopy(locale);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
   const lock = useRef(false);
   const intent = useRef<string | null>(null);
+  useEffect(() => {
+    if (!getStoredToken()) return;
+    const pending = consumeAuthIntent<{ source: string; targetDocumentId?: string }>("one-score-pass");
+    if (pending?.source === source && pending.targetDocumentId === targetDocumentId) void buyPass();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, targetDocumentId]);
   const next = () => workReturnPath(returnTo ?? currentWorkPath());
   const targetQuery = targetDocumentId ? `&targetDocumentId=${encodeURIComponent(targetDocumentId)}` : "";
   const passCheckoutHref = (prepared?: { targetDocumentId: string; intendedAction?: CheckoutIntendedAction; returnPath?: string; returnState?: CheckoutReturnState }) => {
@@ -56,6 +65,17 @@ export function OneScorePassUpsell({
 
   async function buyPass() {
     if (lock.current) return;
+    if (!getStoredToken()) {
+      saveAuthIntent("one-score-pass", { source, targetDocumentId });
+      signIn("login", () => { clearAuthIntent("one-score-pass"); void buyPass(); }, { beforeRedirect: async () => {
+        const preparation = beforeCheckout ? await beforeCheckout() : true;
+        if (!preparation || !(await prepareCheckout())) throw new Error("Checkout preparation failed");
+        const prepared = typeof preparation === "object" ? preparation : undefined;
+        saveAuthIntent("navigation", passCheckoutHref(prepared));
+        clearAuthIntent("one-score-pass");
+      } });
+      return;
+    }
     trackFunnelEvent("upgrade_click", { source: `${source}_one_score`, plan_type: "one_score", plan_code: SINGLE_SCORE_PASS.code });
     lock.current = true; setBusy(true); setStatus(null);
     let navigating = false;

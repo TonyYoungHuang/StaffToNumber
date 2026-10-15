@@ -1,12 +1,13 @@
 "use client";
 
+import { useFlowMessages } from "../lib/flow-messages/client";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatNumber } from "@score/i18n";
 import { readScoreTaskIntent, scoreTaskDocumentPath, type ScoreJson, type ScoreTaskIntent } from "@score/shared";
 import { API_BASE_URL } from "../lib/api";
 import { collectEnsembleEvents, ensembleCoverage, neighboringEnsembleEvent, type EnsembleEvent } from "../lib/ensemble-score-selection";
-import { getEnsembleMessages } from "../lib/ensemble-messages";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { useAppLocale } from "./AppLocaleProvider";
 import { useScoreNavigationLocked } from "./ScoreOperationBoundary";
@@ -31,7 +32,8 @@ export function ScoreEnsembleWorkspace({ scoreId, scoreJson, fileId, token, gene
   onSourceRegionFocus: (region: ScoreSourceRegion) => void;
 }) {
   const { locale } = useAppLocale();
-  const copy = getEnsembleMessages(locale);
+  const flow = useFlowMessages();
+  const copy = flow.ensemble;
   const previewCopy = useScoreReviewMessages().detail.preview;
   const locked = useScoreNavigationLocked();
   const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);

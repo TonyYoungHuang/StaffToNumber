@@ -201,7 +201,7 @@ test("checkout, activation, seat, portal, cancellation, and idempotency payloads
   const billing = source("../../components/BillingManager.tsx");
 
   assert.ok(activation.includes("/api/activation/redeem"));
-  assert.match(activation, /body: JSON\.stringify\(\{ code \}\)/u);
+  assert.match(activation, /body: JSON\.stringify\(\{ code: activationCode \}\)/u);
   const checkoutFlow = source("../checkout-flow.ts");
   assert.ok(checkoutFlow.includes("/api/payments/checkout/authenticated"));
   assert.match(checkout, /lookupAndStartCheckout\(/u);

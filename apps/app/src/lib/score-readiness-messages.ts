@@ -12,6 +12,8 @@ const recoveryDetails: Record<SupportedLocale, readonly string[]> = {
   ru: ['Нотные линии слишком близко. Повторная попытка автоматически восстановит размер изображения. При повторном сбое используйте более чёткий скан.', 'Достигнут лимит времени обработки. Повторите попытку с исходным файлом.', 'Не удалось получить пригодную партитуру. Повторите попытку или используйте более чёткий скан.', 'Сервис распознавания не запускается. Повторите попытку позже.', 'Исходный файл сохранён. Повторная загрузка не нужна. Неудачные или отменённые попытки освобождают зарезервированные кредиты или попытки. Проверьте результат перед выбором платного экспорта.', "Временное хранилище сервера недоступно. Оригинал сохранён. Повторите попытку позже."],
 };
 
+export function getScoreImportRecoveryCatalog(locale: SupportedLocale) { return recoveryDetails[locale]; }
+
 export function getScoreImportRecoveryMessages(locale: SupportedLocale, error: string | null | undefined) {
   const copy = recoveryDetails[locale];
   const detail = error ?? '';

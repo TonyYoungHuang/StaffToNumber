@@ -2,16 +2,15 @@
 
 import { useAppAuthModal } from "./AppAuthModal";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { APP_ROUTES, type CheckoutIntendedAction } from "@score/shared";
 import { scoreCheckoutPath } from "../lib/score-pass-checkout";
-import { getStoredToken } from "../lib/auth-storage";
+import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { apiRequest } from "../lib/api";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
-import { getAuthMessages } from "../lib/auth-messages";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { trackFunnelEvent } from "../lib/analytics";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -41,9 +40,10 @@ export function EntitlementGate({
 }) {
   const router = useRouter();
   const signIn = useAppAuthModal();
+  const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const flow = useFlowMessages();
   const { locale } = useAppLocale();
-  const signInLabel = getAuthMessages(locale).form.login.submit;
+  const signInLabel = flow.signInLabel;
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<"checking" | "allowed" | "denied" | "redirecting" | "signin" | "guest">("checking");
@@ -52,13 +52,13 @@ export function EntitlementGate({
 
   useEffect(() => {
     setError(null);
-    const token = getStoredToken();
     apiRequest<MePayload>("/api/auth/me", { headers: token ? { Authorization: `Bearer ${token}` } : undefined }).then((result) => {
       if (!result.ok) {
         if (result.status !== 401) {
           setError(result.error);
           return;
         }
+        if (token && getStoredToken() === token) clearStoredToken();
         // Free-scan pages keep #free-scan mounted so marketing CTAs land cleanly and
         // guests can pick a file before auth. Paid-only gates still force sign-in.
         if (allowFreePreview) {
@@ -66,7 +66,6 @@ export function EntitlementGate({
           return;
         }
         setStatus("signin");
-        signIn("login", () => setAttempt((n) => n + 1));
         return;
       }
 
@@ -82,7 +81,7 @@ export function EntitlementGate({
 
       setStatus("allowed");
     });
-  }, [allowFreePreview, deniedMode, router, attempt, signIn, targetDocumentId, intendedAction]);
+  }, [allowFreePreview, deniedMode, router, attempt, signIn, targetDocumentId, intendedAction, token]);
 
   if (error) {
     return (
@@ -101,14 +100,14 @@ export function EntitlementGate({
     );
   }
 
-  if (status === "guest") {
+  if (status === "guest" || (status === "allowed" && allowFreePreview)) {
     return (
       <div className="stack-lg">
-        <div className="surface-panel stack-sm">
+        {status === "guest" ? <div className="surface-panel stack-sm">
           <div className="button-row">
             <button type="button" className="button button-primary" onClick={() => signIn("login", () => setAttempt((n) => n + 1))}>{signInLabel}</button>
           </div>
-        </div>
+        </div> : null}
         {children}
       </div>
     );

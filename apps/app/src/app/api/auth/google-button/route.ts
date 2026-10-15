@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { SUPPORTED_LOCALES } from "@score/i18n";
+import { getGoogleLocale } from "@score/shared";
 
 const privateHeaders = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff" };
 
@@ -15,14 +16,14 @@ export async function GET(request: Request) {
   const requestedLocale = url.searchParams.get("locale");
   const locale = SUPPORTED_LOCALES.find(value => value === requestedLocale) || "en";
   const nonce = randomBytes(24).toString("base64");
-  const config = JSON.stringify({ clientId, parent, locale }).replace(/</gu, "\\u003c");
+  const config = JSON.stringify({ clientId, parent, locale, ...getGoogleLocale(locale) }).replace(/</gu, "\\u003c");
   // This document stays outside the editor layout and analytics. Google runs
   // on its authorized origin; the parent validates both message origin/source.
   const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google sign-in</title><style>html,body{margin:0;background:transparent}#button{display:flex;justify-content:center;width:100%;min-height:44px}</style></head><body><div id="button"></div><script nonce="${nonce}">
 const config=${config};
 const send=(type,extra={})=>window.parent.postMessage({channel:'score-google-signin',type,...extra},config.parent);
 if(window.parent!==window){
- const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;
+ const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client?hl='+encodeURIComponent(config.hl);script.async=true;
  script.onerror=()=>send('error');
  script.onload=()=>{
   if(!window.google){send('error');return;}
@@ -34,7 +35,7 @@ if(window.parent!==window){
   const timer=setTimeout(()=>{if(!ready)send('error');},8000);
   new MutationObserver(rendered).observe(el,{childList:true,subtree:true});
   const measure=()=>{const direct=Math.floor(el.clientWidth);if(direct>0)return Math.min(400,direct);const parent=Math.floor(el.parentElement&&el.parentElement.clientWidth||0);if(parent>0)return Math.min(400,parent);return 320;};
-  const render=()=>{const width=measure();if(width===lastWidth)return;lastWidth=width;el.replaceChildren();try{google.accounts.id.renderButton(el,{theme:'outline',size:'large',shape:'rectangular',text:'continue_with',width,locale:config.locale});rendered();}catch{clearTimeout(timer);send('error');}};
+  const render=()=>{const width=measure();if(width===lastWidth)return;lastWidth=width;el.replaceChildren();try{google.accounts.id.renderButton(el,{theme:'outline',size:'large',shape:'rectangular',text:'continue_with',width,locale:config.buttonLocale});rendered();}catch{clearTimeout(timer);send('error');}};
   requestAnimationFrame(()=>requestAnimationFrame(render));new ResizeObserver(render).observe(el);
  };
  document.head.append(script);

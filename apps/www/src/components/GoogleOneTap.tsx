@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import type { SupportedLocale } from "@score/i18n";
+import { getGoogleLocale, isGoogleAutoSignInAllowed, isInAppBrowser } from "@score/shared";
 import { siteConfig } from "../lib/site";
 
 type IntermediateWindow = Window & {
@@ -13,11 +15,16 @@ type IntermediateWindow = Window & {
 export function GoogleOneTap({ enabled, locale, onDone }: {
   enabled: boolean; locale: SupportedLocale; onDone: () => void;
 }) {
+  const pathname = usePathname();
   const attempted = useRef(false);
+  const attemptedLocale = useRef(locale);
   const done = useRef(onDone);
   done.current = onDone;
   useEffect(() => {
-    if (!enabled || attempted.current || !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
+    if (attemptedLocale.current !== locale) { attempted.current = false; attemptedLocale.current = locale; }
+    if (!enabled || attempted.current || !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+      || !isGoogleAutoSignInAllowed(`${window.location.pathname}${window.location.search}${window.location.hash}`)
+      || isInAppBrowser(navigator.userAgent)) return;
     let active = true;
     const src = new URL("/api/auth/google-one-tap", siteConfig.appUrl);
     src.searchParams.set("parent", window.location.origin);
@@ -28,12 +35,13 @@ export function GoogleOneTap({ enabled, locale, onDone }: {
       attempted.current = true;
       api.initializeIntermediate({ src: src.toString(), done: () => done.current() });
     };
-    let script = document.querySelector<HTMLScriptElement>('script[data-google-intermediate]');
+    let script = document.querySelector<HTMLScriptElement>(`script[data-google-intermediate="${locale}"]`);
     if (!script) {
+      document.querySelectorAll('script[data-google-intermediate]').forEach(previous => previous.remove());
       script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/intermediate";
+      script.src = `https://accounts.google.com/gsi/intermediate?hl=${encodeURIComponent(getGoogleLocale(locale).hl)}`;
       script.async = true;
-      script.dataset.googleIntermediate = "true";
+      script.dataset.googleIntermediate = locale;
       document.head.append(script);
     }
     script.addEventListener("load", initialize);
@@ -46,6 +54,6 @@ export function GoogleOneTap({ enabled, locale, onDone }: {
         if (frame.src === src.toString()) frame.contentWindow?.postMessage({ channel: "score-one-tap", type: "close" }, src.origin);
       });
     };
-  }, [enabled, locale]);
+  }, [enabled, locale, pathname]);
   return null;
 }

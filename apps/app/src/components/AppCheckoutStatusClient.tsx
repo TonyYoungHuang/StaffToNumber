@@ -140,7 +140,7 @@ export function AppCheckoutStatusClient({
       if (disposed) return;
       if (!result.ok && result.status === 401) {
         clearStoredToken();
-        signIn("login", () => setRetryCount(n => n + 1));
+        signIn("login", () => setRetryCount(n => n + 1), { interactive: false });
         return;
       }
       if (!result.ok) { setAccessState("error"); return; }

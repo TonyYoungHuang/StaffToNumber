@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getLocalizedValue } from "@score/i18n";
+import { getGoogleAuthCopy } from "@score/shared";
 import {
   ArrowNorthEastIcon,
   SiteShellFooter,
@@ -39,10 +40,11 @@ export function PublicChrome({
   const pathname = usePathname();
   const { locale } = useSiteLocale();
   const purchaseFlow = usePurchaseFlow();
+  const googleCopy = getGoogleAuthCopy(locale);
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const appUrl = localizePublicHref(getAppStartConversionUrl(locale), locale);
   const homepageScanUrl = localizePublicHref("/#home-workbench", locale);
-  const loginUrl = getAppLoginUrl(undefined, locale);
+  const loginUrl = /工作台|工作臺/u.test(copy.login) ? getAppScoreProjectsUrl(locale) : getAppLoginUrl(undefined, locale);
   const checkoutUrl = getCheckoutUrl(locale);
   const homeSections = {
     workflow: localizePublicHref("/#workflow", locale),
@@ -120,7 +122,7 @@ export function PublicChrome({
   const actions: SiteShellAction[] = [
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true, desktopOnly: true }] : []),
     { href: purchaseFlow.user ? getAppScoreProjectsUrl(locale) : loginUrl, label: purchaseFlow.user?.email.split("@")[0] ?? copy.login, tone: "secondary", desktopOnly: true,
-      onClick: purchaseFlow.user ? undefined : event => { event.preventDefault(); purchaseFlow.signIn(); } },
+      onClick: purchaseFlow.user ? undefined : event => { event.preventDefault(); purchaseFlow.signIn("login", { destination: loginUrl }); } },
     ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.pricing, tone: "tertiary" as const }] : []),
     {
       href: homepageScanUrl,
@@ -172,9 +174,9 @@ export function PublicChrome({
       const path = target.pathname === "/api/locale" ? target.searchParams.get("next") || "" : target.pathname;
       const registration = /^\/register(?:[?#]|$)/u.test(path);
       const authentication = registration || /^\/login(?:[?#]|$)/u.test(path);
-      const workspace = /^\/(?:scores|dashboard|jobs|activate)(?:[/?#]|$)/u.test(path);
+      const workspace = /^\/(?:scores|dashboard|jobs|classrooms|student|billing|activate)(?:[/?#]|$)/u.test(path);
       if (!authentication && !workspace) return;
-      event.preventDefault(); event.stopPropagation(); purchaseFlow.signIn(registration ? "register" : "login");
+      event.preventDefault(); event.stopPropagation(); purchaseFlow.signIn(registration ? "register" : "login", { destination: target.toString() });
     }}>
       {announcement && announcementCopy && announcementVisible ? (
         <aside className="public-announcement" role="status" aria-label={copy.eventAnnouncement}>
@@ -199,6 +201,7 @@ export function PublicChrome({
         linkComponent={Link}
       />
       <main className="public-main">{children}</main>
+      {purchaseFlow.session === "signed-out" ? <div className="public-container"><button type="button" className="public-email-signin" onClick={purchaseFlow.emailSignIn}>{googleCopy.emailSignIn}</button></div> : null}
       <SiteShellFooter
         title={sonataCopy.productTitle}
         description={copy.footerCopy}

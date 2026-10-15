@@ -5,9 +5,9 @@ import { getSingleScorePassCopy } from "@score/shared";
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import Link from "next/link";
 import { getPurchaseOptionsCopy } from "@score/shared";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { apiRequest } from "../lib/api";
-import { getStoredToken } from "../lib/auth-storage";
+import { getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import {
   formatBillingBytes,
   formatBillingDateTime,
@@ -96,7 +96,7 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
   const [status, setStatus] = useState<ManagerStatus | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const token = useMemo(() => getStoredToken(), []);
+  const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
 
   const refresh = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);

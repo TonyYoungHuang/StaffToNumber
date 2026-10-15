@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, getPricingPlanCatalog, SINGLE_SCORE_PASS } from "@score/shared";
+import { APP_ROUTES, getGoogleAuthCopy, getPricingPlanCatalog, SINGLE_SCORE_PASS } from "@score/shared";
 import { getBillingMessages } from "./billing-messages";
 import { getScorePassCopy } from "./billing-messages/score-pass-copy";
 import { getAuthMessages } from "./auth-messages";
@@ -30,10 +30,13 @@ function componentHarness(relative: string, mocks: Record<string, unknown> = {},
   let cursor = 0, nextTimer = 1;
   const timers = new Map<number, { callback: () => void; delay: number }>();
   const listeners = new Map<string, Set<(event: any) => void>>();
-  const location = { origin: "https://scoretransposer.com", href: "", pathname: "/scores/score-1", search: "", hash: "#transpose-score", assign(value: string) { this.href = value; }, replace(value: string) { this.href = value; } };
+  const location = { origin: "https://scoretransposer.com", hostname: "scoretransposer.com", protocol: "https:", href: "https://scoretransposer.com/scores/score-1#transpose-score", pathname: "/scores/score-1", search: "", hash: "#transpose-score", assign(value: string) { this.href = value; }, replace(value: string) { this.href = value; } };
   const browser = {
     location,
     localStorage: storage(),
+    sessionStorage: storage(),
+    navigator: { userAgent: "Desktop Chrome fixture" },
+    open() { return { close() {} }; },
     setTimeout(callback: () => void, delay: number) { const id = nextTimer++; timers.set(id, { callback, delay }); return id; },
     clearTimeout(id: number) { timers.delete(id); },
     addEventListener(name: string, listener: (event: any) => void) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name)!.add(listener); },
@@ -65,6 +68,8 @@ function componentHarness(relative: string, mocks: Record<string, unknown> = {},
   }
   vm.runInNewContext(source, {
     exports, require(id: string) {
+      if (id === "./AppAuthModal" && !Object.hasOwn(mocks, id)) return { useAppAuthModal: () => () => {} };
+      if (id === "@score/shared" && !Object.hasOwn(mocks, id)) return { ...realRequire(id), prepareGoogleSignIn: async () => true, consumeGoogleRedirectResult: () => undefined, isInAppBrowser: () => false, isGoogleAutoSignInAllowed: () => false, launchGoogleSignIn: () => ({ cancel() {} }) };
       if (id === "../lib/checkout-flow" && !Object.hasOwn(mocks, id)) return {
         prepareCheckout: async () => true,
         completeCheckoutIntent() {},
@@ -75,7 +80,7 @@ function componentHarness(relative: string, mocks: Record<string, unknown> = {},
       return id === "react" ? hooks : Object.hasOwn(mocks, id) ? mocks[id] : realRequire(id);
     },
     element(type: unknown, props: object | null, ...children: unknown[]) { return { type, props: { ...props, children } }; }, fragment: "fragment",
-    window: browser, document: { body: {} }, process: { env: { ...process.env, NEXT_PUBLIC_GOOGLE_CLIENT_ID: "fixture.apps.googleusercontent.com", ...env } },
+    window: browser, navigator: browser.navigator, document: { body: {}, cookie: "", addEventListener: browser.addEventListener, removeEventListener: browser.removeEventListener, querySelector: () => null, querySelectorAll: () => [], ...mocks["test/document"] as object }, process: { env: { ...process.env, NEXT_PUBLIC_GOOGLE_CLIENT_ID: "fixture.apps.googleusercontent.com", ...env } },
     URL, URLSearchParams, AbortController, Event, Element: EventElement, crypto: globalThis.crypto,
   }, { filename });
   return {
@@ -118,7 +123,7 @@ test("login and registration show Google as the sole primary action in all nine 
     const tree = harness.render("AuthForm", { mode, messages });
     const primary = nodes(tree).filter(node => node.props.className?.includes("button-primary"));
     assert.equal(primary.length, 1, `${locale}/${mode} primary action`);
-    assert.equal(text(primary[0]), messages.shared.googleButtonRegionLabel);
+    assert.equal(text(primary[0]), getGoogleAuthCopy(locale).googleSignIn);
     assert.match(text(primary[0]), /Google/u);
     assert.equal(nodes(tree).filter(node => node.type === "form" || node.type === "input").length, 0, `${locale}/${mode} email initially folded`);
     assert.doesNotMatch(text(tree), /activation code|激活码|啟用碼|アクティベーションコード|활성화 코드|code d.activation|código de activación|Aktivierungscode|Активировать код/iu);
@@ -128,7 +133,7 @@ test("login and registration show Google as the sole primary action in all nine 
 
 test("the email link, a failed GSI load, and the blocked-load deadline expose email login and password recovery", () => {
   for (const trigger of ["link", "error", "timeout"] as const) {
-    const harness = authHarness("en"), props = { mode: "login", messages: getAuthMessages("en").form };
+    const harness = authHarness("en"), props = { mode: "login", messages: getAuthMessages("en").form, googleFallbackOnly: trigger !== "link" };
     const initial = harness.render("AuthForm", props);
     if (trigger === "link") nodes(initial).find(node => node.props["aria-expanded"] === false)!.props.onClick();
     if (trigger === "error") nodes(initial).find(node => node.type === "script")!.props.onError();
@@ -189,6 +194,8 @@ test("the app shell omits activation navigation for every locale even when check
     }, { NEXT_PUBLIC_CHECKOUT_AVAILABLE: "false" });
     const tree = harness.render("AppChrome", { children: null, copy: getAppMessages(locale).shell, reviewEntryCopy: {} });
     for (const node of nodes(tree).filter(node => ["header", "footer"].includes(String(node.type)))) assert.doesNotMatch(JSON.stringify(node.props), /\/activate|shop=1/u);
+    const footer = nodes(tree).find(node => node.type === "footer")!;
+    assert.ok(footer.props.links.some((link: { href: string; label: string }) => link.href.includes("method=email") && link.label === getGoogleAuthCopy(locale).emailSignIn));
   }
   const release = componentHarness("./release.ts", {}, { NEXT_PUBLIC_CHECKOUT_AVAILABLE: "false" });
   assert.equal(release.exports.accountActivationRoute, APP_ROUTES.checkout);
@@ -234,19 +241,29 @@ test("One Score Pass is the primary upsell in every locale and routes authentica
   }
 });
 
-test("an unauthenticated pass purchase carries its plan and continuation back to the original score", async () => {
+test("an unauthenticated pass purchase starts Google in the original click and preserves the plan after login", async () => {
   const next = "/scores/score-1?task=edit#visual-editor";
+  let token: string | null = null;
+  let finish: (() => void) | undefined;
+  const requests: Array<{ path: string; init: RequestInit }> = [];
   const harness = componentHarness("../components/OneScorePassUpsell.tsx", {
     "next/link": "a", "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) }, "../lib/release": { checkoutAvailable: true },
-    "../lib/auth-storage": { getStoredToken: () => null }, "../lib/analytics": { trackFunnelEvent() {} },
-    "../lib/flow-return": { currentWorkPath: () => next, workReturnPath, upgradePath: (path: string) => `/checkout?${new URLSearchParams({ next: path })}` },
+    "./AppAuthModal": { useAppAuthModal: () => (_mode: string, onDone: () => void) => { finish = onDone; } },
+    "../lib/auth-storage": { getStoredToken: () => token }, "../lib/analytics": { trackFunnelEvent() {} },
+    "../lib/api": { apiRequest: async (path: string, init: RequestInit) => { requests.push({ path, init }); return { ok: true, data: { orderId: "order-1", url: "https://checkout.stripe.com/fixture" } }; } },
+    "../lib/flow-return": { currentWorkPath: () => next, workReturnPath, saveCheckoutReturn() {}, upgradePath: (path: string) => `/checkout?${new URLSearchParams({ next: path })}` },
   });
   const tree = harness.render("OneScorePassUpsell", { source: "test", returnTo: next });
   nodes(tree).find(node => node.props["data-plan-type"] === "one_score")!.props.onClick();
+  assert.ok(finish, "Google starts synchronously before preparation or payment calls");
+  assert.equal(requests.length, 0);
+  token = "verified-fixture-session"; finish();
   await new Promise(resolve => setImmediate(resolve));
-  const target = new URL(harness.browser.location.href, "https://app.scoretransposer.com");
-  assert.equal(target.pathname, "/checkout"); assert.equal(target.searchParams.get("plan"), "single-score");
-  assert.equal(target.searchParams.get("billing"), "one_time"); assert.equal(target.searchParams.get("continue"), "1"); assert.equal(target.searchParams.get("next"), next);
+  assert.equal(requests.length, 1);
+  const payload = JSON.parse(String(requests[0].init.body));
+  assert.equal(payload.planCode, "single-score"); assert.equal(payload.billingKind, "one_time");
+  assert.equal(payload.returnPath, next);
+  assert.equal(harness.browser.location.href, "https://checkout.stripe.com/fixture");
 });
 
 test("payment return storage retains the original score and rejects activation or external return destinations", () => {
@@ -266,8 +283,11 @@ test("payment return storage retains the original score and rejects activation o
 test("public checkout resumes the pending pass automatically after Google sign-in and expands email after Google failure", async () => {
   let loggedIn = false, pending: any = null;
   const requests: Array<{ path: string; init?: RequestInit }> = [];
+  const launches: Array<{ onSuccess(): void; onFallback(reason: string): void }> = [];
   const plan = { planCode: "single-score", billingKind: "one_time", provider: "stripe", name: "One Score Pass", cycle: "one-time", price: "US$2.99" };
   const harness = componentHarness("../../../www/src/components/PurchaseFlowProvider.tsx", {
+    "@score/shared": { ...createRequire(import.meta.url)("@score/shared"), prepareGoogleSignIn: async () => true, consumeGoogleRedirectResult: () => undefined, isInAppBrowser: () => false,
+      launchGoogleSignIn: (options: typeof launches[number]) => { launches.push(options); return { cancel() {} }; } },
     "react-dom": { createPortal: (tree: Tree) => tree }, "./PurchaseFlow.module.css": {},
     "./HomeGoogleSignIn": { HomeGoogleSignIn: "google-signin" }, "./GoogleOneTap": { GoogleOneTap: "one-tap" },
     "../lib/analytics": { trackFunnelEvent() {} }, "../lib/site": { siteConfig: { appUrl: "https://app.scoretransposer.com" } },
@@ -287,18 +307,23 @@ test("public checkout resumes the pending pass automatically after Google sign-i
   });
   const props = { children: null, locale: "en", auth: { googleLabel: "Continue with Google", googleFailed: "Use email", login: "Login", register: "Register", email: "Email", password: "Password" }, copy: { emailAction: "Other methods / Use email", forgotPassword: "Forgot password?" } };
   const initial = harness.render("PurchaseFlowProvider", props);
-  initial.props.value.purchase(plan);
+  harness.flushEffects();
   await new Promise(resolve => setImmediate(resolve));
+  harness.render("PurchaseFlowProvider", props).props.value.purchase(plan);
+  assert.equal(launches.length, 1, "the purchase click launches Google without rendering a login dialog");
   assert.deepEqual(pending, plan);
   const modal = harness.render("PurchaseFlowProvider", props);
   assert.ok(nodes(modal).some(node => node.type === "one-tap"));
   assert.equal(nodes(modal).filter(node => node.type === "form").length, 0);
-  const google = nodes(modal).find(node => node.type === "google-signin")!;
+  assert.equal(nodes(modal).some(node => node.type === "dialog" || node.type === "google-signin"), false);
+  launches[0].onFallback("unavailable");
+  const google = nodes(harness.render("PurchaseFlowProvider", props)).find(node => node.type === "google-signin")!;
   google.props.onError("Use email");
   const fallback = harness.render("PurchaseFlowProvider", props);
   assert.ok(nodes(fallback).some(node => node.type === "form"));
   assert.ok(nodes(fallback).some(node => String(node.props.href).includes("forgot-password")));
-  google.props.onCredential("signed-fixture");
+  loggedIn = true;
+  launches[0].onSuccess();
   await new Promise(resolve => setImmediate(resolve));
   harness.render("PurchaseFlowProvider", props); harness.flushEffects();
   await new Promise(resolve => setImmediate(resolve));
@@ -522,4 +547,173 @@ test("cancel preserves unresolved payment verification without announcing cancel
     assert.doesNotMatch(text(harness.render("AppCheckoutCancelClient", props)), /Cancelled notice|Cancelled body/u);
     harness.dispose();
   }
+});
+
+test("checkout waits for a resolved session before displaying a real sign-in action", async () => {
+  const harness = componentHarness("../components/AppCheckoutClient.tsx", {
+    "./AppCheckout.module.css": {}, "./AuthForm": { AuthForm: "auth-form" },
+    "../lib/auth-storage": { getStoredToken: () => null },
+    "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
+    "../lib/api": { apiRequest: async () => ({ ok: false, status: 401, error: "Sign in" }) },
+  });
+  const props = { selectedPlan: { code: "single-score", name: "One Score Pass", cycle: "one-time", price: "US$2.99", credits: "10" }, locale: "en", authMessages: getAuthMessages("en").form, copy: getBillingMessages("en").checkout.client };
+  assert.equal(nodes(harness.render("AppCheckoutClient", props)).filter(node => node.type === "auth-form").length, 0);
+  harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(nodes(harness.render("AppCheckoutClient", props)).filter(node => node.type === "auth-form").length, 1);
+  harness.dispose();
+});
+
+test("all checkout plans retain continue=1, top_up, query and panel in Google redirect fallback", () => {
+  const shared = createRequire(import.meta.url)("@score/shared");
+  for (const plan of ["single-score", "starter-monthly", "starter-annual", "converter-pro-monthly", "converter-pro-annual"]) {
+    for (const billing of plan === "single-score" ? ["one_time"] : ["one_time", "subscription"]) {
+      let launched: { returnPath: string } | undefined;
+      const harness = componentHarness("../components/AuthForm.tsx", {
+        "@score/shared": { ...shared, launchGoogleSignIn: (options: typeof launched) => { launched = options; return { cancel() {} }; } },
+        "next/link": "a", "next/script": "script", "next/navigation": { useRouter: () => ({ refresh() {} }) },
+        "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+        "../lib/auth-storage": { getStoredToken: () => null, subscribeAuthChanges() {}, getServerAuthToken: () => null },
+      });
+      const params = new URLSearchParams({ plan, billing, next: "/scores/one?tab=edit#export-center", passMode: "top_up", targetDocumentId: "one", return_token: "original-order-locator" });
+      const path = `/checkout?${params}#checkout-action`;
+      Object.assign(harness.browser.location, { pathname: "/checkout", search: `?${params}`, hash: "#checkout-action", href: `https://scoretransposer.com${path}` });
+      params.set("continue", "1");
+      const tree = harness.render("AuthForm", { mode: "login", redirectTo: `/checkout?${params}`, onAuthenticated() {}, messages: getAuthMessages("en").form });
+      nodes(tree).find(node => node.type === "button" && text(node).includes("Google"))!.props.onClick();
+      assert.ok(launched);
+      const result = new URL(launched.returnPath, harness.browser.location.origin);
+      assert.equal(result.searchParams.get("plan"), plan); assert.equal(result.searchParams.get("billing"), billing);
+      assert.equal(result.searchParams.get("continue"), "1"); assert.equal(result.searchParams.get("passMode"), "top_up");
+      assert.equal(result.searchParams.get("next"), "/scores/one?tab=edit#export-center");
+      assert.equal(result.searchParams.get("return_token"), "original-order-locator"); assert.equal(result.hash, "#checkout-action");
+    }
+  }
+});
+
+test("AuthForm responds to a cookie restore after its first anonymous render", async () => {
+  let token: string | null = null;
+  let lookups = 0;
+  const next = "/jobs?filter=processing#original-job";
+  const harness = componentHarness("../components/AuthForm.tsx", {
+    "next/link": "a", "next/script": "script", "next/navigation": { useRouter: () => ({ refresh() {} }) },
+    "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+    "../lib/auth-storage": { getStoredToken: () => token, subscribeAuthChanges() {}, getServerAuthToken: () => null },
+    "../lib/api": { apiRequest: async () => { lookups++; return { ok: true, data: { user: { id: "restored-user" } } }; } },
+  });
+  const props = { mode: "login", redirectTo: next, messages: getAuthMessages("en").form };
+  harness.render("AuthForm", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(lookups, 0);
+  token = "cookie-restored-session";
+  harness.render("AuthForm", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(lookups, 1); assert.equal(harness.browser.location.href, next);
+  harness.dispose();
+});
+
+test("a gate 401 clears the stale token and waits for the user's Google click", async () => {
+  let token: string | null = "expired-session";
+  let clicks = 0;
+  const signIn = () => { clicks++; };
+  const harness = componentHarness("../components/EntitlementGate.tsx", {
+    "next/link": "a", "next/navigation": { useRouter: () => ({ replace() {} }) },
+    "./AppAuthModal": { useAppAuthModal: () => signIn },
+    "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+    "../lib/auth-storage": { getStoredToken: () => token, clearStoredToken: () => { token = null; }, subscribeAuthChanges() {}, getServerAuthToken: () => null },
+    "../lib/flow-messages/client": { useFlowMessages: () => ({ signInLabel: "Sign in" }) },
+    "../lib/api": { apiRequest: async () => ({ ok: false, status: 401, error: "Sign in" }) },
+  });
+  const props = { children: null, copy: getAuthMessages("en").entitlement };
+  harness.render("EntitlementGate", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(token, null); assert.equal(clicks, 0, "an automatic 401 cannot open a popup");
+  const buttons = nodes(harness.render("EntitlementGate", props)).filter(node => node.type === "button");
+  assert.equal(buttons.length, 1); buttons[0].props.onClick(); assert.equal(clicks, 1);
+  harness.dispose();
+});
+
+test("activation submits start Google synchronously, then redeem once without another click", async () => {
+  let token: string | null = null;
+  let finish: (() => void) | undefined;
+  const requests: Array<{ path: string; init: RequestInit }> = [];
+  const router = { push() {}, refresh() {} };
+  const harness = componentHarness("../components/ActivationForm.tsx", {
+    "next/navigation": { useRouter: () => router },
+    "./AppAuthModal": { useAppAuthModal: () => (_mode: string, callback: () => void) => { finish = callback; } },
+    "../lib/auth-storage": { getStoredToken: () => token, subscribeAuthChanges() {}, getServerAuthToken: () => null },
+    "../lib/api": { apiRequest: async (path: string, init: RequestInit) => { requests.push({ path, init }); return { ok: true, data: { ok: true, entitlement: null } }; } },
+  });
+  const props = { copy: getBillingMessages("en").activation.form, returnTo: "/scores/one#visual-editor" };
+  let tree = harness.render("ActivationForm", props);
+  nodes(tree).find(node => node.type === "input")!.props.onChange({ target: { value: "ACTIVATION-LOCAL-FIXTURE" } });
+  tree = harness.render("ActivationForm", props);
+  nodes(tree).find(node => node.type === "form")!.props.onSubmit({ preventDefault() {} });
+  assert.ok(finish); assert.equal(requests.length, 0);
+  token = "restored-verified-session"; finish(); finish();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests.length, 1); assert.equal(requests[0].path, "/api/activation/redeem");
+  assert.deepEqual(JSON.parse(String(requests[0].init.body)), { code: "ACTIVATION-LOCAL-FIXTURE" });
+  assert.equal(new Headers(requests[0].init.headers).get("Authorization"), "Bearer restored-verified-session");
+});
+
+test("a click while app session is checking reserves the popup and continues the verified account", async () => {
+  let status = "checking", closed = 0, completed = 0, launches = 0;
+  let resolveSession: (value: string) => void = () => {};
+  const shared = createRequire(import.meta.url)("@score/shared");
+  const harness = componentHarness("../components/AppAuthModal.tsx", {
+    "@score/shared": { ...shared, launchGoogleSignIn: () => { launches++; return { cancel() {} }; } },
+    "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+    "../lib/auth-storage": { getSessionStatus: () => status, restoreSessionFromCookie: () => new Promise(resolve => { resolveSession = resolve; }) },
+  });
+  harness.browser.open = () => ({ close() { closed++; } });
+  const tree = harness.render("AppAuthModalProvider", { children: null, messages: getAuthMessages("en") });
+  tree.props.value("login", () => { completed++; });
+  assert.equal(closed, 0); assert.equal(launches, 0); assert.equal(completed, 0);
+  status = "signed-in"; resolveSession("signed-in");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(closed, 1); assert.equal(completed, 1); assert.equal(launches, 0);
+});
+
+test("app One Tap closes its frame when client navigation enters checkout", () => {
+  const shared = createRequire(import.meta.url)("@score/shared");
+  let pathname = "/scores", initialized = 0, closes = 0;
+  const script = { addEventListener() {}, removeEventListener() {} };
+  const frame = { src: "https://scoretransposer.com/api/auth/google-one-tap?parent=https%3A%2F%2Fscoretransposer.com&locale=en&g_csrf_token=fixture", contentWindow: { postMessage(message: { type: string }, origin: string) { assert.equal(message.type, "close"); assert.equal(origin, "https://scoretransposer.com"); closes++; } } };
+  const harness = componentHarness("../components/AppGoogleOneTap.tsx", {
+    "@score/shared": shared,
+    "next/navigation": { usePathname: () => pathname },
+    "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+    "../lib/auth-storage": { getSessionStatus: () => "signed-out", getServerSessionStatus: () => "checking", subscribeAuthChanges() {} },
+    "test/document": { querySelector: () => script, querySelectorAll: () => [frame] },
+  });
+  Object.assign(harness.browser, { google: { accounts: { id: { initializeIntermediate() { initialized++; } } } } });
+  harness.browser.location.pathname = pathname;
+  harness.render("AppGoogleOneTap", { paused: false }); harness.flushEffects();
+  assert.equal(initialized, 1);
+  pathname = "/checkout"; harness.browser.location.pathname = pathname;
+  harness.render("AppGoogleOneTap", { paused: false }); harness.flushEffects();
+  assert.equal(closes, 1); assert.equal(initialized, 1);
+  harness.dispose();
+});
+
+test("the free upload gate keeps its child mounted in the same slot after login", async () => {
+  let token: string | null = null;
+  const signIn = () => {};
+  const child = { type: "selected-file-workbench", props: { file: "in-memory-fixture" } };
+  const router = { replace() {} };
+  const harness = componentHarness("../components/EntitlementGate.tsx", {
+    "next/link": "a", "next/navigation": { useRouter: () => router },
+    "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+    "./AppAuthModal": { useAppAuthModal: () => signIn },
+    "../lib/auth-storage": { getStoredToken: () => token, subscribeAuthChanges() {}, getServerAuthToken: () => null },
+    "../lib/flow-messages/client": { useFlowMessages: () => ({ signInLabel: "Sign in" }) },
+    "../lib/api": { apiRequest: async () => token ? { ok: true, data: { user: { entitlement: { status: "active" } } } } : { ok: false, status: 401, error: "Sign in" } },
+  });
+  const props = { children: child, allowFreePreview: true, copy: getAuthMessages("en").entitlement };
+  harness.render("EntitlementGate", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  const guest = harness.render("EntitlementGate", props);
+  assert.equal(guest.type, "div"); assert.equal(guest.props.children[1], child);
+  token = "verified-session";
+  harness.render("EntitlementGate", props); harness.flushEffects(); await new Promise(resolve => setImmediate(resolve));
+  const signedIn = harness.render("EntitlementGate", props);
+  assert.equal(signedIn.type, "div"); assert.equal(signedIn.props.children[0], null);
+  assert.equal(signedIn.props.children[1], child, "the file owner remains in the same React child slot");
+  harness.dispose();
 });

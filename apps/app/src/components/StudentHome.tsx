@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { formatDateTime, formatNumber, type SupportedLocale } from "@score/i18n";
 import { apiRequest, downloadAuthenticatedFile } from "../lib/api";
-import { getStoredToken } from "../lib/auth-storage";
+import { getStoredToken, getServerAuthToken, subscribeAuthChanges } from "../lib/auth-storage";
 import { useEducationMessages } from "../lib/education-messages/client";
 import { resolveEducationLabel } from "../lib/education-messages/format";
 
@@ -68,6 +68,7 @@ type NotificationPreferences = {
 };
 
 export function StudentHome() {
+  const sessionToken = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const { locale, messages } = useEducationMessages();
   const copy = messages.student;
   const [classrooms, setClassrooms] = useState<StudentClassroom[]>([]);
@@ -104,7 +105,7 @@ export function StudentHome() {
     setError(null);
     setClassrooms(result.data.classrooms);
     if (preferenceResult.ok) setNotificationPreferences(preferenceResult.data.preferences);
-  }, [copy.login]);
+  }, [copy.login, sessionToken]);
 
   useEffect(() => {
     void loadHome();
