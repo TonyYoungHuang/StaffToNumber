@@ -4,6 +4,7 @@ import {
   ANALYTICS_CONSENT_MESSAGE_CATALOGS,
   DEFAULT_LOCALE,
   LOCALE_CONFIGS,
+  LOCALE_DISPLAY_ORDER,
   LOCALE_COOKIE_MAX_AGE_SECONDS,
   LOCALE_ROUTE_PREFIXES,
   SUPPORTED_LOCALES,
@@ -49,6 +50,16 @@ test("registers the nine P0 locales once with LTR and English fallback metadata"
   assert.equal(getLocaleConfig("zh-TW").fontGroup, "hant");
   assert.equal(getLocaleConfig("ru").fontGroup, "cyrillic");
   assert.equal(getLocaleConfig("fr").dateLocale, "fr-FR");
+});
+
+test("orders language menus independently of the complete routing and SEO locale registry", () => {
+  assert.deepEqual(LOCALE_DISPLAY_ORDER, ["en", "fr", "de", "es", "ru", "ja", "ko", "zh-TW", "zh-CN"]);
+  assert.equal(new Set(LOCALE_DISPLAY_ORDER).size, SUPPORTED_LOCALES.length);
+  assert.deepEqual([...LOCALE_DISPLAY_ORDER].sort(), [...SUPPORTED_LOCALES].sort());
+  assert.deepEqual(LOCALE_CONFIGS.map((config) => config.code), [...SUPPORTED_LOCALES]);
+  assert.deepEqual(LOCALE_DISPLAY_ORDER.map((locale) => getLocaleConfig(locale).label), [
+    "English", "Français", "Deutsch", "Español", "Русский", "日本語", "한국어", "繁體中文", "简体中文",
+  ]);
 });
 
 test("keeps analytics consent complete and localized in every supported locale", () => {

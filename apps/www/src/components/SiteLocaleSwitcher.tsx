@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useId, type ChangeEvent } from "react";
-import { LOCALE_CONFIGS, type SupportedLocale } from "@score/i18n";
+import { getLocaleConfig, LOCALE_DISPLAY_ORDER, type SupportedLocale } from "@score/i18n";
 import { getPublicLocaleSwitchHref } from "../lib/locale-routing";
 import { useSiteLocale } from "./SiteLocaleProvider";
 
@@ -38,11 +38,14 @@ export function SiteLocaleSwitcher({ label }: { label: string }) {
         value={locale}
         onChange={switchLocale}
       >
-        {LOCALE_CONFIGS.map((config) => (
-          <option key={config.code} value={config.code} lang={config.htmlLang}>
-            {config.label}
-          </option>
-        ))}
+        {LOCALE_DISPLAY_ORDER.map((locale) => {
+          const config = getLocaleConfig(locale);
+          return (
+            <option key={config.code} value={config.code} lang={config.htmlLang}>
+              {config.label}
+            </option>
+          );
+        })}
       </select>
       <span className="locale-switcher-caret" aria-hidden="true">⌄</span>
     </label>

@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import {
   getLocaleConfig,
   isSupportedLocale,
-  SUPPORTED_LOCALES,
+  LOCALE_DISPLAY_ORDER,
   type SupportedLocale,
 } from "@score/i18n";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -57,7 +57,7 @@ export function AppLocaleSwitcher({ label, errorMessage }: { label: string; erro
             if (isSupportedLocale(event.target.value)) selectLocale(event.target.value);
           }}
         >
-          {SUPPORTED_LOCALES.map((item) => (
+          {LOCALE_DISPLAY_ORDER.map((item) => (
             <option key={item} value={item} lang={getLocaleConfig(item).htmlLang}>
               {getLocaleConfig(item).label}
             </option>

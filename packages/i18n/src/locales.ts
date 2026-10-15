@@ -16,6 +16,19 @@ export const SUPPORTED_LOCALES = [
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
+/** Language-menu order only; keep routing and SEO on the locale registry above. */
+export const LOCALE_DISPLAY_ORDER = [
+  "en",
+  "fr",
+  "de",
+  "es",
+  "ru",
+  "ja",
+  "ko",
+  "zh-TW",
+  "zh-CN",
+] as const satisfies readonly SupportedLocale[];
+
 export type LocaleDirection = "ltr";
 
 export type LocaleFontGroup = "latin" | "cyrillic" | "hans" | "hant" | "japanese" | "korean";
