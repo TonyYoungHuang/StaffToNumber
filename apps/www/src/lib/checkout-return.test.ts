@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { completePurchaseIntent, isPublicPricingDestination, persistentPurchaseIntent, purchaseIntentSignature, purchaseReturnContext, rememberPurchaseOrder, withPurchaseOrigin } from "./checkout-return";
+import { completePurchaseIntent, isPublicPricingDestination, persistentPurchaseIntent, purchaseIntentSignature, purchaseReturnContext, rememberPurchaseOrder, shouldReplacePurchaseIntent, withPurchaseOrigin } from "./checkout-return";
 import { getCheckoutUrl } from "./site";
 import { getPurchaseRecoveryCopy } from "./purchase-copy";
 import { SUPPORTED_LOCALES } from "@score/i18n";
@@ -80,6 +80,16 @@ test("purchase identity survives refresh, remount and timeout until completed ha
 
 test("storage failure stops a new purchase identity from being silently volatile", () => {
   assert.throws(() => persistentPurchaseIntent("user-plan", { getItem: () => null, setItem: () => { throw new Error("storage unavailable"); } }), /storage unavailable/u);
+});
+
+test("terminal purchases need a new explicit choice; login, timeout and uncertain pending orders keep their identity", () => {
+  for (const status of ["pending", "paid", "cancelled", "failed"]) assert.equal(shouldReplacePurchaseIntent(status, undefined, false, false), false);
+  assert.equal(shouldReplacePurchaseIntent("pending", undefined, true, false), false);
+  assert.equal(shouldReplacePurchaseIntent("paid", undefined, true, false), false);
+  assert.equal(shouldReplacePurchaseIntent("paid", "refunded", false, false), false);
+  assert.equal(shouldReplacePurchaseIntent("paid", "refunded", true, false), true);
+  for (const status of ["cancelled", "failed"]) assert.equal(shouldReplacePurchaseIntent(status, undefined, true, false), true);
+  assert.equal(shouldReplacePurchaseIntent("paid", undefined, true, true), true);
 });
 
 test("purchase recovery choices are translated in all nine languages", () => {

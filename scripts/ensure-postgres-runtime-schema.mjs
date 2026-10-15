@@ -139,6 +139,7 @@ try {
     ADD COLUMN IF NOT EXISTS checkout_plan_code TEXT,
     ADD COLUMN IF NOT EXISTS pass_mode TEXT,
     ADD COLUMN IF NOT EXISTS provider_checkout_started_at TEXT,
+    ADD COLUMN IF NOT EXISTS provider_checkout_params_hash TEXT,
     ADD COLUMN IF NOT EXISTS return_site TEXT,
     ADD COLUMN IF NOT EXISTS return_path TEXT,
     ADD COLUMN IF NOT EXISTS return_state_json TEXT,

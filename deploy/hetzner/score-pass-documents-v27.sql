@@ -12,6 +12,7 @@ ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS checkout_intent_hash TEXT;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS checkout_plan_code TEXT;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS pass_mode TEXT;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS provider_checkout_started_at TEXT;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS provider_checkout_params_hash TEXT;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS return_site TEXT;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS return_path TEXT;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS return_state_json TEXT;
@@ -65,6 +66,7 @@ ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS check
 ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS checkout_plan_code TEXT;
 ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS pass_mode TEXT;
 ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS provider_checkout_started_at TEXT;
+ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS provider_checkout_params_hash TEXT;
 ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS return_site TEXT;
 ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS return_path TEXT;
 ALTER TABLE IF EXISTS public.score_payment_orders ADD COLUMN IF NOT EXISTS return_state_json TEXT;

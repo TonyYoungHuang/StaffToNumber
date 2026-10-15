@@ -39,7 +39,7 @@ export const SCORE_UPLOAD_DRAFTS_SQL = `
 `;
 
 export const PAYMENT_RETURN_COLUMNS = [
-  'checkout_intent_hash', 'checkout_plan_code', 'pass_mode', 'provider_checkout_started_at', 'return_site', 'return_path', 'return_state_json',
+  'checkout_intent_hash', 'checkout_plan_code', 'pass_mode', 'provider_checkout_started_at', 'provider_checkout_params_hash', 'return_site', 'return_path', 'return_state_json',
   'return_token_hash', 'return_token_expires_at', 'return_token_consumed_at',
 ] as const;
 

@@ -1,11 +1,11 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { isPurchasePlanCode, isCheckoutBillingKind, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
 import { findOneTimePurchase, fulfillOneTimePurchase, hasRenewingSubscription, prepareOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { config } from "../config.js";
 import { getPlanQuotaUsage } from "../lib/plan-quotas.js";
 import { CheckoutContinuationError, normalizeCheckoutContinuation } from "../lib/checkout-continuation.js";
-import { assertScorePassPurchaseTarget, ScorePassError } from "../lib/score-passes.js";
+import { assertScorePassPurchaseTarget, scorePassForDocument, ScorePassError } from "../lib/score-passes.js";
 import { findUserByEmail, getUserProfile } from "../repositories/auth-repository.js";
 import {
   cancelPaddleSubscription,
@@ -13,11 +13,12 @@ import {
   buildPaddleCheckoutRedirectUrl,
   buildLocalizedAppReturnUrl,
   buildLocalizedPublicCheckoutUrl,
-  buildCheckoutCancelUrl,
   localizePublicPaddleCheckoutPageUrl,
   createPaddleTransaction,
   createStripeBillingPortalSession,
   createStripeCheckoutSession,
+  buildStripeCheckoutSessionParams,
+  buildStripeCheckoutRequestOptions,
   expireStripeCheckoutSession,
   getCheckoutPriceId,
   isPaymentProviderEnabled,
@@ -30,6 +31,8 @@ import {
   cancelDurablePaymentOrder,
   completeDurablePaymentOrder,
   findDurablePaymentOrderForPublic,
+  findDurablePaymentOrderById,
+  consumeDurableCheckoutReturnToken,
   saveDurablePaymentOrder,
 } from "../lib/payment-order-durable-store.js";
 import { db } from "../db.js";
@@ -56,8 +59,8 @@ import { buildCheckoutIntentNotificationEmail, sendTransactionalEmail } from "..
 import { retryOperatorNotification } from "../lib/operator-notification.js";
 import { normalizeStripeBillingEvent } from "../lib/billing-events.js";
 import { readSessionCookie } from "../lib/session-cookie.js";
-import { validateCheckoutReturn, issueCheckoutReturnToken, consumeCheckoutReturnToken, orderCheckoutReturnContext } from "../lib/checkout-return.js";
-import { findPaymentOrderByIntent, listPaymentOrdersForUser, claimPaddleCheckoutCreation } from "../repositories/payment-repository.js";
+import { validateCheckoutReturn, issueCheckoutReturnToken, recoverCheckoutReturnToken, consumeCheckoutReturnToken, orderCheckoutReturnContext } from "../lib/checkout-return.js";
+import { findPaymentOrderByIntent, listPaymentOrdersForUser, claimPaddleCheckoutCreation, claimStripeCheckoutRequest } from "../repositories/payment-repository.js";
 import type { PaymentVerification, PaymentVerificationStatus } from "@score/shared";
 
 function isProvider(value: unknown): value is PaymentProvider {
@@ -154,8 +157,28 @@ function isSeatEmail(value: string) {
   return true;
 }
 
-async function findPaymentOrderForPublicDurably(id: string, publicToken: string) {
-  return findPaymentOrderForPublic(id, publicToken) ?? await findDurablePaymentOrderForPublic(id, publicToken);
+async function findPaymentOrderForPublicDurably(id: string, publicToken: string, lookup = findDurablePaymentOrderForPublic) {
+  return findPaymentOrderForPublic(id, publicToken) ?? await lookup(id, publicToken);
+}
+
+function mirrorOrderView(order: PaymentOrderRow, includePrivate: boolean) {
+  const view = mapPaymentOrderForPublic(order, includePrivate);
+  const error = "This order was recovered from its payment record. Its original task cannot be replayed automatically; review the score before starting another task.";
+  return { ...view, mirrorOnly: true,
+    continuation: view.continuation ? { ...view.continuation, available: false,
+      result: view.continuation.consumed ? view.continuation.result : { documentId: order.target_document_id, error, code: "CHECKOUT_RECOVERY_ACTION_UNAVAILABLE", statusCode: 409 },
+      recoveryCode: view.continuation.consumed ? null : "CHECKOUT_RECOVERY_ACTION_UNAVAILABLE" } : null };
+}
+
+function mirrorOrderVerification(order: PaymentOrderRow, userId: string | undefined): PaymentVerification {
+  if (order.status === "cancelled" || order.status === "failed") return { status: order.status, retryable: false };
+  const purchase = findOneTimePurchase(db, order.id);
+  if (purchase?.status === "refunded") return { status: "refunded", retryable: false };
+  if (order.status !== "paid" || !userId || order.user_id !== userId) return { status: "verification_failed", retryable: true };
+  const hasAccess = getUserProfile(userId)?.entitlement.status === "active"
+    || Boolean(order.target_document_id && scorePassForDocument(db, userId, order.target_document_id))
+    || Boolean(purchase?.status === "active" && purchase.paid_at && purchase.plan_code === "single-score");
+  return { status: hasAccess ? "ready" : "waiting_fulfillment", retryable: !hasAccess };
 }
 
 async function persistLocalPaymentOrder(orderId: string) {
@@ -207,6 +230,7 @@ function recoverStripePaymentOrder(
     checkout_plan_code: session.metadata?.planCode ?? null,
     pass_mode: null,
     provider_checkout_started_at: null,
+    provider_checkout_params_hash: null,
     return_site: null,
     return_path: null,
     return_state_json: null,
@@ -232,7 +256,11 @@ function recoverStripePaymentOrder(
   };
 }
 
-export async function paymentRoutes(app: FastifyInstance, options: { paymentServices?: Partial<{
+export async function paymentRoutes(app: FastifyInstance, options: { durableServices?: Partial<{
+  findById: typeof findDurablePaymentOrderById;
+  findForPublic: typeof findDurablePaymentOrderForPublic;
+  consumeReturnToken: typeof consumeDurableCheckoutReturnToken;
+}>; paymentServices?: Partial<{
   createStripeCheckoutSession: typeof createStripeCheckoutSession;
   createPaddleTransaction: typeof createPaddleTransaction;
   retrieveStripeCheckoutSession: typeof retrieveStripeCheckoutSession;
@@ -240,6 +268,8 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
   sendTransactionalEmail: typeof sendTransactionalEmail;
 }> } = {}) {
   const services = { createStripeCheckoutSession, createPaddleTransaction, retrieveStripeCheckoutSession, retrieveStripeSubscription, sendTransactionalEmail, ...options.paymentServices };
+  const durable = { findById: findDurablePaymentOrderById, findForPublic: findDurablePaymentOrderForPublic, consumeReturnToken: consumeDurableCheckoutReturnToken, ...options.durableServices };
+  const findOrderForPublicDurably = (id: string, token: string) => findPaymentOrderForPublicDurably(id, token, durable.findForPublic);
   const orderChecks = new Map<string, Promise<PaymentVerification>>();
 
   const verifyAndFulfill = async (order: PaymentOrderRow, publicToken: string, sessionId?: string, transactionId?: string): Promise<PaymentVerification> => {
@@ -443,9 +473,12 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       }) : undefined;
       if (reusable?.checkout_url || reusable?.status === "paid") return reply.send(checkoutResponse(reusable, true));
 
-      let returnCredential = reusable ? null : issueCheckoutReturnToken();
+      const checkoutOrderId = reusable?.id ?? randomUUID();
+      const providerSecret = body.provider === "stripe" ? config.stripeSecretKey : config.paddleApiKey;
+      const proposedCredential = issueCheckoutReturnToken({ secret: providerSecret, orderId: checkoutOrderId });
 
       const order = reusable ?? createPaymentOrder({
+        orderId: checkoutOrderId,
         userId: request.authUserId!,
         provider: body.provider,
         customerEmail,
@@ -463,16 +496,22 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         returnSite: returnContext.site,
         returnPath: returnContext.path,
         returnStateJson: JSON.stringify(returnContext.state),
-        returnTokenHash: returnCredential?.hash,
-        returnTokenExpiresAt: returnCredential?.expiresAt,
+        returnTokenHash: proposedCredential.hash,
+        returnTokenExpiresAt: proposedCredential.expiresAt,
       });
 
       if (!order) {
         return reply.code(500).send({ error: "Unable to create payment order." });
       }
-      if (returnCredential && order.return_token_hash !== returnCredential.hash) {
-        returnCredential = null;
-        if (order.checkout_url || order.status === "paid") return reply.send(checkoutResponse(order, true));
+      if (order.checkout_url || order.status === "paid") return reply.send(checkoutResponse(order, true));
+      let returnCredential = recoverCheckoutReturnToken({ secret: providerSecret, orderId: order.id, hash: order.return_token_hash, expiresAt: order.return_token_expires_at });
+      if (order.return_token_hash && !returnCredential) {
+        if (order.provider_checkout_started_at || order.checkout_session_id || order.transaction_id) return reply.code(503).send({ error: "The original checkout must be recovered before retrying. Do not pay again.", code: "CHECKOUT_PREPARATION_PENDING", orderId: order.id, token: order.public_token });
+        // No provider request has started. A previously disabled provider may
+        // now be configured, so initialize its reconstructable credential.
+        returnCredential = issueCheckoutReturnToken({ secret: providerSecret, orderId: order.id });
+        db.prepare("UPDATE payment_orders SET return_token_hash = ?, return_token_expires_at = ? WHERE id = ? AND provider_checkout_started_at IS NULL").run(returnCredential.hash, returnCredential.expiresAt, order.id);
+        order.return_token_hash = returnCredential.hash; order.return_token_expires_at = returnCredential.expiresAt;
       }
 
       try {
@@ -483,7 +522,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       }
 
       const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
-      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode, billingKind) && (body.provider !== "paddle" || Boolean(config.paddleApiKey && config.paddleDefaultPaymentLink));
+      const providerEnabled = isPaymentProviderEnabled(body.provider, planCode, billingKind) && (body.provider === "stripe" ? Boolean(config.stripeSecretKey) : Boolean(config.paddleApiKey && config.paddleDefaultPaymentLink));
       if (!reusable) {
         void retryOperatorNotification({
           orderId: order.id,
@@ -510,38 +549,33 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       const successBase = buildLocalizedPublicCheckoutUrl({
         baseUrl: config.publicSiteUrl,
         pathname: "/checkout/success",
-        locale: body.locale,
+        locale: order.locale,
         searchParams: returnParams,
       });
-      let cancelBase = buildCheckoutCancelUrl({
-        baseUrl: config.publicSiteUrl,
-        locale: body.locale,
-        returnTo: body.returnTo,
-        planCode, billingKind, provider: body.provider,
-        orderId: order.id, publicToken: order.public_token,
+      const cancelBase = buildLocalizedPublicCheckoutUrl({
+        baseUrl: config.publicSiteUrl, pathname: "/checkout/cancel", locale: order.locale, searchParams: returnParams,
       });
-      if (returnCredential) {
-        const cancelUrl = new URL(cancelBase);
-        cancelUrl.searchParams.set("return_token", returnCredential.token);
-        cancelBase = cancelUrl.toString();
-      }
 
       try {
         if (body.provider === "stripe") {
           if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: request.authUserId!, planCode, priceId: priceId!, targetDocumentId });
-          const session = await services.createStripeCheckoutSession({
-          locale: body.locale,
+          const stripeInput = {
+            locale: order.locale,
             billingKind, planCode,
             orderId: order.id,
             publicToken: order.public_token,
-            customerEmail,
+            customerEmail: order.customer_email,
             successUrl: `${successBase}&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: cancelBase,
             userId: request.authUserId,
             organizationId,
             seatQuantity,
             priceId: priceId!,
-          });
+          };
+          const paramsHash = createHash("sha256").update(JSON.stringify({ params: buildStripeCheckoutSessionParams(stripeInput), options: buildStripeCheckoutRequestOptions(order.id) })).digest("hex");
+          if (!claimStripeCheckoutRequest(order.id, paramsHash)) return reply.code(503).send({ error: "The original checkout parameters must be recovered before retrying. Do not pay again.", code: "CHECKOUT_PREPARATION_PENDING", orderId: order.id, token: order.public_token });
+          await persistLocalPaymentOrder(order.id);
+          const session = await services.createStripeCheckoutSession(stripeInput);
           attachStripeCheckoutSession(order.id, session.id, session.url ?? null);
           await persistLocalPaymentOrder(order.id);
 
@@ -559,7 +593,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         const transaction = await services.createPaddleTransaction({
           orderId: order.id,
           publicToken: order.public_token,
-          customerEmail,
+          customerEmail: order.customer_email,
           userId: request.authUserId,
           organizationId,
           seatQuantity,
@@ -569,7 +603,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
           checkoutUrl: localizePublicPaddleCheckoutPageUrl({
             checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
             publicSiteUrl: config.publicSiteUrl,
-            locale: body.locale,
+            locale: order.locale,
           }),
           transactionId: transaction.id,
           orderId: order.id,
@@ -613,7 +647,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     }
 
     const priceId = getCheckoutPriceId(body.provider, planCode, billingKind);
-    if (!isPaymentProviderEnabled(body.provider, planCode, billingKind) || !priceId || body.provider === "paddle" && (!config.paddleApiKey || !config.paddleDefaultPaymentLink)) {
+    if (!isPaymentProviderEnabled(body.provider, planCode, billingKind) || !priceId || body.provider === "stripe" && !config.stripeSecretKey || body.provider === "paddle" && (!config.paddleApiKey || !config.paddleDefaultPaymentLink)) {
       return reply.code(400).send({ error: "This payment provider is not enabled." });
     }
 
@@ -661,9 +695,12 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     }) : undefined;
     if (reusable?.checkout_url || reusable?.status === "paid") return reply.send(checkoutResponse(reusable));
 
-    let returnCredential = reusable ? null : issueCheckoutReturnToken();
+    const checkoutOrderId = reusable?.id ?? randomUUID();
+    const providerSecret = body.provider === "stripe" ? config.stripeSecretKey : config.paddleApiKey;
+    const proposedCredential = issueCheckoutReturnToken({ secret: providerSecret, orderId: checkoutOrderId });
 
     const order = reusable ?? createPaymentOrder({
+      orderId: checkoutOrderId,
       userId: account.id,
       provider: body.provider,
       customerEmail: account.email,
@@ -676,16 +713,20 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       returnSite: returnContext.site,
       returnPath: returnContext.path,
       returnStateJson: JSON.stringify(returnContext.state),
-      returnTokenHash: returnCredential?.hash,
-      returnTokenExpiresAt: returnCredential?.expiresAt,
+      returnTokenHash: proposedCredential.hash,
+      returnTokenExpiresAt: proposedCredential.expiresAt,
     });
 
     if (!order) {
       return reply.code(500).send({ error: "Unable to create payment order." });
     }
-    if (returnCredential && order.return_token_hash !== returnCredential.hash) {
-      returnCredential = null;
-      if (order.checkout_url || order.status === "paid") return reply.send(checkoutResponse(order));
+    if (order.checkout_url || order.status === "paid") return reply.send(checkoutResponse(order));
+    let returnCredential = recoverCheckoutReturnToken({ secret: providerSecret, orderId: order.id, hash: order.return_token_hash, expiresAt: order.return_token_expires_at });
+    if (order.return_token_hash && !returnCredential) {
+      if (order.provider_checkout_started_at || order.checkout_session_id || order.transaction_id) return reply.code(503).send({ error: "The original checkout must be recovered before retrying. Do not pay again.", code: "CHECKOUT_PREPARATION_PENDING", orderId: order.id, token: order.public_token });
+      returnCredential = issueCheckoutReturnToken({ secret: providerSecret, orderId: order.id });
+      db.prepare("UPDATE payment_orders SET return_token_hash = ?, return_token_expires_at = ? WHERE id = ? AND provider_checkout_started_at IS NULL").run(returnCredential.hash, returnCredential.expiresAt, order.id);
+      order.return_token_hash = returnCredential.hash; order.return_token_expires_at = returnCredential.expiresAt;
     }
 
     try {
@@ -699,30 +740,34 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     const successBase = buildLocalizedPublicCheckoutUrl({
       baseUrl: config.publicSiteUrl,
       pathname: "/checkout/success",
-      locale: body.locale,
+      locale: order.locale,
       searchParams: returnParams,
     });
     const cancelBase = buildLocalizedPublicCheckoutUrl({
       baseUrl: config.publicSiteUrl,
       pathname: "/checkout/cancel",
-      locale: body.locale,
+      locale: order.locale,
       searchParams: returnParams,
     });
 
     try {
       if (body.provider === "stripe") {
         if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: account.id, planCode, priceId });
-        const session = await services.createStripeCheckoutSession({
-          locale: body.locale,
+        const stripeInput = {
+          locale: order.locale,
           billingKind, planCode,
           orderId: order.id,
           publicToken: order.public_token,
-          customerEmail: account.email,
+          customerEmail: order.customer_email,
           userId: account.id,
           priceId,
           successUrl: `${successBase}&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: cancelBase,
-        });
+        };
+        const paramsHash = createHash("sha256").update(JSON.stringify({ params: buildStripeCheckoutSessionParams(stripeInput), options: buildStripeCheckoutRequestOptions(order.id) })).digest("hex");
+        if (!claimStripeCheckoutRequest(order.id, paramsHash)) return reply.code(503).send({ error: "The original checkout parameters must be recovered before retrying. Do not pay again.", code: "CHECKOUT_PREPARATION_PENDING", orderId: order.id, token: order.public_token });
+        await persistLocalPaymentOrder(order.id);
+        const session = await services.createStripeCheckoutSession(stripeInput);
         attachStripeCheckoutSession(order.id, session.id, session.url ?? null);
         await persistLocalPaymentOrder(order.id);
 
@@ -740,7 +785,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       const transaction = await services.createPaddleTransaction({
         orderId: order.id,
         publicToken: order.public_token,
-        customerEmail: account.email,
+        customerEmail: order.customer_email,
         userId: account.id,
         priceId,
       });
@@ -748,7 +793,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
         checkoutUrl: localizePublicPaddleCheckoutPageUrl({
           checkoutUrl: transaction.checkout?.url ?? `${config.paddleDefaultPaymentLink}?_ptxn=${transaction.id}`,
           publicSiteUrl: config.publicSiteUrl,
-          locale: body.locale,
+          locale: order.locale,
         }),
         transactionId: transaction.id,
         orderId: order.id,
@@ -794,17 +839,25 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     reply.header("Cache-Control", "no-store");
     const { id } = request.params as { id: string };
     const body = (request.body ?? {}) as { returnToken?: unknown };
-    const order = findPaymentOrderById(id);
+    const localOrder = findPaymentOrderById(id);
+    const order = localOrder ?? await durable.findById(id);
     if (!order || order.user_id !== request.authUserId) return reply.code(404).send({ error: "Payment order not found." });
     const returnContext = orderCheckoutReturnContext(order);
-    if (body.returnToken !== undefined && (typeof body.returnToken !== "string" || !consumeCheckoutReturnToken(db, id, request.authUserId!, body.returnToken))) return reply.code(409).send({ error: "Return link expired or already used. Restore this order from your account.", code: "CHECKOUT_RETURN_TOKEN_INVALID" });
-    await persistLocalPaymentOrder(id);
-    return reply.send({ returnContext });
+    if (body.returnToken !== undefined) {
+      const consumed = typeof body.returnToken === "string" && (localOrder ? consumeCheckoutReturnToken(db, id, request.authUserId!, body.returnToken)
+        : await durable.consumeReturnToken({ orderId: id, userId: request.authUserId!, token: body.returnToken }));
+      if (!consumed) return reply.code(409).send({ error: "Return link expired or already used. Restore this order from your account.", code: "CHECKOUT_RETURN_TOKEN_INVALID" });
+    }
+    if (localOrder) await persistLocalPaymentOrder(id);
+    return reply.send({ returnContext, mirrorOnly: !localOrder });
   });
   app.get("/payments/orders/:id/owned", { preHandler: app.requireAuth }, async (request, reply) => {
     reply.header("Cache-Control", "no-store");
-    const order = findPaymentOrderById((request.params as { id: string }).id);
+    const id = (request.params as { id: string }).id;
+    const localOrder = findPaymentOrderById(id);
+    const order = localOrder ?? await durable.findById(id);
     if (!order || order.user_id !== request.authUserId) return reply.code(404).send({ error: "Payment order not found." });
+    if (!localOrder) return reply.send({ order: { ...mirrorOrderView(order, true), token: null }, token: null, verification: mirrorOrderVerification(order, request.authUserId) });
     let check = orderChecks.get(order.id);
     if (!check) {
       check = verifyAndFulfill(order, order.public_token);
@@ -834,7 +887,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       return reply.code(400).send({ error: "Order token is required." });
     }
 
-    let order = await findPaymentOrderForPublicDurably(params.id, query.token);
+    let order = await findOrderForPublicDurably(params.id, query.token);
 
     if (!order && query.provider === "stripe" && query.sessionId) {
       try {
@@ -855,6 +908,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     }
 
     if (!order) return reply.code(404).send({ error: "Payment order not found." });
+    if (!findPaymentOrderById(order.id)) return reply.send({ order: mirrorOrderView(order, Boolean(request.authUserId && request.authUserId === order.user_id)), verification: mirrorOrderVerification(order, request.authUserId) });
 
     // Coalesce concurrent browser polls/retries for the same token-verified order.
     let check = orderChecks.get(order.id);
@@ -866,7 +920,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
     }
     const verification = await check;
 
-    const refreshed = await findPaymentOrderForPublicDurably(params.id, query.token);
+    const refreshed = await findOrderForPublicDurably(params.id, query.token);
     const current = refreshed ?? order;
     return reply.send({ order: mapPaymentOrderForPublic(current, Boolean(request.authUserId && request.authUserId === current.user_id)), verification });
   });
@@ -879,7 +933,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { paymentServ
       return reply.code(400).send({ error: "Order token is required." });
     }
 
-    const order = await findPaymentOrderForPublicDurably(params.id, body.token);
+    const order = await findOrderForPublicDurably(params.id, body.token);
     if (!order) {
       return reply.code(404).send({ error: "Payment order not found." });
     }

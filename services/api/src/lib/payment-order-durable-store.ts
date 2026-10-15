@@ -25,7 +25,7 @@ async function ensureStoreReady() {
   storeReadyPromise ??= activePool
     .query(`SELECT target_document_id, intended_action_json, resume_consumed_at, resume_result_json,
       checkout_intent_hash, checkout_plan_code, pass_mode, return_site, return_path, return_state_json,
-      return_token_hash, return_token_expires_at, return_token_consumed_at, provider_checkout_started_at
+      return_token_hash, return_token_expires_at, return_token_consumed_at, provider_checkout_started_at, provider_checkout_params_hash
       FROM public.score_payment_orders LIMIT 1`)
     .then(() => undefined);
   await storeReadyPromise;
@@ -70,6 +70,7 @@ function mapRow(row: QueryResultRow, publicToken: string): PaymentOrderRow {
     checkout_plan_code: nullableString(row.checkout_plan_code),
     pass_mode: nullableString(row.pass_mode),
     provider_checkout_started_at: nullableString(row.provider_checkout_started_at),
+    provider_checkout_params_hash: nullableString(row.provider_checkout_params_hash),
     return_site: nullableString(row.return_site),
     return_path: nullableString(row.return_path),
     return_state_json: nullableString(row.return_state_json),
@@ -109,11 +110,11 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
         checkout_session_id, transaction_id, checkout_url, amount_minor, currency,
         activation_code, paid_at, cancelled_at, failure_reason, created_at, updated_at,
         target_document_id, intended_action_json, resume_consumed_at, resume_result_json,
-        checkout_intent_hash, return_site, return_path, return_state_json, return_token_hash, return_token_expires_at, return_token_consumed_at, checkout_plan_code, pass_mode, idempotency_key_hash, provider_checkout_started_at
+        checkout_intent_hash, return_site, return_path, return_state_json, return_token_hash, return_token_expires_at, return_token_consumed_at, checkout_plan_code, pass_mode, idempotency_key_hash, provider_checkout_started_at, provider_checkout_params_hash
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
         $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-        $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37
+        $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38
       )
       ON CONFLICT (id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
@@ -140,6 +141,7 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
         checkout_plan_code = EXCLUDED.checkout_plan_code,
         pass_mode = EXCLUDED.pass_mode,
         provider_checkout_started_at = COALESCE(score_payment_orders.provider_checkout_started_at, EXCLUDED.provider_checkout_started_at),
+        provider_checkout_params_hash = COALESCE(score_payment_orders.provider_checkout_params_hash, EXCLUDED.provider_checkout_params_hash),
         return_site = EXCLUDED.return_site,
         return_path = EXCLUDED.return_path,
         return_state_json = EXCLUDED.return_state_json,
@@ -188,6 +190,7 @@ export async function saveDurablePaymentOrder(order: PaymentOrderRow) {
       order.pass_mode,
       order.idempotency_key_hash,
       order.provider_checkout_started_at,
+      order.provider_checkout_params_hash,
     ],
   );
 }
@@ -219,6 +222,16 @@ export async function findDurablePaymentOrderById(id: string) {
   const result = await pool!.query(`SELECT * FROM public.score_payment_orders WHERE id = $1`, [id]);
   const row = result.rows[0];
   return row ? mapRow(row, "") : undefined;
+}
+
+export async function consumeDurableCheckoutReturnToken(input: { orderId: string; userId: string; token: string; now?: string }) {
+  if (!/^[A-Za-z0-9_-]{43}$/u.test(input.token) || !(await ensureStoreReady())) return false;
+  const now = input.now ?? new Date().toISOString();
+  const result = await pool!.query(`UPDATE public.score_payment_orders SET return_token_consumed_at = $1, updated_at = $1
+    WHERE id = $2 AND user_id = $3 AND return_token_hash = $4
+      AND return_token_consumed_at IS NULL AND return_token_expires_at > $1`,
+  [now, input.orderId, input.userId, hashPaymentOrderToken(input.token)]);
+  return result.rowCount === 1;
 }
 
 export async function completeDurablePaymentOrder(input: {

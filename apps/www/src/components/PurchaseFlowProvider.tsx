@@ -13,7 +13,7 @@ import { siteConfig } from "../lib/site";
 import { GoogleOneTap } from "./GoogleOneTap";
 import { HomeGoogleSignIn } from "./HomeGoogleSignIn";
 import styles from "./PurchaseFlow.module.css";
-import { completePurchaseIntent, persistentPurchaseIntent, purchaseIntentSignature, purchaseReturnContext, rememberPurchaseOrder } from "../lib/checkout-return";
+import { completePurchaseIntent, persistentPurchaseIntent, purchaseIntentSignature, purchaseReturnContext, rememberPurchaseOrder, shouldReplacePurchaseIntent } from "../lib/checkout-return";
 import { getPurchaseRecoveryCopy } from "../lib/purchase-copy";
 
 type User = { id: string; email: string };
@@ -167,7 +167,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
       const signature = purchaseIntentSignature(account.id, locale, purchaseSelectionKey(plan), returnContext);
       let intent = persistentPurchaseIntent(signature, window.localStorage, undefined, returnContext);
       let previous = await apiRequest<CheckoutResult>(`/api/payments/orders/by-intent?${new URLSearchParams({ provider: plan.provider, intent_id: intent.key })}`);
-      if (previous.ok && (explicitPurchase && previous.data.order?.purchaseStatus === "refunded" || allowNewPurchase.current && previous.data.status === "paid")) {
+      if (previous.ok && shouldReplacePurchaseIntent(previous.data.status, previous.data.order?.purchaseStatus, explicitPurchase, allowNewPurchase.current)) {
         rememberPurchaseOrder(signature, intent, previous.data.orderId, window.localStorage);
         completePurchaseIntent(previous.data.orderId, window.localStorage);
         intent = persistentPurchaseIntent(signature, window.localStorage, undefined, returnContext);
@@ -187,7 +187,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
         if (candidates.length) { setRecoveryOrders(candidates); return; }
       }
       allowNewPurchase.current = false;
-      const result = previous.ok && (previous.data.url || previous.data.status === "paid") ? previous : await apiRequest<CheckoutResult>("/api/payments/checkout/authenticated", {
+      const result = previous.ok && (previous.data.url || ["paid", "cancelled", "failed"].includes(previous.data.status ?? "")) ? previous : await apiRequest<CheckoutResult>("/api/payments/checkout/authenticated", {
         method: "POST", headers: { "Idempotency-Key": intent.key },
         body: JSON.stringify({ provider: plan.provider, locale, planCode: plan.planCode, billingKind: plan.billingKind, seatQuantity: 1, ...savedReturnContext }),
       });
@@ -197,7 +197,7 @@ export function PurchaseFlowProvider({ children, locale, auth, copy }: {
         return;
       }
       rememberPurchaseOrder(signature, intent, result.data.orderId, window.localStorage);
-      if (result.data.status === "paid") {
+      if (["paid", "cancelled", "failed"].includes(result.data.status ?? "")) {
         const query = new URLSearchParams({ order_id: result.data.orderId, token: result.data.token, provider: plan.provider });
         window.location.assign(localizePublicHref(`/checkout/success?${query}`, locale));
         navigating = true;

@@ -1,12 +1,22 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { normalizeCheckoutReturnState, validateCheckoutReturnPath, type CheckoutReturnContext, type CheckoutReturnSite } from "@score/shared";
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
 
 export const CHECKOUT_RETURN_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 export function checkoutReturnTokenHash(token: string) { return createHash("sha256").update(token).digest("hex"); }
-export function issueCheckoutReturnToken() {
-  const token = randomBytes(32).toString("base64url");
+function derivedCheckoutReturnToken(secret: string, orderId: string) {
+  return createHmac("sha256", secret).update(`scoretransposer-checkout-return-v1:${orderId}`).digest("base64url");
+}
+export function issueCheckoutReturnToken(input?: { secret: string; orderId: string }) {
+  const token = input?.secret ? derivedCheckoutReturnToken(input.secret, input.orderId) : randomBytes(32).toString("base64url");
   return { token, hash: checkoutReturnTokenHash(token), expiresAt: new Date(Date.now() + CHECKOUT_RETURN_TOKEN_TTL_MS).toISOString() };
+}
+export function recoverCheckoutReturnToken(input: { secret: string; orderId: string; hash: string | null; expiresAt: string | null }) {
+  if (!input.secret || !input.hash || !/^[a-f0-9]{64}$/u.test(input.hash) || !input.expiresAt) return null;
+  const token = derivedCheckoutReturnToken(input.secret, input.orderId);
+  const hash = checkoutReturnTokenHash(token);
+  if (!timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(input.hash, "hex"))) return null;
+  return { token, hash, expiresAt: input.expiresAt };
 }
 
 /** Paddle embeds its return URL in checkout_url. Keep the ephemeral credential

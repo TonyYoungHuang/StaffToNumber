@@ -24,6 +24,7 @@ export type PaymentOrderRow = {
   checkout_plan_code: string | null;
   pass_mode: string | null;
   provider_checkout_started_at: string | null;
+  provider_checkout_params_hash: string | null;
   return_site: string | null;
   return_path: string | null;
   return_state_json: string | null;
@@ -51,7 +52,7 @@ export type PaymentOrderRow = {
 const paymentOrderSelect = `
   SELECT po.id, po.public_token, po.user_id, po.provider, po.status, po.customer_email, po.locale, po.entitlement_days,
          po.billing_kind, po.organization_id, po.seat_quantity, po.idempotency_key_hash,
-         po.checkout_intent_hash, po.checkout_plan_code, po.pass_mode, po.provider_checkout_started_at, po.return_site, po.return_path, po.return_state_json,
+         po.checkout_intent_hash, po.checkout_plan_code, po.pass_mode, po.provider_checkout_started_at, po.provider_checkout_params_hash, po.return_site, po.return_path, po.return_state_json,
          po.return_token_hash, po.return_token_expires_at, po.return_token_consumed_at,
          po.target_document_id, po.intended_action_json, po.resume_consumed_at, po.resume_result_json,
          po.checkout_session_id, po.transaction_id, po.checkout_url, po.amount_minor, po.currency,
@@ -62,6 +63,7 @@ const paymentOrderSelect = `
 `;
 
 export function createPaymentOrder(input: {
+  orderId?: string;
   userId?: string | null;
   provider: PaymentProvider;
   customerEmail?: string | null;
@@ -82,7 +84,7 @@ export function createPaymentOrder(input: {
   returnTokenHash?: string | null;
   returnTokenExpiresAt?: string | null;
 }) {
-  const id = createId();
+  const id = input.orderId ?? createId();
   const publicToken = randomBytes(18).toString("hex");
   const timestamp = nowIso();
 
@@ -123,6 +125,14 @@ export function claimPaddleCheckoutCreation(orderId: string) {
   return db.prepare(`UPDATE payment_orders SET provider_checkout_started_at = ?, updated_at = ?
     WHERE id = ? AND provider = 'paddle' AND status = 'pending' AND transaction_id IS NULL AND provider_checkout_started_at IS NULL`)
     .run(nowIso(), nowIso(), orderId).changes === 1;
+}
+export function claimStripeCheckoutRequest(orderId: string, paramsHash: string) {
+  return db.prepare(`UPDATE payment_orders SET provider_checkout_started_at = COALESCE(provider_checkout_started_at, ?),
+    provider_checkout_params_hash = COALESCE(provider_checkout_params_hash, ?), updated_at = ?
+    WHERE id = ? AND provider = 'stripe' AND status = 'pending' AND checkout_session_id IS NULL
+      AND ((provider_checkout_started_at IS NULL AND provider_checkout_params_hash IS NULL)
+        OR (provider_checkout_started_at > ? AND provider_checkout_params_hash = ?))`)
+    .run(nowIso(), paramsHash, nowIso(), orderId, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), paramsHash).changes === 1;
 }
 
 export function findReusablePaymentOrder(input: {

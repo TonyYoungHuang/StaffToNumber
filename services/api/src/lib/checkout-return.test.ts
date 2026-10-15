@@ -5,13 +5,14 @@ import Fastify from "fastify";
 import { normalizeCheckoutReturnState, resolveCheckoutReturnContext, validateCheckoutReturnPath } from "@score/shared";
 import { db, initDb } from "../db.js";
 import { createSession, createUser } from "../repositories/auth-repository.js";
-import { createPaymentOrder, findPaymentOrderById, attachPaddleTransaction } from "../repositories/payment-repository.js";
+import { createPaymentOrder, findPaymentOrderById, attachPaddleTransaction, type PaymentOrderRow } from "../repositories/payment-repository.js";
 import { authPlugin } from "../plugins/auth.js";
 import { paymentRoutes } from "../routes/payments.js";
-import { CHECKOUT_RETURN_TOKEN_TTL_MS, consumeCheckoutReturnToken, issueCheckoutReturnToken, orderCheckoutReturnContext, validateCheckoutReturn } from "./checkout-return.js";
+import { CHECKOUT_RETURN_TOKEN_TTL_MS, checkoutReturnTokenHash, consumeCheckoutReturnToken, issueCheckoutReturnToken, recoverCheckoutReturnToken, orderCheckoutReturnContext, validateCheckoutReturn } from "./checkout-return.js";
 import { PAYMENT_RETURN_COLUMNS } from "./score-pass-schema.js";
 import { config } from "../config.js";
 import type Stripe from "stripe";
+import { buildStripeCheckoutSessionParams, buildStripeCheckoutRequestOptions, type createStripeCheckoutSession } from "./payments.js";
 
 function fixture() {
   initDb();
@@ -194,4 +195,131 @@ test("Paddle creates one transaction per durable order across concurrent request
     const unknownRetry = await app.inject({ method: "POST", url: "/api/payments/checkout/authenticated", headers: failedHeaders, payload });
     assert.equal(unknownRetry.statusCode, 503); assert.equal(calls, 2);
   } finally { finish(); await app.close(); }
+});
+
+test("Stripe lost-response recovery reconstructs the identical first request after restart while keeping the original credential expiry, locale and customer email", async () => {
+  const { user, auth } = fixture();
+  config.paymentProviders = ["stripe"]; config.stripeStarterMonthlyPriceId = "price_stripe_timeout_fixture";
+  config.stripeSecretKey = "sk_test_LocalTimeoutFixture12345678901234567890"; config.stripeManagedPaymentsEnabled = false;
+  const intent = randomUUID(), inputs: Array<Parameters<typeof createStripeCheckoutSession>[0]> = [], requests: unknown[] = [];
+  let first = true;
+  const service: typeof createStripeCheckoutSession = async input => {
+    inputs.push(structuredClone(input));
+    requests.push({ params: buildStripeCheckoutSessionParams(input), options: buildStripeCheckoutRequestOptions(input.orderId) });
+    if (first) { first = false; throw new Error("Provider created the session; response was lost."); }
+    return { id: "cs_original_timeout_fixture", url: "https://checkout.stripe.com/original-timeout-fixture" } as unknown as Awaited<ReturnType<typeof createStripeCheckoutSession>>;
+  };
+  const openApp = async () => { const app = Fastify(); await app.register(authPlugin); await app.register(paymentRoutes, { prefix: "/api", paymentServices: { createStripeCheckoutSession: service, sendTransactionalEmail: async () => ({ mode: "preview" as const }) } }); return app; };
+  const headers = { authorization: `Bearer ${auth}`, "idempotency-key": intent };
+  const payload = { provider: "stripe", planCode: "starter-monthly", billingKind: "subscription", locale: "fr", returnSite: "app", returnPath: "/scores?mode=scan#upload" };
+  let app = await openApp();
+  try {
+    assert.equal((await app.inject({ method: "POST", url: "/api/payments/checkout/authenticated", headers, payload })).statusCode, 500);
+    const saved = findPaymentOrderById(inputs[0].orderId)!;
+    assert.ok(saved.provider_checkout_started_at); assert.ok(saved.provider_checkout_params_hash); assert.equal(saved.checkout_session_id, null);
+    const originalToken = new URL(inputs[0].successUrl!).searchParams.get("return_token")!;
+    assert.equal(saved.return_token_hash, checkoutReturnTokenHash(originalToken));
+    assert.equal(JSON.stringify(saved).includes(originalToken), false);
+    await app.close();
+    db.prepare("UPDATE users SET email = ? WHERE id = ?").run(`${randomUUID()}@changed.test`, user.id);
+    app = await openApp();
+    const recovered = await app.inject({ method: "POST", url: "/api/payments/checkout/authenticated", headers, payload: { ...payload, locale: "ja" } });
+    assert.equal(recovered.statusCode, 201, recovered.body); assert.equal(recovered.json().orderId, saved.id);
+    assert.deepEqual(requests[1], requests[0]); assert.deepEqual(inputs[1], inputs[0]);
+    assert.equal(inputs[1].locale, "fr"); assert.equal(inputs[1].customerEmail, saved.customer_email);
+    assert.equal(recovered.json().returnToken, originalToken);
+    const after = findPaymentOrderById(saved.id)!;
+    assert.equal(after.return_token_expires_at, saved.return_token_expires_at);
+    assert.equal(after.provider_checkout_started_at, saved.provider_checkout_started_at);
+    assert.equal(after.provider_checkout_params_hash, saved.provider_checkout_params_hash);
+    assert.equal(after.checkout_session_id, "cs_original_timeout_fixture");
+  } finally { await app.close(); }
+});
+
+test("Stripe unknown checkout fails safely before another provider request after secret/config drift, expired idempotency retention or a missing original fingerprint", async () => {
+  const { auth } = fixture();
+  config.paymentProviders = ["stripe"]; config.stripeStarterMonthlyPriceId = "price_stripe_drift_fixture";
+  config.stripeSecretKey = "sk_test_LocalOriginalFixture12345678901234567890"; config.stripeManagedPaymentsEnabled = false;
+  const original = { secret: config.stripeSecretKey, price: config.stripeStarterMonthlyPriceId, site: config.publicSiteUrl };
+  const intent = randomUUID(); let calls = 0, orderId = "";
+  const app = Fastify(); await app.register(authPlugin); await app.register(paymentRoutes, { prefix: "/api", paymentServices: {
+    createStripeCheckoutSession: async (input: Parameters<typeof createStripeCheckoutSession>[0]) => { calls++; orderId = input.orderId; throw new Error("Original provider result unknown."); },
+    sendTransactionalEmail: async () => ({ mode: "preview" as const }),
+  } });
+  const headers = { authorization: `Bearer ${auth}`, "idempotency-key": intent };
+  const payload = { provider: "stripe", planCode: "starter-monthly", billingKind: "subscription", returnSite: "app", returnPath: "/scores" };
+  const retry = () => app.inject({ method: "POST", url: "/api/payments/checkout/authenticated", headers, payload });
+  try {
+    assert.equal((await retry()).statusCode, 500); assert.equal(calls, 1);
+    const saved = findPaymentOrderById(orderId)!;
+    config.stripeSecretKey = "sk_test_LocalRotatedFixture12345678901234567890";
+    assert.equal(recoverCheckoutReturnToken({ secret: config.stripeSecretKey, orderId, hash: saved.return_token_hash, expiresAt: saved.return_token_expires_at }), null);
+    assert.equal((await retry()).statusCode, 503); assert.equal(calls, 1); config.stripeSecretKey = original.secret;
+    config.stripeStarterMonthlyPriceId = "price_changed_after_timeout";
+    assert.equal((await retry()).statusCode, 503); assert.equal(calls, 1); config.stripeStarterMonthlyPriceId = original.price;
+    config.stripeManagedPaymentsEnabled = true;
+    assert.equal((await retry()).statusCode, 503); assert.equal(calls, 1); config.stripeManagedPaymentsEnabled = false;
+    config.publicSiteUrl = "https://changed-origin.test";
+    assert.equal((await retry()).statusCode, 503); assert.equal(calls, 1); config.publicSiteUrl = original.site;
+    db.prepare("UPDATE payment_orders SET provider_checkout_started_at = ? WHERE id = ?").run(new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), orderId);
+    assert.equal((await retry()).statusCode, 503); assert.equal(calls, 1);
+    db.prepare("UPDATE payment_orders SET provider_checkout_started_at = ?, provider_checkout_params_hash = NULL WHERE id = ?").run(new Date().toISOString(), orderId);
+    assert.equal((await retry()).statusCode, 503); assert.equal(calls, 1);
+    assert.equal(findPaymentOrderById(orderId)!.checkout_session_id, null);
+  } finally {
+    config.stripeSecretKey = original.secret; config.stripeStarterMonthlyPriceId = original.price; config.publicSiteUrl = original.site; config.stripeManagedPaymentsEnabled = false;
+    await app.close();
+  }
+});
+
+test("mirror-only owner recovery restores the server view with atomic one-use handoff while never replaying a task, charging credits or calling a provider", async () => {
+  const { user, auth, credential, order } = fixture();
+  const documentId = randomUUID(), timestamp = new Date().toISOString();
+  db.prepare("INSERT INTO score_documents (id,user_id,title,status,created_at,updated_at) VALUES (?,?,'Mirror recovery score','ready',?,?)").run(documentId, user.id, timestamp, timestamp);
+  const mirror: PaymentOrderRow = { ...order, public_token: "", status: "paid", target_document_id: documentId,
+    intended_action_json: JSON.stringify({ kind: "export", format: "pdf" }), return_path: `/scores/${documentId}?part=violin#export-center` };
+  db.prepare("DELETE FROM payment_orders WHERE id = ?").run(order.id);
+  const stranger = createUser(`${randomUUID()}@mirror-stranger.test`, "hash", "salt")!, strangerAuth = randomUUID(); createSession(stranger.id, strangerAuth, 1);
+  let consumed = false, providerCalls = 0;
+  const app = Fastify(); await app.register(authPlugin); await app.register(paymentRoutes, { prefix: "/api",
+    paymentServices: { retrieveStripeCheckoutSession: async () => { providerCalls++; throw new Error("Mirror views must never call Stripe."); } },
+    durableServices: {
+      findById: async (id: string) => id === mirror.id ? { ...mirror } : undefined,
+      findForPublic: async (id: string, token: string) => id === mirror.id && token === order.public_token ? { ...mirror, public_token: token } : undefined,
+      consumeReturnToken: async (input: { orderId: string; userId: string; token: string; now?: string }) => {
+        await Promise.resolve();
+        if (input.orderId !== mirror.id || input.userId !== mirror.user_id || consumed || checkoutReturnTokenHash(input.token) !== mirror.return_token_hash || Date.parse(mirror.return_token_expires_at!) <= Date.now()) return false;
+        consumed = true; mirror.return_token_consumed_at = new Date().toISOString(); return true;
+      },
+    },
+  });
+  const headers = { authorization: `Bearer ${auth}` }, wrong = { authorization: `Bearer ${strangerAuth}` };
+  try {
+    const prefetch = await app.inject({ method: "GET", url: `/api/payments/orders/${order.id}?token=${order.public_token}`, headers: { purpose: "prefetch" } });
+    assert.equal(prefetch.statusCode, 200); assert.equal(prefetch.json().order.returnContext, null); assert.equal(consumed, false);
+    assert.equal((await app.inject({ method: "GET", url: `/api/payments/orders/${order.id}/owned`, headers: wrong })).statusCode, 404);
+    assert.equal((await app.inject({ method: "POST", url: `/api/payments/orders/${order.id}/return`, headers: wrong, payload: { returnToken: credential.token } })).statusCode, 404);
+    const owned = await app.inject({ method: "GET", url: `/api/payments/orders/${order.id}/owned`, headers });
+    assert.equal(owned.statusCode, 200); assert.equal(owned.json().order.mirrorOnly, true);
+    assert.equal(owned.json().order.returnContext.path, mirror.return_path);
+    assert.equal(owned.json().order.continuation.available, false);
+    assert.equal(owned.json().order.continuation.result.code, "CHECKOUT_RECOVERY_ACTION_UNAVAILABLE");
+    assert.equal(owned.json().verification.status, "waiting_fulfillment");
+    const handoffs = await Promise.all([1, 2].map(() => app.inject({ method: "POST", url: `/api/payments/orders/${order.id}/return`, headers, payload: { returnToken: credential.token } })));
+    assert.deepEqual(handoffs.map(response => response.statusCode).sort(), [200, 409]);
+    assert.equal(handoffs.find(response => response.statusCode === 200)!.json().mirrorOnly, true);
+    consumed = false; mirror.return_token_consumed_at = null; mirror.return_token_expires_at = new Date(Date.now() - 1).toISOString();
+    assert.equal((await app.inject({ method: "POST", url: `/api/payments/orders/${order.id}/return`, headers, payload: { returnToken: credential.token } })).statusCode, 409);
+    const recovered = await app.inject({ method: "POST", url: `/api/payments/orders/${order.id}/return`, headers, payload: {} });
+    assert.equal(recovered.statusCode, 200); assert.equal(recovered.json().returnContext.path, mirror.return_path);
+    mirror.resume_consumed_at = timestamp; mirror.resume_result_json = JSON.stringify({ documentId, job: { id: "job_already_created" } });
+    const completed = await app.inject({ method: "GET", url: `/api/payments/orders/${order.id}/owned`, headers });
+    assert.equal(completed.json().order.continuation.consumed, true); assert.equal(completed.json().order.continuation.result.job.id, "job_already_created");
+    mirror.status = "pending";
+    const pending = await app.inject({ method: "GET", url: `/api/payments/orders/${order.id}/owned`, headers });
+    assert.equal(pending.json().verification.status, "verification_failed");
+    assert.equal(findPaymentOrderById(order.id), undefined);
+    assert.equal((db.prepare("SELECT count(*) AS n FROM score_jobs WHERE document_id = ?").get(documentId) as { n: number }).n, 0);
+    assert.equal(providerCalls, 0);
+  } finally { await app.close(); }
 });

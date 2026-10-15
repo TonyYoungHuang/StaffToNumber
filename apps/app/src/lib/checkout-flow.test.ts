@@ -52,6 +52,39 @@ test("lost local key with pending owned orders requires owner selection before a
     const result=await lookupAndStartCheckout(payload,"auth",undefined,request);assert.equal(result.ok,false);assert.equal(result.data?.code,"CHECKOUT_RECOVERY_REQUIRED");assert.equal(paths.length,2);
   }finally{cleanup();}
 });
+test("implicit recovery keeps the same paid, pending and terminal intent without a new charge", async () => {
+  for (const status of ["paid", "pending", "cancelled", "failed"]) {
+    const cleanup = fixture(); try {
+      const signature = checkoutIntentSignature(payload); const key = persistedCheckoutIntent(signature);
+      const calls: Array<{ path: string; method?: string; key: string | null }> = [];
+      const request = (async (path: string, init?: RequestInit) => { calls.push({ path, method: init?.method, key: new Headers(init?.headers).get("Idempotency-Key") }); return { ok: true, data: { orderId: "existing", token: "locator", status, url: "https://checkout.stripe.com/expired" } }; }) as typeof apiRequest;
+      const result = await lookupAndStartCheckout(payload, "auth", undefined, request, false);
+      assert.equal(persistedCheckoutIntent(signature), key); assert.equal(calls.length, 1); assert.equal(calls[0].key, key); assert.equal(calls[0].method, undefined);
+      assert.equal(result.ok, true);
+      if (status === "pending") assert.equal(result.ok && result.data.url, "https://checkout.stripe.com/expired");
+      else assert.match(result.ok ? result.data.url : "", /^\/checkout\/success\?order_id=existing/u);
+    } finally { cleanup(); }
+  }
+});
+test("an explicit click replaces only a server-confirmed cancelled or failed checkout with one fresh stable intent", async () => {
+  for (const status of ["cancelled", "failed"]) {
+    const cleanup = fixture(); try {
+      const signature = checkoutIntentSignature(payload); const originalKey = persistedCheckoutIntent(signature);
+      const calls: Array<{ path: string; method?: string; key: string | null }> = []; let lookups = 0;
+      const request = (async (path: string, init?: RequestInit) => {
+        calls.push({ path, method: init?.method, key: new Headers(init?.headers).get("Idempotency-Key") });
+        if (path.includes("by-intent")) return lookups++ === 0 ? { ok: true, data: { orderId: "expired", token: "old", status, url: "https://checkout.stripe.com/expired" } } : { ok: false, status: 404, error: "missing" };
+        if (path.includes("?pending")) return { ok: true, data: { orders: [] } };
+        return { ok: true, data: { orderId: "fresh", token: "new", url: "https://checkout.stripe.com/fresh" } };
+      }) as typeof apiRequest;
+      const result = await lookupAndStartCheckout(payload, "auth", undefined, request, true);
+      const freshKey = persistedCheckoutIntent(signature);
+      assert.equal(result.ok && result.data.orderId, "fresh"); assert.notEqual(freshKey, originalKey);
+      assert.equal(calls[0].key, originalKey); assert.ok(calls[0].path.includes("by-intent"));
+      assert.ok(calls.slice(1).every(call => call.key === freshKey)); assert.equal(calls.filter(call => call.method === "POST").length, 1);
+    } finally { cleanup(); }
+  }
+});
 test("server return context wins over cache and custom upload hash retains required confirmation",()=>{
   const context=checkoutReturnContext("/scores/new/scan?uploadDraft=draft-1#free-scan",{kind:"recognition",mode:"simple"},{uploadDraftId:"draft-1",confirmation:"required"});
   assert.equal(context.returnPath,"/scores/new/scan?uploadDraft=draft-1#free-scan");assert.equal(context.returnState.uploadDraftId,"draft-1");assert.equal(context.returnState.confirmation,"required");assert.equal(context.returnState.panel,undefined);

@@ -58,6 +58,11 @@ export function isPublicPricingDestination(pathname: string, hash: string) {
     || (hash === "#pricing" && /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/?)?$/iu.test(pathname));
 }
 
+export function shouldReplacePurchaseIntent(status: string | undefined, purchaseStatus: string | undefined, explicitPurchase: boolean, separateNewPurchase: boolean) {
+  return explicitPurchase && (purchaseStatus === "refunded" || status === "cancelled" || status === "failed")
+    || separateNewPurchase && status === "paid";
+}
+
 export function purchaseIntentSignature(accountId: string, locale: string, selection: string, context: PurchaseReturnContext) {
   const source = new URL(context.returnPath, "https://return.invalid");
   for (const key of ["plan", "billing", "provider", "checkout_cancelled", "checkoutOrderId", "checkoutResult", "checkoutPlan", "checkoutBilling", "checkoutProvider", "checkoutPassMode"]) source.searchParams.delete(key);

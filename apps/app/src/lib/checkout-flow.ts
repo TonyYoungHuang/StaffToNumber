@@ -71,12 +71,14 @@ export async function lookupAndStartCheckout(payload: Record<string, unknown>, t
   const previous = await request<CheckoutResponse>(`/api/payments/orders/by-intent?${query}`, { headers });
   if (previous.ok && previous.data?.orderId) {
     const entry = JSON.parse(localStorage.getItem(INTENT_PREFIX + signature) ?? "null");
-    if (explicitPurchase && (previous.data.order?.purchaseStatus === "refunded" || (entry?.completed && previous.data.status === "paid"))) {
+    const previousStatus = previous.data.status ?? previous.data.order?.status;
+    const terminal = previousStatus === "cancelled" || previousStatus === "failed";
+    if (explicitPurchase && (terminal || previous.data.order?.purchaseStatus === "refunded" || (entry?.completed && previousStatus === "paid"))) {
       forgetCheckoutIntent(signature);
       return lookupAndStartCheckout(payload, token, undefined, request, false);
     }
     localStorage.setItem(INTENT_PREFIX + signature, JSON.stringify({ ...entry, id: key, savedAt: entry?.savedAt ?? Date.now(), orderId: previous.data.orderId }));
-    if (previous.data.status === "paid" || previous.data.order?.status === "paid") {
+    if (previousStatus === "paid" || terminal) {
       const params = new URLSearchParams({ order_id: previous.data.orderId, provider: String(payload.provider) });
       if (previous.data.token) params.set("token", previous.data.token);
       return { ...previous, data: { ...previous.data, url: `/checkout/success?${params}` } };
