@@ -76,6 +76,26 @@ test("large files explain the reason with their actual page count in every local
     assert.ok($("[data-large-file-reason]").text().includes(formatNumber(pages, locale)), locale);
     assert.ok($.root().text().includes(copy.bigBody), locale);
     assert.equal($("[data-recognition-plans] li").length, 3, locale);
-    assert.doesNotMatch($.root().text(), /MiB|\{pages\}/u, locale);
+    assert.doesNotMatch($.root().text(), /1536|2048|\{pages\}/u, locale);
+  }
+});
+
+test("homepage refusal names page, pixel, and general capacity causes in all nine locales", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getHomeRuntimeCopy(locale).recognitionExperience;
+    const cases = [
+      { sourcePageCount: 25, maxPagePixels: 8_415_000, code: "RECOGNITION_CAPACITY_LIMIT", key: "unsupportedPages" },
+      { sourcePageCount: 25, maxPagePixels: 8_415_000, code: "PDF_TOTAL_PIXEL_LIMIT", key: "unsupportedPixels" },
+      { sourcePageCount: 1, maxPagePixels: 40_000_000, code: "RECOGNITION_CAPACITY_LIMIT", key: "unsupportedPixels" },
+      { sourcePageCount: 1, maxPagePixels: 32_000_000, code: "RECOGNITION_CAPACITY_LIMIT", key: "unsupportedLane" },
+    ] as const;
+    for (const item of cases) {
+      const $ = renderResult(locale, { ...result, sourcePageCount: item.sourcePageCount,
+        memoryAssessment: { ...result.memoryAssessment!, lane: "unsupported", sourcePageCount: item.sourcePageCount, maxPagePixels: item.maxPagePixels, reasonCodes: ["CAPACITY_CEILING"] },
+        recognitionSupport: { supported: false, code: item.code } });
+      assert.equal($("[data-recognition-refusal]").attr("data-recognition-refusal"), item.key, locale);
+      assert.equal($("[role='alert']").text(), copy[item.key], locale);
+      assert.equal($("fieldset, input, button, [data-recognition-plans]").length, 0, locale);
+    }
   }
 });

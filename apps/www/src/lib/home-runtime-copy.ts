@@ -18,8 +18,10 @@ export function getHomeRuntimeCopy(locale: SupportedLocale) {
       READY: getScoreRecognitionSupportMessage(locale, "READY"),
       PDF_ADAPTIVE_RENDER: getScoreRecognitionSupportMessage(locale, "PDF_ADAPTIVE_RENDER"),
       PDF_INVALID: getScoreRecognitionSupportMessage(locale, "PDF_INVALID"),
+      PDF_PAGE_PIXEL_LIMIT: getScoreRecognitionSupportMessage(locale, "PDF_PAGE_PIXEL_LIMIT"),
+      PDF_TOTAL_PIXEL_LIMIT: getScoreRecognitionSupportMessage(locale, "PDF_TOTAL_PIXEL_LIMIT"),
       RECOGNITION_CAPACITY_LIMIT: getScoreRecognitionSupportMessage(locale, "RECOGNITION_CAPACITY_LIMIT"),
-      fallback: getScoreRecognitionSupportMessage(locale, "PDF_PAGE_PIXEL_LIMIT"),
+      fallback: getScoreRecognitionSupportMessage(locale, "unknown"),
     } as Record<string, string>,
   };
 }

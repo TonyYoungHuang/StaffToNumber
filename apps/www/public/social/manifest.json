@@ -28,7 +28,7 @@
     "png": "f45c03810c280c228747f059236664f0d847a35d7db423a71f50d8df211a46eb"
   },
   "en/sheet-music-scanner.png": {
-    "source": "c982846073063781204287379e5be4da0a0d24cbf2a7e4fad50208c21c9ebcd9",
+    "source": "2a3559f4e2c90582236775079f46b468c6d6e2c617f91ee4d0c8528a2d7b7992",
     "png": "7a19b8b743f7607f025296f7eb2eab8f6b42c949a610974d8fc58baa2f17dee7"
   },
   "en/pdf-to-musicxml.png": {
@@ -72,7 +72,7 @@
     "png": "3c19c0e23e1437f093186707369a09fa0946e859dd25b26bf89293ef4c9373ab"
   },
   "zh-CN/sheet-music-scanner.png": {
-    "source": "bf63985dc1d47373998ac70eb8aa15ecbea0a1087a66cbfe100c4fd04dde30be",
+    "source": "e2fc20a80e23b8e2e513d9dc79ba8c52dc1a538c916c2c4c7b2aad5d0bdd0e26",
     "png": "27d545de767529146be374817b823bd981e463c1a7ff919641afe3010ffe7ef4"
   },
   "zh-CN/pdf-to-musicxml.png": {
@@ -116,7 +116,7 @@
     "png": "6602fdf13b580ac62e386550590f0f1f355bc4d0ecbccfa80d70824023868bfe"
   },
   "zh-TW/sheet-music-scanner.png": {
-    "source": "b359f901e1df604f49e3dfce69e26d01ed99ae87bccb3ceeb98bcf2b41253f3f",
+    "source": "4b45f8629e084538853d01a15c10eb64219178132f22fdbd717124929c5cb730",
     "png": "18a7c6eb1434ba7ba516f5cf083b342f856835a1c65d270a341ec0f3d52b15ed"
   },
   "zh-TW/pdf-to-musicxml.png": {
@@ -160,8 +160,8 @@
     "png": "7b9b321e013a9331a1884e3082220fc24bc2ab5be9107983afa2b533916469be"
   },
   "ja/sheet-music-scanner.png": {
-    "source": "1a3eae48fd763f4c6a5d7bd7b1809881538ced1a8bd7a862ff522bf3a50bfc53",
-    "png": "9a32b3f856d0a305d362e7f6f0d335426d0f7e736ac5622b121759f69a6e88bf"
+    "source": "8372191a7664e020285b610ac6c8ef769de27fdcdb1179e90171c909ef4f59b2",
+    "png": "e37e9708b3eeb3253ba7c8990b295193d32bcf5fb6cd6884ba06fb40ee28caed"
   },
   "ja/pdf-to-musicxml.png": {
     "source": "e25fc7dd9d2a7ecf1b49ce6f82cdcee386ca469d04fb66f024e9afa2518eb3db",
@@ -204,7 +204,7 @@
     "png": "abecc27c6979392977bcceaedd4868da1442120dbe2c98045d9217bb13292d54"
   },
   "ko/sheet-music-scanner.png": {
-    "source": "8733efe40137a87ebd9c46395f1a1211c55411c3ae68ee9326f2cd03329e5180",
+    "source": "f47b7025af14fca106917b9ba15976b52ac09c24b8832cb9a48ca5e35025c6c3",
     "png": "bdffd010d7935d38a19e92bcf4ac504fcd4dc61b4e1b2193a20f424eef732dcb"
   },
   "ko/pdf-to-musicxml.png": {
@@ -248,7 +248,7 @@
     "png": "3317e0a9f989eb50f8ab337fbdf36344a8a986432551dc6db549c38a75e3974f"
   },
   "fr/sheet-music-scanner.png": {
-    "source": "5c452d368f38f5476ea5fd618c4b3313c39b2208e35d9c7b7d36f271f0c2b4da",
+    "source": "74fbdc09994a7cb1fd1735ddeaa1ce969ad7f74b3d1eb5aec5d6d18bfb407caf",
     "png": "58811f8316b2ffeeb4be6d82ecbcc07a4a523950f80d5b5177107a4b4913ba46"
   },
   "fr/pdf-to-musicxml.png": {
@@ -292,7 +292,7 @@
     "png": "37febcd42bfb3072c8aca7bb70eac86ce93348eca210ca7dae9d297fbbd2ab49"
   },
   "es/sheet-music-scanner.png": {
-    "source": "742a6b1e9325da612e5c45197063da8350b78dd57c6da237ad906e4faece49d8",
+    "source": "463f9aa6c085154cd6d5dd385dc9fa97c20c780c4b19b5789ab8a272f6937a60",
     "png": "93193f34f1112d932a6641337f87a88d530032689b162c4439baf71465177a99"
   },
   "es/pdf-to-musicxml.png": {
@@ -336,7 +336,7 @@
     "png": "e49a8f9e2cc767c143095469da774a6db6c50726923055fa866f17dd2cd4e1ed"
   },
   "de/sheet-music-scanner.png": {
-    "source": "5bf07fe1456958daae06487189720332edda33dfb20bae1602b19f75f34149be",
+    "source": "76bf40d168378f5c04b3452a516a1c6df89fca4f910982875047b01bc3b74108",
     "png": "1f366bc53b49786f8f5b692b33b740310fce51cbf0243afdaf8f50889106c15f"
   },
   "de/pdf-to-musicxml.png": {
@@ -380,7 +380,7 @@
     "png": "4602b4ec31ea68c47114bda31f9037de05d4df47d346702acc29e1875a65a06c"
   },
   "ru/sheet-music-scanner.png": {
-    "source": "839da7205f096f8e03ba8b1879c2b8de8839650dd9d8bf98fcf7ed5723ca13a5",
+    "source": "b9b4ff7b256dd698b86b647a4497b21f12764abc4ba0c4a2b5ed0e066b97e1ab",
     "png": "bccdc1925d80334f77bb9fc5134e71ce5627b3d124fec02fd57d2395258aaf6e"
   },
   "ru/pdf-to-musicxml.png": {

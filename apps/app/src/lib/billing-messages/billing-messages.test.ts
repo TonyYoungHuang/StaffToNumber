@@ -92,6 +92,41 @@ test("app purchase, library and billing copy preserve the three offers and per-t
   }
 });
 
+test("all nine app locales explain lane boundaries without turning approximate PDF pages into a fixed cap", () => {
+  const possiblePageLimit: Record<SupportedLocale, RegExp> = {
+    en: /25[^.]*may exceed/u,
+    "zh-CN": /25[^。]*可能超过/u,
+    "zh-TW": /25[^。]*可能超過/u,
+    ja: /25[^。]*超える場合/u,
+    ko: /25[^.]*초과할 수/u,
+    fr: /25[^.]*peuvent dépasser/u,
+    es: /25[^.]*pueden superar/u,
+    de: /25[^.]*können[^.]*überschreiten/u,
+    ru: /25[^.]*могут превысить/u,
+  };
+  for (const locale of SUPPORTED_LOCALES) {
+    const billing = getBillingMessages(locale);
+    const scan = getScoreEntryMessages(locale).library.scan;
+    const workflow = getWorkspaceMessages(locale).dashboard.workflow;
+    for (const [surface, value] of [
+      ["scan", scan.body],
+      ["workspace preflight", workflow.step1FreeBody],
+      ["score pass", billing.scorePass.body],
+    ]) {
+      assert.match(value, /1[–～~]5|1 à 5/u, `${locale}: ${surface} standard range`);
+      assert.match(value, /6[–～~]24|6 à 24/u, `${locale}: ${surface} large-file range`);
+      assert.match(value, possiblePageLimit[locale], `${locale}: ${surface} approximate PDF boundary`);
+      assert.match(value, /20 MiB/u, `${locale}: ${surface} file size limit`);
+      assert.match(value, /32 MP/u, `${locale}: ${surface} image pixel limit`);
+      assert.match(value, /MusicXML/u, `${locale}: ${surface} recovery option`);
+    }
+    assert.ok(scan.body.includes(billing.scorePass.sharedCredits), `${locale}: scan retains the shared per-task charge and credit-return rule`);
+    assert.match(billing.scorePass.sharedCredits, /1/u, `${locale}: simple task cost`);
+    assert.match(billing.scorePass.sharedCredits, /5/u, `${locale}: complex task cost`);
+    assert.doesNotMatch(billing.scorePass.sharedCredits, /(?:1|5) credits? per page|每[页頁].*[15] [积積]分|[15] [积積]分.*每[页頁]/iu, `${locale}: no per-page charge`);
+  }
+});
+
 test("billing corrects visible pass expiry copy while keeping the existing SEO description", () => {
   const page = source("../../app/billing/page.tsx");
   assert.match(page, /description: page\.body/u);

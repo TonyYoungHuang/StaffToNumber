@@ -70,7 +70,27 @@ test("large-file preflights explain file size and actual pages even in compact v
     assert.ok($("[data-large-file-reason]").text().includes(formatNumber(pages, locale)), locale);
     assert.equal($("[data-recognition-lane='big']").length, 1, locale);
     assert.equal($("[data-recognition-plans] li").length, 3, locale);
-    assert.doesNotMatch($.root().text(), /MiB|\{pages\}/u, locale);
+    assert.doesNotMatch($.root().text(), /1536|2048|\{pages\}/u, locale);
+  }
+});
+
+test("app refusal names the actual page, pixel, or capacity cause in compact and full views", () => {
+  for (const locale of SUPPORTED_LOCALES) for (const compact of [false, true]) {
+    const copy = getFlowMessages(locale).recognitionExperience;
+    const cases = [
+      { sourcePageCount: 25, maxPagePixels: 8_415_000, code: "RECOGNITION_CAPACITY_LIMIT", key: "unsupportedPages" },
+      { sourcePageCount: 25, maxPagePixels: 8_415_000, code: "PDF_PAGE_PIXEL_LIMIT", key: "unsupportedPixels" },
+      { sourcePageCount: 1, maxPagePixels: 40_000_000, code: "RECOGNITION_CAPACITY_LIMIT", key: "unsupportedPixels" },
+      { sourcePageCount: 1, maxPagePixels: 32_000_000, code: "RECOGNITION_CAPACITY_LIMIT", key: "unsupportedLane" },
+    ] as const;
+    for (const item of cases) {
+      const $ = load(renderPreflight(locale, { ...result, sourcePageCount: item.sourcePageCount,
+        memoryAssessment: { ...result.memoryAssessment!, lane: "unsupported", sourcePageCount: item.sourcePageCount, maxPagePixels: item.maxPagePixels, reasonCodes: ["CAPACITY_CEILING"] },
+        recognitionSupport: { supported: false, code: item.code } }, compact));
+      assert.equal($("[data-recognition-refusal]").attr("data-recognition-refusal"), item.key, locale);
+      assert.equal($("[role='alert']").text(), copy[item.key], locale);
+      assert.equal($("fieldset, input, button, [data-recognition-plans], [data-large-file-reason]").length, 0, locale);
+    }
   }
 });
 

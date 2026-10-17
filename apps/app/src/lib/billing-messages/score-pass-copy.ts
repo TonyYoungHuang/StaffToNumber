@@ -25,7 +25,7 @@ export type ScorePassCopy = {
 const messages: Record<SupportedLocale, ScorePassCopy> = {
   "en": {
     title: "Continue this score",
-    body: "Usually one photo or about 5 A4/Letter PDF pages fits the standard lane; PDFs from about 6 pages or larger files may need the large-file lane. The file check decides; there is no fixed plan page allowance.",
+    body: "Standard processing usually fits one score photo or an A4/Letter PDF of about 1–5 pages; large-file processing usually fits about 6–24 pages. A4/Letter PDFs of about 25 pages or more may exceed the processing limit. Files over 20 MiB, images over 32 MP, or PDF pages beyond the preflight pixel limit cannot be accepted. Page counts are approximate: actual acceptance and processing depend on file size, page layout and preflight. Split PDFs into files of about 24 pages or fewer, compress oversized files or images, or import MusicXML. Rejected files incur no payment or credit charges.",
     recommended: "Recommended",
     monthly: "month",
     starterBody: "Starter: 50 credits each month for this score, its extracted parts and other scores. Standard and large-file lanes are included, subject to the file check; no extra lane fee.",
@@ -46,7 +46,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "zh-CN": {
     title: "继续处理这首乐谱",
-    body: "一张照片或约 5 页以内的 A4/Letter PDF 通常可走普通通道；约 6 页以上的 PDF 或较大文件可能需要大文件通道。以文件预检为准，套餐没有固定页数额度。",
+    body: "普通通道通常适合一张乐谱照片，或约 1–5 页的 A4／Letter PDF；大文件通道通常适合约 6–24 页 PDF。约 25 页及以上的 A4／Letter PDF 可能超过处理上限。超过 20 MiB 的文件、超过 3200 万像素（32 MP）的图片，或页面超出预检像素上限的 PDF，无法受理。页数均为近似值，实际受理及通道以文件大小、页面结构和预检结果为准。建议拆分为每份约 24 页以内、压缩过大的文件或图片，或导入 MusicXML。拒绝的文件不会收款或扣积分。",
     recommended: "推荐",
     monthly: "月",
     starterBody: "Starter 每月 50 积分，可用于这份乐谱、提取分谱及其他乐谱。包含普通和大文件通道，以文件预检为准，不另收通道费。",
@@ -67,7 +67,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "zh-TW": {
     title: "繼續處理這首樂譜",
-    body: "一張照片或約 5 頁以內的 A4/Letter PDF 通常可走一般通道；約 6 頁以上的 PDF 或較大檔案可能需要大檔案通道。以檔案預檢為準，方案沒有固定頁數額度。",
+    body: "一般通道通常適合一張樂譜照片，或約 1–5 頁的 A4／Letter PDF；大檔案通道通常適合約 6–24 頁 PDF。約 25 頁及以上的 A4／Letter PDF 可能超過處理上限。超過 20 MiB 的檔案、超過 3200 萬像素（32 MP）的圖片，或頁面超出預檢像素上限的 PDF，無法受理。頁數均為近似值，實際受理及通道以檔案大小、頁面結構及預檢結果為準。建議拆分為每份約 24 頁以內、壓縮過大的檔案或圖片，或匯入 MusicXML。遭拒的檔案不會收款或扣點。",
     recommended: "推薦",
     monthly: "月",
     starterBody: "Starter 每月 50 點，可用於這份樂譜、擷取分譜及其他樂譜。包含一般和大檔案通道，以檔案預檢為準，不另收通道費。",
@@ -88,7 +88,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "ja": {
     title: "この楽譜の処理を続ける",
-    body: "通常は写真1枚か約5ページ以内のA4/Letter PDFなら標準処理、約6ページ以上のPDFや大きなファイルは大容量ファイル処理になる場合があります。ファイル確認で判定し、プラン固有の固定ページ枠はありません。",
+    body: "通常処理は楽譜写真 1 枚、または約 1～5 ページの A4・Letter PDF、大容量ファイル処理は約 6～24 ページの PDF が目安です。約 25 ページ以上の A4・Letter PDF は処理上限を超える場合があります。20 MiB を超えるファイル、3200 万画素（32 MP）を超える画像、またはページが事前確認の画素数上限を超える PDF は受け付けられません。ページ数は目安で、実際の受付可否と処理経路はファイル容量・ページ構成と事前確認で決まります。PDF は 1 ファイル約 24 ページ以内に分割し、大きすぎるファイルや画像を圧縮するか、MusicXML を取り込んでください。受け付けられないファイルには料金やクレジットはかかりません。",
     recommended: "おすすめ",
     monthly: "月",
     starterBody: "Starterは毎月50クレジットを、この楽譜、抽出パート、ほかの楽譜に利用できます。ファイル確認の範囲内で標準処理と大容量ファイル処理を含み、処理経路の追加料金はありません。",
@@ -109,7 +109,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "ko": {
     title: "이 악보 계속 처리하기",
-    body: "보통 사진 1장이나 약 5페이지 이하의 A4/Letter PDF는 표준 처리가 가능하며, 약 6페이지 이상의 PDF나 큰 파일은 대용량 파일 처리가 필요할 수 있습니다. 파일 검사로 결정하며 요금제별 고정 페이지 할당량은 없습니다.",
+    body: "일반 처리는 보통 악보 사진 한 장이나 약 1~5페이지의 A4·Letter PDF에, 대용량 파일 처리는 약 6~24페이지의 PDF에 적합합니다. 약 25페이지 이상의 A4·Letter PDF는 처리 한도를 초과할 수 있습니다. 20 MiB를 넘는 파일, 3,200만 화소(32 MP)를 넘는 이미지 또는 페이지가 사전 검사 픽셀 한도를 넘는 PDF는 접수할 수 없습니다. 페이지 수는 참고치이며 실제 접수 여부와 처리 경로는 파일 크기, 페이지 구성과 사전 검사로 결정됩니다. PDF를 파일당 약 24페이지 이하로 나누거나, 너무 큰 파일이나 이미지를 압축하거나, MusicXML을 가져오세요. 접수되지 않은 파일에는 요금이나 크레딧이 청구되지 않습니다.",
     recommended: "추천",
     monthly: "월",
     starterBody: "Starter의 매월 50크레딧을 이 악보, 추출 파트 및 다른 악보에 사용할 수 있습니다. 파일 검사 범위 내에서 표준 처리와 대용량 파일 처리가 포함되며 경로 추가 요금은 없습니다.",
@@ -130,7 +130,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "fr": {
     title: "Continuer cette partition",
-    body: "Une photo ou un PDF A4/Letter d’environ 5 pages maximum relève généralement de la file standard ; à partir d’environ 6 pages ou pour un fichier plus volumineux, la file gros fichiers peut être nécessaire. La vérification décide ; les offres n’ont pas de quota fixe de pages.",
+    body: "Le traitement standard convient généralement à une photo ou à un PDF A4/Letter d’environ 1 à 5 pages ; le traitement des fichiers volumineux vise environ 6 à 24 pages. Les PDF A4/Letter d’environ 25 pages ou plus peuvent dépasser la limite de traitement. Les fichiers de plus de 20 MiB, les images de plus de 32 MP ou les PDF dont les pages dépassent la limite de pixels de la vérification préalable ne peuvent pas être acceptés. Ces nombres sont indicatifs : la taille du fichier, la mise en page et la vérification préalable déterminent l’acceptation et le traitement. Divisez les PDF en fichiers d’environ 24 pages maximum, compressez les fichiers ou images trop volumineux, ou importez du MusicXML. Un fichier refusé ne donne lieu à aucun paiement ni débit de crédits.",
     recommended: "Recommandé",
     monthly: "mois",
     starterBody: "Starter : 50 crédits chaque mois pour cette partition, ses parties extraites et d’autres partitions. Files standard et gros fichiers incluses selon la vérification, sans supplément de file.",
@@ -151,7 +151,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "es": {
     title: "Continuar con esta partitura",
-    body: "Una foto o un PDF A4/Letter de unas 5 páginas como máximo suele usar la vía estándar; los PDF de unas 6 páginas o más y los archivos mayores pueden necesitar la vía de archivos grandes. Lo decide la comprobación; no hay una cuota fija de páginas por plan.",
+    body: "El procesamiento estándar suele ser adecuado para una foto o un PDF A4/Letter de unas 1–5 páginas; la vía de archivos grandes, para unas 6–24 páginas. Los PDF A4/Letter de unas 25 páginas o más pueden superar el límite de procesamiento. No se aceptan archivos de más de 20 MiB, imágenes de más de 32 MP ni PDF cuyas páginas superen el límite de píxeles de la comprobación previa. Las páginas son orientativas: el tamaño real, la distribución de la página y la comprobación previa determinan la aceptación y la vía. Divide los PDF en archivos de unas 24 páginas como máximo, comprime los archivos o imágenes demasiado grandes o importa MusicXML. Los archivos rechazados no generan cobros ni consumen créditos.",
     recommended: "Recomendado",
     monthly: "mes",
     starterBody: "Starter: 50 créditos cada mes para esta partitura, sus partes extraídas y otras partituras. Incluye las vías estándar y de archivos grandes según la comprobación, sin recargo de vía.",
@@ -172,7 +172,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "de": {
     title: "Diese Partitur weiter bearbeiten",
-    body: "Ein Foto oder ein A4/Letter-PDF mit bis zu etwa 5 Seiten nutzt meist die Standardverarbeitung; ab etwa 6 PDF-Seiten oder bei größeren Dateien kann die Verarbeitung großer Dateien nötig sein. Die Dateiprüfung entscheidet; es gibt kein festes Seitenkontingent pro Tarif.",
+    body: "Standardverarbeitung passt meist für ein Notenfoto oder ein A4-/Letter-PDF mit ungefähr 1–5 Seiten; die Verarbeitung großer Dateien für ungefähr 6–24 Seiten. A4-/Letter-PDFs mit ungefähr 25 Seiten oder mehr können die Verarbeitungsgrenze überschreiten. Dateien über 20 MiB, Bilder über 32 MP oder PDFs mit Seiten über der Pixelgrenze der Vorprüfung können nicht angenommen werden. Die Seitenzahlen sind Richtwerte: Dateigröße, Seitenaufbau und Vorprüfung bestimmen Annahme und Verarbeitungsweg. Teilen Sie PDFs in Dateien mit jeweils ungefähr 24 Seiten oder weniger, komprimieren Sie zu große Dateien oder Bilder oder importieren Sie MusicXML. Abgelehnte Dateien verursachen keine Zahlung und keinen Credit-Abzug.",
     recommended: "Empfohlen",
     monthly: "Monat",
     starterBody: "Starter: monatlich 50 Credits für diese Partitur, ihre extrahierten Stimmen und weitere Partituren. Standardverarbeitung und Verarbeitung großer Dateien sind nach Dateiprüfung enthalten, ohne zusätzlichen Aufpreis für den Verarbeitungsweg.",
@@ -193,7 +193,7 @@ const messages: Record<SupportedLocale, ScorePassCopy> = {
   },
   "ru": {
     title: "Продолжить работу с партитурой",
-    body: "Одна фотография или PDF A4/Letter примерно до 5 страниц обычно подходит для стандартной очереди; PDF примерно от 6 страниц или более крупные файлы могут требовать очереди больших файлов. Решает проверка файла; фиксированной квоты страниц у тарифов нет.",
+    body: "Обычная обработка обычно подходит для одной фотографии нот или PDF A4/Letter примерно на 1–5 страниц, обработка больших файлов — примерно на 6–24 страницы. PDF A4/Letter примерно на 25 страниц и более могут превысить предел обработки. Файлы больше 20 MiB, изображения больше 32 MP или PDF со страницами сверх пиксельного предела предварительной проверки не принимаются. Число страниц приблизительное: возможность приёма и способ обработки определяют размер файла, структура страниц и предварительная проверка. Разделите PDF на файлы примерно по 24 страницы или меньше, сожмите слишком большие файлы или изображения либо импортируйте MusicXML. За отклонённые файлы оплата и кредиты не списываются.",
     recommended: "Рекомендуем",
     monthly: "месяц",
     starterBody: "Starter: 50 кредитов каждый месяц для этой партитуры, её извлечённых партий и других партитур. Включены стандартная очередь и очередь больших файлов по результатам проверки, без доплаты за очередь.",

@@ -59,7 +59,8 @@ export function localizeApiError(input: { error?: string | null; code?: string |
   const recognitionMessage = resolveRecognitionRequestFailure(experience, input.code);
   if (recognitionMessage) return recognitionMessage;
   if (["FILE_TOO_LARGE", "FST_REQ_FILE_TOO_LARGE"].includes(input.code ?? "")) return experience.fileSizeLimit;
-  if (["PDF_PAGE_COUNT_LIMIT", "PDF_PAGE_DIMENSION_LIMIT"].includes(input.code ?? "")) return experience.unsupportedLane;
+  if (input.code === "PDF_PAGE_COUNT_LIMIT") return experience.unsupportedPages;
+  if (["PDF_PAGE_DIMENSION_LIMIT", "PDF_PAGE_PIXEL_LIMIT", "PDF_TOTAL_PIXEL_LIMIT", "IMAGE_PIXEL_LIMIT"].includes(input.code ?? "")) return experience.unsupportedPixels;
   if (input.code === "PLAN_STORAGE_QUOTA_EXCEEDED") return experience.storageLimit;
   if (input.code === "RECOGNITION_CAPACITY_LIMIT" || input.code?.startsWith("PDF_") && ["PDF_INVALID", "PDF_PAGE_PIXEL_LIMIT", "PDF_TOTAL_PIXEL_LIMIT"].includes(input.code)) return getScoreRecognitionSupportMessage(selectedLocale ?? "en", input.code);
   if (input.code === "OMR_PRICE_CHANGED") return getScorePreflightMessages(selectedLocale ?? "en").priceChanged;

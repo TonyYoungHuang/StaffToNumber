@@ -7,3 +7,4 @@ export * from "./score-processing-panel";
 export * from "./processing-progress";
 export * from "./photo-corner-editor";
 export * from "./recognition-purchase-actions";
+export * from "./recognition-rejection";

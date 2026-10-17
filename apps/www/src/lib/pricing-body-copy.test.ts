@@ -9,6 +9,7 @@ import { frenchPricingFaqs } from "./french-pricing";
 import { getHomepageLocalization } from "./homepage-localization";
 import { resolveFaqGroups } from "./static-marketing-localization";
 import { getRecognitionPricingCopy } from "./recognition-pricing-copy";
+import { getScannerFaq } from "./scanner-faq";
 
 test("all nine languages provide the complete pricing introduction, fee guide and purchase answers", () => {
   assert.equal(SUPPORTED_LOCALES.length, 9);
@@ -83,10 +84,44 @@ test("all nine languages keep the same free, pass, Starter and lane facts across
     assert.match(facts.freeScope, /25/);
     assert.match(facts.freeScope, /1/);
     assert.match(facts.laneGuide, /6/);
-    assert.doesNotMatch(JSON.stringify([facts, intro, guide]), /MiB|needs more memory|更多内存|Price ID/iu);
+    assert.doesNotMatch(JSON.stringify([facts, intro, guide]), /needs more memory|更多内存|Price ID/iu);
     for (const [key, value] of Object.entries(facts)) {
       assert.ok(value.trim(), `${locale}: ${key}`);
       if (locale !== "en") assert.notEqual(value, getRecognitionPricingCopy("en")[key as keyof typeof facts], `${locale}: ${key}`);
     }
+  }
+});
+
+test("all nine languages publish approximate lane ranges, file limits and recovery steps on every shared surface", () => {
+  const approximate = {
+    en: /about|approximate/iu,
+    "zh-CN": /约|近似/u,
+    "zh-TW": /約|近似/u,
+    ja: /約|目安/u,
+    ko: /약|참고치/u,
+    fr: /environ|indicatifs/u,
+    es: /unas|orientativas/u,
+    de: /ungefähr|Richtwerte/u,
+    ru: /примерно|приблизительное/u,
+  };
+  for (const locale of SUPPORTED_LOCALES) {
+    const facts = getRecognitionPricingCopy(locale);
+    const guide = getCreditGuideCopy(locale);
+    const home = getHomepageLocalization(locale);
+    assert.match(facts.laneGuide, /1[–～~]5|1 à 5/u, `${locale}: standard lane range`);
+    assert.match(facts.laneGuide, /6[–～~]24|6 à 24/u, `${locale}: large-file lane range`);
+    assert.match(facts.laneGuide, /25/u, `${locale}: approximate rejection boundary`);
+    assert.match(facts.laneGuide, /20 MiB/u, `${locale}: file size limit`);
+    assert.match(facts.laneGuide, /32 MP/u, `${locale}: image pixel limit`);
+    assert.match(facts.laneGuide, /MusicXML/u, `${locale}: alternative import`);
+    assert.match(facts.laneGuide, approximate[locale], `${locale}: page counts remain approximate`);
+    for (const [surface, text] of [
+      ["pricing introduction", getPricingIntroCopy(locale).freeDescription],
+      ["credit guide", guide.rows[0].detail],
+      ["home lane note", home.page.priceNote],
+      ["home FAQ", home.page.faqs.map(([, answer]) => answer).join(" ")],
+      ["general FAQ", resolveFaqGroups(locale, true).flatMap(group => group.items.map(item => item.answer)).join(" ")],
+      ["scanner FAQ", getScannerFaq(locale).map(item => item.answer).join(" ")],
+    ]) assert.ok(text.includes(facts.laneGuide), `${locale}: ${surface} must use the full lane limits`);
   }
 });

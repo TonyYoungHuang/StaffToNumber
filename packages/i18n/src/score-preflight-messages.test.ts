@@ -93,11 +93,15 @@ test('pricing and lane copy keeps all nine languages complete with explicit page
     const copy = getRecognitionExperienceMessages(locale);
     for (const key of ['normalBody', 'bigBody', 'bigReason', 'freePlan', 'passPlan', 'starterPlan', 'creditRule'] as const) {
       if (locale !== 'en') assert.notEqual(copy[key], english[key], `${locale}.${key}`);
-      assert.doesNotMatch(copy[key], /MiB|1536|2048/u, `${locale}.${key}`);
+      assert.doesNotMatch(copy[key], /1536|2048/u, `${locale}.${key}`);
     }
     assert.deepEqual(placeholders(copy.bigReason), ['pages']);
     assert.match(copy.normalBody, /5/u);
     assert.match(copy.bigBody, /6/u);
+    assert.match(copy.bigBody, /6–24/u);
+    assert.match(copy.bigBody, /25/u);
+    assert.match(copy.bigBody, /20 MiB/u);
+    assert.match(copy.bigBody, /32 MP/u);
     assert.match(copy.passPlan, /2[.,]99/u);
     assert.match(copy.freePlan, /25/u);
     assert.match(copy.passPlan, /10/u);
@@ -107,6 +111,31 @@ test('pricing and lane copy keeps all nine languages complete with explicit page
   }
   assert.match(english.bigReason, /[Bb]ecause.*larger.*\{pages\}/u);
   assert.match(getRecognitionExperienceMessages('zh-CN').bigReason, /因为.*文件较大.*\{pages\}/u);
+});
+
+test('admission limits distinguish file size, page count and image/PDF pixel failures in every locale', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getRecognitionExperienceMessages(locale);
+    assert.equal(getScorePreflightMessages(locale).fileTooLarge, copy.unsupportedFileSize);
+    assert.equal(copy.fileSizeLimit, copy.unsupportedFileSize);
+    for (const code of ['FILE_TOO_LARGE', 'FST_REQ_FILE_TOO_LARGE']) {
+      assert.equal(localizeApiError({ code }, locale), copy.unsupportedFileSize);
+    }
+    assert.equal(localizeApiError({ code: 'PDF_PAGE_COUNT_LIMIT' }, locale), copy.unsupportedPages);
+    for (const code of ['PDF_PAGE_PIXEL_LIMIT', 'PDF_TOTAL_PIXEL_LIMIT', 'PDF_PAGE_DIMENSION_LIMIT', 'IMAGE_PIXEL_LIMIT']) {
+      assert.equal(localizeApiError({ code }, locale), copy.unsupportedPixels);
+      assert.equal(getScoreRecognitionSupportMessage(locale, code), copy.unsupportedPixels);
+    }
+    for (const key of ['unsupportedLane', 'unsupportedPages', 'unsupportedPixels', 'unsupportedFileSize'] as const) {
+      assert.match(copy[key], /24/u, `${locale}.${key}`);
+      assert.match(copy[key], /MusicXML/u, `${locale}.${key}`);
+      assert.doesNotMatch(copy[key], /1536|2048/u, `${locale}.${key}`);
+      if (locale !== 'en') assert.notEqual(copy[key], getRecognitionExperienceMessages('en')[key], `${locale}.${key}`);
+    }
+    assert.match(copy.unsupportedPages, /25/u);
+    assert.match(copy.unsupportedFileSize, /20 MiB/u);
+    assert.match(copy.unsupportedPixels, /32 MP/u);
+  }
 });
 
 test('recognition access and refusal API codes never fall back to English diagnostics', () => {

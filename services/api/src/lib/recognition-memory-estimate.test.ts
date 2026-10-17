@@ -55,6 +55,21 @@ test("twenty and twenty-four normal-paper pages fit the big budget; a larger boo
   }
 });
 
+test("advertised page counts are approximate: source bytes and paper dimensions still decide admission", () => {
+  const policy = { dpi: 300, maxPagePixels: 12_000_000, maxTotalPixels: 120_000_000 };
+  for (const paper of [{ widthPoints: 612, heightPoints: 792 }, { widthPoints: 595, heightPoints: 842 }]) {
+    const plan = planPdfRasterBudget(Array.from({ length: 24 }, () => paper), policy);
+    assert.equal(plan.ok, true);
+    const input = { pageCount: 24, maxPagePixels: Math.max(...plan.pages.map(page => page.pixelCount)) };
+    assert.equal(estimateRecognitionMemory({ ...input, sizeBytes: 1000 }, config).lane, "big");
+    assert.equal(estimateRecognitionMemory({ ...input, sizeBytes: 20 * 1024 * 1024 }, config).lane, "unsupported");
+  }
+  const smallerPages = planPdfRasterBudget(Array.from({ length: 25 }, () => ({ widthPoints: 300, heightPoints: 400 })), policy);
+  assert.equal(smallerPages.ok, true);
+  assert.equal(estimateRecognitionMemory({ sizeBytes: 1000, pageCount: 25,
+    maxPagePixels: Math.max(...smallerPages.pages.map(page => page.pixelCount)) }, config).lane, "big");
+});
+
 test("confidence, layout, recognition mode and manual enhancement cannot change admission", () => {
   const source = { sizeBytes: 2_166_908, pageCount: 1, maxPagePixels: 3840 * 2160 };
   const ordinary = estimateRecognitionMemory(source, config);

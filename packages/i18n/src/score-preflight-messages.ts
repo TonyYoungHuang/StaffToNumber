@@ -30,6 +30,8 @@ const supportCopy: Record<SupportedLocale, readonly [string, string, string, str
 };
 
 export function getScoreRecognitionSupportMessage(locale: SupportedLocale, code: string) {
+  if (['PDF_PAGE_PIXEL_LIMIT', 'PDF_TOTAL_PIXEL_LIMIT', 'PDF_PAGE_DIMENSION_LIMIT', 'IMAGE_PIXEL_LIMIT'].includes(code)) return getRecognitionExperienceMessages(locale).unsupportedPixels;
+  if (code === 'PDF_PAGE_COUNT_LIMIT') return getRecognitionExperienceMessages(locale).unsupportedPages;
   if (code === 'RECOGNITION_CAPACITY_LIMIT') return getRecognitionExperienceMessages(locale).unsupportedLane;
   return supportCopy[locale][code === 'READY' ? 0 : code === 'PDF_ADAPTIVE_RENDER' ? 1 : code === 'PDF_INVALID' ? 3 : 2];
 }
@@ -57,7 +59,7 @@ const en = {
   notReady: 'Wait for the free structure check to finish before starting recognition.',
   noCredit: 'Your current allowance does not cover this mode.', selectedFilePreserved: 'Your file stays selected when you change modes.',
   simpleTitle: 'Simple score', complexTitle: 'Complex score', price: "Credits for this file’s recognition task: {credits}", changeFile: 'Choose another file',
-  fileTooLarge: 'Choose a file up to 20 MB.',
+  fileTooLarge: "This file exceeds the 20 MiB upload limit. Compress it to 20 MiB or less, split the PDF into files of about 24 pages or fewer, or import MusicXML. Page counts are approximate; the file check decides. No payment or credits will be taken.",
   priceLoading: 'Checking your recognition price…', priceFailed: 'Could not load the recognition price. Please retry.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Single-staff layout detected.', PIANO_STAFF_LAYOUT: 'Ordinary two-staff layout detected.',
@@ -83,7 +85,7 @@ const zh: ScorePreflightMessages = {
   confirmRecognition: '确认{mode} · 消耗 {credits} 积分', startRecognition: '开始识谱', freeProjectPrice: "免费 · 使用终身 1 次简单识谱机会 · 普通通道", advancedModes: '高级：复杂总谱 / 多声部识谱', showModes: '显示识谱方式', hideModes: '收起识谱方式', priceChanged: '识谱价格已变化，请查看新价格后再次确认。',
   notReady: '请先完成免费预检并选定模式，再开始识别。', noCredit: '当前额度不足以使用此模式。',
   selectedFilePreserved: '切换模式会保留已选择的文件，无需重新上传。', simpleTitle: '简单乐谱', complexTitle: '复杂总谱',
-  price: "这份文件的识谱任务消耗 {credits} 积分", changeFile: '选择其他文件', fileTooLarge: '请选择不超过 20 MB 的文件。',
+  price: "这份文件的识谱任务消耗 {credits} 积分", changeFile: '选择其他文件', fileTooLarge: "此文件超过 20 MiB 上传上限，无法受理。请压缩至 20 MiB 以内、将 PDF 拆分为每份约 24 页以内，或导入 MusicXML。页数为近似值，以文件预检为准。不会收款或扣积分。",
   priceLoading: '正在读取识谱价格…', priceFailed: '暂时无法读取识谱价格，请重试。',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '检测到单谱表结构。', PIANO_STAFF_LAYOUT: '检测到常规双谱表结构。', MULTI_INSTRUMENT_LAYOUT: '多个谱表同时出现。',
@@ -105,7 +107,7 @@ const ja: ScorePreflightMessages = {
   confirmRecognition: '{mode}を確認 · {credits} クレジット', startRecognition: '認識を開始', freeProjectPrice: "無料 · 生涯1回のシンプル認識を使用 · 通常処理", advancedModes: '上級：複雑／複数パート認識', showModes: '認識方式を表示', hideModes: '認識方式を隠す', priceChanged: '料金が変更されました。新しい料金を確認して再度確定してください。',
   notReady: '無料確認を完了して認識方式を選択してください。', noCredit: 'この方式に必要なクレジットが不足しています。',
   selectedFilePreserved: '方式を変更しても選択したファイルは保持されます。', simpleTitle: 'シンプルな楽譜', complexTitle: '複雑な総譜',
-  price: "このファイルの認識タスク：{credits}クレジット", changeFile: '別のファイルを選択', fileTooLarge: '20 MB 以下のファイルを選択してください。',
+  price: "このファイルの認識タスク：{credits}クレジット", changeFile: '別のファイルを選択', fileTooLarge: "20 MiB のアップロード上限を超えています。20 MiB 以下に圧縮するか、PDF を約24ページ以内ずつに分割、または MusicXML を読み込んでください。ページ数は目安で、事前確認に従います。支払いやクレジット消費はありません。",
   priceLoading: '認識料金を確認中…', priceFailed: '認識料金を取得できませんでした。再試行してください。',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '単一譜表の構造を検出しました。', PIANO_STAFF_LAYOUT: '通常の大譜表を検出しました。', MULTI_INSTRUMENT_LAYOUT: '複数の譜表が並んでいます。',
@@ -127,7 +129,7 @@ const zhTW: ScorePreflightMessages = {
   confirmRecognition: '確認{mode} · 消耗 {credits} 點數', startRecognition: '開始辨識', freeProjectPrice: "免費 · 使用終身 1 次簡單辨識機會 · 一般通道", advancedModes: '進階：複雜總譜／多聲部辨識', showModes: '顯示辨識方式', hideModes: '收起辨識方式', priceChanged: '辨識價格已變更，請查看新價格後再次確認。',
   notReady: '請先完成免費預檢並選定方式，再開始辨識。', noCredit: '目前額度不足以使用此方式。',
   selectedFilePreserved: '切換方式會保留所選檔案，無須重新上傳。', simpleTitle: '簡單樂譜', complexTitle: '複雜總譜',
-  price: "這份檔案的辨識任務消耗 {credits} 點數", changeFile: '選擇其他檔案', fileTooLarge: '請選擇不超過 20 MB 的檔案。',
+  price: "這份檔案的辨識任務消耗 {credits} 點數", changeFile: '選擇其他檔案', fileTooLarge: "此檔案超過 20 MiB 上傳上限，無法受理。請壓縮至 20 MiB 以內、將 PDF 分割為每份約 24 頁以內，或匯入 MusicXML。頁數為近似值，以檔案預檢為準。不會收款或扣點數。",
   priceLoading: '正在讀取辨識價格…', priceFailed: '暫時無法讀取辨識價格，請重試。',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '偵測到單譜表結構。', PIANO_STAFF_LAYOUT: '偵測到一般雙譜表結構。', MULTI_INSTRUMENT_LAYOUT: '多個譜表同時出現。',
@@ -149,7 +151,7 @@ const ko: ScorePreflightMessages = {
   confirmRecognition: '{mode} 확인 · {credits} 크레딧', startRecognition: '인식 시작', freeProjectPrice: "무료 · 평생 1회 간단 인식 사용 · 일반 처리", advancedModes: '고급: 복잡한 총보 / 다성부 인식', showModes: '인식 방식 보기', hideModes: '인식 방식 숨기기', priceChanged: '인식 비용이 변경되었습니다. 새 비용을 확인하고 다시 확정하세요.',
   notReady: '무료 확인을 완료하고 인식 방식을 선택한 후 시작하세요.', noCredit: '현재 크레딧으로는 이 방식을 사용할 수 없습니다.',
   selectedFilePreserved: '방식을 변경해도 선택한 파일이 유지됩니다.', simpleTitle: '간단한 악보', complexTitle: '복잡한 총보',
-  price: "이 파일의 인식 작업: {credits}크레딧", changeFile: '다른 파일 선택', fileTooLarge: '20 MB 이하의 파일을 선택하세요.',
+  price: "이 파일의 인식 작업: {credits}크레딧", changeFile: '다른 파일 선택', fileTooLarge: "20 MiB 업로드 한도를 초과했습니다. 20 MiB 이하로 압축하거나 PDF를 파일당 약 24페이지 이하로 나누거나 MusicXML을 가져오세요. 페이지 수는 대략적인 기준이며 사전 검사로 결정됩니다. 결제나 크레딧 차감은 없습니다.",
   priceLoading: '인식 비용 확인 중…', priceFailed: '인식 비용을 불러오지 못했습니다. 다시 시도하세요.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '단일 보표 구조를 감지했습니다.', PIANO_STAFF_LAYOUT: '일반적인 두 보표 구조를 감지했습니다.', MULTI_INSTRUMENT_LAYOUT: '여러 보표가 함께 있습니다.',
@@ -171,7 +173,7 @@ const fr: ScorePreflightMessages = {
   confirmRecognition: 'Confirmer : {mode} · {credits} crédits', startRecognition: 'Lancer la reconnaissance', freeProjectPrice: "Gratuit · utilise votre unique reconnaissance simple à vie · traitement standard", advancedModes: 'Avancé : reconnaissance complexe / multipartite', showModes: 'Afficher les modes', hideModes: 'Masquer les modes', priceChanged: 'Le prix a changé. Consultez le nouveau prix et confirmez à nouveau.',
   notReady: 'Terminez la vérification gratuite et choisissez un mode avant de lancer la reconnaissance.', noCredit: 'Votre solde ne permet pas d’utiliser ce mode.',
   selectedFilePreserved: 'Le fichier sélectionné est conservé quand vous changez de mode.', simpleTitle: 'Partition simple', complexTitle: 'Partition complexe',
-  price: "{credits} crédits pour la tâche de reconnaissance de ce fichier", changeFile: 'Choisir un autre fichier', fileTooLarge: 'Choisissez un fichier de 20 Mo maximum.',
+  price: "{credits} crédits pour la tâche de reconnaissance de ce fichier", changeFile: 'Choisir un autre fichier', fileTooLarge: "Ce fichier dépasse la limite d’envoi de 20 MiB. Compressez-le à 20 MiB maximum, divisez le PDF en fichiers d’environ 24 pages maximum ou importez du MusicXML. Les pages sont indicatives ; la vérification fait foi. Aucun paiement ni crédit prélevé.",
   priceLoading: 'Vérification du prix de reconnaissance…', priceFailed: 'Impossible d’obtenir le prix de reconnaissance. Réessayez.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Disposition à une portée détectée.', PIANO_STAFF_LAYOUT: 'Disposition courante à deux portées détectée.', MULTI_INSTRUMENT_LAYOUT: 'Plusieurs portées sont regroupées.',
@@ -193,7 +195,7 @@ const es: ScorePreflightMessages = {
   confirmRecognition: 'Confirmar {mode} · {credits} créditos', startRecognition: 'Iniciar reconocimiento', freeProjectPrice: "Gratis · usa tu único reconocimiento simple de por vida · vía estándar", advancedModes: 'Avanzado: reconocimiento complejo / multiparte', showModes: 'Mostrar modos', hideModes: 'Ocultar modos', priceChanged: 'El precio ha cambiado. Revisa el nuevo precio y vuelve a confirmar.',
   notReady: 'Completa la comprobación gratuita y elige un modo antes de iniciar el reconocimiento.', noCredit: 'Tu saldo actual no permite utilizar este modo.',
   selectedFilePreserved: 'El archivo seleccionado se conserva al cambiar de modo.', simpleTitle: 'Partitura simple', complexTitle: 'Partitura compleja',
-  price: "{credits} créditos por la tarea de reconocimiento de este archivo", changeFile: 'Elegir otro archivo', fileTooLarge: 'Elige un archivo de hasta 20 MB.',
+  price: "{credits} créditos por la tarea de reconocimiento de este archivo", changeFile: 'Elegir otro archivo', fileTooLarge: "Este archivo supera el límite de subida de 20 MiB. Comprímelo a 20 MiB o menos, divide el PDF en archivos de unas 24 páginas como máximo o importa MusicXML. Las páginas son orientativas; decide la comprobación. No se cobrarán pagos ni créditos.",
   priceLoading: 'Consultando el precio de reconocimiento…', priceFailed: 'No se pudo obtener el precio de reconocimiento. Vuelve a intentarlo.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Se detectó una disposición de un pentagrama.', PIANO_STAFF_LAYOUT: 'Se detectó una disposición habitual de dos pentagramas.', MULTI_INSTRUMENT_LAYOUT: 'Hay varios pentagramas agrupados.',
@@ -215,7 +217,7 @@ const de: ScorePreflightMessages = {
   confirmRecognition: '{mode} bestätigen · {credits} Credits', startRecognition: 'Erkennung starten', freeProjectPrice: "Kostenlos · nutzt Ihre lebenslang einmalige einfache Erkennung · Standardverarbeitung", advancedModes: 'Erweitert: komplexe / mehrstimmige Erkennung', showModes: 'Modi anzeigen', hideModes: 'Modi ausblenden', priceChanged: 'Der Preis hat sich geändert. Prüfen Sie den neuen Preis und bestätigen Sie erneut.',
   notReady: 'Schließen Sie die kostenlose Prüfung ab und wählen Sie einen Modus, bevor Sie die Erkennung starten.', noCredit: 'Ihr aktuelles Guthaben reicht für diesen Modus nicht aus.',
   selectedFilePreserved: 'Die ausgewählte Datei bleibt beim Wechsel des Modus erhalten.', simpleTitle: 'Einfache Partitur', complexTitle: 'Komplexe Partitur',
-  price: "{credits} Credits für den Erkennungsauftrag dieser Datei", changeFile: 'Andere Datei auswählen', fileTooLarge: 'Wählen Sie eine Datei mit höchstens 20 MB.',
+  price: "{credits} Credits für den Erkennungsauftrag dieser Datei", changeFile: 'Andere Datei auswählen', fileTooLarge: "Diese Datei überschreitet die Uploadgrenze von 20 MiB. Auf höchstens 20 MiB komprimieren, das PDF in Dateien mit jeweils etwa höchstens 24 Seiten teilen oder MusicXML importieren. Seitenzahlen sind Richtwerte; die Dateiprüfung entscheidet. Keine Zahlung oder Credits werden abgebucht.",
   priceLoading: 'Erkennungspreis wird geprüft…', priceFailed: 'Der Erkennungspreis konnte nicht geladen werden. Versuchen Sie es erneut.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Layout mit einem Notensystem erkannt.', PIANO_STAFF_LAYOUT: 'Übliches Layout mit zwei Notensystemen erkannt.', MULTI_INSTRUMENT_LAYOUT: 'Mehrere Notensysteme stehen zusammen.',
@@ -237,7 +239,7 @@ const ru: ScorePreflightMessages = {
   confirmRecognition: 'Подтвердить: {mode} · {credits} кредитов', startRecognition: 'Начать распознавание', freeProjectPrice: "Бесплатно · используется 1 простое распознавание за всё время · обычный режим", advancedModes: 'Дополнительно: сложное / многоголосые распознавание', showModes: 'Показать режимы', hideModes: 'Скрыть режимы', priceChanged: 'Цена изменилась. Проверьте новую цену и подтвердите ещё раз.',
   notReady: 'Завершите бесплатную проверку и выберите режим перед началом распознавания.', noCredit: 'Текущего баланса недостаточно для этого режима.',
   selectedFilePreserved: 'При смене режима выбранный файл сохраняется.', simpleTitle: 'Простая партитура', complexTitle: 'Сложная партитура',
-  price: "{credits} кредитов за задачу распознавания этого файла", changeFile: 'Выбрать другой файл', fileTooLarge: 'Выберите файл размером не более 20 МБ.',
+  price: "{credits} кредитов за задачу распознавания этого файла", changeFile: 'Выбрать другой файл', fileTooLarge: "Файл превышает лимит загрузки 20 MiB. Сожмите до 20 MiB или меньше, разделите PDF на файлы примерно до 24 страниц или импортируйте MusicXML. Число страниц ориентировочное; решает проверка. Оплата и кредиты не списываются.",
   priceLoading: 'Проверяем цену распознавания…', priceFailed: 'Не удалось получить цену распознавания. Повторите попытку.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Обнаружена структура с одним нотным станом.', PIANO_STAFF_LAYOUT: 'Обнаружена обычная структура с двумя нотными станами.', MULTI_INSTRUMENT_LAYOUT: 'Несколько нотных станов расположены вместе.',

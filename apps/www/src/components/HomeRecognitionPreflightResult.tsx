@@ -1,8 +1,8 @@
 "use client";
 
 import { formatMessage, formatNumber, type ScorePreflightMessages, type SupportedLocale } from "@score/i18n";
-import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
-import { needsBigRecognitionLane, RecognitionPlanSummary } from "@score/ui";
+import { recognitionRejectionMessageKey, type ScoreRecognitionMode, type ScoreRecognitionOption, type ScoreStructurePreflight } from "@score/shared";
+import { needsBigRecognitionLane, RecognitionPlanSummary, RecognitionRejection } from "@score/ui";
 import type { HomeRuntimeCopy } from "../lib/home-runtime-copy";
 
 export function isHomeRecognitionRejected(preflight: ScoreStructurePreflight | null): boolean {
@@ -17,9 +17,7 @@ export function HomeRecognitionPreflightResult({ locale, copy, runtimeCopy, pref
 }) {
   const memory = preflight.memoryAssessment;
   const experience = runtimeCopy.recognitionExperience;
-  if (isHomeRecognitionRejected(preflight)) return <div role="alert" data-recognition-lane="unsupported">
-    {memory?.lane === "unsupported" ? experience.unsupportedLane : runtimeCopy.support[preflight.recognitionSupport!.code] ?? runtimeCopy.support.fallback}
-  </div>;
+  if (isHomeRecognitionRejected(preflight)) return <RecognitionRejection messages={experience} messageKey={recognitionRejectionMessageKey(memory, preflight.recognitionSupport?.code)} supportCode={preflight.recognitionSupport?.code} fallback={runtimeCopy.support[preflight.recognitionSupport?.code ?? ""] ?? runtimeCopy.support.fallback} />;
   const bigLane = needsBigRecognitionLane(memory, recognitionMode);
   return <>
     <strong role="status" data-preflight-recommendation={preflight.recommendation}>{!preflight.complete || preflight.recommendation === "uncertain" ? copy.recommendationUncertain : preflight.recommendation === "simple" ? copy.recommendedSimple : copy.recommendedComplex}</strong>

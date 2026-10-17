@@ -53,6 +53,47 @@ test("actual byte and job percentages are retained, clamped and accessible", () 
 import { PhotoCornerEditor, photoPerspective, validPhotoCorners } from './photo-corner-editor';
 import { RecognitionPurchaseActions, needsBigRecognitionLane } from './recognition-purchase-actions';
 import { SUPPORTED_LOCALES, getRecognitionExperienceMessages } from '@score/i18n';
+import { RecognitionRejection } from './recognition-rejection';
+import { recognitionRejectionMessageKey, type RecognitionMemoryAssessment } from '@score/shared';
+
+const refusedMemory: RecognitionMemoryAssessment = { version: 1, capacityVersion: 'cx33-test', lane: 'unsupported', estimatedMemoryMb: 2304,
+  reasonCodes: ['CAPACITY_CEILING'], waitEstimateSeconds: [0, 0], sourcePageCount: 25, maxPagePixels: 8_415_000, enabled: true };
+
+test('refusal copy honors explicit size and pixel reasons before inferring page-dominated capacity', () => {
+  assert.equal(recognitionRejectionMessageKey(refusedMemory), 'unsupportedPages');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'RECOGNITION_CAPACITY_LIMIT'), 'unsupportedPages');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'PDF_TOTAL_PIXEL_LIMIT'), 'unsupportedPixels');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'PDF_PAGE_PIXEL_LIMIT'), 'unsupportedPixels');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'PDF_PAGE_DIMENSION_LIMIT'), 'unsupportedPixels');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'IMAGE_PIXEL_LIMIT'), 'unsupportedPixels');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, reasonCodes: ['PDF_TOTAL_PIXEL_LIMIT', 'FILE_TOO_LARGE'] }), 'unsupportedFileSize');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'FST_REQ_FILE_TOO_LARGE'), 'unsupportedFileSize');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: 1, reasonCodes: ['PDF_PAGE_COUNT_LIMIT'] }), 'unsupportedPages');
+  assert.equal(recognitionRejectionMessageKey(refusedMemory, 'PDF_INVALID'), null);
+});
+
+test('a complex or oversized photo never receives a page-count refusal', () => {
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: 1, maxPagePixels: 40_000_000 }), 'unsupportedPixels');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: 1, maxPagePixels: 32_000_000 }), 'unsupportedLane');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: 1, maxPagePixels: Number.MAX_SAFE_INTEGER }), 'unsupportedLane');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: 2, maxPagePixels: 24_000_000 }), 'unsupportedLane');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: 2, maxPagePixels: 1_000_000 }), 'unsupportedPages');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, sourcePageCount: Number.NaN }), 'unsupportedLane');
+  assert.equal(recognitionRejectionMessageKey({ ...refusedMemory, lane: 'big' }), null);
+  assert.equal(recognitionRejectionMessageKey(null), null);
+});
+
+test('restored-draft refusal uses the same reason copy and excludes purchase controls in every locale', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const messages = getRecognitionExperienceMessages(locale);
+    for (const [memory, key] of [[refusedMemory, 'unsupportedPages'], [{ ...refusedMemory, sourcePageCount: 1, maxPagePixels: 40_000_000 }, 'unsupportedPixels']] as const) {
+      const html = renderToStaticMarkup(<RecognitionRejection messages={messages} messageKey={recognitionRejectionMessageKey(memory)} />);
+      assert.ok(html.includes(`data-recognition-refusal="${key}"`), locale);
+      assert.ok(html.includes(messages[key]), locale);
+      assert.doesNotMatch(html, /<button|<fieldset|data-recognition-plans|data-upsell-primary/u, locale);
+    }
+  }
+});
 
 test('large-score purchase offers put Starter first and the $2.99 pass second in every locale', () => {
   assert.equal(needsBigRecognitionLane({ lane: 'normal', enabled: true }, 'complex'), false);

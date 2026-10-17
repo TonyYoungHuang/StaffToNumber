@@ -312,7 +312,7 @@ export type JobResultKind = "none" | "final" | "draft";
 
 export type ScoreRecognitionMode = "simple" | "complex";
 export type RecognitionLane = "normal" | "big" | "unsupported";
-export { RECOGNITION_MEMORY_BUDGET, estimateRecognitionMemoryMb, recognitionMemoryLane } from "./recognition-memory.ts";
+export { RECOGNITION_MEMORY_BUDGET, estimateRecognitionMemoryMb, recognitionMemoryLane, recognitionRejectionMessageKey, type RecognitionRejectionMessageKey } from "./recognition-memory.ts";
 export type PhotoCorner = { x: number; y: number };
 export type RecognitionMemoryAssessment = {
   version: 1; capacityVersion: string; lane: RecognitionLane; estimatedMemoryMb: number;

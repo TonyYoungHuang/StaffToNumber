@@ -91,7 +91,7 @@ export const enScoreEntryMessages = {
       imported: "Your file is uploaded and recognition has started. Review it later in My Scores.",
       eyebrow: "Score recognition",
       title: "Upload a PDF or score image",
-      body: "Usually one photo or about 5 A4/Letter PDF pages fits the standard lane; PDFs from about 6 pages or larger files may need the large-file lane. The file check decides; there is no fixed plan page allowance. Simple recognition costs 1 credit per task; complex recognition costs 5. Page count affects the lane, not a per-page multiplier. Partial delivery returns the undelivered share of the quoted credits; failed or cancelled work returns processing credits. These are credit returns, not cash refunds.",
+      body: "Standard processing usually fits one score photo or an A4/Letter PDF of about 1–5 pages; large-file processing usually fits about 6–24 pages. A4/Letter PDFs of about 25 pages or more may exceed the processing limit. Files over 20 MiB, images over 32 MP, or PDF pages beyond the preflight pixel limit cannot be accepted. Page counts are approximate: actual acceptance and processing depend on file size, page layout and preflight. Split PDFs into files of about 24 pages or fewer, compress oversized files or images, or import MusicXML. Rejected files incur no payment or credit charges. Simple recognition costs 1 credit per task; complex recognition costs 5. Page count affects the lane, not a per-page multiplier. Partial delivery returns the undelivered share of the quoted credits; failed or cancelled work returns processing credits. These are credit returns, not cash refunds.",
       dropTitle: "Choose a PDF or image",
       dropBody: "Supports PDF, PNG, JPG, WEBP, and TIFF.",
       empty: "No scan selected yet.",

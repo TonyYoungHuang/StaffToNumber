@@ -3,7 +3,8 @@
 import { useFlowMessages } from "../lib/flow-messages/client";
 
 import { formatMessage, formatNumber, getScoreRecognitionSupportMessage } from "@score/i18n";
-import { ProcessingProgress, needsBigRecognitionLane, RecognitionPlanSummary } from "@score/ui";
+import { recognitionRejectionMessageKey } from "@score/shared";
+import { ProcessingProgress, needsBigRecognitionLane, RecognitionPlanSummary, RecognitionRejection } from "@score/ui";
 import { isScoreRecognitionRejected, type ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -29,9 +30,7 @@ export function ScoreRecognitionPreflight({ state, onRetry, mode, compact = fals
       <p className="form-status error">{copy.failed}</p><p className="helper-copy">{state.error}</p>
       <button type="button" className="button button-secondary" onClick={onRetry}>{state.stagedUnavailable ? flow.stagedUpload.retry : copy.retry}</button>
     </div> : null}
-    {result && rejected ? <div role="alert" className="form-status error" data-recognition-lane="unsupported">
-      {result.memoryAssessment?.lane === "unsupported" ? experience.unsupportedLane : getScoreRecognitionSupportMessage(locale, result.recognitionSupport!.code)}
-    </div> : result ? <div className="stack-sm" role="status" data-preflight-recommendation={result.recommendation}>
+    {result && rejected ? <RecognitionRejection className="form-status error" messages={experience} messageKey={recognitionRejectionMessageKey(result.memoryAssessment, result.recognitionSupport?.code)} supportCode={result.recognitionSupport?.code} fallback={getScoreRecognitionSupportMessage(locale, result.recognitionSupport?.code ?? "RECOGNITION_CAPACITY_LIMIT")} /> : result ? <div className="stack-sm" role="status" data-preflight-recommendation={result.recommendation}>
       {result.memoryAssessment ? <div data-recognition-lane={effectiveBigLane ? "big" : "normal"}><strong>{effectiveBigLane ? experience.bigLane : experience.normalLane}</strong>{effectiveBigLane ? <><p data-large-file-reason>{formatMessage(experience.bigReason, { pages: formatNumber(result.sourcePageCount, locale) })}</p><p>{experience.bigBody}</p></> : <p>{experience.normalBody}</p>}{result.memoryAssessment.waitEstimateSeconds[1] > 0 ? <p>{formatMessage(experience.wait, { minutes: formatNumber(Math.ceil(result.memoryAssessment.waitEstimateSeconds[1] / 60), locale) })}</p> : null}</div> : null}
       <RecognitionPlanSummary messages={experience} />
       {result.recognitionSupport ? <p className={result.recognitionSupport.supported ? "helper-copy" : "form-status error"} role={result.recognitionSupport.supported ? undefined : "alert"}>{getScoreRecognitionSupportMessage(locale, result.recognitionSupport.code)}</p> : null}

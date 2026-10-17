@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeBrowserApiError, resolveRecognitionRequestFailure, type SupportedLocale } from "@score/i18n";
-import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
-import { ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
+import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, recognitionRejectionMessageKey, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
+import { ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionRejection, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
@@ -492,7 +492,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     <section id="free-scan" className="surface-panel stack-lg flow-import">
       <h2 className="card-title">{taskIntent ? taskCopy.tasks[taskIntent.task] : flow.importTitle}</h2>
       {serverDraft ? <div className="stack-sm" data-server-upload-draft={serverDraft.id}>
-        {serverDraft.memoryAssessment?.lane === "unsupported" ? <div role="alert" data-recognition-lane="unsupported">{experience.unsupportedLane}</div> : <>
+        {serverDraft.memoryAssessment?.lane === "unsupported" ? <RecognitionRejection messages={experience} messageKey={recognitionRejectionMessageKey(serverDraft.memoryAssessment)} /> : <>
         <p className="body-copy">{serverDraftCopy.ready}</p>
         {serverDraft.memoryAssessment ? <div data-recognition-lane={serverDraft.memoryAssessment.lane}><strong>{serverDraft.memoryAssessment.lane === "big" ? experience.bigLane : experience.normalLane}</strong>{serverDraft.memoryAssessment.lane === "big" ? <><p data-large-file-reason>{formatMessage(experience.bigReason, { pages: formatNumber(serverDraft.memoryAssessment.sourcePageCount, locale) })}</p><p>{experience.bigBody}</p></> : <p>{experience.normalBody}</p>}</div> : null}
         <RecognitionPlanSummary messages={experience} />
