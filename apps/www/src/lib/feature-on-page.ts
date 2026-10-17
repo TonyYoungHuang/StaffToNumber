@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "./recognition-pricing-copy";
 import { getScannerFaq } from "./scanner-faq";
 import type { SupportedLocale } from "@score/i18n";
 import { spanishFeatureOnPage } from "./feature-on-page-es";
@@ -30,7 +31,7 @@ export const englishFeatureOnPage: Record<string, FeatureOnPageContent> = {
       "Compare the result with your original and fix misread notes before export.",
     ],
     faq: [
-      { question: "Is the sheet music scanner free?", answer: "A free account includes one complete score project, including a multi-page PDF or score image, and 25 credits per month. Keep editing, transposing and playing that score. Eligible server jobs use credits; additional projects and capacity require a paid plan." },
+      { question: "Is the sheet music scanner free?", answer: getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").passScope + " " + getRecognitionPricingCopy("en").starterScope + " " + getRecognitionPricingCopy("en").laneGuide },
       { question: "Can it scan handwritten sheet music?", answer: "The scanner is intended for printed staff notation. Handwritten notes are not reliably supported. For a handwritten score, enter structured Jianpu or use a notation editor to prepare MusicXML instead." },
       { question: "Does it work with phone photos?", answer: "Yes, you can upload supported image files from your phone. Photograph the full page in even light, hold the camera parallel to the paper and avoid blur. Check the recognized notes before relying on them." },
       { question: "How long does one page take to scan?", answer: "There is no fixed per-page time. Processing depends on image quality, notation complexity, page count and the current queue. The app shows the job status; wait for it to finish before starting another scan of the same file." },

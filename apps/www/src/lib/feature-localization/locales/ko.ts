@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const koFeaturePages = {
@@ -54,7 +55,7 @@ export const koFeaturePages = {
     "PDF·이미지 악보 스캐너", "교정을 포함한 OMR 가져오기", "PDF 또는 악보 이미지를 스캔해 편집 가능한 MusicXML 후보를 만들고 진단을 검토한 뒤 OMR 오류를 온라인에서 교정합니다.",
     ["악보 스캐너", "PDF 악보 스캔", "온라인 OMR", "스캔 MusicXML"], ["OMR 업로드", "Audiveris 워커", "MusicXML 출력", "진단 패널"],
     [["PDF 또는 이미지 업로드", "원본을 저장하고 악보 프로젝트에 연결된 OMR 가져오기 작업을 만듭니다."], ["Audiveris 인식 실행", "설정된 경우 MusicXML을 생성하고 편집 가능한 후보 리비전을 만듭니다."], ["후보 교정", "진단과 미리 보기를 확인하고 인식 오류를 고친 뒤 내보내기나 연습 자료 생성을 이어갑니다."]],
-    [["후보 우선 인식", "OMR 결과는 신뢰도와 진단을 가진 편집 후보이며 완성 악보를 보장하지 않습니다."], ["완전한 프로젝트 하나 무료", "무료 계정은 여러 페이지 PDF 또는 악보 이미지 한 건을 스캔하고 그 프로젝트에서 교정, 재생, 조옮김, 숫자보, 공유와 내보내기를 계속합니다."]],
+    [["후보 우선 인식", "OMR 결과는 신뢰도와 진단을 가진 편집 후보이며 완성 악보를 보장하지 않습니다."], ["완전한 프로젝트 하나 무료", getRecognitionPricingCopy("ko").freeScope]],
     "스캔은 가져오기와 교정 과정입니다. 모든 PDF나 사진을 자동으로 완벽하게 인식한다고 보장하지 않습니다.",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(
@@ -75,7 +76,7 @@ export const koFeaturePages = {
     "ScoreTransposer 요금", "변환 및 프로젝트 작업 접근", "완전한 악보 프로젝트 하나를 무료로 시작하고 추가 프로젝트와 월간 서버 작업이 필요하면 Starter 또는 Converter Pro를 선택하세요.",
     ["ScoreTransposer 요금", "악보 변환 가격", "악보 도구 플랜", "악보 크레딧"], ["결제", "활성화 코드", "사용 권한", "내보내기 제한"],
     [["플랜 선택", "개인 처리 또는 일괄 작업에 맞춰 월간이나 연간 플랜을 선택합니다."], ["로그인하고 결제", "주문을 계정 권한에 연결하고 지원되는 지역에서 해당 결제 화면으로 이동합니다."], ["프로젝트 작업 사용", "프로젝트 생성, 원본 가져오기, 교정, 조옮김, 연습과 승인 리비전 내보내기를 수행합니다."]],
-    [["명확한 용량 경계", "무료 계정에는 평생 1회 무료 악보 스캔 프로젝트, 내보내기와 도구에 사용할 수 있는 월 25크레딧, 50 MB 파일 저장 공간이 포함됩니다. 여러 페이지 PDF 전체나 악보 이미지를 스캔할 수 있습니다. 새 악보를 스캔하려면 한 곡 이용권(One Score Pass) 또는 요금제가 필요합니다. Starter는 월 50크레딧, Converter Pro는 월 200크레딧을 포함합니다."], ["운영 지원", "결제, 활성화, 업로드, 작업과 내보내기 문제를 공통 지원 흐름에서 추적합니다."]],
+    [["명확한 용량 경계", getRecognitionPricingCopy("ko").freeScope + " " + getRecognitionPricingCopy("ko").passScope + " " + getRecognitionPricingCopy("ko").starterScope + " " + getRecognitionPricingCopy("ko").proCredits], ["운영 지원", "결제, 활성화, 업로드, 작업과 내보내기 문제를 공통 지원 흐름에서 추적합니다."]],
     "공개 카탈로그가 표시 가격의 기준입니다. 모든 유료 플랜에 일치하는 Price ID가 설정될 때까지 결제는 비활성화됩니다.",
   ),
 } satisfies FeaturePageTranslationCatalog;

@@ -214,7 +214,7 @@ export type BillingMessageCatalog = {
     };
   };
   billing: {
-    page: { eyebrow: string; title: string; body: string };
+    page: { eyebrow: string; title: string; body: string; displayBody: string };
     manager: BillingManagerCopy;
   };
   plans: BillingPlanMessages;

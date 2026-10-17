@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeBrowserApiError, resolveRecognitionRequestFailure, type SupportedLocale } from "@score/i18n";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
-import { ProcessingProgress, PhotoCornerEditor, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
+import { ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
@@ -492,8 +492,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     <section id="free-scan" className="surface-panel stack-lg flow-import">
       <h2 className="card-title">{taskIntent ? taskCopy.tasks[taskIntent.task] : flow.importTitle}</h2>
       {serverDraft ? <div className="stack-sm" data-server-upload-draft={serverDraft.id}>
+        {serverDraft.memoryAssessment?.lane === "unsupported" ? <div role="alert" data-recognition-lane="unsupported">{experience.unsupportedLane}</div> : <>
         <p className="body-copy">{serverDraftCopy.ready}</p>
-        {serverDraft.memoryAssessment ? <p data-recognition-lane={serverDraft.memoryAssessment.lane}>{serverDraft.memoryAssessment.lane === "unsupported" ? experience.unsupportedLane : serverDraft.memoryAssessment.lane === "big" ? experience.bigLane : experience.normalLane}</p> : null}
+        {serverDraft.memoryAssessment ? <div data-recognition-lane={serverDraft.memoryAssessment.lane}><strong>{serverDraft.memoryAssessment.lane === "big" ? experience.bigLane : experience.normalLane}</strong>{serverDraft.memoryAssessment.lane === "big" ? <><p data-large-file-reason>{formatMessage(experience.bigReason, { pages: formatNumber(serverDraft.memoryAssessment.sourcePageCount, locale) })}</p><p>{experience.bigBody}</p></> : <p>{experience.normalBody}</p>}</div> : null}
+        <RecognitionPlanSummary messages={experience} />
         <p>{serverDraft.filename} · {serverDraft.mode === "complex" ? preflightCopy.complexTitle : preflightCopy.simpleTitle} · {serverDraftCopy.credits}: {formatNumber(serverDraft.creditCost, locale)}</p>
         <div className="button-row">
           {serverDraft.taskId ? <Link href={scoreTaskDocumentPath(serverDraft.documentId, taskIntent, serverDraft.mode === "complex")} className="button button-primary">{copy.list.open}</Link>
@@ -505,6 +507,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
             }}>{flow.upgrade}</button>}
           <button type="button" className="button button-secondary" disabled={busy} onClick={() => setDraftRestoreAttempt(n => n + 1)}>{flow.retry}</button>
         </div>
+        </>}
       </div> : null}
       {taskIntent ? <div className="stack-sm" data-score-task={taskIntent.task}>
         <p className="body-copy">{taskCopy.body}</p>

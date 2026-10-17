@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "./recognition-pricing-copy";
 import { siteConfig } from "./site";
 
 export type PlatformFeaturePage = {
@@ -460,7 +461,7 @@ export const platformFeaturePages: PlatformFeaturePage[] = [
     details: [
       {
         title: "Clear capacity boundaries",
-        body: "Free includes one complete project and 25 credits monthly; Starter includes 50 credits and Converter Pro includes 200. Current project-level tools remain available on the free score.",
+        body: getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").passScope + " " + getRecognitionPricingCopy("en").starterScope + " " + getRecognitionPricingCopy("en").proCredits,
       },
       {
         title: "Operational support",

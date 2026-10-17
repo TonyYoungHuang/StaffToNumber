@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
 const paidBenefits = [
@@ -12,14 +13,14 @@ export const zhTWHomepage = {
     schemaDescription: "上傳一份完整的樂譜 PDF、圖片、MusicXML 檔案，或獲准使用的音訊／影片來源。建立可供檢查的結構化樂譜，再繼續編輯、轉換、移調、播放、分享與匯出。",
     heroKicker: "AI 樂譜辨識與結構化樂譜工作區",
     heroTitle: ["線上樂譜轉換與編輯，", "掃描、移調、播放並匯出"],
-    heroIntro: ["上傳 PDF、樂譜圖片、MusicXML 或音訊／影片來源。", "先建立可供人工檢查的結構化樂譜。", "接著編輯、移調、轉換、播放並匯出。"],
+    heroIntro: ["上傳 PDF、樂譜圖片、MusicXML 或音訊／影片來源。", "先建立可供人工檢查的結構化樂譜。", getRecognitionPricingCopy("zh-TW").freeLead],
     heroPoints: [
       ["結果可供檢查", "將來源證據、診斷資訊與不確定的位置保留在一起。"],
       ["同一份樂譜持續使用", "編輯、簡譜、移調與播放都回到同一個專案。"],
       ["開放格式方便攜出", "透過 MusicXML 交換，並保留 MIDI 與專案快照。"],
     ],
     heroCases: "查看實際案例",
-    facts: [["永久免費", "一個完整樂譜專案"], ["輸入", "完整 PDF／圖片／MusicXML"], ["持續處理", "編輯／簡譜／移調／播放"]],
+    facts: [[getRecognitionPricingCopy("zh-TW").freeShort, getRecognitionPricingCopy("zh-TW").freeUnit], ["輸入", "完整 PDF／圖片／MusicXML"], ["持續處理", "編輯／簡譜／移調／播放"]],
     stepsKicker: "三步驟工作流程",
     stepsTitle: "只需三個步驟，將來源檔案變成可用的樂譜",
     steps: [
@@ -82,22 +83,22 @@ export const zhTWHomepage = {
     creditRulesTitle: "目前如何計算點數",
     creditRulesBody: "任務建立時預留點數；失敗或取消後自動退回。",
     creditRules: [
-      ["$0", "一個完整免費專案", "免費帳戶包含終身 1 次免費樂譜掃描專案、每月 25 點數（用於匯出與工具），以及 50 MB 檔案儲存空間。可掃描完整的多頁 PDF 或樂譜圖片；掃描新樂譜需要單曲處理包（One Score Pass）或方案。"],
+      ["$0", "一個完整免費專案", getRecognitionPricingCopy("zh-TW").freeScope],
       ["預留點數", "點數預留與退回", "任務建立時預留點數；失敗或取消後自動退回。同步移調或簡譜預覽不會自動扣點。"],
       ["每月重置", "方案額度", "Starter 每月含 50 點；Converter Pro 每月含 200 點。未使用的額度不會延續到下個月。"],
     ],
-    priceNote: "Free、Starter 與 Converter Pro 使用相同的現有專案級工具，主要差異在於樂譜處理容量。只有所選的 Stripe 或 Paddle 方案已設定專屬 Price ID 時，才會進入結帳流程。",
+    priceNote: getRecognitionPricingCopy("zh-TW").laneGuide,
     faqKicker: "常見問題",
     faqTitle: "開始前想了解的問題",
     faqs: [
-      ["辨識結果會 100% 準確嗎？", "不會。PDF、圖片、音訊與影片來源會先產生候選結果；較複雜的內容仍需人工檢查。"],
+      ["辨識結果會 100% 準確嗎？", getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").laneGuide],
       ["之後可以移調或建立簡譜嗎？", "可以。編輯、簡譜、移調、播放與匯出都會讀取同一個已接受的樂譜專案。"],
       ["支援哪些匯出格式？", "MusicXML 是主要交換格式，另外支援 MIDI、Score JSON、簡譜文字，以及目前部署環境中已驗證的匯出格式。"],
       ["現在可以使用音訊轉樂譜嗎？", "此功能以實驗性功能開放，並會清楚標示格式、額度與人工修正界線。"],
       ["上傳的檔案會公開嗎？", "不會。私人專案不會自動成為公開案例。"],
     ],
     finalKicker: "從一份完整樂譜開始",
-    finalTitle: "免費建立一個完整專案，再決定是否處理更多樂譜。",
+    finalTitle: getRecognitionPricingCopy("zh-TW").freeLead,
     finalAction: "免費編輯",
   },
   media: {
@@ -122,19 +123,19 @@ export const zhTWHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "樂譜辨識", title: "上傳 PDF 或樂譜圖片", body: "登入後上傳一份完整的多頁 PDF 或樂譜圖片。保留這個免費專案，持續修正、播放、轉換、分享與匯出。", action: "免費建立" },
+      recognize: { label: "樂譜辨識", title: "上傳 PDF 或樂譜圖片", body: getRecognitionPricingCopy("zh-TW").freeScope, action: "免費建立" },
       process: { label: "處理樂譜", title: "匯入結構化樂譜", body: "在同一個樂譜專案中持續編輯、移調、轉換、播放與匯出。", action: "開啟樂譜工作區" },
       transcribe: { label: "音訊轉樂譜", title: "匯入音訊或影片", body: "建立可供檢查的 MIDI 與樂譜候選結果；複雜的多聲部內容仍需修正。", action: "建立候選結果", unavailableAction: "查看實驗功能狀態" },
     },
     checking: "正在檢查登入狀態...",
-    signedIn: "已登入。請選擇一份完整樂譜，建立你的免費專案。",
+    signedIn: getRecognitionPricingCopy("zh-TW").freeLead,
     signInFirst: "請先登入或註冊；完成後仍會停留在此首頁。",
     googleLabel: "使用 Google 帳戶繼續",
     googleLoading: "正在載入 Google 登入…",
     googleFailed: "Google 登入暫時無法使用，請重試或使用電子郵件登入。",
     googleDivider: "或使用電子郵件登入",
     authTitle: "登入以免費建立",
-    authBody: "完成驗證後，此視窗會自動關閉。選擇一份完整的 PDF 或樂譜圖片，再進行修正並使用目前的專案級工具。",
+    authBody: getRecognitionPricingCopy("zh-TW").freeScope,
     login: "登入",
     register: "註冊",
     email: "電子郵件",
@@ -172,12 +173,12 @@ export const zhTWHomepage = {
   },
   plans: {
     free: {
-      badge: "永久免費", name: "Free", cycle: "終身", unitPrice: "一個完整樂譜專案", credits: "終身 1 個免費辨識專案 · 每月 25 點（匯出等功能）", audience: "使用一份完整樂譜，體驗所有目前的專案級工具",
-      benefits: ["終身建立並保留一個完整樂譜專案", "線上樂譜編輯、聲部分譜副本產生器 Beta 與即時協作 Beta", "練習播放、瀏覽器錄音與練習回饋 Beta，以及智慧移調", "五線譜 ↔ 簡譜與 MusicXML ↔ MIDI 轉換", "在該免費樂譜中使用目前已推出的匯出與專案級工具"],
-      resources: ["每月 25 點用於匯出等功能，逐月重置；辨識新樂譜需單曲處理包或方案", "50 MB 檔案儲存空間", "開放樂譜庫與 CC0 下載", "無須信用卡；免費專案持續保留"], cta: "建立免費樂譜",
+      badge: getRecognitionPricingCopy("zh-TW").freeShort, name: "Free", cycle: "終身", unitPrice: getRecognitionPricingCopy("zh-TW").freeUnit, credits: "終身 1 個免費辨識專案 · 每月 25 點（匯出等功能）", audience: getRecognitionPricingCopy("zh-TW").freeLead,
+      benefits: [getRecognitionPricingCopy("zh-TW").freeUnit, "線上樂譜編輯、聲部分譜副本產生器 Beta 與即時協作 Beta", "練習播放、瀏覽器錄音與練習回饋 Beta，以及智慧移調", "五線譜 ↔ 簡譜與 MusicXML ↔ MIDI 轉換", "在該免費樂譜中使用目前已推出的匯出與專案級工具"],
+      resources: [getRecognitionPricingCopy("zh-TW").freeScope, "50 MB 檔案儲存空間", "開放樂譜庫與 CC0 下載", "無須信用卡；免費專案持續保留"], cta: "建立免費樂譜",
     },
     "starter-monthly": {
-      badge: "彈性月繳", name: "Starter", cycle: "月繳", unitPrice: "每點 $0.16", credits: "每月 50 點", audience: "適合固定處理個人樂譜的使用者", benefits: ["可處理一個免費樂譜專案以外的更多專案", ...paidBenefits], resources: ["每月 50 點", "250 MB 檔案儲存空間", "個人樂譜庫、修訂記錄與開放樂譜目錄", "按月續訂，無須長期綁約"], cta: "選擇 Starter 月繳",
+      badge: "彈性月繳", name: "Starter", cycle: "月繳", unitPrice: "每點 $0.16", credits: "每月 50 點", audience: getRecognitionPricingCopy("zh-TW").starterScope, benefits: ["可處理一個免費樂譜專案以外的更多專案", ...paidBenefits], resources: [getRecognitionPricingCopy("zh-TW").starterCredits, "250 MB 檔案儲存空間", "個人樂譜庫、修訂記錄與開放樂譜目錄", "按月續訂，無須長期綁約"], cta: "選擇 Starter 月繳",
     },
     "starter-annual": {
       badge: "Starter 年繳", name: "Starter", cycle: "年繳", unitPrice: "每點 $0.082", credits: "每月 50 點", audience: "適合希望以較低單點成本長期使用的個人使用者", benefits: ["包含 Starter 月繳目前的所有功能", ...paidBenefits], resources: ["每月 50 點，逐月重置", "250 MB 檔案儲存空間", "相較於連續月繳十二個月，可省 $46.88", "個人樂譜庫、修訂記錄與開放樂譜目錄"], cta: "選擇 Starter 年繳",

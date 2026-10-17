@@ -21,7 +21,7 @@ export const enScoreEntryMessages = {
     library: {
       eyebrow: "Score workspace",
       title: "Scan, manage, and keep working on your scores",
-      body: "Upload a PDF or score image for a free structure check, then start simple recognition in one tap when your free project is available. You can also open a saved score to continue editing.",
+      body: "The free file check shows page count and whether the standard or large-file lane is needed; it uses no scan allowance or credits. Your unused lifetime free simple scan works in the standard lane.",
     },
     newScore: {
       eyebrow: "Create a new score",
@@ -32,7 +32,7 @@ export const enScoreEntryMessages = {
       choices: {
         scan: {
           title: "Scan a PDF or score image",
-          body: "For printed music, scans, and PDFs. New accounts can create one lifetime free project from a complete multi-page PDF or score image.",
+          body: "1 lifetime free simple scan in the standard lane, usually a photo or an A4/Letter PDF of about 5 pages or fewer, subject to the file check. Your 25 monthly credits support work on existing projects; they do not unlock scans of new scores.",
         },
         jianpu: { title: "Enter numbered notation", body: "Enter numbered notes to create a staff score." },
         musicxml: { title: "Import from notation software", body: "For MusicXML exports from MuseScore, Sibelius, Finale, and similar apps." },
@@ -44,7 +44,7 @@ export const enScoreEntryMessages = {
     source: {
       chooseAnother: "Choose another source",
       headings: {
-        scan: { eyebrow: "Create a new score", title: "Scan a PDF or score image", body: "Choose a file for a free structure check, then start simple recognition in one tap when your free project is available." },
+        scan: { eyebrow: "Create a new score", title: "Scan a PDF or score image", body: "The free file check shows page count and whether the standard or large-file lane is needed; it uses no scan allowance or credits. Your unused lifetime free simple scan works in the standard lane." },
         jianpu: { eyebrow: "Create a new score", title: "Create a staff score from numbered notation", body: "Enter your notation and create the score. This page is only for numbered notation." },
         musicxml: { eyebrow: "Create a new score", title: "Import from notation software", body: "Choose a MusicXML export. This page is only for file import." },
         midi: { eyebrow: "Create a new score", title: "Create a score from MIDI", body: "Choose one MIDI file. This page is only for MIDI import." },
@@ -91,17 +91,17 @@ export const enScoreEntryMessages = {
       imported: "Your file is uploaded and recognition has started. Review it later in My Scores.",
       eyebrow: "Score recognition",
       title: "Upload a PDF or score image",
-      body: "Turn a printed score or PDF into a score you can review and correct. Complex notation may need a few manual fixes.",
+      body: "Usually one photo or about 5 A4/Letter PDF pages fits the standard lane; PDFs from about 6 pages or larger files may need the large-file lane. The file check decides; there is no fixed plan page allowance. Simple recognition costs 1 credit per task; complex recognition costs 5. Page count affects the lane, not a per-page multiplier. Partial delivery returns the undelivered share of the quoted credits; failed or cancelled work returns processing credits. These are credit returns, not cash refunds.",
       dropTitle: "Choose a PDF or image",
       dropBody: "Supports PDF, PNG, JPG, WEBP, and TIFF.",
       empty: "No scan selected yet.",
       button: "Start recognition",
       accessLoading: "Checking free-scan availability...",
       freeEyebrow: "Signed in · edit for free",
-      freeBody: "Upload one complete multi-page PDF or score image to create your lifetime free score project. Keep correcting, playing, transposing, converting, sharing, and exporting it.",
+      freeBody: "1 lifetime free simple scan in the standard lane, usually a photo or an A4/Letter PDF of about 5 pages or fewer, subject to the file check. Your 25 monthly credits support work on existing projects; they do not unlock scans of new scores. One Score Pass: US$2.99 once, 10 credits for one score and its extracted parts, no expiry. Starter: US$7.99/month, 50 monthly credits for multiple scores. Both include the standard and large-file lanes, subject to the file check, with no extra lane fee.",
       exhaustedEyebrow: "Free editing scan used",
       exhaustedTitle: "This account has created its one lifetime free score project.",
-      exhaustedBody: "Keep correcting, playing, transposing, converting, versioning, sharing, and exporting that complete score. Upgrade only to create and process more scores.",
+      exhaustedBody: "Your lifetime free simple scan has been used. Keep working on the saved project. For another score or the large-file lane, choose a US$2.99 One Score Pass with 10 credits or Starter at US$7.99/month with 50 credits.",
       exhaustedLibrary: "Continue with the free score",
       exhaustedUpgrade: "Unlock full access",
     },

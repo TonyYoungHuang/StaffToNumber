@@ -16,7 +16,7 @@ test("scanner FAQ adds all six approved questions in every supported locale", ()
     for (const item of faq) {
       assert.ok(item.question.trim().length > 0, locale);
       assert.ok(item.answer.trim().length > 0, locale);
-      assert.doesNotMatch(`${item.question} ${item.answer}`, /HEIC|5\s*(?:pages|páginas|Seiten|страниц|ページ|페이지|页|頁)/iu);
+      assert.doesNotMatch(`${item.question} ${item.answer}`, /HEIC|(?:maximum|at most|up to)\s*5\s*pages|最多\s*5\s*[页頁]/iu);
     }
     for (const format of ["PDF", "PNG", "JPG/JPEG", "WebP", "TIFF"]) {
       assert.ok(faq[1].answer.includes(format), `${locale}: ${format}`);

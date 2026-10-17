@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const deFeaturePages = {
@@ -54,7 +55,7 @@ export const deFeaturePages = {
     "Notenscanner für PDF und Bilder", "OMR-Import mit Korrektur", "Scanne eine PDF- oder Bildpartitur, erzeuge einen bearbeitbaren MusicXML-Kandidaten, prüfe Diagnosen und korrigieren Sie OMR-Fehler online.",
     ["Notenscanner", "Noten PDF scannen", "OMR online", "Scan zu MusicXML"], ["OMR-Upload", "Audiveris-Worker", "MusicXML-Ausgabe", "Diagnosepanel"],
     [["PDF oder Bild hochladen", "Die Quelle wird gespeichert und ein OMR-Auftrag mit dem Projekt verknüpft."], ["Audiveris ausführen", "Wenn konfiguriert, erzeugt der Dienst MusicXML und eine bearbeitbare Kandidatenrevision."], ["Kandidaten korrigieren", "Prüfen Sie Diagnose und Vorschau, korrigiere Fehler und exportiere oder erstelle Übungsmaterial."]],
-    [["Kandidat statt Endergebnis", "OMR-Ergebnisse behalten Konfidenz und Diagnosen für menschliche Korrekturen."], ["Ein vollständiges Projekt kostenlos", "Ein Gratis-Konto scannt eine vollständige mehrseitige PDF oder ein Bild und kann dieses Projekt weiter korrigieren, abspielen, transponieren, in Jianpu umwandeln, teilen und exportieren."]],
+    [["Kandidat statt Endergebnis", "OMR-Ergebnisse behalten Konfidenz und Diagnosen für menschliche Korrekturen."], [getRecognitionPricingCopy("de").freeScope, "Ein Gratis-Konto scannt eine vollständige mehrseitige PDF oder ein Bild und kann dieses Projekt weiter korrigieren, abspielen, transponieren, in Jianpu umwandeln, teilen und exportieren."]],
     "Scannen bedeutet Import plus Korrektur; perfekte automatische Erkennung aller PDFs und Fotos wird nicht garantiert.",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(
@@ -75,7 +76,7 @@ export const deFeaturePages = {
     "ScoreTransposer-Preise", "Zugang zu Konvertierung und Projekten", "Starten Sie kostenlos mit einem vollständigen Notenprojekt und wählen Sie Starter oder Converter Pro für mehr Projekte und monatliche Serverkapazität.",
     ["ScoreTransposer Preise", "Notenkonverter Preis", "Notenwerkzeug Tarife", "Noten Credits"], ["Checkout", "Aktivierungscodes", "Berechtigungen", "Exportsteuerung"],
     [["Tarif wählen", "Wählen Sie monatlich oder jährlich passend zur Einzel- oder Stapelverarbeitung."], ["Anmelden und bezahlen", "Bestellung und Kontorechte werden verbunden; aktive Regionen gehen zum passenden Checkout."], ["Projekte nutzen", "Erstellen Sie, importiere, korrigiere, transponiere, übe und exportiere die akzeptierte Revision."]],
-    [["Klare Kapazitäten", "Free enthält ein vollständiges Projekt und monatlich 25 Credits, Starter 50 und Converter Pro 200."], ["Betrieblicher Support", "Checkout, Aktivierung, Upload, Aufträge und Exporte werden im gemeinsamen Support verfolgt."]],
+    [["Klare Kapazitäten", getRecognitionPricingCopy("de").freeScope + " " + getRecognitionPricingCopy("de").passScope + " " + getRecognitionPricingCopy("de").starterScope + " " + getRecognitionPricingCopy("de").proCredits], ["Betrieblicher Support", "Checkout, Aktivierung, Upload, Aufträge und Exporte werden im gemeinsamen Support verfolgt."]],
     "Wählen Sie Einmalkauf oder Abonnement. Preis, Laufzeit und mögliche Steuern werden vor der Bestätigung angezeigt.",
   ),
 } satisfies FeaturePageTranslationCatalog;

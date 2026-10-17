@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const zhTWFeaturePages = {
@@ -54,7 +55,7 @@ export const zhTWFeaturePages = {
     "PDF 與圖片樂譜掃描辨識", "OMR 匯入與人工校正", "上傳 PDF 或樂譜圖片，建立可編輯的 MusicXML 候選稿、檢查診斷，並在線校正 OMR 錯誤。",
     ["樂譜掃描辨識", "PDF 樂譜掃描", "線上 OMR", "掃描樂譜轉 MusicXML"], ["OMR 上傳", "Audiveris 工作", "MusicXML 輸出", "診斷面板"],
     [["上傳 PDF 或圖片", "系統儲存來源，並建立與樂譜專案關聯的 OMR 匯入工作。"], ["執行 Audiveris 辨識", "設定完成時，服務產生 MusicXML 並建立可編輯候選修訂。"], ["校正候選稿", "檢查診斷、預覽樂譜、修正辨識錯誤，再匯出或建立練習素材。"]],
-    [["候選稿而非最終答案", "OMR 結果保留信心與診斷，方便人工修正。"], ["免費建立一個完整專案", "免費帳戶可掃描一份完整多頁 PDF 或一張樂譜圖片，並在該專案中繼續校正、播放、移調、轉簡譜、分享與匯出。"]],
+    [["候選稿而非最終答案", "OMR 結果保留信心與診斷，方便人工修正。"], ["免費建立一個完整專案", getRecognitionPricingCopy("zh-TW").freeScope]],
     "掃描辨識是匯入加校正的流程；不承諾所有 PDF 或照片都能自動得到完美結果。",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(
@@ -75,7 +76,7 @@ export const zhTWFeaturePages = {
     "ScoreTransposer 價格與使用方案", "轉換與專案流程的使用權限", "先免費建立一個完整樂譜專案；需要更多專案和每月伺服器工作容量時，再選擇 Starter 或 Converter Pro。",
     ["ScoreTransposer 價格", "樂譜轉換器價格", "五線譜工具方案", "樂譜點數方案"], ["結帳", "啟用碼", "帳戶權限", "匯出門檻"],
     [["選擇使用方案", "依個人處理或批次工作需求選擇月付或年付方案。"], ["登入並進入結帳", "帳戶權限與訂單綁定；正式開放的渠道會前往對應結帳頁。"], ["使用完整流程", "建立專案、匯入來源、校正、移調、播放並匯出確認修訂。"]],
-    [["清楚的容量界線", "免費帳戶包含終身 1 次免費樂譜掃描專案、每月 25 點數（用於匯出與工具），以及 50 MB 檔案儲存空間。可掃描完整的多頁 PDF 或樂譜圖片；掃描新樂譜需要單曲處理包（One Score Pass）或方案。Starter 每月 50 點，Converter Pro 每月 200 點。"], ["可追蹤的營運支援", "結帳、啟用、上傳、工作與匯出問題都進入統一支援流程。"]],
+    [["清楚的容量界線", getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").passScope + " " + getRecognitionPricingCopy("zh-TW").starterScope + " " + getRecognitionPricingCopy("zh-TW").proCredits], ["可追蹤的營運支援", "結帳、啟用、上傳、工作與匯出問題都進入統一支援流程。"]],
     "公開方案是顯示價格的來源；每個付費方案都具備相符 Price ID 前，結帳功能維持關閉。",
   ),
 } satisfies FeaturePageTranslationCatalog;

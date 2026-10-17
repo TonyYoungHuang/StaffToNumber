@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const zhCNFeaturePages = {
@@ -70,7 +71,7 @@ export const zhCNFeaturePages = {
     ["乐谱扫描识别", "PDF 识谱", "在线 OMR", "扫描乐谱转 MusicXML"],
     ["识谱上传", "Audiveris 任务", "MusicXML 输出", "诊断面板"],
     [["上传 PDF 或图片", "系统保存来源文件，并创建与乐谱工程关联的识谱任务。"], ["运行乐谱识别", "识别服务生成 MusicXML，并创建可以继续编辑的候选版本。"], ["校正候选稿", "检查诊断、预览乐谱、修正错误，再导出或生成练习素材。"]],
-    [["候选稿而不是最终答案", "识别结果保留置信度和诊断信息，方便人工修正。"], ["一个完整免费项目", "免费账户可以识别一份完整多页 PDF 或一张乐谱图片，并在该项目内校正、播放、移调、转简谱、分享和导出。"]],
+    [["候选稿而不是最终答案", "识别结果保留置信度和诊断信息，方便人工修正。"], ["一个完整免费项目", getRecognitionPricingCopy("zh-CN").freeScope]],
     "识谱是“导入加校正”的流程，不承诺所有 PDF 和照片都能自动得到完美结果。",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(
@@ -97,7 +98,7 @@ export const zhCNFeaturePages = {
     ["ScoreTransposer 价格", "乐谱转换器价格", "五线谱工具套餐", "乐谱积分套餐"],
     ["在线付款", "激活码", "账户权限", "付费能力控制"],
     [["选择积分套餐", "根据个人处理或批量工作选择月付或年付方案。"], ["登录并进入付款", "账户权限与订单绑定，正式开通的渠道会进入对应收银台。"], ["使用完整工作流", "创建工程、导入来源、校正、移调、播放，并导出确认后的版本。"]],
-    [["积分边界清晰", "免费账户包含终身 1 次免费扫谱项目、每月 25 积分（用于导出和工具），以及 50 MB 文件存储空间。可扫描完整的多页 PDF 或乐谱图片；扫描新乐谱需要单曲处理包（One Score Pass）或套餐。Starter 每月 50 积分，Converter Pro 每月 200 积分。"], ["付款问题可以追踪", "结账、激活、上传、任务与导出问题都进入统一支持流程。"]],
+    [["积分边界清晰", getRecognitionPricingCopy("zh-CN").freeScope + " " + getRecognitionPricingCopy("zh-CN").passScope + " " + getRecognitionPricingCopy("zh-CN").starterScope + " " + getRecognitionPricingCopy("zh-CN").proCredits], ["付款问题可以追踪", "结账、激活、上传、任务与导出问题都进入统一支持流程。"]],
     "页面价格和可用支付渠道以当前生产环境展示为准。",
   ),
 } satisfies FeaturePageTranslationCatalog;

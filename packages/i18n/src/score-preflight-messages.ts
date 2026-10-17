@@ -36,7 +36,7 @@ export function getScoreRecognitionSupportMessage(locale: SupportedLocale, code:
 
 const en = {
   title: 'Check your score before recognition',
-  freeBody: 'This structure check uses no credits. When your free project is available, simple recognition starts with one tap.',
+  freeBody: "This file check is free. Your lifetime free simple scan is available only in the standard lane; a larger file may require a pass or plan.",
   checking: 'Checking score structure…', failed: 'The structure check could not finish. Retry with the same file.', retry: 'Retry free check',
   recommendedSimple: 'Recommended: simple recognition', recommendedComplex: 'Recommended: complex score recognition',
   recommendationUncertain: 'The structure is unclear. Please choose a mode.',
@@ -47,16 +47,16 @@ const en = {
   ordinaryStaves: 'The detected layout fits ordinary single-staff or two-staff notation.',
   uncertainStructure: 'The image does not provide enough reliable structure information.',
   manualChoice: 'Select simple or complex after checking your original score.', chooseMode: 'Recognition mode',
-  confirmRecognition: 'Confirm {mode} · {credits} credits',
+  confirmRecognition: 'Confirm {mode} · credit cost: {credits}',
   startRecognition: 'Start recognition',
-  freeProjectPrice: 'Free — uses your 1 free project',
+  freeProjectPrice: "Free · uses your 1 lifetime simple scan · standard lane",
   advancedModes: 'Advanced: complex / multi-staff recognition',
   showModes: 'Show recognition modes',
   hideModes: 'Hide recognition modes',
   priceChanged: 'The price has changed. Review the updated price and confirm again.',
   notReady: 'Wait for the free structure check to finish before starting recognition.',
   noCredit: 'Your current allowance does not cover this mode.', selectedFilePreserved: 'Your file stays selected when you change modes.',
-  simpleTitle: 'Simple score', complexTitle: 'Complex score', price: '{credits} credits per recognition', changeFile: 'Choose another file',
+  simpleTitle: 'Simple score', complexTitle: 'Complex score', price: "Credits for this file’s recognition task: {credits}", changeFile: 'Choose another file',
   fileTooLarge: 'Choose a file up to 20 MB.',
   priceLoading: 'Checking your recognition price…', priceFailed: 'Could not load the recognition price. Please retry.',
   reasonStrings: {
@@ -72,7 +72,7 @@ const en = {
 };
 export type ScorePreflightMessages = typeof en;
 const zh: ScorePreflightMessages = {
-  title: '先检查乐谱，再开始识别', freeBody: '结构预检不消耗积分。若仍有免费项目，简单识谱可一键开始。',
+  title: '先检查乐谱，再开始识别', freeBody: "文件预检免费。终身免费简单识谱仅适用于普通通道；较大文件可能需要通行证或套餐。",
   checking: '正在检查乐谱结构…', failed: '结构预检未能完成，原文件仍保留，请重试。', retry: '重新免费预检',
   recommendedSimple: '推荐：简单识谱', recommendedComplex: '推荐：复杂总谱识别', recommendationUncertain: '结构暂时无法确定，请手动选择识谱方式。',
   incomplete: '仅完成了部分预检。正式识别仍会提交完整原文件，不会删减页面。',
@@ -80,10 +80,10 @@ const zh: ScorePreflightMessages = {
   tabDetected: '检测到 TAB 谱线，复杂工作台便于核对并补齐这类记谱。',
   manyStaves: '多个谱表同时出现，可能需要分层识别和按乐器核对。', ordinaryStaves: '检测到常规单谱表或双谱表结构。',
   uncertainStructure: '图像中的结构信息还不足以可靠判断。', manualChoice: '请对照原稿，选择简单识谱或复杂总谱。', chooseMode: '识谱方式',
-  confirmRecognition: '确认{mode} · 消耗 {credits} 积分', startRecognition: '开始识谱', freeProjectPrice: '免费 — 使用你的 1 次免费项目', advancedModes: '高级：复杂总谱 / 多声部识谱', showModes: '显示识谱方式', hideModes: '收起识谱方式', priceChanged: '识谱价格已变化，请查看新价格后再次确认。',
+  confirmRecognition: '确认{mode} · 消耗 {credits} 积分', startRecognition: '开始识谱', freeProjectPrice: "免费 · 使用终身 1 次简单识谱机会 · 普通通道", advancedModes: '高级：复杂总谱 / 多声部识谱', showModes: '显示识谱方式', hideModes: '收起识谱方式', priceChanged: '识谱价格已变化，请查看新价格后再次确认。',
   notReady: '请先完成免费预检并选定模式，再开始识别。', noCredit: '当前额度不足以使用此模式。',
   selectedFilePreserved: '切换模式会保留已选择的文件，无需重新上传。', simpleTitle: '简单乐谱', complexTitle: '复杂总谱',
-  price: '每次识谱 {credits} 积分', changeFile: '选择其他文件', fileTooLarge: '请选择不超过 20 MB 的文件。',
+  price: "这份文件的识谱任务消耗 {credits} 积分", changeFile: '选择其他文件', fileTooLarge: '请选择不超过 20 MB 的文件。',
   priceLoading: '正在读取识谱价格…', priceFailed: '暂时无法读取识谱价格，请重试。',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '检测到单谱表结构。', PIANO_STAFF_LAYOUT: '检测到常规双谱表结构。', MULTI_INSTRUMENT_LAYOUT: '多个谱表同时出现。',
@@ -94,7 +94,7 @@ const zh: ScorePreflightMessages = {
   },
 };
 const ja: ScorePreflightMessages = {
-  title: '認識前に楽譜を確認', freeBody: '構造の事前確認ではクレジットを消費しません。無料プロジェクトが残っていれば、シンプル認識はワンタップで開始できます。',
+  title: '認識前に楽譜を確認', freeBody: "ファイルの事前確認は無料です。生涯1回の無料シンプル認識は通常処理のみ対象です。大きなファイルにはパスまたはプランが必要な場合があります。",
   checking: '楽譜の構造を確認中…', failed: '事前確認を完了できませんでした。同じファイルで再試行できます。', retry: '無料確認を再試行',
   recommendedSimple: 'おすすめ：シンプル認識', recommendedComplex: 'おすすめ：総譜認識', recommendationUncertain: '構造を確定できません。認識方式を選択してください。',
   incomplete: '一部のみ確認できました。認識には元のファイルの全ページを送信します。',
@@ -102,10 +102,10 @@ const ja: ScorePreflightMessages = {
   tabDetected: 'TAB の線を検出しました。総譜ワークスペースで確認・補完できます。',
   manyStaves: '複数の譜表が並ぶため、楽器ごとの認識と確認が必要な可能性があります。', ordinaryStaves: '通常の単一譜表または大譜表の構造です。',
   uncertainStructure: '画像から十分な構造情報を得られませんでした。', manualChoice: '原稿を確認してシンプル認識または総譜認識を選択してください。', chooseMode: '認識方式',
-  confirmRecognition: '{mode}を確認 · {credits} クレジット', startRecognition: '認識を開始', freeProjectPrice: '無料 — 生涯 1 件の無料プロジェクトを使用', advancedModes: '上級：複雑／複数パート認識', showModes: '認識方式を表示', hideModes: '認識方式を隠す', priceChanged: '料金が変更されました。新しい料金を確認して再度確定してください。',
+  confirmRecognition: '{mode}を確認 · {credits} クレジット', startRecognition: '認識を開始', freeProjectPrice: "無料 · 生涯1回のシンプル認識を使用 · 通常処理", advancedModes: '上級：複雑／複数パート認識', showModes: '認識方式を表示', hideModes: '認識方式を隠す', priceChanged: '料金が変更されました。新しい料金を確認して再度確定してください。',
   notReady: '無料確認を完了して認識方式を選択してください。', noCredit: 'この方式に必要なクレジットが不足しています。',
   selectedFilePreserved: '方式を変更しても選択したファイルは保持されます。', simpleTitle: 'シンプルな楽譜', complexTitle: '複雑な総譜',
-  price: '認識ごとに {credits} クレジット', changeFile: '別のファイルを選択', fileTooLarge: '20 MB 以下のファイルを選択してください。',
+  price: "このファイルの認識タスク：{credits}クレジット", changeFile: '別のファイルを選択', fileTooLarge: '20 MB 以下のファイルを選択してください。',
   priceLoading: '認識料金を確認中…', priceFailed: '認識料金を取得できませんでした。再試行してください。',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '単一譜表の構造を検出しました。', PIANO_STAFF_LAYOUT: '通常の大譜表を検出しました。', MULTI_INSTRUMENT_LAYOUT: '複数の譜表が並んでいます。',
@@ -116,7 +116,7 @@ const ja: ScorePreflightMessages = {
   },
 };
 const zhTW: ScorePreflightMessages = {
-  title: '先檢查樂譜，再開始辨識', freeBody: '結構預檢不消耗點數。若仍有免費專案，簡單辨識可一鍵開始。',
+  title: '先檢查樂譜，再開始辨識', freeBody: "檔案預檢免費。終身免費簡單辨識僅適用於一般通道；較大檔案可能需要通行證或方案。",
   checking: '正在檢查樂譜結構…', failed: '結構預檢未能完成，原檔案仍保留，請重試。', retry: '重新免費預檢',
   recommendedSimple: '推薦：簡單樂譜辨識', recommendedComplex: '推薦：複雜總譜辨識', recommendationUncertain: '結構暫時無法確定，請手動選擇辨識方式。',
   incomplete: '僅完成部分預檢。正式辨識仍會提交完整原檔案，不會刪減頁面。',
@@ -124,10 +124,10 @@ const zhTW: ScorePreflightMessages = {
   tabDetected: '偵測到 TAB 譜線，複雜工作台可協助核對與補齊這類記譜。',
   manyStaves: '多個譜表同時出現，可能需要分層辨識與逐一核對樂器。', ordinaryStaves: '偵測到一般單譜表或雙譜表結構。',
   uncertainStructure: '影像中的結構資訊不足以可靠判斷。', manualChoice: '請對照原稿，選擇簡單樂譜或複雜總譜。', chooseMode: '辨識方式',
-  confirmRecognition: '確認{mode} · 消耗 {credits} 點數', startRecognition: '開始辨識', freeProjectPrice: '免費 — 使用你的 1 次免費專案', advancedModes: '進階：複雜總譜／多聲部辨識', showModes: '顯示辨識方式', hideModes: '收起辨識方式', priceChanged: '辨識價格已變更，請查看新價格後再次確認。',
+  confirmRecognition: '確認{mode} · 消耗 {credits} 點數', startRecognition: '開始辨識', freeProjectPrice: "免費 · 使用終身 1 次簡單辨識機會 · 一般通道", advancedModes: '進階：複雜總譜／多聲部辨識', showModes: '顯示辨識方式', hideModes: '收起辨識方式', priceChanged: '辨識價格已變更，請查看新價格後再次確認。',
   notReady: '請先完成免費預檢並選定方式，再開始辨識。', noCredit: '目前額度不足以使用此方式。',
   selectedFilePreserved: '切換方式會保留所選檔案，無須重新上傳。', simpleTitle: '簡單樂譜', complexTitle: '複雜總譜',
-  price: '每次辨識 {credits} 點數', changeFile: '選擇其他檔案', fileTooLarge: '請選擇不超過 20 MB 的檔案。',
+  price: "這份檔案的辨識任務消耗 {credits} 點數", changeFile: '選擇其他檔案', fileTooLarge: '請選擇不超過 20 MB 的檔案。',
   priceLoading: '正在讀取辨識價格…', priceFailed: '暫時無法讀取辨識價格，請重試。',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '偵測到單譜表結構。', PIANO_STAFF_LAYOUT: '偵測到一般雙譜表結構。', MULTI_INSTRUMENT_LAYOUT: '多個譜表同時出現。',
@@ -138,7 +138,7 @@ const zhTW: ScorePreflightMessages = {
   },
 };
 const ko: ScorePreflightMessages = {
-  title: '인식 전에 악보 확인', freeBody: '구조 확인에는 크레딧이 차감되지 않습니다. 무료 프로젝트가 남아 있으면 간단 인식을 한 번 탭으로 시작할 수 있습니다.',
+  title: '인식 전에 악보 확인', freeBody: "파일 사전 검사는 무료입니다. 평생 1회 무료 간단 인식은 일반 처리에만 적용됩니다. 큰 파일에는 이용권이나 요금제가 필요할 수 있습니다.",
   checking: '악보 구조 확인 중…', failed: '구조 확인을 완료하지 못했습니다. 선택한 파일로 다시 시도하세요.', retry: '무료 확인 다시 시도',
   recommendedSimple: '추천: 간단한 악보 인식', recommendedComplex: '추천: 복잡한 총보 인식', recommendationUncertain: '구조를 판단하기 어렵습니다. 인식 방식을 직접 선택하세요.',
   incomplete: '파일의 일부만 확인했습니다. 실제 인식에는 원본의 모든 페이지를 전송합니다.',
@@ -146,10 +146,10 @@ const ko: ScorePreflightMessages = {
   tabDetected: 'TAB 선을 감지했습니다. 총보 작업 공간에서 이 기보를 확인하고 보완할 수 있습니다.',
   manyStaves: '여러 보표가 함께 있어 악기별 인식과 확인이 필요할 수 있습니다.', ordinaryStaves: '일반적인 단일 보표 또는 두 보표 구조입니다.',
   uncertainStructure: '이미지에서 신뢰할 만한 구조 정보를 충분히 얻지 못했습니다.', manualChoice: '원본을 확인한 후 간단한 악보 또는 복잡한 총보를 선택하세요.', chooseMode: '인식 방식',
-  confirmRecognition: '{mode} 확인 · {credits} 크레딧', startRecognition: '인식 시작', freeProjectPrice: '무료 — 평생 1회 무료 프로젝트 사용', advancedModes: '고급: 복잡한 총보 / 다성부 인식', showModes: '인식 방식 보기', hideModes: '인식 방식 숨기기', priceChanged: '인식 비용이 변경되었습니다. 새 비용을 확인하고 다시 확정하세요.',
+  confirmRecognition: '{mode} 확인 · {credits} 크레딧', startRecognition: '인식 시작', freeProjectPrice: "무료 · 평생 1회 간단 인식 사용 · 일반 처리", advancedModes: '고급: 복잡한 총보 / 다성부 인식', showModes: '인식 방식 보기', hideModes: '인식 방식 숨기기', priceChanged: '인식 비용이 변경되었습니다. 새 비용을 확인하고 다시 확정하세요.',
   notReady: '무료 확인을 완료하고 인식 방식을 선택한 후 시작하세요.', noCredit: '현재 크레딧으로는 이 방식을 사용할 수 없습니다.',
   selectedFilePreserved: '방식을 변경해도 선택한 파일이 유지됩니다.', simpleTitle: '간단한 악보', complexTitle: '복잡한 총보',
-  price: '인식 1회당 {credits} 크레딧', changeFile: '다른 파일 선택', fileTooLarge: '20 MB 이하의 파일을 선택하세요.',
+  price: "이 파일의 인식 작업: {credits}크레딧", changeFile: '다른 파일 선택', fileTooLarge: '20 MB 이하의 파일을 선택하세요.',
   priceLoading: '인식 비용 확인 중…', priceFailed: '인식 비용을 불러오지 못했습니다. 다시 시도하세요.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: '단일 보표 구조를 감지했습니다.', PIANO_STAFF_LAYOUT: '일반적인 두 보표 구조를 감지했습니다.', MULTI_INSTRUMENT_LAYOUT: '여러 보표가 함께 있습니다.',
@@ -160,7 +160,7 @@ const ko: ScorePreflightMessages = {
   },
 };
 const fr: ScorePreflightMessages = {
-  title: 'Vérifiez la partition avant la reconnaissance', freeBody: 'Cette vérification de structure ne consomme aucun crédit. Avec un projet gratuit disponible, la reconnaissance simple démarre en un appui.',
+  title: 'Vérifiez la partition avant la reconnaissance', freeBody: "La vérification du fichier est gratuite. Votre reconnaissance simple gratuite à vie est limitée au traitement standard ; un fichier volumineux peut nécessiter un pass ou forfait.",
   checking: 'Vérification de la structure…', failed: 'La vérification n’a pas abouti. Réessayez avec le même fichier.', retry: 'Relancer la vérification gratuite',
   recommendedSimple: 'Recommandation : reconnaissance simple', recommendedComplex: 'Recommandation : reconnaissance de partition complexe', recommendationUncertain: 'La structure est incertaine. Choisissez un mode.',
   incomplete: 'Seule une partie du fichier a été vérifiée. Toutes les pages originales seront transmises pour la reconnaissance.',
@@ -168,10 +168,10 @@ const fr: ScorePreflightMessages = {
   tabDetected: 'Des lignes de tablature ont été détectées. L’atelier de partition complexe permet de les vérifier et de les compléter.',
   manyStaves: 'Plusieurs portées sont regroupées ; une reconnaissance et une vérification par instrument peuvent être nécessaires.', ordinaryStaves: 'La disposition correspond à une partition courante à une ou deux portées.',
   uncertainStructure: 'L’image ne fournit pas assez d’informations fiables sur la structure.', manualChoice: 'Consultez l’original, puis choisissez une partition simple ou complexe.', chooseMode: 'Mode de reconnaissance',
-  confirmRecognition: 'Confirmer : {mode} · {credits} crédits', startRecognition: 'Lancer la reconnaissance', freeProjectPrice: 'Gratuit — utilise votre 1 projet gratuit', advancedModes: 'Avancé : reconnaissance complexe / multipartite', showModes: 'Afficher les modes', hideModes: 'Masquer les modes', priceChanged: 'Le prix a changé. Consultez le nouveau prix et confirmez à nouveau.',
+  confirmRecognition: 'Confirmer : {mode} · {credits} crédits', startRecognition: 'Lancer la reconnaissance', freeProjectPrice: "Gratuit · utilise votre unique reconnaissance simple à vie · traitement standard", advancedModes: 'Avancé : reconnaissance complexe / multipartite', showModes: 'Afficher les modes', hideModes: 'Masquer les modes', priceChanged: 'Le prix a changé. Consultez le nouveau prix et confirmez à nouveau.',
   notReady: 'Terminez la vérification gratuite et choisissez un mode avant de lancer la reconnaissance.', noCredit: 'Votre solde ne permet pas d’utiliser ce mode.',
   selectedFilePreserved: 'Le fichier sélectionné est conservé quand vous changez de mode.', simpleTitle: 'Partition simple', complexTitle: 'Partition complexe',
-  price: '{credits} crédits par reconnaissance', changeFile: 'Choisir un autre fichier', fileTooLarge: 'Choisissez un fichier de 20 Mo maximum.',
+  price: "{credits} crédits pour la tâche de reconnaissance de ce fichier", changeFile: 'Choisir un autre fichier', fileTooLarge: 'Choisissez un fichier de 20 Mo maximum.',
   priceLoading: 'Vérification du prix de reconnaissance…', priceFailed: 'Impossible d’obtenir le prix de reconnaissance. Réessayez.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Disposition à une portée détectée.', PIANO_STAFF_LAYOUT: 'Disposition courante à deux portées détectée.', MULTI_INSTRUMENT_LAYOUT: 'Plusieurs portées sont regroupées.',
@@ -182,7 +182,7 @@ const fr: ScorePreflightMessages = {
   },
 };
 const es: ScorePreflightMessages = {
-  title: 'Comprueba la partitura antes del reconocimiento', freeBody: 'Esta comprobación de estructura no consume créditos. Si tienes un proyecto gratuito, el reconocimiento simple empieza con un toque.',
+  title: 'Comprueba la partitura antes del reconocimiento', freeBody: "La comprobación del archivo es gratuita. Tu reconocimiento simple gratuito de por vida solo cubre la vía estándar; un archivo grande puede necesitar un pase o plan.",
   checking: 'Comprobando la estructura…', failed: 'No se pudo completar la comprobación. Vuelve a intentarlo con el mismo archivo.', retry: 'Repetir la comprobación gratuita',
   recommendedSimple: 'Recomendación: reconocimiento simple', recommendedComplex: 'Recomendación: reconocimiento de partitura compleja', recommendationUncertain: 'La estructura no está clara. Elige un modo.',
   incomplete: 'Solo se pudo comprobar una parte del archivo. Se enviarán todas las páginas originales para el reconocimiento.',
@@ -190,10 +190,10 @@ const es: ScorePreflightMessages = {
   tabDetected: 'Se detectaron líneas de tablatura. El espacio de partitura compleja permite revisarlas y completarlas.',
   manyStaves: 'Hay varios pentagramas agrupados; puede ser necesario reconocer y revisar cada instrumento.', ordinaryStaves: 'La disposición corresponde a una partitura habitual de uno o dos pentagramas.',
   uncertainStructure: 'La imagen no ofrece suficiente información fiable sobre la estructura.', manualChoice: 'Revisa el original y elige una partitura simple o compleja.', chooseMode: 'Modo de reconocimiento',
-  confirmRecognition: 'Confirmar {mode} · {credits} créditos', startRecognition: 'Iniciar reconocimiento', freeProjectPrice: 'Gratis — usa tu 1 proyecto gratuito', advancedModes: 'Avanzado: reconocimiento complejo / multiparte', showModes: 'Mostrar modos', hideModes: 'Ocultar modos', priceChanged: 'El precio ha cambiado. Revisa el nuevo precio y vuelve a confirmar.',
+  confirmRecognition: 'Confirmar {mode} · {credits} créditos', startRecognition: 'Iniciar reconocimiento', freeProjectPrice: "Gratis · usa tu único reconocimiento simple de por vida · vía estándar", advancedModes: 'Avanzado: reconocimiento complejo / multiparte', showModes: 'Mostrar modos', hideModes: 'Ocultar modos', priceChanged: 'El precio ha cambiado. Revisa el nuevo precio y vuelve a confirmar.',
   notReady: 'Completa la comprobación gratuita y elige un modo antes de iniciar el reconocimiento.', noCredit: 'Tu saldo actual no permite utilizar este modo.',
   selectedFilePreserved: 'El archivo seleccionado se conserva al cambiar de modo.', simpleTitle: 'Partitura simple', complexTitle: 'Partitura compleja',
-  price: '{credits} créditos por reconocimiento', changeFile: 'Elegir otro archivo', fileTooLarge: 'Elige un archivo de hasta 20 MB.',
+  price: "{credits} créditos por la tarea de reconocimiento de este archivo", changeFile: 'Elegir otro archivo', fileTooLarge: 'Elige un archivo de hasta 20 MB.',
   priceLoading: 'Consultando el precio de reconocimiento…', priceFailed: 'No se pudo obtener el precio de reconocimiento. Vuelve a intentarlo.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Se detectó una disposición de un pentagrama.', PIANO_STAFF_LAYOUT: 'Se detectó una disposición habitual de dos pentagramas.', MULTI_INSTRUMENT_LAYOUT: 'Hay varios pentagramas agrupados.',
@@ -204,7 +204,7 @@ const es: ScorePreflightMessages = {
   },
 };
 const de: ScorePreflightMessages = {
-  title: 'Partitur vor der Erkennung prüfen', freeBody: 'Diese Strukturprüfung verbraucht keine Credits. Mit freiem Projekt startet die einfache Erkennung mit einem Tippen.',
+  title: 'Partitur vor der Erkennung prüfen', freeBody: "Die Dateiprüfung ist kostenlos. Ihre einmalige kostenlose einfache Erkennung gilt nur für die Standardverarbeitung; große Dateien können einen Pass oder Tarif erfordern.",
   checking: 'Partiturstruktur wird geprüft…', failed: 'Die Strukturprüfung konnte nicht abgeschlossen werden. Versuchen Sie es mit derselben Datei erneut.', retry: 'Kostenlose Prüfung wiederholen',
   recommendedSimple: 'Empfehlung: einfache Erkennung', recommendedComplex: 'Empfehlung: Erkennung einer komplexen Partitur', recommendationUncertain: 'Die Struktur ist unklar. Wählen Sie einen Modus.',
   incomplete: 'Nur ein Teil der Datei konnte geprüft werden. Für die Erkennung werden alle Originalseiten übermittelt.',
@@ -212,10 +212,10 @@ const de: ScorePreflightMessages = {
   tabDetected: 'Tabulatur wurde erkannt. Im Arbeitsbereich für komplexe Partituren können Sie diese prüfen und ergänzen.',
   manyStaves: 'Mehrere Notensysteme stehen zusammen; eine Erkennung und Prüfung je Instrument kann nötig sein.', ordinaryStaves: 'Das Layout entspricht einer üblichen Partitur mit einem oder zwei Notensystemen.',
   uncertainStructure: 'Das Bild enthält nicht genügend zuverlässige Strukturinformationen.', manualChoice: 'Prüfen Sie das Original und wählen Sie eine einfache oder komplexe Partitur.', chooseMode: 'Erkennungsmodus',
-  confirmRecognition: '{mode} bestätigen · {credits} Credits', startRecognition: 'Erkennung starten', freeProjectPrice: 'Kostenlos — nutzt Ihr 1 kostenloses Projekt', advancedModes: 'Erweitert: komplexe / mehrstimmige Erkennung', showModes: 'Modi anzeigen', hideModes: 'Modi ausblenden', priceChanged: 'Der Preis hat sich geändert. Prüfen Sie den neuen Preis und bestätigen Sie erneut.',
+  confirmRecognition: '{mode} bestätigen · {credits} Credits', startRecognition: 'Erkennung starten', freeProjectPrice: "Kostenlos · nutzt Ihre lebenslang einmalige einfache Erkennung · Standardverarbeitung", advancedModes: 'Erweitert: komplexe / mehrstimmige Erkennung', showModes: 'Modi anzeigen', hideModes: 'Modi ausblenden', priceChanged: 'Der Preis hat sich geändert. Prüfen Sie den neuen Preis und bestätigen Sie erneut.',
   notReady: 'Schließen Sie die kostenlose Prüfung ab und wählen Sie einen Modus, bevor Sie die Erkennung starten.', noCredit: 'Ihr aktuelles Guthaben reicht für diesen Modus nicht aus.',
   selectedFilePreserved: 'Die ausgewählte Datei bleibt beim Wechsel des Modus erhalten.', simpleTitle: 'Einfache Partitur', complexTitle: 'Komplexe Partitur',
-  price: '{credits} Credits je Erkennung', changeFile: 'Andere Datei auswählen', fileTooLarge: 'Wählen Sie eine Datei mit höchstens 20 MB.',
+  price: "{credits} Credits für den Erkennungsauftrag dieser Datei", changeFile: 'Andere Datei auswählen', fileTooLarge: 'Wählen Sie eine Datei mit höchstens 20 MB.',
   priceLoading: 'Erkennungspreis wird geprüft…', priceFailed: 'Der Erkennungspreis konnte nicht geladen werden. Versuchen Sie es erneut.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Layout mit einem Notensystem erkannt.', PIANO_STAFF_LAYOUT: 'Übliches Layout mit zwei Notensystemen erkannt.', MULTI_INSTRUMENT_LAYOUT: 'Mehrere Notensysteme stehen zusammen.',
@@ -226,7 +226,7 @@ const de: ScorePreflightMessages = {
   },
 };
 const ru: ScorePreflightMessages = {
-  title: 'Проверьте партитуру перед распознаванием', freeBody: 'Проверка структуры не расходует кредиты. Если бесплатный проект доступен, простое распознавание запускается одним нажатием.',
+  title: 'Проверьте партитуру перед распознаванием', freeBody: "Проверка файла бесплатна. Единственное бесплатное простое распознавание доступно только в обычном режиме; большому файлу может потребоваться пакет или тариф.",
   checking: 'Проверяем структуру партитуры…', failed: 'Не удалось завершить проверку структуры. Повторите попытку с тем же файлом.', retry: 'Повторить бесплатную проверку',
   recommendedSimple: 'Рекомендуется: простое распознавание', recommendedComplex: 'Рекомендуется: распознавание сложной партитуры', recommendationUncertain: 'Структура неясна. Выберите режим вручную.',
   incomplete: 'Удалось проверить только часть файла. Для распознавания будут отправлены все страницы оригинала.',
@@ -234,10 +234,10 @@ const ru: ScorePreflightMessages = {
   tabDetected: 'Обнаружены линии табулатуры. Рабочая область сложной партитуры позволяет проверить и дополнить эту запись.',
   manyStaves: 'Несколько нотных станов расположены вместе; может потребоваться распознавание и проверка каждого инструмента.', ordinaryStaves: 'Обнаружена обычная структура с одним или двумя нотными станами.',
   uncertainStructure: 'На изображении недостаточно надёжных данных о структуре.', manualChoice: 'Сверьтесь с оригиналом и выберите простую или сложную партитуру.', chooseMode: 'Режим распознавания',
-  confirmRecognition: 'Подтвердить: {mode} · {credits} кредитов', startRecognition: 'Начать распознавание', freeProjectPrice: 'Бесплатно — использует ваш 1 бесплатный проект', advancedModes: 'Дополнительно: сложное / многоголосые распознавание', showModes: 'Показать режимы', hideModes: 'Скрыть режимы', priceChanged: 'Цена изменилась. Проверьте новую цену и подтвердите ещё раз.',
+  confirmRecognition: 'Подтвердить: {mode} · {credits} кредитов', startRecognition: 'Начать распознавание', freeProjectPrice: "Бесплатно · используется 1 простое распознавание за всё время · обычный режим", advancedModes: 'Дополнительно: сложное / многоголосые распознавание', showModes: 'Показать режимы', hideModes: 'Скрыть режимы', priceChanged: 'Цена изменилась. Проверьте новую цену и подтвердите ещё раз.',
   notReady: 'Завершите бесплатную проверку и выберите режим перед началом распознавания.', noCredit: 'Текущего баланса недостаточно для этого режима.',
   selectedFilePreserved: 'При смене режима выбранный файл сохраняется.', simpleTitle: 'Простая партитура', complexTitle: 'Сложная партитура',
-  price: '{credits} кредитов за распознавание', changeFile: 'Выбрать другой файл', fileTooLarge: 'Выберите файл размером не более 20 МБ.',
+  price: "{credits} кредитов за задачу распознавания этого файла", changeFile: 'Выбрать другой файл', fileTooLarge: 'Выберите файл размером не более 20 МБ.',
   priceLoading: 'Проверяем цену распознавания…', priceFailed: 'Не удалось получить цену распознавания. Повторите попытку.',
   reasonStrings: {
     SINGLE_STAFF_LAYOUT: 'Обнаружена структура с одним нотным станом.', PIANO_STAFF_LAYOUT: 'Обнаружена обычная структура с двумя нотными станами.', MULTI_INSTRUMENT_LAYOUT: 'Несколько нотных станов расположены вместе.',

@@ -65,6 +65,7 @@ test('every structural reason is translated in every locale, including partial a
 });
 
 import { getRecognitionExperienceMessages, getRecognitionFailureMessage, recognitionExperienceCatalogIssues } from './recognition-experience-messages.ts';
+import { localizeApiError } from './api-errors.ts';
 
 test('recognition lanes, photo corners, alternatives and honest failures are translated in all nine locales', () => {
   assert.deepEqual(recognitionExperienceCatalogIssues(), []);
@@ -83,5 +84,37 @@ test('recognition lanes, photo corners, alternatives and honest failures are tra
     assert.equal(getRecognitionFailureMessage(locale, 'COVER_ONLY'), copy.coverFailure);
     assert.equal(getRecognitionFailureMessage(locale, 'LOW_RESOLUTION'), copy.blurFailure);
     assert.equal(getRecognitionFailureMessage(locale, 'NON_STAFF'), copy.notationFailure);
+  }
+});
+
+test('pricing and lane copy keeps all nine languages complete with explicit page reasons and task billing', () => {
+  const english = getRecognitionExperienceMessages('en');
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getRecognitionExperienceMessages(locale);
+    for (const key of ['normalBody', 'bigBody', 'bigReason', 'freePlan', 'passPlan', 'starterPlan', 'creditRule'] as const) {
+      if (locale !== 'en') assert.notEqual(copy[key], english[key], `${locale}.${key}`);
+      assert.doesNotMatch(copy[key], /MiB|1536|2048/u, `${locale}.${key}`);
+    }
+    assert.deepEqual(placeholders(copy.bigReason), ['pages']);
+    assert.match(copy.normalBody, /5/u);
+    assert.match(copy.bigBody, /6/u);
+    assert.match(copy.passPlan, /2[.,]99/u);
+    assert.match(copy.freePlan, /25/u);
+    assert.match(copy.passPlan, /10/u);
+    assert.match(copy.starterPlan, /7[.,]99/u);
+    assert.match(copy.starterPlan, /50/u);
+    assert.match(copy.creditRule, /1/u); assert.match(copy.creditRule, /5/u);
+  }
+  assert.match(english.bigReason, /[Bb]ecause.*larger.*\{pages\}/u);
+  assert.match(getRecognitionExperienceMessages('zh-CN').bigReason, /因为.*文件较大.*\{pages\}/u);
+});
+
+test('recognition access and refusal API codes never fall back to English diagnostics', () => {
+  const codes = ['FREE_TRIAL_OMR_LIMIT_REACHED', 'COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED', 'BIG_RECOGNITION_ENTITLEMENT_REQUIRED', 'RECOGNITION_UNSUPPORTED', 'RECOGNITION_CAPACITY_LIMIT', 'OMR_PRICE_CHANGED', 'PDF_INVALID', 'PDF_PAGE_PIXEL_LIMIT', 'PDF_TOTAL_PIXEL_LIMIT', 'PDF_PAGE_COUNT_LIMIT', 'PDF_PAGE_DIMENSION_LIMIT', 'FILE_TOO_LARGE', 'FST_REQ_FILE_TOO_LARGE', 'PLAN_STORAGE_QUOTA_EXCEEDED', 'PLAN_JOB_QUOTA_EXCEEDED', 'SCORE_PASS_REQUIRED', 'SCORE_PASS_CREDITS_EXHAUSTED'];
+  for (const locale of SUPPORTED_LOCALES) for (const code of codes) {
+    const message = localizeApiError({ code, error: 'Internal English diagnostic', status: 403 }, locale);
+    assert.ok(message.trim(), `${locale}.${code}`);
+    assert.doesNotMatch(message, /Internal English|\{pages\}/u, `${locale}.${code}`);
+    if (locale !== 'en') assert.notEqual(message, localizeApiError({ code }, 'en'), `${locale}.${code}`);
   }
 });

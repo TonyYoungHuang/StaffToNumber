@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { StaticMarketingLocalization } from "../types";
 
 export const zhTWStaticMarketing = {
@@ -11,7 +12,7 @@ export const zhTWStaticMarketing = {
       eyebrow: "產品定位", title: "從五線譜轉簡譜入口，進入完整的結構化樂譜工作區", body: "進入應用程式前，先確認檔案類型、免費範圍與辨識界線。辨識候選結果始終建議由人工檢查。",
       steps: [
         ["01", "從掃描檔建立可編輯樂譜", "上傳五線譜 PDF 或圖片，查看辨識候選結果，並在同一個樂譜專案中繼續處理。"],
-        ["02", "先了解適用範圍", "辨識結果是可能仍需校正的候選稿；免費帳戶可用一份完整多頁 PDF 或樂譜圖片建立一個終身專案。"],
+        ["02", "先了解適用範圍", getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").laneGuide],
         ["03", "在應用程式內完成處理", "登入後可上傳檔案並查看任務與候選結果。免費專案包含目前開放的編輯、播放、移調、簡譜、版本、分享與匯出工具；付費方案增加處理及儲存容量。"],
       ],
     },
@@ -25,18 +26,18 @@ export const zhTWStaticMarketing = {
     useCases: { eyebrow: "適用情境", title: "讓現有樂譜進入結構化處理流程", body: "無論從五線譜 PDF、圖片或簡譜開始，都應先確認辨識或匯入結果，再繼續編輯、移調、練習與匯出。", items: [["已有五線譜 PDF 或圖片", "利用辨識建立可檢查並繼續處理的結構化候選結果。"], ["同時使用五線譜與簡譜", "同一份結構化樂譜可用於五線譜查看、簡譜轉換、移調、練習與匯出。"], ["能夠人工檢查自動辨識", "複雜節奏、低畫質掃描或多聲部內容可能需要校正，因此候選結果與診斷資訊會保留供檢查。"]] },
     startingPoints: { eyebrow: "常見起點", title: "依手上的素材選擇正確入口", metrics: [["PDF 或圖片", "樂譜辨識", "上傳清晰、方向正確、邊緣完整的一份完整多頁 PDF 或樂譜圖片，再檢查辨識候選結果。"], ["五線譜與簡譜", "雙向轉換", "先檢查結構化樂譜，再轉換簡譜、移調、播放或練習。"], ["製譜檔或備份", "繼續編輯", "當目前方案包含該輸入格式時，可直接匯入 MusicXML、MIDI 或樂譜備份。"]] },
     learnMore: { eyebrow: "深入了解", title: "繼續查看隱私、條款與開通說明", body: "了解產品定位與支援模式後，下一步通常是確認隱私權政策、服務條款及開通方式。", privacyAction: "查看隱私權政策", termsAction: "查看服務條款", checkoutAction: "查看開通方式" },
-    next: { eyebrow: "下一步", title: "免費建立一個完整樂譜專案，或繼續閱讀說明。", body: "返回首頁查看功能、開啟應用程式建立一個完整免費樂譜專案，或從隱私權政策與服務條款了解資料及服務界線。", homeAction: "返回首頁", appAction: "開啟應用程式" },
+    next: { eyebrow: "下一步", title: getRecognitionPricingCopy("zh-TW").freeLead, body: getRecognitionPricingCopy("zh-TW").freeScope, homeAction: "返回首頁", appAction: "開啟應用程式" },
   },
   faq: {
     metadata: { title: "樂譜掃描、簡譜互轉、移調與匯出常見問題 | ScoreTransposer", description: "查看樂譜掃描檢查、五線譜與簡譜互轉、移調、編輯、播放、匯出、購買與支援流程的常見問題。", keywords: ["樂譜掃描常見問題", "五線譜轉簡譜", "OMR 候選稿", "線上樂譜編輯", "ScoreTransposer 支援"], socialImageAlt: "英文介面的 ScoreTransposer 樂譜渲染預覽" },
     hero: { eyebrow: "常見問題／產品與支援", title: "關於掃描、編輯、轉換與帳戶的問題", body: "繼續之前，先確認支援的輸入、辨識限制、可編輯結果、簡譜轉換、帳戶權限與支援流程。", checkoutAction: "查看開通方式", supportPageAction: "開啟支援頁", contactAction: "聯絡支援" },
     groups: [
       { title: "購買與開通", items: [
-        ["目前實際可以使用哪些功能？", "註冊使用者可從一份完整多頁五線譜 PDF 或一張樂譜圖片建立一個終身免費專案，並在其中使用目前的校正、播放、移調、簡譜、版本、分享與匯出工具。付費方案增加樂譜處理容量。"],
+        ["目前實際可以使用哪些功能？", getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").passScope + " " + getRecognitionPricingCopy("zh-TW").starterScope],
         { question: "國際使用者與中國大陸使用者的購買方式相同嗎？", availableAnswer: "不完全相同。國際使用者可直接線上付款；中國大陸使用者也可透過啟用碼通路開通，再於應用程式內兌換。", pendingAnswer: "線上付款尚未開放。Paddle 正式付款、退款與權益發放通過驗證後才會啟用；一個完整免費專案不受影響。" },
         { question: "付款後會得到什麼？", availableAnswer: "付款成功後，系統會把訂閱直接綁定已註冊帳戶，不需要再兌換啟用碼。", pendingAnswer: "目前不會收款。付款開放後，訂單確認與帳戶權益會透過已驗證的正式流程自動發放。" },
       ] },
-      { title: "上傳與結果", items: [["目前支援哪些輸入格式？", "免費入口接受一份完整多頁 PDF 或一張 PNG、JPG、WebP、TIFF 樂譜圖片。Starter 與 Converter Pro 可建立更多專案，並支援目前已開放的 MusicXML/MXL、MIDI、結構化簡譜及 Score JSON 匯入；音訊轉譜仍是實驗功能。"], ["為什麼辨識結果標示為候選稿？", "OMR 可能誤讀音高、時值、聲部或小節結構，因此結果會保留為需人工檢查的候選稿，並顯示信心度與警告，不會假裝是出版級成品。"], ["上傳失敗或下載異常時該怎麼辦？", "保留檔名、任務時間與錯誤截圖，再提交支援表單，能讓支援人員更快找到受影響的任務。"]] },
+      { title: "上傳與結果", items: [["目前支援哪些輸入格式？", getRecognitionPricingCopy("zh-TW").inputScope + " " + getRecognitionPricingCopy("zh-TW").laneGuide], ["為什麼辨識結果標示為候選稿？", "OMR 可能誤讀音高、時值、聲部或小節結構，因此結果會保留為需人工檢查的候選稿，並顯示信心度與警告，不會假裝是出版級成品。"], ["上傳失敗或下載異常時該怎麼辦？", "保留檔名、任務時間與錯誤截圖，再提交支援表單，能讓支援人員更快找到受影響的任務。"]] },
       { title: "支援與帳戶", items: [["付款或啟用碼有問題時怎麼處理？", "請先使用網站支援表單。付款問題選擇付款類別，啟用問題選擇啟用類別，支援團隊可依請求編號追蹤。"], ["提交支援表單後會發生什麼？", "表單會送到 API、建立並儲存支援請求，並自動向聯絡信箱寄送確認信。若尚未設定正式郵件服務，API 仍會記錄測試預覽。"], ["在哪裡比較五線譜與簡譜轉換方式？", "開啟簡譜轉換器，再選擇五線譜轉簡譜或簡譜轉五線譜。兩種路徑都會把結果保存在可編輯的結構化樂譜專案中。"]] },
     ],
     workflow: { eyebrow: "選擇工作流程", title: "從現在要完成的任務開始", body: "掃描辨識、雙向簡譜轉換與線上編輯各有專門說明，讓輸入與輸出保持清楚。", metrics: [["掃描", "PDF 與圖片", "建立可供檢查的 MusicXML 候選結果。"], ["記譜", "五線譜 ⇄ 簡譜", "選擇一個明確的轉換方向。"], ["繼續處理", "編輯與移調", "校正、播放、移調並匯出已接受的樂譜。"]], scannerAction: "開啟樂譜掃描器", converterAction: "開啟簡譜轉換器" },

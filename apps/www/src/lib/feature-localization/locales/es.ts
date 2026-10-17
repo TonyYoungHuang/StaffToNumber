@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const esFeaturePages = {
@@ -75,7 +76,7 @@ export const esFeaturePages = {
     "Precios de ScoreTransposer", "Acceso a conversiones y proyectos", "Empieza gratis con un proyecto musical completo y elige Starter o Converter Pro cuando necesites más proyectos y capacidad mensual del servidor.",
     ["precios ScoreTransposer", "precio conversor de partituras", "planes de herramientas musicales", "créditos de partituras"], ["Pago", "Códigos de activación", "Derechos", "Control de exportaciones"],
     [["Elegir plan", "Selecciona una opción mensual o anual según el trabajo individual o por lotes."], ["Iniciar sesión y pagar", "La orden se vincula a los derechos de la cuenta y las regiones activas acceden a su pago."], ["Usar proyectos", "Crea, importa, corrige, transporta, practica y exporta la revisión aceptada."]],
-    [["Capacidad clara", "Free incluye un proyecto completo y 25 créditos mensuales, Starter 50 y Converter Pro 200 créditos al mes."], ["Soporte operativo", "Pago, activación, carga, tareas y exportación se siguen mediante el mismo soporte."]],
+    [["Capacidad clara", getRecognitionPricingCopy("es").freeScope + " " + getRecognitionPricingCopy("es").passScope + " " + getRecognitionPricingCopy("es").starterScope + " " + getRecognitionPricingCopy("es").proCredits], ["Soporte operativo", "Pago, activación, carga, tareas y exportación se siguen mediante el mismo soporte."]],
     "Elige el plan, el periodo de acceso y el tipo de pago. Confirma la moneda, el total y las condiciones de renovación al pagar.",
   ),
 } satisfies FeaturePageTranslationCatalog;

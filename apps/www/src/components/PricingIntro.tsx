@@ -1,7 +1,8 @@
 "use client";
 
-import type { SupportedLocale } from "@score/i18n";
+import type { RecognitionExperienceMessages, SupportedLocale } from "@score/i18n";
 import { getSingleScorePassCopy } from "@score/shared";
+import { RecognitionPlanSummary } from "@score/ui";
 import { getPricingIntroCopy } from "../lib/pricing-body-copy";
 import { pricingFacts } from "../lib/pricing-facts";
 import { getAppStartConversionUrl } from "../lib/site";
@@ -9,11 +10,12 @@ import { localizePublicHref } from "../lib/locale-routing";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import styles from "./PricingBody.module.css";
 
-export function PricingIntro({ locale }: { locale: SupportedLocale }) {
+export function PricingIntro({ locale, messages }: { locale: SupportedLocale; messages: RecognitionExperienceMessages }) {
   const copy = getPricingIntroCopy(locale);
   const pass = getSingleScorePassCopy(locale);
   const flow = usePurchaseFlow();
   return <div className={styles.intro} data-pricing-intro>
+    <RecognitionPlanSummary messages={messages} />
     <div className={styles.choices}>
       <div className={styles.choice}>
         <h2>{copy.freeTitle}</h2>

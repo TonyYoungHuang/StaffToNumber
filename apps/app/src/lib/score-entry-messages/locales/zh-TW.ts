@@ -20,11 +20,11 @@ export const zhTWScoreEntryMessages = {
     "retry": "重試"
   },
   pages: {
-    library: { eyebrow: "樂譜工作台", title: "辨識、管理並繼續處理你的樂譜", body: "直接上傳 PDF 或樂譜圖片開始辨識，也可開啟已儲存的樂譜繼續編輯。上傳、候選結果與樂譜庫都在同一個工作台。" },
+    library: { eyebrow: "樂譜工作台", title: "辨識、管理並繼續處理你的樂譜", body: "免費檔案預檢會顯示頁數，並判斷使用一般或大檔案通道；不占免費辨識次數、不扣點數。尚未使用的終身免費簡單辨識機會僅適用於一般通道。" },
     newScore: {
       eyebrow: "建立新樂譜", title: "你想從哪裡開始？", body: "選擇一種來源，下一頁只會顯示該來源所需的操作。", recommended: "推薦", choose: "選擇",
       choices: {
-        scan: { title: "辨識 PDF 或樂譜圖片", body: "適合紙本樂譜、掃描檔與 PDF。新帳戶可從一份完整多頁 PDF 或一張樂譜圖片建立永久免費專案。" },
+        scan: { title: "辨識 PDF 或樂譜圖片", body: "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 5 頁以內的 A4/Letter PDF，以檔案預檢為準。每月 25 點可用於既有專案；這些每月點數不代表可以掃描新樂譜。" },
         jianpu: { title: "輸入簡譜", body: "輸入數字音符，建立對應的五線譜。" },
         musicxml: { title: "從製譜軟體匯入", body: "適合 MuseScore、Sibelius、Finale 等軟體匯出的 MusicXML 檔案。" },
         midi: { title: "匯入 MIDI", body: "將 MIDI 中的音符與節奏轉換為樂譜。" },
@@ -35,7 +35,7 @@ export const zhTWScoreEntryMessages = {
     source: {
       chooseAnother: "選擇其他來源",
       headings: {
-        scan: { eyebrow: "建立新樂譜", title: "辨識 PDF 或樂譜圖片", body: "選擇一個檔案並開始辨識。此頁面只處理掃描辨識。" },
+        scan: { eyebrow: "建立新樂譜", title: "辨識 PDF 或樂譜圖片", body: "免費檔案預檢會顯示頁數，並判斷使用一般或大檔案通道；不占免費辨識次數、不扣點數。尚未使用的終身免費簡單辨識機會僅適用於一般通道。" },
         jianpu: { eyebrow: "建立新樂譜", title: "用簡譜建立五線譜", body: "輸入簡譜內容並建立樂譜。此頁面只處理簡譜輸入。" },
         musicxml: { eyebrow: "建立新樂譜", title: "從製譜軟體匯入", body: "選擇匯出的 MusicXML 檔案。此頁面只處理檔案匯入。" },
         midi: { eyebrow: "建立新樂譜", title: "從 MIDI 建立樂譜", body: "選擇一個 MIDI 檔案。此頁面只處理 MIDI 匯入。" },
@@ -57,7 +57,7 @@ export const zhTWScoreEntryMessages = {
       chooseFile: "請選擇 .musicxml、.xml 或 .mxl 檔案。", importFailed: "MusicXML 匯入失敗。", imported: "樂譜已新增至「我的樂譜」。", eyebrow: "從製譜軟體匯入", title: "選擇 MusicXML 檔案", body: "匯入 MuseScore、Sibelius、Finale 或其他製譜軟體輸出的 MusicXML，並在此繼續編輯。", dropTitle: "選擇檔案", dropBody: "支援 .musicxml、.xml 與 .mxl 檔案。", empty: "尚未選擇檔案。", button: "匯入 MusicXML",
     },
     scan: {
-      chooseFile: "請選擇 PDF 或圖片檔案。", importFailed: "無法建立 OMR 匯入任務。", imported: "檔案已上傳並開始辨識，稍後可在「我的樂譜」中檢查。", eyebrow: "樂譜辨識", title: "上傳 PDF 或樂譜圖片", body: "將紙本樂譜或 PDF 轉成可檢視、可校正的電子樂譜。複雜記譜可能需要少量手動修正。", dropTitle: "選擇 PDF 或圖片", dropBody: "支援 PDF、PNG、JPG、WEBP 與 TIFF。", empty: "尚未選擇掃描檔。", button: "開始辨識", accessLoading: "正在檢查免費辨識額度...", freeEyebrow: "登入成功 · 免費編輯", freeBody: "上傳一份完整多頁 PDF 或一張樂譜圖片，建立永久免費樂譜專案，並繼續校正、播放、移調、轉換、分享與匯出。", exhaustedEyebrow: "免費辨識額度已使用", exhaustedTitle: "此帳戶已建立一個永久免費樂譜專案。", exhaustedBody: "你仍可繼續校正、播放、移調、轉換、保留版本、分享與匯出該完整樂譜；升級只用於建立與處理更多樂譜。", exhaustedLibrary: "繼續使用免費樂譜", exhaustedUpgrade: "開通完整權限",
+      chooseFile: "請選擇 PDF 或圖片檔案。", importFailed: "無法建立 OMR 匯入任務。", imported: "檔案已上傳並開始辨識，稍後可在「我的樂譜」中檢查。", eyebrow: "樂譜辨識", title: "上傳 PDF 或樂譜圖片", body: "一張照片或約 5 頁以內的 A4/Letter PDF 通常可走一般通道；約 6 頁以上的 PDF 或較大檔案可能需要大檔案通道。以檔案預檢為準，方案沒有固定頁數額度。 簡單辨識每項任務 1 點，複雜辨識每項任務 5 點；頁數影響通道，不依頁數倍增。部分交付按比例返還未交付部分的報價點數，失敗或取消返還處理點數；此處指退點數，不是退現金。", dropTitle: "選擇 PDF 或圖片", dropBody: "支援 PDF、PNG、JPG、WEBP 與 TIFF。", empty: "尚未選擇掃描檔。", button: "開始辨識", accessLoading: "正在檢查免費辨識額度...", freeEyebrow: "登入成功 · 免費編輯", freeBody: "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 5 頁以內的 A4/Letter PDF，以檔案預檢為準。每月 25 點可用於既有專案；這些每月點數不代表可以掃描新樂譜。 單譜通行證：US$2.99 一次付款，原譜與擷取分譜共用 10 點，不到期。Starter：US$7.99/月，每月 50 點，可處理多份樂譜。兩者均包含一般和大檔案通道，以檔案預檢為準，不另收通道費。", exhaustedEyebrow: "免費辨識額度已使用", exhaustedTitle: "此帳戶已建立一個永久免費樂譜專案。", exhaustedBody: "你的終身免費簡單辨識機會已使用，仍可繼續處理既有專案。更多新譜或大檔案通道可選 US$2.99、含 10 點的單譜通行證，或 US$7.99/月、每月 50 點的 Starter。", exhaustedLibrary: "繼續使用免費樂譜", exhaustedUpgrade: "開通完整權限",
     },
     backup: {
       chooseFile: "請選擇樂譜備份檔案。", importFailed: "無法還原備份。", imported: "樂譜備份已還原。", eyebrow: "還原備份", title: "選擇樂譜備份", body: "還原先前從本站下載的樂譜備份，並繼續編輯。", dropTitle: "選擇備份檔案", dropBody: "支援 .score.json 與 .json 檔案。", empty: "尚未選擇 Score JSON 快照。", button: "還原樂譜",

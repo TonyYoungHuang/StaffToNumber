@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "./recognition-pricing-copy";
 import type { FeatureOnPageContent } from "./feature-on-page";
 
 export const spanishFeatureOnPage: Record<string, FeatureOnPageContent> = {
@@ -12,7 +13,7 @@ export const spanishFeatureOnPage: Record<string, FeatureOnPageContent> = {
       "Compara el resultado con el original y corrige los errores antes de exportar.",
     ],
     faq: [
-      { question: "¿El escáner de partituras es gratis?", answer: "Una cuenta gratuita incluye un proyecto completo, que puede partir de un PDF de varias páginas o una imagen, y 25 créditos al mes. Puedes seguir editando, transponiendo y reproduciendo esa partitura. Las tareas del servidor sujetas a consumo utilizan créditos; para más proyectos o capacidad necesitas un plan de pago." },
+      { question: "¿El escáner de partituras es gratis?", answer: getRecognitionPricingCopy("es").freeScope + " " + getRecognitionPricingCopy("es").passScope + " " + getRecognitionPricingCopy("es").starterScope + " " + getRecognitionPricingCopy("es").laneGuide },
       { question: "¿Puede escanear partituras manuscritas?", answer: "El escáner está pensado para notación impresa. No admite de forma fiable la escritura a mano. Para una partitura manuscrita, introduce las notas como Jianpu estructurado o prepara un archivo MusicXML en un editor de notación." },
       { question: "¿Funciona con fotos del móvil?", answer: "Sí, puedes subir imágenes en los formatos admitidos. Fotografía la página completa con luz uniforme, sin desenfoque y con la cámara paralela al papel. Revisa las notas reconocidas antes de utilizarlas." },
       { question: "¿Cuánto tarda en escanear una página?", answer: "No hay un tiempo fijo por página. Depende de la calidad de la imagen, la complejidad musical, el número de páginas y la cola de tareas. Consulta el estado en la aplicación y espera a que termine antes de repetir el mismo escaneo." },

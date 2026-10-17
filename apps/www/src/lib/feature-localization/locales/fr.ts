@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const frFeaturePages = {
@@ -54,7 +55,7 @@ export const frFeaturePages = {
     "Scanner de partitions PDF et images", "Import OMR avec correction", "Numérisez une partition PDF ou image, obtenez un candidat MusicXML modifiable, consultez les diagnostics et corrigez les erreurs OMR en ligne.",
     ["scanner de partitions", "scanner PDF musical", "OMR en ligne", "scan vers MusicXML"], ["Téléversement OMR", "Reconnaissance de partitions", "Sortie MusicXML", "Panneau de diagnostic"],
     [["Téléverser un PDF ou une image", "La source est conservée et un travail OMR lié au projet est créé."], ["Reconnaître la partition", "Lorsque la reconnaissance est disponible, elle produit un fichier MusicXML et une première partition modifiable à vérifier."], ["Corriger le candidat", "Consultez diagnostics et aperçu, corrigez les erreurs, puis exportez ou créez du matériel d’entraînement."]],
-    [["Un candidat, pas une réponse finale", "Les résultats OMR gardent confiance et diagnostics pour faciliter la correction humaine."], ["Un projet complet gratuit", "Un compte gratuit peut numériser un PDF multipage complet ou une image, puis corriger, lire, transposer, convertir en Jianpu, partager et exporter ce projet."]],
+    [["Un candidat, pas une réponse finale", "Les résultats OMR gardent confiance et diagnostics pour faciliter la correction humaine."], ["Un projet complet gratuit", getRecognitionPricingCopy("fr").freeScope]],
     "La numérisation est un import suivi d’une correction ; elle ne garantit pas une reconnaissance parfaite de tous les PDF et photos.",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(
@@ -75,7 +76,7 @@ export const frFeaturePages = {
     "Tarifs : achat unique ou abonnement", "Achat unique ou abonnement", "Comparez Starter et Converter Pro : achat unique pour un mois ou un an, ou abonnement renouvelable. Prix en dollars américains, crédits et stockage inclus.",
     ["tarifs ScoreTransposer", "prix convertisseur de partitions", "offres outils musicaux", "crédits de partition"], ["Paiement", "Codes d’activation", "Droits d’accès", "Contrôle des exports"],
     [["Choisir une offre", "Sélectionnez une formule mensuelle ou annuelle selon vos traitements individuels ou en lot."], ["Se connecter et payer", "La commande est liée aux droits du compte et les régions actives accèdent au paiement correspondant."], ["Utiliser les projets", "Créez, importez, corrigez, transposez, pratiquez et exportez la révision acceptée."]],
-    [["Capacités claires", "Free comprend un projet complet et 25 crédits mensuels, Starter 50 et Converter Pro 200 crédits par mois."], ["Assistance opérationnelle", "Paiement, activation, téléversement, tâches et exports sont suivis par le même support."]],
+    [["Capacités claires", getRecognitionPricingCopy("fr").freeScope + " " + getRecognitionPricingCopy("fr").passScope + " " + getRecognitionPricingCopy("fr").starterScope + " " + getRecognitionPricingCopy("fr").proCredits], ["Assistance opérationnelle", "Paiement, activation, téléversement, tâches et exports sont suivis par le même support."]],
     "Vérifiez le type d’achat, la durée, le prix et les éventuelles taxes sur la page de paiement avant de confirmer.",
   ),
 } satisfies FeaturePageTranslationCatalog;

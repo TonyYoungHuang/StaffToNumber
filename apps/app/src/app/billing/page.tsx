@@ -18,7 +18,7 @@ export default async function BillingPage() {
       <div className="page-banner">
         <p className="eyebrow">{copy.billing.page.eyebrow}</p>
         <h1 className="page-title">{copy.billing.page.title}</h1>
-        <p className="body-copy large">{copy.billing.page.body}</p>
+        <p className="body-copy large">{copy.billing.page.displayBody}</p>
         {copy.reviewNotice ? <p className="helper-copy">{copy.reviewNotice}</p> : null}
       </div>
       <BillingManager locale={locale} copy={copy.billing.manager} freePlanCredits={freePlanCredits} />

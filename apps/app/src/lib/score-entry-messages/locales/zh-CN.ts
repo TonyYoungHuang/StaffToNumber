@@ -23,7 +23,7 @@ export const zhCNScoreEntryMessages = {
     library: {
       eyebrow: "乐谱工作台",
       title: "识别、管理并继续处理你的乐谱",
-      body: "上传 PDF 或乐谱图片，先免费检查结构；若仍有免费项目，简单识谱可一键开始。也可以打开已有乐谱继续编辑。",
+      body: "免费文件预检会显示页数，并判断使用普通或大文件通道；不占免费识谱次数、不扣积分。尚未使用的终身免费简单识谱机会仅适用于普通通道。",
     },
     newScore: {
       eyebrow: "创建新乐谱",
@@ -32,7 +32,7 @@ export const zhCNScoreEntryMessages = {
       recommended: "推荐",
       choose: "选择",
       choices: {
-        scan: { title: "识别 PDF 或乐谱图片", body: "适合纸质谱、扫描件和 PDF。新账户可从一份完整多页 PDF 或一张乐谱图片创建终身免费项目。" },
+        scan: { title: "识别 PDF 或乐谱图片", body: "终身 1 次普通通道简单识谱，通常适用于一张照片或约 5 页以内的 A4/Letter PDF，以文件预检为准。每月 25 积分可用于已有项目；这些月积分不代表可以扫描新乐谱。" },
         jianpu: { title: "输入简谱", body: "输入数字音符，生成对应五线谱。" },
         musicxml: { title: "导入制谱软件文件", body: "适合 MuseScore、Sibelius、Finale 等导出的 MusicXML 文件。" },
         midi: { title: "导入 MIDI", body: "把 MIDI 中的音符和节奏转换成乐谱。" },
@@ -43,7 +43,7 @@ export const zhCNScoreEntryMessages = {
     source: {
       chooseAnother: "换一种方式",
       headings: {
-        scan: { eyebrow: "创建新乐谱", title: "识别 PDF 或乐谱图片", body: "选择文件后先免费检查乐谱结构，查看推荐方式和价格，确认后才开始识别。" },
+        scan: { eyebrow: "创建新乐谱", title: "识别 PDF 或乐谱图片", body: "免费文件预检会显示页数，并判断使用普通或大文件通道；不占免费识谱次数、不扣积分。尚未使用的终身免费简单识谱机会仅适用于普通通道。" },
         jianpu: { eyebrow: "创建新乐谱", title: "用简谱生成五线谱", body: "输入简谱内容并创建乐谱。这个页面只处理简谱输入。" },
         musicxml: { eyebrow: "创建新乐谱", title: "从制谱软件导入", body: "选择导出的 MusicXML 文件。这个页面只处理文件导入。" },
         midi: { eyebrow: "创建新乐谱", title: "从 MIDI 创建乐谱", body: "选择一个 MIDI 文件。这个页面只处理 MIDI 导入。" },
@@ -87,17 +87,17 @@ export const zhCNScoreEntryMessages = {
       imported: "文件已上传，正在识别。完成后可在“我的乐谱”中查看并校对。",
       eyebrow: "乐谱识别",
       title: "上传 PDF 或乐谱图片",
-      body: "把纸质谱或 PDF 变成可查看、可校对的电子乐谱。复杂谱面可能需要你手动确认少量音符。",
+      body: "一张照片或约 5 页以内的 A4/Letter PDF 通常可走普通通道；约 6 页以上的 PDF 或较大文件可能需要大文件通道。以文件预检为准，套餐没有固定页数额度。 简单识谱每任务 1 分，复杂识谱每任务 5 分；页数影响通道，不按页数倍增。部分交付按比例返还未交付部分的报价积分，失败或取消返还处理积分；此处指退积分，不是退现金。",
       dropTitle: "点击选择 PDF 或图片",
       dropBody: "支持 PDF、PNG、JPG、WEBP 和 TIFF。",
       empty: "尚未选择扫描件。",
       button: "开始识别",
       accessLoading: "正在读取免费额度...",
       freeEyebrow: "登录成功 · 免费编辑",
-      freeBody: "直接上传一份完整多页 PDF 或一张乐谱图片，创建终身免费的乐谱项目。该项目可继续校正、播放、移调、转简谱、分享和导出。",
+      freeBody: "终身 1 次普通通道简单识谱，通常适用于一张照片或约 5 页以内的 A4/Letter PDF，以文件预检为准。每月 25 积分可用于已有项目；这些月积分不代表可以扫描新乐谱。 单谱通行证：US$2.99 一次付费，原谱与提取分谱共享 10 积分，不过期。Starter：US$7.99/月，每月 50 积分，可处理多份乐谱。两者均包含普通和大文件通道，以文件预检为准，不另收通道费。",
       exhaustedEyebrow: "免费额度已用完",
       exhaustedTitle: "本账户的一个永久免费乐谱项目已经创建。",
-      exhaustedBody: "这份完整乐谱仍可继续校正、播放、移调、转简谱、保留版本、分享和导出；升级只用于创建和处理更多乐谱。",
+      exhaustedBody: "你的终身免费简单识谱机会已使用，仍可继续处理已有项目。更多新谱或大文件通道可选 US$2.99、含 10 积分的单谱通行证，或 US$7.99/月、每月 50 积分的 Starter。",
       exhaustedLibrary: "继续使用免费乐谱",
       exhaustedUpgrade: "开通完整功能",
     },

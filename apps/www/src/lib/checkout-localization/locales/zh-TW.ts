@@ -5,7 +5,7 @@ export const zhTWCheckoutMessages = {
     badge: "託管付款頁面", eyebrow: "安全付款", title: "線上訂閱並開通帳戶",
     body: "請使用已註冊 ScoreTransposer 帳戶的電子郵件繼續付款。付款成功後，訂閱與配額會自動歸屬到該帳戶。",
     email: "已註冊帳戶電子郵件", emailPlaceholder: "you@example.com", emailHelp: "必須與 ScoreTransposer 註冊信箱一致，以免訂閱無法正確歸屬。",
-    provider: "付款服務商", stripeTitle: "Stripe", stripeBody: "單曲處理包: 可使用信用卡、支付寶或 Link，以 Stripe 結帳頁實際顯示為準。 訂閱付款方式以結帳頁實際顯示為準。",
+    provider: "付款服務商", stripeTitle: "Stripe", stripeBody: "單譜通行證: 可使用信用卡、支付寶或 Link，以 Stripe 結帳頁實際顯示為準。 訂閱付款方式以結帳頁實際顯示為準。",
     paddleTitle: "Paddle", paddleBody: "適合需要 Merchant of Record、稅務處理和 Paddle 託管付款頁面的情況。",
     button: "繼續付款", loading: "正在前往付款頁面……",
     accessLabel: "計費週期", accessValue: "月繳或年繳", accessBody: "訂閱會按所選月繳或年繳週期自動續訂，可在帳務中心管理付款方式或取消。",

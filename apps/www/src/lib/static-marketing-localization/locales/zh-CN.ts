@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { StaticMarketingLocalization } from "../types";
 
 export const zhCNStaticMarketing = {
@@ -25,7 +26,7 @@ export const zhCNStaticMarketing = {
       body: "你可以先确认文件类型、免费范围和识别边界，再决定是否进入应用。识别候选始终建议人工复核。",
       steps: [
         ["01", "从扫描件创建可编辑乐谱", "上传五线谱 PDF 或图片，查看识别候选，并在同一个乐谱工程中继续处理。"],
-        ["02", "先了解适用范围", "识别结果是候选稿，复杂谱面需要人工校对；免费账户可用一份完整多页 PDF 或乐谱图片创建终身项目。"],
+        ["02", "先了解适用范围", getRecognitionPricingCopy("zh-CN").freeScope + " " + getRecognitionPricingCopy("zh-CN").laneGuide],
         ["03", "在应用内完成处理", "登录后可上传文件、查看任务和候选；免费项目内可继续使用当前已开放的编辑、播放、移调、简谱、版本、分享和导出工具，付费套餐增加处理与存储额度。"],
       ],
     },
@@ -101,8 +102,8 @@ export const zhCNStaticMarketing = {
     },
     next: {
       eyebrow: "下一步",
-      title: "先免费创建一个完整乐谱项目，或继续查看帮助说明。",
-      body: "你可以返回首页查看功能，也可以打开应用创建一个完整免费乐谱项目；隐私政策和服务条款提供数据与使用边界说明。",
+      title: getRecognitionPricingCopy("zh-CN").freeLead,
+      body: getRecognitionPricingCopy("zh-CN").freeScope,
       homeAction: "返回首页",
       appAction: "打开应用",
     },
@@ -126,7 +127,7 @@ export const zhCNStaticMarketing = {
       {
         title: "购买与开通",
         items: [
-          ["我现在可以使用哪些功能？", "注册用户可以从一份完整多页五线谱 PDF 或一张乐谱图片创建终身免费项目，并在该项目内校正、播放、移调、简谱转换、保留版本、分享和导出。升级后可以创建更多乐谱。"],
+          ["我现在可以使用哪些功能？", getRecognitionPricingCopy("zh-CN").freeScope + " " + getRecognitionPricingCopy("zh-CN").passScope + " " + getRecognitionPricingCopy("zh-CN").starterScope],
           {
             question: "国际用户和中国大陆用户的购买路径一样吗？",
             availableAnswer: "不完全一样。国际用户可以直接在线支付；中国大陆用户也可以通过激活码渠道开通，再进入应用内兑换。",
@@ -142,7 +143,7 @@ export const zhCNStaticMarketing = {
       {
         title: "上传与结果",
         items: [
-          ["现在支持什么输入格式？", "免费入口支持一份完整多页 PDF 或一张 PNG、JPG、WebP、TIFF 乐谱图片。Starter 与 Converter Pro 还可创建更多工程，并支持当前已开放的 MusicXML/MXL、MIDI、结构化简谱和 Score JSON 导入；音频转谱保持实验状态。"],
+          ["现在支持什么输入格式？", getRecognitionPricingCopy("zh-CN").inputScope + " " + getRecognitionPricingCopy("zh-CN").laneGuide],
           ["为什么识别结果被标记为候选稿？", "OMR 可能误判音高、时值、声部或小节结构，因此免费结果会显示为需要人工检查的候选稿，并保留置信度和警告，不会伪装成出版级成品。"],
           ["如果上传失败或下载异常怎么办？", "先保留文件名、任务时间、错误截图，再提交支持表单。这样支持侧可以更快定位到具体任务和问题阶段。"],
         ],

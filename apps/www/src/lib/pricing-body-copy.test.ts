@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SUPPORTED_LOCALES } from "@score/i18n";
+import { SUPPORTED_LOCALES, getRecognitionExperienceMessages } from "@score/i18n";
 import { getSingleScorePassCopy } from "@score/shared";
 import { getCreditGuideCopy, getPricingIntroCopy, getPurchaseFaqs } from "./pricing-body-copy";
 import { pricingFacts } from "./pricing-facts";
 import { pricingCopy } from "./localized-pricing";
 import { frenchPricingFaqs } from "./french-pricing";
+import { getHomepageLocalization } from "./homepage-localization";
+import { resolveFaqGroups } from "./static-marketing-localization";
+import { getRecognitionPricingCopy } from "./recognition-pricing-copy";
 
 test("all nine languages provide the complete pricing introduction, fee guide and purchase answers", () => {
   assert.equal(SUPPORTED_LOCALES.length, 9);
@@ -54,4 +57,36 @@ test("the dedicated pricing FAQ sources include the three purchase answers exact
   }
   assert.deepEqual(frenchPricingFaqs.slice(-3), getPurchaseFaqs("fr"));
   assert.equal(new Set(frenchPricingFaqs.map(faq => faq.question)).size, frenchPricingFaqs.length);
+});
+
+test("all nine languages keep the same free, pass, Starter and lane facts across pricing, home and FAQ", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const facts = getRecognitionPricingCopy(locale);
+    const intro = getPricingIntroCopy(locale);
+    const guide = getCreditGuideCopy(locale);
+    const home = getHomepageLocalization(locale);
+    const faq = resolveFaqGroups(locale, true);
+    const summary = getRecognitionExperienceMessages(locale);
+    assert.ok(intro.freeDescription.includes(facts.freeScope), locale);
+    assert.equal(intro.passDescription, facts.passScope, locale);
+    assert.equal(intro.comparisonNote, facts.starterScope, locale);
+    assert.equal(guide.description, facts.billing, locale);
+    assert.ok(guide.rules[1].body.includes(facts.refund), locale);
+    assert.equal(home.page.priceNote, facts.laneGuide, locale);
+    assert.ok(home.page.faqs[0][1].includes(facts.freeScope), locale);
+    assert.ok(faq[0].items[0].answer.includes(facts.passScope), locale);
+    assert.ok(faq[0].items[0].answer.includes(facts.starterScope), locale);
+    assert.match(summary.passPlan, /2[.,]99/);
+    assert.match(summary.passPlan, /10/);
+    assert.match(summary.starterPlan, /7[.,]99/);
+    assert.match(summary.starterPlan, /50/);
+    assert.match(facts.freeScope, /25/);
+    assert.match(facts.freeScope, /1/);
+    assert.match(facts.laneGuide, /6/);
+    assert.doesNotMatch(JSON.stringify([facts, intro, guide]), /MiB|needs more memory|更多内存|Price ID/iu);
+    for (const [key, value] of Object.entries(facts)) {
+      assert.ok(value.trim(), `${locale}: ${key}`);
+      if (locale !== "en") assert.notEqual(value, getRecognitionPricingCopy("en")[key as keyof typeof facts], `${locale}: ${key}`);
+    }
+  }
 });

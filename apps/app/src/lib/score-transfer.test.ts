@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { SUPPORTED_LOCALES } from "@score/i18n";
 import { hasUsableScoreOutputs, readScoreDownload } from "./download-score-file";
 import { boundedScoreTransfer, fetchScoreUpload, forgetUploadReceipt, getUploadReceipt, latestUploadReceipt } from "./score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "./score-transfer-messages/client";
@@ -99,4 +100,21 @@ test("memory and empty selection failures receive distinct readable recovery mes
   assert.equal(scoreGenerationError({ code: "EXPORT_EMPTY_SELECTION" }, "en"), scoreTransferCopy("en").exportEmpty);
   assert.equal(scoreGenerationError({ error: "The selected practice range or part filter does not contain playable notes." }, "zh-CN"), scoreTransferCopy("zh-CN").exportEmpty);
   assert.equal(scoreGenerationError({ error: "Other failure" }, "en"), null);
+});
+
+test("upload, file-check and processing recovery has complete locale copy without English fallback", () => {
+  const english = scoreTransferCopy("en");
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = scoreTransferCopy(locale);
+    assert.deepEqual(Object.keys(copy), Object.keys(english), locale);
+    for (const key of Object.keys(english) as Array<keyof typeof english>) {
+      assert.ok(copy[key].trim(), `${locale} ${key}`);
+      if (locale !== "en") assert.notEqual(copy[key], english[key], `${locale} ${key} must be translated`);
+    }
+    assert.equal(scoreGenerationError({ code: "ENGINE_MEMORY_PRESSURE" }, locale), copy.memory);
+    assert.equal(scoreGenerationError({ code: "ENGINE_RESOURCE_BUSY" }, locale), copy.resourceBusy);
+    assert.equal(scoreGenerationError({ code: "ENGINE_RESOURCE_UNAVAILABLE" }, locale), copy.resourceUnavailable);
+    assert.doesNotMatch(copy.memory, /MiB|GiB/u, locale);
+  }
+  assert.notEqual(scoreTransferCopy("zh-TW").preflightTimeout, scoreTransferCopy("zh-CN").preflightTimeout);
 });

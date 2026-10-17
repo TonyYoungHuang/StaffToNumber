@@ -11,7 +11,7 @@ export const zhCNCheckoutMessages = {
     emailHelp: "必须与 ScoreTransposer 注册邮箱一致，以免订阅无法正确归属。",
     provider: "支付渠道",
     stripeTitle: "Stripe",
-    stripeBody: "单曲处理包: 可使用银行卡、支付宝或 Link，以 Stripe 收银台实际显示为准。 订阅付款方式以收银台实际显示为准。",
+    stripeBody: "单谱通行证: 可使用银行卡、支付宝或 Link，以 Stripe 收银台实际显示为准。 订阅付款方式以收银台实际显示为准。",
     paddleTitle: "Paddle",
     paddleBody: "适合需要 Merchant of Record、税务处理和 Paddle 托管支付页的场景。",
     button: "继续支付",

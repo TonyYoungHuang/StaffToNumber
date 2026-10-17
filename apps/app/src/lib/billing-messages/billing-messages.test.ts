@@ -5,6 +5,8 @@ import test from "node:test";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
 import { getPricingPlanCatalog, getPaymentRecoveryCopy } from "@score/shared";
 import { getOneScoreUpsellCopy } from "../one-score-upsell-copy";
+import { getScoreEntryMessages } from "../score-entry-messages";
+import { getWorkspaceMessages } from "../workspace-messages";
 import {
   formatBillingBytes,
   formatBillingMoney,
@@ -62,6 +64,41 @@ test("all nine locales describe single-score card, Alipay and Link without promi
     assert.match(upsell.passCta, /US\$2\.99/u, locale);
     assert.doesNotMatch(upsell.subscriptionCta, /Alipay|支付宝|支付寶|Link/u, locale);
   }
+});
+
+test("app purchase, library and billing copy preserve the three offers and per-task recognition rule in every locale", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const billing = getBillingMessages(locale);
+    const upsell = getOneScoreUpsellCopy(locale);
+    const scan = getScoreEntryMessages(locale).library.scan;
+    const dashboard = getWorkspaceMessages(locale).dashboard.metrics;
+    for (const value of [upsell.passNote, billing.scorePass.passTarget]) assert.match(value, /10/u, locale);
+    assert.match(billing.scorePass.starterBody, /50/u, locale);
+    for (const value of [scan.freeBody, dashboard.freeRouteBody]) {
+      for (const amount of ["25", "10", "50"]) assert.ok(value.includes(amount), `${locale} ${amount}`);
+      assert.match(value, /2[.,]99/u, locale);
+      assert.match(value, /7[.,]99/u, locale);
+    }
+    for (const value of [billing.checkout.page.planNote, billing.billing.manager.quotaNote, scan.body]) {
+      assert.match(value, /1/u, locale);
+      assert.match(value, /5/u, locale);
+      assert.doesNotMatch(value, /(?:1|5) credits? per page|每[页頁].*[15] [积積]分|[15] [积積]分.*每[页頁]/iu, locale);
+    }
+    assert.doesNotMatch(upsell.passNote, /unlimited pages|页数不限|頁數不限|ページ数無制限|páginas ilimitadas|nombre de pages illimité|unbegrenzte Seitenzahl/u, locale);
+    if (locale !== "en") {
+      assert.notEqual(upsell.passNote, getOneScoreUpsellCopy("en").passNote, locale);
+      assert.notEqual(billing.billing.page.displayBody, getBillingMessages("en").billing.page.displayBody, locale);
+    }
+  }
+});
+
+test("billing corrects visible pass expiry copy while keeping the existing SEO description", () => {
+  const page = source("../../app/billing/page.tsx");
+  assert.match(page, /description: page\.body/u);
+  assert.match(page, /\{copy\.billing\.page\.displayBody\}/u);
+  assert.notEqual(getBillingMessages("en").billing.page.body, getBillingMessages("en").billing.page.displayBody);
+  assert.match(getBillingMessages("en").billing.page.displayBody, /One Score Pass credits have no expiry/u);
+  assert.match(getBillingMessages("zh-CN").billing.page.displayBody, /单谱通行证积分不过期/u);
 });
 
 test("checkout supports an explicit One Score Pass and defaults to Starter without activation", () => {

@@ -20,11 +20,11 @@ export const koBillingMessages = {
     },
     page: {
       eyebrow: "크레딧 요금", title: "크레딧 요금제 선택", body: "작업 생성 시 크레딧이 예약되며, 실패하거나 취소되면 자동으로 반환됩니다. 로그인 전에 가격, 기능, 리소스를 비교하세요.",
-      promoLabel: "연간 결제로 절약", promoValue: "약 45%~49% 절약", planNote: "월간 크레딧은 매달 초기화되며 이월되지 않습니다. 보기, 재생 제어, 제출하지 않은 기본 편집에는 크레딧이 들지 않습니다.",
+      promoLabel: "연간 결제로 절약", promoValue: "약 45%~49% 절약", planNote: "간단 인식은 작업당 1크레딧, 복잡한 인식은 5크레딧입니다. 페이지 수는 처리 경로에 영향을 주며 페이지 수만큼 요금을 곱하지 않습니다. 일부만 제공되면 미제공 비율의 견적 크레딧을 반환하고 실패 또는 취소 시 처리 크레딧을 반환합니다. 현금 환불이 아닌 크레딧 반환입니다. 월간 크레딧은 UTC 기준 매월 1일 초기화되며 이월되지 않습니다. 보기, 재생 및 서버에 작업을 제출하지 않는 기본 편집에는 크레딧이 들지 않습니다.",
     },
     selector: {
       plansAria: "크레딧 요금제 선택", selectedPlan: "선택한 요금제", continueTemplate: "{name} {cycle} 계속하기", freeEyebrow: "무료",
-      freeTitle: "첫 번째 완전한 악보를 무료로 만들기", freeBody: "결제나 카드가 필요 없습니다. 무료 요금제는 완전한 악보 프로젝트 하나를 계속 보관하고 매달 크레딧을 제공합니다.", freeCta: "무료로 악보 만들기", creditUsage: "작업 생성 시 크레딧 예약", includedCapabilities: "포함 기능", benefitsAndResources: "혜택 및 리소스",
+      freeTitle: "첫 번째 완전한 악보를 무료로 만들기", freeBody: "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 매월 25크레딧은 기존 프로젝트에 사용할 수 있지만 새 악보 인식 권한은 주지 않습니다.", freeCta: "무료로 악보 만들기", creditUsage: "작업 생성 시 크레딧 예약", includedCapabilities: "포함 기능", benefitsAndResources: "혜택 및 리소스",
     },
     client: {
       checkoutEyebrow: "결제", title: "온라인 결제 후 이용 권한 자동 활성화", body: "결제가 완료되면 등록 계정의 이용 권한이 자동으로 활성화됩니다.",
@@ -47,16 +47,17 @@ export const koBillingMessages = {
     },
   },
   billing: {
-    page: { eyebrow: "결제 관리", title: "구독, 갱신, 환불 및 학교 좌석을 관리하세요.", body: "이용 권한은 검증된 결제 서비스 Webhook 원장을 따르며 갱신 실패, 취소, 환불도 권한 상태에 반영됩니다." },
+    page: { eyebrow: "결제 관리", title: "구독, 갱신, 환불 및 학교 좌석을 관리하세요.", body: "이용 권한은 검증된 결제 서비스 Webhook 원장을 따르며 갱신 실패, 취소, 환불도 권한 상태에 반영됩니다.",
+      displayBody: "결제 확인 후 선택한 이용 권한이 활성화됩니다. 일회성 기간 요금제는 자동 갱신 없이 만료되며 구독은 취소할 때까지 갱신됩니다. 한 곡 이용권 크레딧은 만료되지 않으며 원본 악보와 추출 파트가 공유합니다. 결제 실패, 취소 및 결제 환불 내역도 여기에 표시됩니다." },
     manager: {
       loading: "결제 정보 불러오는 중...", fallbackError: "결제 정보를 불러올 수 없습니다. 다시 시도하세요.", signIn: "결제 정보를 보려면 로그인하세요.",
       creditEyebrow: "크레딧 잔액", availableCredits: "이번 달 사용 가능 크레딧", creditUnit: "크레딧", creditSummaryTemplate: "이번 달 {limit}개 중 {used}개를 사용했습니다.", creditUsage: "이번 달 크레딧 사용량", storage: "파일 저장 공간",
       prepaidTitle: "선불 크레딧",
       prepaidSummaryTemplate: "선불 크레딧 {limit}개 중 {used}개를 사용했거나 예약했습니다. 월간 초기화나 만료가 없습니다.",
-      prepaidNote: "처리와 내보내기 작업에는 크레딧을 사용합니다. 편집, 조옮김, 재생에는 사용하지 않습니다. 실패하거나 취소하면 예약한 크레딧이 반환됩니다.",
+      prepaidNote: "간단 인식은 작업당 1크레딧, 복잡한 인식은 5크레딧입니다. 페이지 수는 처리 경로에 영향을 주며 페이지 수만큼 요금을 곱하지 않습니다. 일부만 제공되면 미제공 비율의 견적 크레딧을 반환하고 실패 또는 취소 시 처리 크레딧을 반환합니다. 현금 환불이 아닌 크레딧 반환입니다.",
       additionalPrepaidTemplate: "추가 선불 크레딧: {remaining} / {total}. 월간 크레딧이 부족할 때 사용하며, 미사용 크레딧은 유지됩니다.",
-      quotaNote: "작업 생성 시 크레딧이 예약되며, 실패하거나 취소되면 자동으로 반환됩니다. 월간 크레딧은 매달 초기화되며 이월되지 않습니다.",
-      freeEyebrow: "무료 이용 상태", noPaidTitle: "활성 유료 요금제가 없습니다", freeBody: "무료 계정은 완전한 여러 페이지 PDF 또는 악보 이미지로 평생 프로젝트 하나를 만들고 교정, 재생, 조옮김, 숫자보, 공유 및 내보내기를 이용할 수 있습니다. 무료 한도는 {credits}입니다.", unlock: "전체 이용 권한 활성화",
+      quotaNote: "간단 인식은 작업당 1크레딧, 복잡한 인식은 5크레딧입니다. 페이지 수는 처리 경로에 영향을 주며 페이지 수만큼 요금을 곱하지 않습니다. 일부만 제공되면 미제공 비율의 견적 크레딧을 반환하고 실패 또는 취소 시 처리 크레딧을 반환합니다. 현금 환불이 아닌 크레딧 반환입니다. 월간 크레딧은 UTC 기준 매월 1일 초기화되며 이월되지 않습니다. 보기, 재생 및 서버에 작업을 제출하지 않는 기본 편집에는 크레딧이 들지 않습니다.",
+      freeEyebrow: "무료 이용 상태", noPaidTitle: "활성 유료 요금제가 없습니다", freeBody: "무료에는 파일 검사 범위 내에서 평생 1회 표준 처리 간단 인식과 {credits}이 포함됩니다. 월간 크레딧은 새 악보 인식 권한을 주지 않습니다. 한 곡 이용권은 US$2.99 일회성 결제로 원본 악보와 추출 파트가 10크레딧을 공유하며 만료되지 않습니다. Starter는 월 US$7.99에 여러 악보에 쓸 수 있는 매월 50크레딧을 제공합니다. 두 상품 모두 파일 검사 범위 내에서 표준 처리와 대용량 파일 처리를 포함하며 처리 경로 추가 요금은 없습니다.", unlock: "전체 이용 권한 활성화",
       subscriptionsEyebrow: "구독", subscriptionsTitle: "이용 권한 및 갱신 상태", manageStripe: "Stripe 결제 수단 관리", managingStripe: "Stripe 여는 중...", noSubscriptions: "이 계정에 연결된 구독이 없습니다.",
       currentPeriodEndsTemplate: "현재 기간 종료일: {date}", noFixedEnd: "고정된 기간 종료일 없음", renewalFailed: "최근 갱신에 실패했습니다. 결제 수단을 업데이트하세요.", cancellationScheduled: "현재 기간이 끝날 때 취소됩니다.",
       seatsTemplate: "{count}석", cancel: "기간 종료 시 취소", canceling: "취소 중...", cancelSuccess: "현재 결제 기간이 끝날 때 구독이 취소됩니다.",
@@ -75,14 +76,14 @@ export const koBillingMessages = {
       "converter-pro-monthly": "매달 더 많은 악보를 처리하는 개인용", "converter-pro-annual": "개인 악보를 장기간 자주 처리하는 사용자용",
     },
     ctas: { free: "무료로 악보 만들기", "starter-monthly": "Starter 월간 선택", "starter-annual": "Starter 연간 선택", "converter-pro-monthly": "Converter Pro 월간 선택", "converter-pro-annual": "Converter Pro 연간 선택" },
-    unitPriceTemplate: "크레딧당 {unitPrice}", freeUnitPriceTemplate: "완전한 악보 프로젝트 {projectCount}개", creditsTemplate: "월 {monthlyCredits} 크레딧", freeCreditsTemplate: "평생 무료 스캔 프로젝트 {projectCount}개 · 월 {monthlyCredits} 크레딧(내보내기 등)",
+    unitPriceTemplate: "크레딧당 {unitPrice}", freeUnitPriceTemplate: "완전한 악보 프로젝트 {projectCount}개", creditsTemplate: "월 {monthlyCredits} 크레딧", freeCreditsTemplate: "평생 무료 간단 인식 {projectCount}회 · 표준 처리 · 매월 {monthlyCredits}크레딧",
     benefits: {
-      freeProject: "완전한 악보 프로젝트 {projectCount}개를 평생 생성", moreThanFreeProject: "무료 악보 프로젝트 {projectCount}개 제한 해제", starterIncluded: "현재 Starter의 모든 기능", starterMonthlyIncluded: "현재 Starter 월간의 모든 기능", converterMonthlyIncluded: "현재 Converter Pro 월간의 모든 기능",
+      freeProject: "평생 무료 간단 인식 {projectCount}회, 표준 처리에서만 이용. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF이며 파일 검사 결과에 따릅니다", moreThanFreeProject: "무료 악보 프로젝트 {projectCount}개 제한 해제", starterIncluded: "현재 Starter의 모든 기능", starterMonthlyIncluded: "현재 Starter 월간의 모든 기능", converterMonthlyIncluded: "현재 Converter Pro 월간의 모든 기능",
       editor: "온라인 편집기, 파트 사본 생성기 Beta 및 실시간 공동 작업 Beta", practice: "재생, 브라우저 녹음 및 연습 피드백 Beta, 스마트 조옮김", conversion: "오선보 ↔ 숫자보 및 MusicXML ↔ MIDI 변환",
       exports: "해당 렌더러 사용 시 PDF/SVG/PNG 및 WAV/MP3 내보내기", freeExports: "무료 악보에서 현재 공개된 내보내기 및 프로젝트 기능 사용",
     },
     resources: {
-      monthlyCredits: "매달 {monthlyCredits} 크레딧", monthlyCreditsReset: "매달 {monthlyCredits} 크레딧, 월별 초기화", freeMonthlyCredits: "매달 {monthlyCredits} 크레딧은 내보내기 등에 사용, 월별 초기화. 새 스캔에는 한 곡 이용권 또는 요금제가 필요합니다", storage: "파일 저장 공간 {storage} MB", personalLibrary: "개인 악보함, 수정 기록 및 공개 악보 카탈로그",
+      monthlyCredits: "매월 {monthlyCredits}크레딧. 간단 인식 작업당 1, 복잡한 인식 5크레딧. 표준 및 대용량 파일 처리는 파일 검사 결과에 따릅니다", monthlyCreditsReset: "UTC 기준 매월 {monthlyCredits}크레딧, 이월 없음. 간단 인식 작업당 1, 복잡한 인식 5크레딧. 두 처리 경로는 파일 검사 결과에 따릅니다", freeMonthlyCredits: "기존 프로젝트에 매월 {monthlyCredits}크레딧. 새 악보 인식에는 미사용 무료 횟수, 한 곡 이용권 또는 활성 요금제가 필요합니다", storage: "파일 저장 공간 {storage} MB", personalLibrary: "개인 악보함, 수정 기록 및 공개 악보 카탈로그",
       monthlyRenewal: "장기 약정 없는 월간 갱신", annualSavings: "월간 결제 12회 대비 {annualSavings} 절약", freeLibrary: "공개 악보 라이브러리 및 CC0 다운로드", noCard: "카드 필요 없음; 무료 프로젝트 유지",
     },
   },

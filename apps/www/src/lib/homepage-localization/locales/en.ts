@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
 const paidBenefits = [
@@ -12,14 +13,14 @@ export const enHomepage = {
     schemaDescription: "Use a sheet music scanner to turn a PDF or photo into editable notes. Correct scanning mistakes, transpose, play, and export MusicXML, MIDI, PDF or Jianpu online.",
     heroKicker: "Scan sheet music online",
     heroTitle: ["Sheet Music Scanner,", "Transposer & Editor"],
-    heroIntro: ["Use our sheet music scanner to turn a PDF or photo into editable notes.", "Fix scanning mistakes, transpose to any key, and play your score.", "Export MusicXML, MIDI, PDF or Jianpu. One full project free, nothing to install."],
+    heroIntro: ["Use our sheet music scanner to turn a PDF or photo into editable notes.", "Fix scanning mistakes, transpose to any key, and play your score.", getRecognitionPricingCopy("en").freeLead],
     heroPoints: [
       ["Check every note", "Compare your original with the recognized score and correct mistakes."],
       ["Keep using your score", "Edit, create Jianpu, transpose and listen without re-uploading."],
       ["Portable open formats", "Exchange with MusicXML and keep MIDI and project snapshots."],
     ],
     heroCases: "See real examples",
-    facts: [["Free forever", "One complete score project"], ["Inputs", "Complete PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
+    facts: [[getRecognitionPricingCopy("en").freeShort, getRecognitionPricingCopy("en").freeUnit], ["Inputs", "Complete PDF / image / MusicXML"], ["Keep working", "Edit / Jianpu / transpose / play"]],
     stepsKicker: "Three-step workflow",
     stepsTitle: "How to scan sheet music into an editable score",
     steps: [
@@ -82,22 +83,22 @@ export const enHomepage = {
     creditRulesTitle: "How credits are counted today",
     creditRulesBody: "Credits are reserved when a job is created; they are automatically returned if it fails or is cancelled. Monthly credits reset at the start of each UTC calendar month and do not roll over.",
     creditRules: [
-      ["$0", "One complete free project", "Your free account includes 1 lifetime free scan project, 25 credits / month for exports & tools, and 50 MB of storage. Scan a complete multi-page PDF or score image; scanning a new score requires a One Score Pass or plan."],
+      ["$0", "One complete free project", getRecognitionPricingCopy("en").freeScope],
       ["Reserved credits", "Reservation and return", "Credits are reserved when a job is created; they are automatically returned if it fails or is cancelled. Synchronous transposition and Jianpu previews do not automatically use a credit."],
       ["Monthly reset", "Plan allowance", "Starter includes 50 credits per month and Converter Pro includes 200. Allowances reset at the start of each UTC calendar month; unused credits do not roll over."],
     ],
-    priceNote: "Free, Starter and Converter Pro include the same currently available project tools. Paid plans add processing and storage capacity. Review the purchase type, price, currency and any taxes before confirming payment.",
+    priceNote: getRecognitionPricingCopy("en").laneGuide,
     faqKicker: "FAQ",
     faqTitle: "Sheet music scanner FAQ",
     faqs: [
-      ["Is the sheet music scanner free?", "Yes. A free account includes one complete score project and 25 monthly credits. Scan a complete PDF or score image, then keep using the current editing, transposition, playback and export tools on that score."],
+      ["Is the sheet music scanner free?", getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").laneGuide],
       ["Can I transpose or create Jianpu afterward?", "Yes. After checking the scanned notes, choose a new key or generate numbered notation. You can keep the original and save your changes."],
       ["Which export formats are supported?", "Download MusicXML, MIDI or Jianpu text, or use the available PDF, image and audio exports. A project backup preserves your editable score."],
       ["Is audio-to-score available now?", "It opens as an experimental capability with explicit format, quota, and correction boundaries."],
       ["Will my uploads become public?", "No. Private projects do not automatically become public examples."],
     ],
     finalKicker: "Start with one complete score",
-    finalTitle: "Scan your first complete score for free.",
+    finalTitle: getRecognitionPricingCopy("en").freeLead,
     finalAction: "Scan sheet music",
   },
   media: {
@@ -122,19 +123,19 @@ export const enHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "Recognize", title: "Upload a PDF or score image", body: "Sign in and upload one complete multi-page PDF or score image. Keep the free project for correction, playback, conversion, sharing, and export.", action: "Create for free" },
+      recognize: { label: "Recognize", title: "Upload a PDF or score image", body: getRecognitionPricingCopy("en").freeScope, action: "Create for free" },
       process: { label: "Edit a score", title: "Import MusicXML or MIDI", body: "Edit the notes, change key, listen and export without re-uploading your score.", action: "Open score workspace" },
       transcribe: { label: "Audio to score", title: "Import audio or video", body: "Create a MIDI and notation candidate for review; dense polyphony still requires correction.", action: "Create a candidate", unavailableAction: "Check experimental status" },
     },
     checking: "Checking sign-in status...",
-    signedIn: "Signed in. Choose one complete score to create your free project.",
+    signedIn: getRecognitionPricingCopy("en").freeLead,
     signInFirst: "Sign in or register first; you will stay on this homepage.",
     googleLabel: "Continue with Google",
     googleLoading: "Loading Google sign-in…",
     googleFailed: "Google sign-in is unavailable. Please retry or use your email.",
     googleDivider: "Or sign in with email",
     authTitle: "Sign in to create for free",
-    authBody: "After authentication, this dialog closes. Choose one complete PDF or score image, then correct it and use the current project-level tools.",
+    authBody: getRecognitionPricingCopy("en").freeScope,
     login: "Sign in",
     register: "Register",
     email: "Email",
@@ -172,12 +173,12 @@ export const enHomepage = {
   },
   plans: {
     free: {
-      badge: "Free forever", name: "Free", cycle: "Lifetime", unitPrice: "One complete score project", credits: "1 lifetime free scan project · 25 credits / month for exports & tools", audience: "Use every current project-level tool with one complete score",
-      benefits: ["Create one complete score project for life", "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "Use currently released exports and project-level tools on that free score"],
-      resources: ["25 credits monthly for exports and tools, reset each month; new scans need a One Score Pass or plan", "50 MB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"], cta: "Create a free score",
+      badge: getRecognitionPricingCopy("en").freeShort, name: "Free", cycle: "Lifetime", unitPrice: getRecognitionPricingCopy("en").freeUnit, credits: "1 lifetime free scan project · 25 credits / month for exports & tools", audience: getRecognitionPricingCopy("en").freeLead,
+      benefits: [getRecognitionPricingCopy("en").freeUnit, "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "Use currently released exports and project-level tools on that free score"],
+      resources: [getRecognitionPricingCopy("en").freeScope, "50 MB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"], cta: "Create a free score",
     },
     "starter-monthly": {
-      badge: "Flexible monthly", name: "Starter", cycle: "Monthly", unitPrice: "$0.16 per credit", credits: "50 credits / month", audience: "For people who regularly process personal scores", benefits: ["More than the one free score project", ...paidBenefits], resources: ["50 credits each month", "250 MB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"], cta: "Choose Starter monthly",
+      badge: "Flexible monthly", name: "Starter", cycle: "Monthly", unitPrice: "$0.16 per credit", credits: "50 credits / month", audience: getRecognitionPricingCopy("en").starterScope, benefits: ["More than the one free score project", ...paidBenefits], resources: [getRecognitionPricingCopy("en").starterCredits, "250 MB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"], cta: "Choose Starter monthly",
     },
     "starter-annual": {
       badge: "Starter annual", name: "Starter", cycle: "Annual", unitPrice: "$0.082 per credit", credits: "50 credits / month", audience: "For long-term individual use at a lower cost per credit", benefits: ["All current Starter monthly capabilities", ...paidBenefits], resources: ["50 credits monthly, reset each month", "250 MB file storage", "Save $46.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"], cta: "Choose Starter annual",

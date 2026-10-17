@@ -20,11 +20,11 @@ export const koScoreEntryMessages = {
     "retry": "다시 시도"
   },
   pages: {
-    library: { eyebrow: "악보 작업 공간", title: "악보를 인식하고 관리하며 작업을 이어가세요", body: "PDF나 악보 이미지를 업로드해 인식을 시작하거나 저장된 악보를 열어 편집을 계속하세요. 업로드, 후보 결과 및 라이브러리를 한 작업 공간에서 관리할 수 있습니다." },
+    library: { eyebrow: "악보 작업 공간", title: "악보를 인식하고 관리하며 작업을 이어가세요", body: "무료 파일 검사에서 페이지 수와 표준 처리 또는 대용량 파일 처리가 필요한지 표시합니다. 무료 인식 횟수나 크레딧을 사용하지 않습니다. 미사용 평생 무료 간단 인식은 표준 처리에서만 이용할 수 있습니다." },
     newScore: {
       eyebrow: "새 악보 만들기", title: "어떤 자료로 시작하나요?", body: "자료 유형을 하나 선택하세요. 다음 페이지에는 해당 방식에 필요한 단계만 표시됩니다.", recommended: "추천", choose: "선택",
       choices: {
-        scan: { title: "PDF 또는 악보 이미지 스캔", body: "인쇄 악보, 스캔 및 PDF에 적합합니다. 새 계정은 완전한 여러 페이지 PDF 또는 악보 이미지로 평생 무료 프로젝트 하나를 만들 수 있습니다." },
+        scan: { title: "PDF 또는 악보 이미지 스캔", body: "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 매월 25크레딧은 기존 프로젝트에 사용할 수 있지만 새 악보 인식 권한은 주지 않습니다." },
         jianpu: { title: "숫자보 입력", body: "숫자 음표를 입력하여 오선보를 만드세요." },
         musicxml: { title: "악보 제작 프로그램에서 가져오기", body: "MuseScore, Sibelius, Finale 등에서 내보낸 MusicXML 파일에 적합합니다." },
         midi: { title: "MIDI 가져오기", body: "MIDI의 음표와 리듬을 악보로 변환하세요." },
@@ -35,7 +35,7 @@ export const koScoreEntryMessages = {
     source: {
       chooseAnother: "다른 자료 선택",
       headings: {
-        scan: { eyebrow: "새 악보 만들기", title: "PDF 또는 악보 이미지 스캔", body: "파일 하나를 선택하고 인식을 시작하세요. 이 페이지는 스캔 전용입니다." },
+        scan: { eyebrow: "새 악보 만들기", title: "PDF 또는 악보 이미지 스캔", body: "무료 파일 검사에서 페이지 수와 표준 처리 또는 대용량 파일 처리가 필요한지 표시합니다. 무료 인식 횟수나 크레딧을 사용하지 않습니다. 미사용 평생 무료 간단 인식은 표준 처리에서만 이용할 수 있습니다." },
         jianpu: { eyebrow: "새 악보 만들기", title: "숫자보에서 오선보 만들기", body: "숫자보를 입력하여 악보를 만드세요. 이 페이지는 숫자보 입력 전용입니다." },
         musicxml: { eyebrow: "새 악보 만들기", title: "악보 제작 프로그램에서 가져오기", body: "내보낸 MusicXML 파일을 선택하세요. 이 페이지는 파일 가져오기 전용입니다." },
         midi: { eyebrow: "새 악보 만들기", title: "MIDI에서 악보 만들기", body: "MIDI 파일 하나를 선택하세요. 이 페이지는 MIDI 가져오기 전용입니다." },
@@ -57,7 +57,7 @@ export const koScoreEntryMessages = {
       chooseFile: ".musicxml, .xml 또는 .mxl 파일을 선택해 주세요.", importFailed: "MusicXML을 가져오지 못했습니다.", imported: "악보를 내 악보에 추가했습니다.", eyebrow: "악보 제작 프로그램에서 가져오기", title: "MusicXML 파일 선택", body: "MuseScore, Sibelius, Finale 또는 다른 악보 앱에서 내보낸 MusicXML을 가져와 여기서 편집을 계속하세요.", dropTitle: "파일 선택", dropBody: ".musicxml, .xml 및 .mxl 파일을 지원합니다.", empty: "아직 파일을 선택하지 않았습니다.", button: "MusicXML 가져오기",
     },
     scan: {
-      chooseFile: "PDF 또는 이미지 파일을 선택해 주세요.", importFailed: "OMR 가져오기 작업을 만들 수 없습니다.", imported: "파일을 업로드했고 인식이 시작되었습니다. 나중에 내 악보에서 검토하세요.", eyebrow: "악보 인식", title: "PDF 또는 악보 이미지 업로드", body: "인쇄 악보나 PDF를 검토하고 교정할 수 있는 전자 악보로 바꾸세요. 복잡한 기보는 몇 가지 수동 수정이 필요할 수 있습니다.", dropTitle: "PDF 또는 이미지 선택", dropBody: "PDF, PNG, JPG, WEBP 및 TIFF를 지원합니다.", empty: "아직 스캔 파일을 선택하지 않았습니다.", button: "인식 시작", accessLoading: "무료 스캔 사용 가능 여부를 확인하는 중...", freeEyebrow: "로그인됨 · 무료 편집", freeBody: "완전한 여러 페이지 PDF 또는 악보 이미지 하나를 업로드하여 평생 무료 악보 프로젝트를 만드세요. 교정, 재생, 조옮김, 변환, 공유 및 내보내기를 계속할 수 있습니다.", exhaustedEyebrow: "무료 편집 스캔 사용 완료", exhaustedTitle: "이 계정은 평생 무료 악보 프로젝트 하나를 이미 만들었습니다.", exhaustedBody: "해당 완전한 악보는 계속 교정, 재생, 조옮김, 변환, 버전 관리, 공유 및 내보내기할 수 있습니다. 더 많은 악보를 만들고 처리할 때만 업그레이드하세요.", exhaustedLibrary: "무료 악보 계속 사용", exhaustedUpgrade: "전체 권한 활성화",
+      chooseFile: "PDF 또는 이미지 파일을 선택해 주세요.", importFailed: "OMR 가져오기 작업을 만들 수 없습니다.", imported: "파일을 업로드했고 인식이 시작되었습니다. 나중에 내 악보에서 검토하세요.", eyebrow: "악보 인식", title: "PDF 또는 악보 이미지 업로드", body: "보통 사진 1장이나 약 5페이지 이하의 A4/Letter PDF는 표준 처리가 가능하며, 약 6페이지 이상의 PDF나 큰 파일은 대용량 파일 처리가 필요할 수 있습니다. 파일 검사로 결정하며 요금제별 고정 페이지 할당량은 없습니다. 간단 인식은 작업당 1크레딧, 복잡한 인식은 5크레딧입니다. 페이지 수는 처리 경로에 영향을 주며 페이지 수만큼 요금을 곱하지 않습니다. 일부만 제공되면 미제공 비율의 견적 크레딧을 반환하고 실패 또는 취소 시 처리 크레딧을 반환합니다. 현금 환불이 아닌 크레딧 반환입니다.", dropTitle: "PDF 또는 이미지 선택", dropBody: "PDF, PNG, JPG, WEBP 및 TIFF를 지원합니다.", empty: "아직 스캔 파일을 선택하지 않았습니다.", button: "인식 시작", accessLoading: "무료 스캔 사용 가능 여부를 확인하는 중...", freeEyebrow: "로그인됨 · 무료 편집", freeBody: "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 매월 25크레딧은 기존 프로젝트에 사용할 수 있지만 새 악보 인식 권한은 주지 않습니다. 한 곡 이용권은 US$2.99 일회성 결제로 원본 악보와 추출 파트가 10크레딧을 공유하며 만료되지 않습니다. Starter는 월 US$7.99에 여러 악보에 쓸 수 있는 매월 50크레딧을 제공합니다. 두 상품 모두 파일 검사 범위 내에서 표준 처리와 대용량 파일 처리를 포함하며 처리 경로 추가 요금은 없습니다.", exhaustedEyebrow: "무료 편집 스캔 사용 완료", exhaustedTitle: "이 계정은 평생 무료 악보 프로젝트 하나를 이미 만들었습니다.", exhaustedBody: "평생 무료 간단 인식을 사용했습니다. 저장된 프로젝트 작업은 계속할 수 있습니다. 새 악보나 대용량 파일 처리에는 10크레딧을 포함한 US$2.99 한 곡 이용권 또는 매월 50크레딧을 제공하는 월 US$7.99 Starter를 선택하세요.", exhaustedLibrary: "무료 악보 계속 사용", exhaustedUpgrade: "전체 권한 활성화",
     },
     backup: {
       chooseFile: "악보 백업 파일을 선택해 주세요.", importFailed: "백업을 복원할 수 없습니다.", imported: "악보 백업을 복원했습니다.", eyebrow: "백업 복원", title: "악보 백업 선택", body: "이전에 이 사이트에서 다운로드한 악보 백업을 복원하고 편집을 계속하세요.", dropTitle: "백업 파일 선택", dropBody: ".score.json 및 .json 파일을 지원합니다.", empty: "아직 Score JSON 스냅샷을 선택하지 않았습니다.", button: "악보 복원",

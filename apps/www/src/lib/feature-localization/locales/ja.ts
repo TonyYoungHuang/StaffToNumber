@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import { defineFeatureTranslation, type FeaturePageTranslationCatalog } from "../types";
 
 export const jaFeaturePages = {
@@ -54,7 +55,7 @@ export const jaFeaturePages = {
     "PDF・画像対応の楽譜スキャナー", "修正を前提とした OMR 取り込み", "PDF または楽譜画像をスキャンして編集可能な MusicXML 候補を作り、診断を確認して OMR の誤りをオンラインで修正します。",
     ["楽譜スキャナー", "PDF 楽譜スキャン", "オンライン OMR", "スキャン MusicXML"], ["OMR アップロード", "Audiveris ワーカー", "MusicXML 出力", "診断パネル"],
     [["PDF または画像をアップロード", "ソースを保存し、楽譜プロジェクトに結び付いた OMR ジョブを作ります。"], ["Audiveris 認識を実行", "設定済みの場合、MusicXML を生成して編集可能な候補リビジョンを作ります。"], ["候補を修正", "診断とプレビューを確認し、認識ミスを直してから書き出しや練習素材作成へ進みます。"]],
-    [["候補を先に作る認識", "OMR 結果は信頼度と診断を持つ編集候補であり、完成譜を保証しません。"], ["完全な1プロジェクトを無料で", "無料アカウントは複数ページ PDF または楽譜画像1件をスキャンし、そのプロジェクトで修正、再生、移調、数字譜、共有、書き出しを続けられます。"]],
+    [["候補を先に作る認識", "OMR 結果は信頼度と診断を持つ編集候補であり、完成譜を保証しません。"], ["完全な1プロジェクトを無料で", getRecognitionPricingCopy("ja").freeScope]],
     "スキャンは取り込みと修正の流れです。すべての PDF や写真が自動で完全に認識されるとは保証しません。",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(
@@ -75,7 +76,7 @@ export const jaFeaturePages = {
     "ScoreTransposer の料金", "変換とプロジェクト機能へのアクセス", "完全な楽譜プロジェクト1件を無料で開始し、追加プロジェクトや月間サーバー処理が必要になったら Starter または Converter Pro を選べます。",
     ["ScoreTransposer 料金", "楽譜変換 価格", "楽譜ツール プラン", "楽譜クレジット"], ["決済", "アクティベーションコード", "利用権", "書き出し制御"],
     [["プランを選択", "個人処理または一括処理に合わせて月払い・年払いを選びます。"], ["ログインして決済", "注文をアカウント権限に結び付け、有効な地域では対応する決済へ進みます。"], ["プロジェクト機能を利用", "プロジェクト作成、取り込み、修正、移調、練習、確定リビジョンの書き出しを行います。"]],
-    [["明確な容量", "無料アカウントには、生涯で1回の無料楽譜スキャンプロジェクト、書き出しやツールに使える毎月25クレジット、50 MB のファイルストレージが含まれます。複数ページの PDF 全体や楽譜画像をスキャンできます。新しい楽譜をスキャンするには、1曲パス（One Score Pass）またはプランが必要です。 Starter は月50クレジット、Converter Pro は月200クレジットです。"], ["運用サポート", "決済、アクティベーション、アップロード、ジョブ、書き出しの問題は共通サポートで追跡します。"]],
+    [["明確な容量", getRecognitionPricingCopy("ja").freeScope + " " + getRecognitionPricingCopy("ja").passScope + " " + getRecognitionPricingCopy("ja").starterScope + " " + getRecognitionPricingCopy("ja").proCredits], ["運用サポート", "決済、アクティベーション、アップロード、ジョブ、書き出しの問題は共通サポートで追跡します。"]],
     "表示価格は公開カタログを基準とします。全有料プランに対応する Price ID が設定されるまで決済は無効です。",
   ),
 } satisfies FeaturePageTranslationCatalog;

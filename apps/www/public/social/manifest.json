@@ -28,7 +28,7 @@
     "png": "f45c03810c280c228747f059236664f0d847a35d7db423a71f50d8df211a46eb"
   },
   "en/sheet-music-scanner.png": {
-    "source": "6e65fbb5cc3262587b73403c0368ba07e238d039cb9c84e6899b51c663e39a0e",
+    "source": "c982846073063781204287379e5be4da0a0d24cbf2a7e4fad50208c21c9ebcd9",
     "png": "7a19b8b743f7607f025296f7eb2eab8f6b42c949a610974d8fc58baa2f17dee7"
   },
   "en/pdf-to-musicxml.png": {
@@ -40,7 +40,7 @@
     "png": "b3fc386c97ebe726b783c6f3939c9701927f50592cdd5f97bbf42ad9067deca6"
   },
   "en/pricing.png": {
-    "source": "e61002c404d1f746ab225a6d9ff5adfc2442e3df48e451e5f14ea5c569211123",
+    "source": "18758854a833dc23eb6508e7d64fa910eabcb7ea3c7367bf72f65c564998caea",
     "png": "e97f07cda5af86e0f5daad4bb51a3de7eca95d2e07e79f6e827be426728b9514"
   },
   "zh-CN/staff-to-jianpu.png": {
@@ -72,8 +72,8 @@
     "png": "3c19c0e23e1437f093186707369a09fa0946e859dd25b26bf89293ef4c9373ab"
   },
   "zh-CN/sheet-music-scanner.png": {
-    "source": "cba54fb9957a41cd2c7cde40f2ab26abc0accf722611c6e1f1b3471beb1ec3f9",
-    "png": "6e19a2098a0cea022dc12b461a0464d2f7674f3c41fb70f747005664851e8e62"
+    "source": "bf63985dc1d47373998ac70eb8aa15ecbea0a1087a66cbfe100c4fd04dde30be",
+    "png": "27d545de767529146be374817b823bd981e463c1a7ff919641afe3010ffe7ef4"
   },
   "zh-CN/pdf-to-musicxml.png": {
     "source": "981430414f31ef7e8c11ed0a65398e9959944601e919d8447aa8dab88622a6f5",
@@ -84,7 +84,7 @@
     "png": "1843b9a11e9987ce65c296b14261e34b5532b446c6e9bf9e59ced783af80baef"
   },
   "zh-CN/pricing.png": {
-    "source": "954dc3bf21b5b1d512d5b734f1d2babd348a5b7c2880fe921e9ef38afb5801d1",
+    "source": "e8eb5ebf21fb090d1b205a69b9fed7958713f5f6789bb6467d24c29ab63e6533",
     "png": "3d3340e316cbf4e7e777bd1860cd4885e875a78f56a06e65a75a753025316cc2"
   },
   "zh-TW/staff-to-jianpu.png": {
@@ -116,8 +116,8 @@
     "png": "6602fdf13b580ac62e386550590f0f1f355bc4d0ecbccfa80d70824023868bfe"
   },
   "zh-TW/sheet-music-scanner.png": {
-    "source": "2ab1f9e5f129323a481dd330b2545203e6824221538aaf462337c78246aafcf9",
-    "png": "81d01dbad828a642d98dd47ba3ef0a16bef6c334a7c6280d70a34bb6b967df85"
+    "source": "b359f901e1df604f49e3dfce69e26d01ed99ae87bccb3ceeb98bcf2b41253f3f",
+    "png": "18a7c6eb1434ba7ba516f5cf083b342f856835a1c65d270a341ec0f3d52b15ed"
   },
   "zh-TW/pdf-to-musicxml.png": {
     "source": "20abb6c77a9db244c22f47ec1aa8a4555a05890dd21c45f6ea8833533a3d5c5d",
@@ -128,7 +128,7 @@
     "png": "487f5134f1cc0d6a8654195f751be233a92bc4996f75ab792b6ccb409708052b"
   },
   "zh-TW/pricing.png": {
-    "source": "390d01121a6ec9349647b15c00c9aee1c487a807c3fdb70bac7fcf8dc1c98012",
+    "source": "94577358a7963b5f9a88de4a6cb7709178da8cd344a8d3b732bc7d60bc5235c1",
     "png": "6a00dbf45fc49edaec8708e2a8d02f2c6d8fd6211cc68d96f3d869193704c194"
   },
   "ja/staff-to-jianpu.png": {
@@ -160,8 +160,8 @@
     "png": "7b9b321e013a9331a1884e3082220fc24bc2ab5be9107983afa2b533916469be"
   },
   "ja/sheet-music-scanner.png": {
-    "source": "759a01b32eae8032817fd37497173d157c2c8d40113bd72fbd47627c7b2805db",
-    "png": "c3e31603cadfa3702de618b48cb88cc9cc3d4de03800c0660f6295c00665e791"
+    "source": "1a3eae48fd763f4c6a5d7bd7b1809881538ced1a8bd7a862ff522bf3a50bfc53",
+    "png": "9a32b3f856d0a305d362e7f6f0d335426d0f7e736ac5622b121759f69a6e88bf"
   },
   "ja/pdf-to-musicxml.png": {
     "source": "e25fc7dd9d2a7ecf1b49ce6f82cdcee386ca469d04fb66f024e9afa2518eb3db",
@@ -172,7 +172,7 @@
     "png": "dc0d38defa0678b1b00fc40330f2db805e3ec5d194ccf56a5a9a1ebb0e7d89bf"
   },
   "ja/pricing.png": {
-    "source": "34e47bcdf3351b7d42bd31246214b51c551d16866e537b2d995bc60faceeea77",
+    "source": "f3d34065b617237dcda40431afc93351fa13b98cc09929bb78b56155ce7a383f",
     "png": "21d243a06fa7dc721ac6ca543caca5adb55726dd26203846f04df5b38f3ffd6a"
   },
   "ko/staff-to-jianpu.png": {
@@ -204,8 +204,8 @@
     "png": "abecc27c6979392977bcceaedd4868da1442120dbe2c98045d9217bb13292d54"
   },
   "ko/sheet-music-scanner.png": {
-    "source": "0c9f303c69f90297644af02a422aa8cbd46b97658fa65d0855ca7fb31b847d69",
-    "png": "8ffe89e0ac2352603c75662fbce73dc85dec79752c13057dd811928371114160"
+    "source": "8733efe40137a87ebd9c46395f1a1211c55411c3ae68ee9326f2cd03329e5180",
+    "png": "bdffd010d7935d38a19e92bcf4ac504fcd4dc61b4e1b2193a20f424eef732dcb"
   },
   "ko/pdf-to-musicxml.png": {
     "source": "e0d872958bc90ab3dc4ec64ee16cc5cb827af26b95bdaccb7a635ad849eef8d0",
@@ -216,7 +216,7 @@
     "png": "a97979d64f89dfbffeb2c687b04885bae2182de08643992daf2135ad2a18b2e7"
   },
   "ko/pricing.png": {
-    "source": "6be9117bd72195448d03491fa98ac7d8284b64829857d3e200eb1e0cf4eaa64c",
+    "source": "36592e859ad45b7ba41ef2256bebfa51e3a90fb70ede84215d2906f2a963e063",
     "png": "f4a1da2d537b834961f67525701cd81209c57a2435d9919544ad6d305f87f3da"
   },
   "fr/staff-to-jianpu.png": {
@@ -248,7 +248,7 @@
     "png": "3317e0a9f989eb50f8ab337fbdf36344a8a986432551dc6db549c38a75e3974f"
   },
   "fr/sheet-music-scanner.png": {
-    "source": "6bac6ca485028bd326017345fa230c5e456e69b39ff4797938bc3ae0dd483c45",
+    "source": "5c452d368f38f5476ea5fd618c4b3313c39b2208e35d9c7b7d36f271f0c2b4da",
     "png": "58811f8316b2ffeeb4be6d82ecbcc07a4a523950f80d5b5177107a4b4913ba46"
   },
   "fr/pdf-to-musicxml.png": {
@@ -260,7 +260,7 @@
     "png": "57943f92fbf68441a56f8cfba67f08ef192f4ef46cdf827990581ec2dfd1a816"
   },
   "fr/pricing.png": {
-    "source": "81d0090dfae1296ec27227d7e5a6ace06300a5329c6918526f1ccfa639ba40f5",
+    "source": "f234b19d7ea22a23241a768edfc49e50ac40f754b7915ead2af3d70c6716be0a",
     "png": "101eb44287cb8ddeb46c5b127145f6cb3e190bbffd3fbb15fa81c81d75971ede"
   },
   "es/staff-to-jianpu.png": {
@@ -292,7 +292,7 @@
     "png": "37febcd42bfb3072c8aca7bb70eac86ce93348eca210ca7dae9d297fbbd2ab49"
   },
   "es/sheet-music-scanner.png": {
-    "source": "4b0737304f548a2a227ac26e0ad2c55e10f860870ba09166c6a3f7629b9d4cce",
+    "source": "742a6b1e9325da612e5c45197063da8350b78dd57c6da237ad906e4faece49d8",
     "png": "93193f34f1112d932a6641337f87a88d530032689b162c4439baf71465177a99"
   },
   "es/pdf-to-musicxml.png": {
@@ -304,7 +304,7 @@
     "png": "08c2e3830890045eab34b16323bfc85d6b247e28cfd5ca012b478757abc213ce"
   },
   "es/pricing.png": {
-    "source": "530136d07e9aeae3c8089744b1c49e933f235d4b125850fd3c32ca474768e1ed",
+    "source": "631358348aa74b03e929f98d4b50b8f583b410d66740b7e9171887865ebff44e",
     "png": "21e769b4ace29e2f902bf9b8f3d9f7824387db36806c30a48477acba4a867f81"
   },
   "de/staff-to-jianpu.png": {
@@ -336,7 +336,7 @@
     "png": "e49a8f9e2cc767c143095469da774a6db6c50726923055fa866f17dd2cd4e1ed"
   },
   "de/sheet-music-scanner.png": {
-    "source": "5c66c1c39627318c03d93c30885c78525685eb91204c854c5d966fce4957c42f",
+    "source": "5bf07fe1456958daae06487189720332edda33dfb20bae1602b19f75f34149be",
     "png": "1f366bc53b49786f8f5b692b33b740310fce51cbf0243afdaf8f50889106c15f"
   },
   "de/pdf-to-musicxml.png": {
@@ -348,7 +348,7 @@
     "png": "54797fd2c97397099fbe521da91b4bf562e60ec6646edd36297d7d532032c214"
   },
   "de/pricing.png": {
-    "source": "2d0395c90825dc1885b0f11c6a183cb489296b7f71ad8c43191bd13e8c31c4ab",
+    "source": "fca1813a8bad7c639a169e85de3a59a1280487e0c3d2fbe993570dbf4876d490",
     "png": "53423104462586180c51a5173e2fc35d4b3dced80208af89a8faa15d7b74cb13"
   },
   "ru/staff-to-jianpu.png": {
@@ -380,7 +380,7 @@
     "png": "4602b4ec31ea68c47114bda31f9037de05d4df47d346702acc29e1875a65a06c"
   },
   "ru/sheet-music-scanner.png": {
-    "source": "e69fb4f6d108ec0ca51fe770b05215fb7b1a68015944714e75fdf5dae5757a28",
+    "source": "839da7205f096f8e03ba8b1879c2b8de8839650dd9d8bf98fcf7ed5723ca13a5",
     "png": "bccdc1925d80334f77bb9fc5134e71ce5627b3d124fec02fd57d2395258aaf6e"
   },
   "ru/pdf-to-musicxml.png": {
@@ -392,7 +392,7 @@
     "png": "34de9c4cc1d21c536800225021cb5427bb8de466604e27db1533f4644e5373e1"
   },
   "ru/pricing.png": {
-    "source": "07c74296dd722f19a66a9a9ba702635cef2dd42449a58b24a5154481139cb30c",
+    "source": "76798ec91d87a6666f794f56032d708a09d6281a0a5c8c9b8e633d86e76d854d",
     "png": "896aae684bf0f5e136efa1fc7faa9cf3d611fa662c98a563a32156858eefd5c0"
   }
 }

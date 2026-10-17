@@ -3,7 +3,7 @@
 import { useFlowMessages } from "../lib/flow-messages/client";
 
 import { formatMessage, formatNumber, getScoreRecognitionSupportMessage } from "@score/i18n";
-import { ProcessingProgress, needsBigRecognitionLane } from "@score/ui";
+import { ProcessingProgress, needsBigRecognitionLane, RecognitionPlanSummary } from "@score/ui";
 import { isScoreRecognitionRejected, type ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
 import { useAppLocale } from "./AppLocaleProvider";
 
@@ -32,7 +32,8 @@ export function ScoreRecognitionPreflight({ state, onRetry, mode, compact = fals
     {result && rejected ? <div role="alert" className="form-status error" data-recognition-lane="unsupported">
       {result.memoryAssessment?.lane === "unsupported" ? experience.unsupportedLane : getScoreRecognitionSupportMessage(locale, result.recognitionSupport!.code)}
     </div> : result ? <div className="stack-sm" role="status" data-preflight-recommendation={result.recommendation}>
-      {result.memoryAssessment ? <div data-recognition-lane={effectiveBigLane ? "big" : "normal"}><strong>{effectiveBigLane ? experience.bigLane : experience.normalLane}</strong>{effectiveBigLane ? <p>{experience.bigBody}</p> : null}{result.memoryAssessment.waitEstimateSeconds[1] > 0 ? <p>{formatMessage(experience.wait, { minutes: formatNumber(Math.ceil(result.memoryAssessment.waitEstimateSeconds[1] / 60), locale) })}</p> : null}</div> : null}
+      {result.memoryAssessment ? <div data-recognition-lane={effectiveBigLane ? "big" : "normal"}><strong>{effectiveBigLane ? experience.bigLane : experience.normalLane}</strong>{effectiveBigLane ? <><p data-large-file-reason>{formatMessage(experience.bigReason, { pages: formatNumber(result.sourcePageCount, locale) })}</p><p>{experience.bigBody}</p></> : <p>{experience.normalBody}</p>}{result.memoryAssessment.waitEstimateSeconds[1] > 0 ? <p>{formatMessage(experience.wait, { minutes: formatNumber(Math.ceil(result.memoryAssessment.waitEstimateSeconds[1] / 60), locale) })}</p> : null}</div> : null}
+      <RecognitionPlanSummary messages={experience} />
       {result.recognitionSupport ? <p className={result.recognitionSupport.supported ? "helper-copy" : "form-status error"} role={result.recognitionSupport.supported ? undefined : "alert"}>{getScoreRecognitionSupportMessage(locale, result.recognitionSupport.code)}</p> : null}
       {!compact ? <strong>{result.recommendation === "simple" ? copy.recommendedSimple : result.recommendation === "complex" ? copy.recommendedComplex : copy.recommendationUncertain}</strong> : null}
       <p className="body-copy">{formatMessage(copy.summary, {

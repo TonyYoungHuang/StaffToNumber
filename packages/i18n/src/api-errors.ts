@@ -3,6 +3,8 @@ import { scorePassError } from "./score-pass-errors.ts";
 import { normalizeLocale } from "./locales.ts";
 import { localizeDeRuError } from "./de-ru-errors.ts";
 import { localizeEnEsError } from "./en-es-errors.ts";
+import { getRecognitionExperienceMessages, resolveRecognitionRequestFailure } from "./recognition-experience-messages.ts";
+import { getScorePreflightMessages, getScoreRecognitionSupportMessage } from "./score-preflight-messages.ts";
 
 const frenchErrorCodes: Record<string, string> = {
   ACTIVE_RECURRING_SUBSCRIPTION: "Arrêtez les prochains renouvellements dans Facturation avant d’acheter un accès sans renouvellement automatique.",
@@ -53,7 +55,16 @@ const frenchLegacyErrors: Record<string, string> = {
 
 export function localizeApiError(input: { error?: string | null; code?: string | null; status?: number }, locale?: string | null): string {
   const selectedLocale = normalizeLocale(locale);
-  const quotaMessage = creditQuotaError(input.code, selectedLocale ?? "en");
+  const experience = getRecognitionExperienceMessages(selectedLocale ?? "en");
+  const recognitionMessage = resolveRecognitionRequestFailure(experience, input.code);
+  if (recognitionMessage) return recognitionMessage;
+  if (["FILE_TOO_LARGE", "FST_REQ_FILE_TOO_LARGE"].includes(input.code ?? "")) return experience.fileSizeLimit;
+  if (["PDF_PAGE_COUNT_LIMIT", "PDF_PAGE_DIMENSION_LIMIT"].includes(input.code ?? "")) return experience.unsupportedLane;
+  if (input.code === "PLAN_STORAGE_QUOTA_EXCEEDED") return experience.storageLimit;
+  if (input.code === "RECOGNITION_CAPACITY_LIMIT" || input.code?.startsWith("PDF_") && ["PDF_INVALID", "PDF_PAGE_PIXEL_LIMIT", "PDF_TOTAL_PIXEL_LIMIT"].includes(input.code)) return getScoreRecognitionSupportMessage(selectedLocale ?? "en", input.code);
+  if (input.code === "OMR_PRICE_CHANGED") return getScorePreflightMessages(selectedLocale ?? "en").priceChanged;
+  const quotaCode = input.code ?? (input.error === "The monthly credit balance for this plan has been used up." ? "PLAN_JOB_QUOTA_EXCEEDED" : undefined);
+  const quotaMessage = creditQuotaError(quotaCode, selectedLocale ?? "en");
   if (quotaMessage) return quotaMessage;
   const passMessage = scorePassError(input.code, selectedLocale ?? "en");
   if (passMessage) return passMessage;

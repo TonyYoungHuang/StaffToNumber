@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { StaticMarketingLocalization } from "../types";
 
 export const enStaticMarketing = {
@@ -25,7 +26,7 @@ export const enStaticMarketing = {
       body: "Review file types, the free scope, and recognition boundaries before entering the app. Recognition candidates always benefit from human review.",
       steps: [
         ["01", "One clear entry point, one score workspace", "The platform leads with staff PDF to Jianpu and also provides structured imports, Jianpu round trips, transposition, correction, practice playback, and exports."],
-        ["02", "Understand the scope first", "Recognition produces a candidate that may need correction. A free account can create one lifetime project from a complete multi-page PDF or score image."],
+        ["02", "Understand the scope first", getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").laneGuide],
         ["03", "Continue in the app", "Sign in to upload and review candidates. The free project includes currently available editing, playback, transposition, Jianpu, version, sharing, and export tools; paid plans add processing and storage capacity."],
       ],
     },
@@ -101,8 +102,8 @@ export const enStaticMarketing = {
     },
     next: {
       eyebrow: "Next step",
-      title: "Create one complete score project for free or continue to the help pages.",
-      body: "Return home to review features, open the app to create one complete free score project, or read privacy and terms for data and service details.",
+      title: getRecognitionPricingCopy("en").freeLead,
+      body: getRecognitionPricingCopy("en").freeScope,
       homeAction: "Back to homepage",
       appAction: "Open app",
     },
@@ -126,7 +127,7 @@ export const enStaticMarketing = {
       {
         title: "Purchase and access",
         items: [
-          ["What is actually live today?", "A registered user can create one lifetime free project from a complete multi-page staff-score PDF or score image, with current correction, playback, transposition, Jianpu, version, sharing, and export tools. Paid plans add more score-processing capacity."],
+          ["What is actually live today?", getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").passScope + " " + getRecognitionPricingCopy("en").starterScope],
           {
             question: "Do international and mainland-China users follow the same path?",
             availableAnswer: "Not exactly. International customers can pay online directly, while mainland-China customers can also use activation-code distribution and redeem inside the app.",
@@ -142,7 +143,7 @@ export const enStaticMarketing = {
       {
         title: "Uploads and results",
         items: [
-          ["What input format is supported right now?", "The free entry accepts one complete multi-page PDF or one PNG, JPG, WebP, or TIFF score image. Starter and Converter Pro add more projects and currently available MusicXML/MXL, MIDI, structured Jianpu, and Score JSON imports. Audio transcription remains experimental."],
+          ["What input format is supported right now?", getRecognitionPricingCopy("en").inputScope + " " + getRecognitionPricingCopy("en").laneGuide],
           ["Why is recognition marked as a candidate?", "OMR can misread pitch, duration, voices, or measure structure. The free result therefore stays a human-review candidate with confidence and warning details instead of pretending to be publication-ready notation."],
           ["What should I do if upload or download fails?", "Keep the file name, job time, and an error screenshot, then submit the support form. That gives support a faster path to the affected job."],
         ],

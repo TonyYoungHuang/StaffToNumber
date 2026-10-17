@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
 const paidBenefits = [
@@ -12,14 +13,14 @@ export const frHomepage = {
     schemaDescription: "Importez une partition complète en PDF, image ou MusicXML, ou une source audio/vidéo autorisée. Créez une partition structurée à vérifier, puis corrigez-la, convertissez-la, transposez-la, écoutez-la, partagez-la et exportez-la.",
     heroKicker: "Reconnaissance par IA et espace de partition structuré",
     heroTitle: ["Convertissez et éditez vos partitions en ligne.", "Numérisez, transposez, écoutez et exportez."],
-    heroIntro: ["Importez un PDF, une image de partition, un fichier MusicXML ou une source audio/vidéo.", "Créez une partition structurée que vous pouvez vérifier.", "Puis corrigez, transposez, convertissez, écoutez et exportez."],
+    heroIntro: ["Importez un PDF, une image de partition, un fichier MusicXML ou une source audio/vidéo.", "Créez une partition structurée que vous pouvez vérifier.", getRecognitionPricingCopy("fr").freeLead],
     heroPoints: [
       ["Des résultats vérifiables", "Conservez ensemble la source, les diagnostics et les passages incertains."],
       ["Une partition, un projet durable", "L’édition, le Jianpu, la transposition et la lecture restent dans le même projet."],
       ["Des formats ouverts et portables", "Échangez en MusicXML et conservez les fichiers MIDI et les instantanés du projet."],
     ],
     heroCases: "Voir des exemples réels",
-    facts: [["Gratuit à vie", "Un projet de partition complet"], ["Entrées", "PDF / image / MusicXML complets"], ["Outils disponibles", "Édition / Jianpu / transposition / lecture"]],
+    facts: [[getRecognitionPricingCopy("fr").freeShort, getRecognitionPricingCopy("fr").freeUnit], ["Entrées", "PDF / image / MusicXML complets"], ["Outils disponibles", "Édition / Jianpu / transposition / lecture"]],
     stepsKicker: "Un flux en trois étapes",
     stepsTitle: "Passez du fichier source à une partition exploitable en trois étapes",
     steps: [
@@ -78,22 +79,22 @@ export const frHomepage = {
     creditRulesTitle: "Comment les crédits sont comptés aujourd’hui",
     creditRulesBody: "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation.",
     creditRules: [
-      ["0 $US", "Un projet complet gratuit", "Le compte gratuit inclut un seul projet de numérisation gratuit à vie, 25 crédits par mois pour les exports et les outils, ainsi que 50 Mo de stockage. Numérisez un PDF multipage complet ou une image de partition ; pour numériser une nouvelle partition, il vous faut un Pass une partition (One Score Pass) ou une offre."],
+      ["0 $US", "Un projet complet gratuit", getRecognitionPricingCopy("fr").freeScope],
       ["Crédits réservés", "Réservation et restitution", "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation. La transposition directe et l’aperçu Jianpu n’en consomment pas."],
       ["Réinitialisation mensuelle", "Crédits de la formule", "Starter comprend 50 crédits par mois et Converter Pro 200. Les crédits inutilisés ne sont pas reportés."],
     ],
-    priceNote: "Free, Starter et Converter Pro donnent accès aux mêmes outils de projet actuels ; leur principale différence est la capacité de traitement. Les prix sont en dollars américains ($US). Choisissez un achat unique sans renouvellement automatique ou un abonnement renouvelable ; le montant final figure sur la page de paiement.",
+    priceNote: getRecognitionPricingCopy("fr").laneGuide,
     faqKicker: "FAQ",
     faqTitle: "Questions avant de commencer",
     faqs: [
-      ["La reconnaissance est-elle exacte à 100 % ?", "Non. Les PDF, images, fichiers audio et vidéos produisent des propositions ; les contenus difficiles demandent une vérification humaine."],
+      ["La reconnaissance est-elle exacte à 100 % ?", getRecognitionPricingCopy("fr").freeScope + " " + getRecognitionPricingCopy("fr").laneGuide],
       ["Puis-je ensuite transposer ou créer du Jianpu ?", "Oui. L’édition, le Jianpu, la transposition, la lecture et l’export utilisent le même projet de partition validé."],
       ["Quels formats d’export sont pris en charge ?", "MusicXML est le principal format d’échange, complété par MIDI, Score JSON, le texte Jianpu et les exports validés sur le déploiement actuel."],
       ["La conversion audio vers partition est-elle disponible ?", "Elle est proposée comme fonction expérimentale, avec des limites explicites de format, de quota et de correction."],
       ["Mes fichiers importés seront-ils publiés ?", "Non. Les projets privés ne deviennent jamais automatiquement des exemples publics."],
     ],
     finalKicker: "Commencez avec une partition complète",
-    finalTitle: "Créez gratuitement un projet complet, puis décidez si vous souhaitez traiter d’autres partitions.",
+    finalTitle: getRecognitionPricingCopy("fr").freeLead,
     finalAction: "Éditer gratuitement",
   },
   media: {
@@ -109,24 +110,24 @@ export const frHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "Reconnaître", title: "Importer un PDF ou une image de partition", body: "Connectez-vous et importez un PDF multipage complet ou une image de partition. Conservez gratuitement ce projet pour le corriger, l’écouter, le convertir, le partager et l’exporter.", action: "Créer gratuitement" },
+      recognize: { label: "Reconnaître", title: "Importer un PDF ou une image de partition", body: getRecognitionPricingCopy("fr").freeScope, action: "Créer gratuitement" },
       process: { label: "Traiter la partition", title: "Importer une notation structurée", body: "Continuez l’édition, la transposition, la conversion, la lecture et l’export dans un même projet de partition.", action: "Ouvrir l’espace de partition" },
       transcribe: { label: "Audio vers partition", title: "Importer un fichier audio ou vidéo", body: "Créez une proposition MIDI et une notation à vérifier ; la polyphonie dense doit toujours être corrigée.", action: "Créer une proposition", unavailableAction: "Voir l’état de la fonction expérimentale" },
     },
-    checking: "Vérification de la connexion…", signedIn: "Vous êtes connecté. Choisissez une partition complète pour créer votre projet gratuit.", signInFirst: "Connectez-vous ou inscrivez-vous d’abord ; vous resterez sur cette page d’accueil.",
+    checking: "Vérification de la connexion…", signedIn: getRecognitionPricingCopy("fr").freeLead, signInFirst: "Connectez-vous ou inscrivez-vous d’abord ; vous resterez sur cette page d’accueil.",
     googleLabel: "Continuer avec Google",
     googleLoading: "Chargement de la connexion Google…",
     googleFailed: "La connexion Google est indisponible. Réessayez ou utilisez votre adresse e-mail.",
     googleDivider: "Ou se connecter par e-mail",
-    authTitle: "Connectez-vous pour créer gratuitement", authBody: "Après l’authentification, cette fenêtre se fermera. Choisissez un PDF complet ou une image de partition, corrigez le résultat puis utilisez les outils actuels du projet.", login: "Se connecter", register: "S’inscrire", email: "Adresse e-mail", password: "Mot de passe (8 caractères minimum)", submitting: "Veuillez patienter…", authFailed: "La connexion n’a pas abouti. Vérifiez votre adresse e-mail, votre mot de passe ou votre connexion, puis réessayez.", close: "Fermer la fenêtre de connexion",
+    authTitle: "Connectez-vous pour créer gratuitement", authBody: getRecognitionPricingCopy("fr").freeScope, login: "Se connecter", register: "S’inscrire", email: "Adresse e-mail", password: "Mot de passe (8 caractères minimum)", submitting: "Veuillez patienter…", authFailed: "La connexion n’a pas abouti. Vérifiez votre adresse e-mail, votre mot de passe ou votre connexion, puis réessayez.", close: "Fermer la fenêtre de connexion",
     uploading: "Import sécurisé en cours", queued: "En attente dans la file de reconnaissance", processing: "Reconnaissance de la partition", completed: "Proposition prête", failed: "La reconnaissance n’a pas abouti", cancelled: "Reconnaissance annulée",
     candidateTitle: "Proposition modifiable gratuitement", candidateBody: "Cette proposition nécessite une vérification musicale. Ouvrez le projet pour corriger gratuitement les notes, le rythme et les attributs des mesures.", previewLoading: "Création d’une proposition sur portée modifiable…", openProject: "Commencer l’édition gratuite", retry: "Choisir un autre fichier", invalidFile: "Choisissez une partition au format PDF, PNG, JPG, WEBP ou TIFF.", uploadFailed: "L’import n’a pas abouti. Vérifiez le fichier ou la connexion, puis réessayez.",
     workbenchLabel: "Espace de partition par IA", workbenchBadge: "L’espace de travail dès l’accueil", taskTypeLabel: "Type de tâche musicale", experimentalLabel: "Expérimental", supportedFormatsLabel: "Formats pris en charge", availableToolsLabel: "Outils de partition disponibles",
     tools: [["Éditer en ligne", "Corriger les hauteurs, les durées, les tonalités et les mesures"], ["Convertir la partition", "Convertir entre MusicXML, MIDI et les formats structurés"], ["Transposer", "Créer une nouvelle révision par tonalité ou demi-ton"], ["Créer du Jianpu", "Créer du Jianpu depuis la même partition structurée"], ["Partition vers audio", "Écouter, ralentir, boucler et créer un support de travail"], ["Audio vers partition", "Créer une proposition vérifiable depuis un média autorisé"]],
   },
   plans: {
-    free: { badge: "Gratuit à vie", name: "Gratuit", cycle: "À vie", unitPrice: "Un projet de partition complet", credits: "1 numérisation gratuite à vie · 25 crédits / mois (exports et outils)", audience: "Découvrez tous les outils de projet actuels avec une partition complète", benefits: ["Créez à vie un projet de partition complet", "Éditeur en ligne, générateur de parties séparées bêta et collaboration en temps réel bêta", "Lecture, enregistrement dans le navigateur et retour sur la pratique bêta, avec transposition intelligente", "Conversion portée ↔ Jianpu et MusicXML ↔ MIDI", "Utilisez les exports et outils de projet actuellement disponibles sur cette partition gratuite"], resources: ["25 crédits par mois pour les exports et outils, réinitialisés chaque mois ; une nouvelle numérisation nécessite un Pass une partition ou une offre", "50 Mo de stockage", "Bibliothèque de partitions ouvertes et téléchargements CC0", "Aucune carte bancaire requise ; conservez le projet gratuit"], cta: "Créer une partition gratuite" },
-    "starter-monthly": { badge: "Mensuel flexible", name: "Starter", cycle: "Mensuel", unitPrice: "0,16 $US par crédit", credits: "50 crédits / mois", audience: "Pour traiter régulièrement des partitions personnelles", benefits: ["Traitez plus que le seul projet gratuit", ...paidBenefits], resources: ["50 crédits par mois", "250 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Starter mensuel" },
+    free: { badge: getRecognitionPricingCopy("fr").freeShort, name: "Gratuit", cycle: "À vie", unitPrice: getRecognitionPricingCopy("fr").freeUnit, credits: "1 numérisation gratuite à vie · 25 crédits / mois (exports et outils)", audience: getRecognitionPricingCopy("fr").freeLead, benefits: [getRecognitionPricingCopy("fr").freeUnit, "Éditeur en ligne, générateur de parties séparées bêta et collaboration en temps réel bêta", "Lecture, enregistrement dans le navigateur et retour sur la pratique bêta, avec transposition intelligente", "Conversion portée ↔ Jianpu et MusicXML ↔ MIDI", "Utilisez les exports et outils de projet actuellement disponibles sur cette partition gratuite"], resources: [getRecognitionPricingCopy("fr").freeScope, "50 Mo de stockage", "Bibliothèque de partitions ouvertes et téléchargements CC0", "Aucune carte bancaire requise ; conservez le projet gratuit"], cta: "Créer une partition gratuite" },
+    "starter-monthly": { badge: "Mensuel flexible", name: "Starter", cycle: "Mensuel", unitPrice: "0,16 $US par crédit", credits: "50 crédits / mois", audience: getRecognitionPricingCopy("fr").starterScope, benefits: ["Traitez plus que le seul projet gratuit", ...paidBenefits], resources: [getRecognitionPricingCopy("fr").starterCredits, "250 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Starter mensuel" },
     "starter-annual": { badge: "Starter annuel", name: "Starter", cycle: "Annuel", unitPrice: "0,082 $US par crédit", credits: "50 crédits / mois", audience: "Pour un usage individuel durable à moindre coût par crédit", benefits: ["Toutes les fonctions actuelles de Starter mensuel", ...paidBenefits], resources: ["50 crédits par mois, réinitialisés chaque mois", "250 Mo de stockage", "Économisez 46,88 $US par rapport à douze mensualités", "Bibliothèque personnelle, historique des révisions et catalogue ouvert"], cta: "Choisir Starter annuel" },
     "converter-pro-monthly": { badge: "Capacité supérieure", name: "Converter Pro", cycle: "Mensuel", unitPrice: "0,075 $US par crédit", credits: "200 crédits / mois", audience: "Pour les personnes qui traitent davantage de partitions chaque mois", benefits: ["Toutes les fonctions actuelles de Starter", ...paidBenefits], resources: ["200 crédits par mois", "500 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Converter Pro mensuel" },
     "converter-pro-annual": { badge: "Capacité élevée annuelle", name: "Converter Pro", cycle: "Annuel", unitPrice: "0,041 $US par crédit", credits: "200 crédits / mois", audience: "Pour un traitement personnel régulier et intensif", benefits: ["Toutes les fonctions actuelles de Converter Pro mensuel", ...paidBenefits], resources: ["200 crédits par mois, réinitialisés chaque mois", "500 Mo de stockage", "Économisez 80,88 $US par rapport à douze mensualités", "Bibliothèque personnelle, historique des révisions et catalogue ouvert"], cta: "Choisir Converter Pro annuel" },

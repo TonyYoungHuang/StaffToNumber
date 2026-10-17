@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
 const paidBenefits = [
@@ -12,14 +13,14 @@ export const jaHomepage = {
     schemaDescription: "楽譜全体を収めた PDF、画像、MusicXML ファイル、または利用許諾を得た音声・動画ソースをアップロード。確認可能な構造化楽譜を作成し、編集、変換、移調、再生、共有、書き出しまで進められます。",
     heroKicker: "AI 楽譜認識と構造化スコアのワークスペース",
     heroTitle: ["オンラインで楽譜を変換・編集。", "スキャン、移調、再生、書き出しまで。"],
-    heroIntro: ["PDF、楽譜画像、MusicXML、または音声・動画ソースをアップロード。", "確認して修正できる構造化楽譜を作成します。", "そのまま編集、移調、変換、再生、書き出しへ進めます。"],
+    heroIntro: ["PDF、楽譜画像、MusicXML、または音声・動画ソースをアップロード。", "確認して修正できる構造化楽譜を作成します。", getRecognitionPricingCopy("ja").freeLead],
     heroPoints: [
       ["確認できる認識結果", "元データ、診断情報、不確かな箇所をまとめて保持します。"],
       ["一つの楽譜を使い続ける", "編集、Jianpu、移調、再生を同じプロジェクトで進められます。"],
       ["持ち出せるオープン形式", "MusicXML でやり取りし、MIDI とプロジェクトのスナップショットも保持できます。"],
     ],
     heroCases: "実例を見る",
-    facts: [["ずっと無料", "完全な楽譜プロジェクトを1件"], ["入力", "楽譜全体の PDF／画像／MusicXML"], ["そのまま作業", "編集／Jianpu／移調／再生"]],
+    facts: [[getRecognitionPricingCopy("ja").freeShort, getRecognitionPricingCopy("ja").freeUnit], ["入力", "楽譜全体の PDF／画像／MusicXML"], ["そのまま作業", "編集／Jianpu／移調／再生"]],
     stepsKicker: "3ステップのワークフロー",
     stepsTitle: "元ファイルから使える楽譜まで、わずか3ステップ",
     steps: [
@@ -82,22 +83,22 @@ export const jaHomepage = {
     creditRulesTitle: "現在のクレジット計算方法",
     creditRulesBody: "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。",
     creditRules: [
-      ["$0", "完全な無料プロジェクトを1件", "無料アカウントには、生涯で1回の無料楽譜スキャンプロジェクト、書き出しやツールに使える毎月25クレジット、50 MB のファイルストレージが含まれます。複数ページの PDF 全体や楽譜画像をスキャンできます。新しい楽譜をスキャンするには、1曲パス（One Score Pass）またはプランが必要です。"],
+      ["$0", "完全な無料プロジェクトを1件", getRecognitionPricingCopy("ja").freeScope],
       ["予約クレジット", "クレジットの予約と返還", "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。同期移調や Jianpu プレビューでは自動的に消費されません。"],
       ["毎月リセット", "プランの割り当て", "Starter は毎月50クレジット、Converter Pro は毎月200クレジット。未使用分の繰り越しはありません。"],
     ],
-    priceNote: "Free、Starter、Converter Pro で利用できる現在のプロジェクト機能は共通で、主な違いは楽譜処理容量です。選択した Stripe または Paddle プラン専用の Price ID が設定されている場合にのみ、決済へ進みます。",
+    priceNote: getRecognitionPricingCopy("ja").laneGuide,
     faqKicker: "よくある質問",
     faqTitle: "始める前に知っておきたいこと",
     faqs: [
-      ["認識精度は100%ですか？", "いいえ。PDF、画像、音声、動画のソースからは候補が作成され、難しい内容には人による確認が必要です。"],
+      ["認識精度は100%ですか？", getRecognitionPricingCopy("ja").freeScope + " " + getRecognitionPricingCopy("ja").laneGuide],
       ["あとから移調したり Jianpu を作成したりできますか？", "はい。編集、Jianpu、移調、再生、書き出しは、承認済みの同じ楽譜プロジェクトを参照します。"],
       ["どの書き出し形式に対応していますか？", "主要な交換形式は MusicXML です。MIDI、Score JSON、Jianpu テキスト、および現在のデプロイ環境で検証済みの形式にも対応します。"],
       ["音声から楽譜への変換は現在利用できますか？", "対応形式、割り当て、人による修正範囲を明示した実験機能として提供されます。"],
       ["アップロードしたファイルは公開されますか？", "いいえ。非公開プロジェクトが自動的に公開例になることはありません。"],
     ],
     finalKicker: "楽譜1曲分を丸ごと試す",
-    finalTitle: "完全なプロジェクトを1件無料で作成し、さらに楽譜を処理するか後から決められます。",
+    finalTitle: getRecognitionPricingCopy("ja").freeLead,
     finalAction: "無料で編集",
   },
   media: {
@@ -122,19 +123,19 @@ export const jaHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "楽譜を認識", title: "PDF または楽譜画像をアップロード", body: "サインインして、楽譜全体を収めた複数ページ PDF または楽譜画像を1件アップロードします。無料プロジェクトを保持し、修正、再生、変換、共有、書き出しに使えます。", action: "無料で作成" },
+      recognize: { label: "楽譜を認識", title: "PDF または楽譜画像をアップロード", body: getRecognitionPricingCopy("ja").freeScope, action: "無料で作成" },
       process: { label: "楽譜を処理", title: "構造化楽譜を読み込む", body: "一つの楽譜プロジェクト内で、編集、移調、変換、再生、書き出しを続けられます。", action: "楽譜ワークスペースを開く" },
       transcribe: { label: "音声から楽譜へ", title: "音声または動画を読み込む", body: "確認用の MIDI と楽譜候補を作成します。複雑な多声部は引き続き修正が必要です。", action: "候補を作成", unavailableAction: "実験機能の状況を確認" },
     },
     checking: "サインイン状態を確認しています...",
-    signedIn: "サインイン済みです。楽譜全体を1件選び、無料プロジェクトを作成してください。",
+    signedIn: getRecognitionPricingCopy("ja").freeLead,
     signInFirst: "先にサインインまたは登録してください。完了後もこのホームページに留まります。",
     googleLabel: "Google アカウントで続行",
     googleLoading: "Google ログインを読み込み中…",
     googleFailed: "Google ログインを利用できません。再試行するか、メールアドレスでログインしてください。",
     googleDivider: "またはメールアドレスでログイン",
     authTitle: "サインインして無料で作成",
-    authBody: "認証後、このダイアログは閉じます。楽譜全体を収めた PDF または楽譜画像を1件選び、修正して現在のプロジェクト機能を利用できます。",
+    authBody: getRecognitionPricingCopy("ja").freeScope,
     login: "サインイン",
     register: "登録",
     email: "メールアドレス",
@@ -172,12 +173,12 @@ export const jaHomepage = {
   },
   plans: {
     free: {
-      badge: "ずっと無料", name: "Free", cycle: "生涯", unitPrice: "完全な楽譜プロジェクトを1件", credits: "生涯1件の無料スキャン・毎月25クレジット（書き出し等）", audience: "楽譜1曲全体で、現在の全プロジェクト機能を利用",
-      benefits: ["完全な楽譜プロジェクトを1件作成し、生涯保持", "オンライン楽譜編集、パート譜コピー生成 Beta、リアルタイム共同編集 Beta", "再生、ブラウザー録音＆練習フィードバック Beta、スマート移調", "五線譜 ↔ Jianpu（数字譜）および MusicXML ↔ MIDI 変換", "その無料楽譜で、現在提供中の書き出し機能とプロジェクト機能を利用"],
-      resources: ["毎月25クレジットは書き出しなどに使用・月ごとにリセット。新しいスキャンには1曲パスまたはプランが必要です", "50 MB のファイルストレージ", "オープン楽譜ライブラリと CC0 ダウンロード", "クレジットカード不要。無料プロジェクトは保持されます"], cta: "無料楽譜を作成",
+      badge: getRecognitionPricingCopy("ja").freeShort, name: "Free", cycle: "生涯", unitPrice: getRecognitionPricingCopy("ja").freeUnit, credits: "生涯1件の無料スキャン・毎月25クレジット（書き出し等）", audience: getRecognitionPricingCopy("ja").freeLead,
+      benefits: [getRecognitionPricingCopy("ja").freeUnit, "オンライン楽譜編集、パート譜コピー生成 Beta、リアルタイム共同編集 Beta", "再生、ブラウザー録音＆練習フィードバック Beta、スマート移調", "五線譜 ↔ Jianpu（数字譜）および MusicXML ↔ MIDI 変換", "その無料楽譜で、現在提供中の書き出し機能とプロジェクト機能を利用"],
+      resources: [getRecognitionPricingCopy("ja").freeScope, "50 MB のファイルストレージ", "オープン楽譜ライブラリと CC0 ダウンロード", "クレジットカード不要。無料プロジェクトは保持されます"], cta: "無料楽譜を作成",
     },
     "starter-monthly": {
-      badge: "柔軟な月払い", name: "Starter", cycle: "月払い", unitPrice: "1クレジットあたり $0.16", credits: "毎月50クレジット", audience: "個人の楽譜を定期的に処理する方に", benefits: ["無料の楽譜プロジェクト1件を超えて利用", ...paidBenefits], resources: ["毎月50クレジット", "250 MB のファイルストレージ", "個人ライブラリ、改訂履歴、オープン楽譜カタログ", "長期契約なしの月次更新"], cta: "Starter 月払いを選択",
+      badge: "柔軟な月払い", name: "Starter", cycle: "月払い", unitPrice: "1クレジットあたり $0.16", credits: "毎月50クレジット", audience: getRecognitionPricingCopy("ja").starterScope, benefits: ["無料の楽譜プロジェクト1件を超えて利用", ...paidBenefits], resources: [getRecognitionPricingCopy("ja").starterCredits, "250 MB のファイルストレージ", "個人ライブラリ、改訂履歴、オープン楽譜カタログ", "長期契約なしの月次更新"], cta: "Starter 月払いを選択",
     },
     "starter-annual": {
       badge: "Starter 年払い", name: "Starter", cycle: "年払い", unitPrice: "1クレジットあたり $0.082", credits: "毎月50クレジット", audience: "クレジット単価を抑えて長く使いたい個人の方に", benefits: ["Starter 月払いで現在提供中の全機能", ...paidBenefits], resources: ["毎月50クレジット、月ごとにリセット", "250 MB のファイルストレージ", "月払いを12回続ける場合と比べて $46.88 お得", "個人ライブラリ、改訂履歴、オープン楽譜カタログ"], cta: "Starter 年払いを選択",

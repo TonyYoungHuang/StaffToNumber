@@ -1,3 +1,4 @@
+import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
 const paidBenefits = [
@@ -12,14 +13,14 @@ export const koHomepage = {
     schemaDescription: "악보 전체가 담긴 PDF, 이미지, MusicXML 파일 또는 사용이 허가된 오디오·비디오 소스를 업로드하세요. 검토 가능한 구조화 악보를 만든 뒤 편집, 변환, 조옮김, 재생, 공유, 내보내기를 이어갈 수 있습니다.",
     heroKicker: "AI 악보 인식 및 구조화 악보 작업 공간",
     heroTitle: ["온라인 악보 변환과 편집.", "스캔부터 조옮김, 재생, 내보내기까지."],
-    heroIntro: ["PDF, 악보 이미지, MusicXML 또는 오디오·비디오 소스를 업로드하세요.", "검토하고 수정할 수 있는 구조화 악보를 만듭니다.", "이어서 편집, 조옮김, 변환, 재생, 내보내기를 진행하세요."],
+    heroIntro: ["PDF, 악보 이미지, MusicXML 또는 오디오·비디오 소스를 업로드하세요.", "검토하고 수정할 수 있는 구조화 악보를 만듭니다.", getRecognitionPricingCopy("ko").freeLead],
     heroPoints: [
       ["검토 가능한 결과", "원본 근거와 진단 정보, 불확실한 위치를 함께 보관합니다."],
       ["한 악보로 계속 작업", "편집, Jianpu, 조옮김, 재생을 하나의 프로젝트에서 이어갑니다."],
       ["옮겨 갈 수 있는 개방형 형식", "MusicXML로 교환하고 MIDI와 프로젝트 스냅샷을 보관합니다."],
     ],
     heroCases: "실제 사례 보기",
-    facts: [["평생 무료", "완전한 악보 프로젝트 1개"], ["입력", "악보 전체 PDF／이미지／MusicXML"], ["계속 작업", "편집／Jianpu／조옮김／재생"]],
+    facts: [[getRecognitionPricingCopy("ko").freeShort, getRecognitionPricingCopy("ko").freeUnit], ["입력", "악보 전체 PDF／이미지／MusicXML"], ["계속 작업", "편집／Jianpu／조옮김／재생"]],
     stepsKicker: "3단계 작업 흐름",
     stepsTitle: "원본 파일을 쓸 수 있는 악보로 만드는 세 단계",
     steps: [
@@ -82,22 +83,22 @@ export const koHomepage = {
     creditRulesTitle: "현재 크레딧 계산 방식",
     creditRulesBody: "작업 생성 시 크레딧이 예약되며, 실패하거나 취소되면 자동으로 반환됩니다.",
     creditRules: [
-      ["$0", "완전한 무료 프로젝트 1개", "무료 계정에는 평생 1회 무료 악보 스캔 프로젝트, 내보내기와 도구에 사용할 수 있는 월 25크레딧, 50 MB 파일 저장 공간이 포함됩니다. 여러 페이지 PDF 전체나 악보 이미지를 스캔할 수 있습니다. 새 악보를 스캔하려면 한 곡 이용권(One Score Pass) 또는 요금제가 필요합니다."],
+      ["$0", "완전한 무료 프로젝트 1개", getRecognitionPricingCopy("ko").freeScope],
       ["예약 크레딧", "크레딧 예약 및 반환", "작업 생성 시 크레딧이 예약되며, 실패하거나 취소되면 자동으로 반환됩니다. 동기식 조옮김이나 Jianpu 미리보기는 자동으로 크레딧을 차감하지 않습니다."],
       ["매월 초기화", "요금제 제공량", "Starter는 매월 50개, Converter Pro는 매월 200개의 크레딧을 제공합니다. 사용하지 않은 크레딧은 이월되지 않습니다."],
     ],
-    priceNote: "Free, Starter, Converter Pro는 현재 동일한 프로젝트 단위 도구를 제공하며, 주된 차이는 악보 처리 용량입니다. 선택한 Stripe 또는 Paddle 요금제에 전용 Price ID가 설정된 경우에만 결제로 진행됩니다.",
+    priceNote: getRecognitionPricingCopy("ko").laneGuide,
     faqKicker: "자주 묻는 질문",
     faqTitle: "시작하기 전에 알아둘 내용",
     faqs: [
-      ["인식 결과가 100% 정확한가요?", "아니요. PDF, 이미지, 오디오, 비디오 소스는 먼저 후보를 생성하며, 어려운 내용은 사람이 검토해야 합니다."],
+      ["인식 결과가 100% 정확한가요?", getRecognitionPricingCopy("ko").freeScope + " " + getRecognitionPricingCopy("ko").laneGuide],
       ["나중에 조옮김하거나 Jianpu를 만들 수 있나요?", "네. 편집, Jianpu, 조옮김, 재생, 내보내기는 모두 승인된 하나의 악보 프로젝트를 사용합니다."],
       ["어떤 형식으로 내보낼 수 있나요?", "MusicXML이 기본 교환 형식이며 MIDI, Score JSON, Jianpu 텍스트와 현재 배포 환경에서 검증된 내보내기 형식을 지원합니다."],
       ["오디오를 악보로 바꾸는 기능을 지금 사용할 수 있나요?", "지원 형식과 할당량, 수동 수정 범위를 명확히 안내하는 실험 기능으로 제공됩니다."],
       ["업로드한 파일이 공개되나요?", "아니요. 비공개 프로젝트는 자동으로 공개 예시가 되지 않습니다."],
     ],
     finalKicker: "악보 한 곡 전체로 시작하세요",
-    finalTitle: "완전한 프로젝트 1개를 무료로 만든 뒤, 더 많은 악보를 처리할지 결정하세요.",
+    finalTitle: getRecognitionPricingCopy("ko").freeLead,
     finalAction: "무료로 편집",
   },
   media: {
@@ -122,19 +123,19 @@ export const koHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "악보 인식", title: "PDF 또는 악보 이미지 업로드", body: "로그인한 뒤 악보 전체가 담긴 여러 페이지 PDF 또는 악보 이미지 1개를 업로드하세요. 무료 프로젝트를 유지하며 수정, 재생, 변환, 공유, 내보내기에 사용할 수 있습니다.", action: "무료로 만들기" },
+      recognize: { label: "악보 인식", title: "PDF 또는 악보 이미지 업로드", body: getRecognitionPricingCopy("ko").freeScope, action: "무료로 만들기" },
       process: { label: "악보 처리", title: "구조화 악보 가져오기", body: "하나의 악보 프로젝트 안에서 편집, 조옮김, 변환, 재생, 내보내기를 계속하세요.", action: "악보 작업 공간 열기" },
       transcribe: { label: "오디오를 악보로", title: "오디오 또는 비디오 가져오기", body: "검토할 MIDI와 기보 후보를 만듭니다. 복잡한 다성부는 여전히 수정이 필요합니다.", action: "후보 만들기", unavailableAction: "실험 기능 상태 확인" },
     },
     checking: "로그인 상태를 확인하는 중...",
-    signedIn: "로그인했습니다. 악보 한 곡 전체를 선택해 무료 프로젝트를 만드세요.",
+    signedIn: getRecognitionPricingCopy("ko").freeLead,
     signInFirst: "먼저 로그인하거나 가입하세요. 완료 후에도 이 홈페이지에 머무릅니다.",
     googleLabel: "Google 계정으로 계속",
     googleLoading: "Google 로그인 불러오는 중…",
     googleFailed: "Google 로그인을 사용할 수 없습니다. 다시 시도하거나 이메일로 로그인하세요.",
     googleDivider: "또는 이메일로 로그인",
     authTitle: "로그인하고 무료로 만들기",
-    authBody: "인증이 끝나면 이 창이 닫힙니다. 악보 전체가 담긴 PDF 또는 악보 이미지 1개를 선택한 뒤 수정하고 현재의 프로젝트 단위 도구를 사용하세요.",
+    authBody: getRecognitionPricingCopy("ko").freeScope,
     login: "로그인",
     register: "가입",
     email: "이메일",
@@ -172,12 +173,12 @@ export const koHomepage = {
   },
   plans: {
     free: {
-      badge: "평생 무료", name: "Free", cycle: "평생", unitPrice: "완전한 악보 프로젝트 1개", credits: "평생 무료 스캔 프로젝트 1개 · 월 25크레딧(내보내기 등)", audience: "악보 한 곡 전체로 현재의 모든 프로젝트 단위 도구 사용",
-      benefits: ["완전한 악보 프로젝트 1개를 만들어 평생 보관", "온라인 악보 편집기, 파트보 사본 생성기 Beta, 실시간 공동 작업 Beta", "재생, 브라우저 녹음 및 연습 피드백 Beta, 스마트 조옮김", "오선보 ↔ Jianpu(숫자보) 및 MusicXML ↔ MIDI 변환", "해당 무료 악보에서 현재 출시된 내보내기 및 프로젝트 단위 도구 사용"],
-      resources: ["매월 25크레딧은 내보내기 등에 사용, 월마다 초기화. 새 스캔에는 한 곡 이용권 또는 요금제가 필요합니다", "50 MB 파일 저장 공간", "오픈 악보 라이브러리 및 CC0 다운로드", "신용카드 불필요, 무료 프로젝트 계속 보관"], cta: "무료 악보 만들기",
+      badge: getRecognitionPricingCopy("ko").freeShort, name: "Free", cycle: "평생", unitPrice: getRecognitionPricingCopy("ko").freeUnit, credits: "평생 무료 스캔 프로젝트 1개 · 월 25크레딧(내보내기 등)", audience: getRecognitionPricingCopy("ko").freeLead,
+      benefits: [getRecognitionPricingCopy("ko").freeUnit, "온라인 악보 편집기, 파트보 사본 생성기 Beta, 실시간 공동 작업 Beta", "재생, 브라우저 녹음 및 연습 피드백 Beta, 스마트 조옮김", "오선보 ↔ Jianpu(숫자보) 및 MusicXML ↔ MIDI 변환", "해당 무료 악보에서 현재 출시된 내보내기 및 프로젝트 단위 도구 사용"],
+      resources: [getRecognitionPricingCopy("ko").freeScope, "50 MB 파일 저장 공간", "오픈 악보 라이브러리 및 CC0 다운로드", "신용카드 불필요, 무료 프로젝트 계속 보관"], cta: "무료 악보 만들기",
     },
     "starter-monthly": {
-      badge: "유연한 월간 결제", name: "Starter", cycle: "월간", unitPrice: "크레딧당 $0.16", credits: "월 50크레딧", audience: "개인 악보를 정기적으로 처리하는 분에게 적합", benefits: ["무료 악보 프로젝트 1개를 넘어 더 많이 사용", ...paidBenefits], resources: ["매월 50크레딧", "250 MB 파일 저장 공간", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그", "장기 약정 없는 월간 갱신"], cta: "Starter 월간 선택",
+      badge: "유연한 월간 결제", name: "Starter", cycle: "월간", unitPrice: "크레딧당 $0.16", credits: "월 50크레딧", audience: getRecognitionPricingCopy("ko").starterScope, benefits: ["무료 악보 프로젝트 1개를 넘어 더 많이 사용", ...paidBenefits], resources: [getRecognitionPricingCopy("ko").starterCredits, "250 MB 파일 저장 공간", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그", "장기 약정 없는 월간 갱신"], cta: "Starter 월간 선택",
     },
     "starter-annual": {
       badge: "Starter 연간", name: "Starter", cycle: "연간", unitPrice: "크레딧당 $0.082", credits: "월 50크레딧", audience: "크레딧당 비용을 낮춰 장기간 이용하려는 개인에게 적합", benefits: ["현재 Starter 월간의 모든 기능", ...paidBenefits], resources: ["매월 50크레딧, 월마다 초기화", "250 MB 파일 저장 공간", "12개월 월간 결제 대비 $46.88 절약", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그"], cta: "Starter 연간 선택",

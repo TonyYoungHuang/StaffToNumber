@@ -166,7 +166,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continue with Google, or create an account with email and password. Create one lifetime free project from a complete multi-page PDF or score image.",
         submit: "Create account",
         switch: "Already have an account",
-        footnote: "Free includes one complete lifetime score project with current correction, playback, transposition, Jianpu, version, sharing, and export tools, plus 25 credits monthly for exports and tools. Scanning another score needs a One Score Pass or plan.",
+        footnote: "1 lifetime free simple scan in the standard lane, usually a photo or an A4/Letter PDF of about 5 pages or fewer, subject to the file check. Your 25 monthly credits support work on existing projects; they do not unlock scans of new scores. One Score Pass: US$2.99 once, 10 credits for one score and its extracted parts, no expiry. Starter: US$7.99/month, 50 monthly credits for multiple scores. Both include the standard and large-file lanes, subject to the file check, with no extra lane fee.",
         success: "Account created. Redirecting...",
       },
       login: {
@@ -278,7 +278,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "使用 Google，或用邮箱和密码创建账户。注册后可以从一份完整多页 PDF 或乐谱图片创建终身免费项目。",
         submit: "创建账户",
         switch: "已有账户",
-        footnote: "免费方案只限一个完整乐谱项目；该项目可使用现有校正、播放、移调、简谱、版本、分享和导出能力，每月 25 积分用于导出等功能；识别新乐谱需单曲处理包或套餐。",
+        footnote: "终身 1 次普通通道简单识谱，通常适用于一张照片或约 5 页以内的 A4/Letter PDF，以文件预检为准。每月 25 积分可用于已有项目；这些月积分不代表可以扫描新乐谱。 单谱通行证：US$2.99 一次付费，原谱与提取分谱共享 10 积分，不过期。Starter：US$7.99/月，每月 50 积分，可处理多份乐谱。两者均包含普通和大文件通道，以文件预检为准，不另收通道费。",
         success: "账户已创建，正在跳转...",
       },
       login: {
@@ -390,7 +390,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "使用 Google，或以電子郵件和密碼建立帳戶。註冊後可從一份完整多頁 PDF 或樂譜圖片建立永久免費專案。",
         submit: "建立帳戶",
         switch: "已有帳戶",
-        footnote: "免費方案包含一個永久完整樂譜專案，可使用現有校正、播放、移調、簡譜、版本、分享與匯出工具，並每月提供 25 點數用於匯出等功能；辨識新樂譜需單曲處理包或方案。",
+        footnote: "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 5 頁以內的 A4/Letter PDF，以檔案預檢為準。每月 25 點可用於既有專案；這些每月點數不代表可以掃描新樂譜。 單譜通行證：US$2.99 一次付款，原譜與擷取分譜共用 10 點，不到期。Starter：US$7.99/月，每月 50 點，可處理多份樂譜。兩者均包含一般和大檔案通道，以檔案預檢為準，不另收通道費。",
         success: "帳戶已建立，正在重新導向...",
       },
       login: {
@@ -502,7 +502,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Google を使用するか、メールとパスワードでアカウントを作成します。完全な複数ページ PDF または楽譜画像から、生涯無料のプロジェクトを 1 件作成できます。",
         submit: "アカウントを作成",
         switch: "すでにアカウントをお持ちですか",
-        footnote: "無料プランには、生涯利用できる完全な楽譜プロジェクト 1 件と、修正、再生、移調、数字譜、バージョン、共有、書き出しの現行ツール、さらに書き出しなどに使える毎月 25 クレジットが含まれます。別の楽譜のスキャンには1曲パスまたはプランが必要です。",
+        footnote: "標準処理での簡単な楽譜認識が生涯1回無料です。通常は写真1枚か約5ページ以内のA4/Letter PDFが対象で、ファイル確認の結果によります。毎月25クレジットは既存のプロジェクトに使えますが、新しい楽譜の認識権にはなりません。 1曲パスはUS$2.99の1回払い。元の楽譜と抽出パートで10クレジットを共有し、有効期限はありません。Starterは月額US$7.99、複数の楽譜に使える毎月50クレジットです。どちらもファイル確認の範囲内で標準処理と大容量ファイル処理を利用でき、処理経路の追加料金はありません。",
         success: "アカウントを作成しました。移動しています...",
       },
       login: {
@@ -614,7 +614,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Google을 사용하거나 이메일과 비밀번호로 계정을 만드세요. 완전한 여러 페이지 PDF 또는 악보 이미지로 평생 무료 프로젝트 하나를 만들 수 있습니다.",
         submit: "계정 만들기",
         switch: "이미 계정이 있나요",
-        footnote: "무료 플랜에는 평생 이용 가능한 완전한 악보 프로젝트 하나와 현재 제공되는 교정, 재생, 조옮김, 숫자보, 버전, 공유 및 내보내기 도구, 내보내기 등에 쓰는 매월 25크레딧이 포함됩니다. 다른 악보를 스캔하려면 한 곡 이용권 또는 요금제가 필요합니다.",
+        footnote: "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 매월 25크레딧은 기존 프로젝트에 사용할 수 있지만 새 악보 인식 권한은 주지 않습니다. 한 곡 이용권은 US$2.99 일회성 결제로 원본 악보와 추출 파트가 10크레딧을 공유하며 만료되지 않습니다. Starter는 월 US$7.99에 여러 악보에 쓸 수 있는 매월 50크레딧을 제공합니다. 두 상품 모두 파일 검사 범위 내에서 표준 처리와 대용량 파일 처리를 포함하며 처리 경로 추가 요금은 없습니다.",
         success: "계정을 만들었습니다. 이동 중...",
       },
       login: {
@@ -726,7 +726,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continuez avec Google ou créez un compte avec votre e-mail et un mot de passe. Créez un projet gratuit à vie à partir d’un PDF multipage complet ou d’une image de partition.",
         submit: "Créer un compte",
         switch: "Vous avez déjà un compte",
-        footnote: "L’offre gratuite comprend un projet de partition complet à vie, les outils actuels de correction, lecture, transposition, Jianpu, versions, partage et export, ainsi que 25 crédits par mois pour les exports et outils. Numériser une autre partition nécessite un Pass une partition ou une offre.",
+        footnote: "1 reconnaissance simple gratuite à vie dans la file standard, généralement une photo ou un PDF A4/Letter d’environ 5 pages maximum, selon la vérification du fichier. Les 25 crédits mensuels servent aux projets existants ; ils ne donnent pas accès à la numérisation de nouvelles partitions. Pass une partition : paiement unique de 2,99 USD, 10 crédits partagés par la partition et ses parties extraites, sans expiration. Starter : 7,99 USD/mois, 50 crédits mensuels pour plusieurs partitions. Les deux incluent les files standard et gros fichiers, selon la vérification, sans supplément de file.",
         success: "Compte créé. Redirection en cours...",
       },
       login: {
@@ -838,7 +838,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Continúa con Google o crea una cuenta con correo y contraseña. Crea un proyecto gratuito para siempre a partir de un PDF multipágina completo o una imagen de partitura.",
         submit: "Crear cuenta",
         switch: "Ya tengo una cuenta",
-        footnote: "El plan gratuito incluye un proyecto de partitura completo para siempre, las herramientas actuales de corrección, reproducción, transporte, Jianpu, versiones, uso compartido y exportación, además de 25 créditos al mes para exportaciones y herramientas. Escanear otra partitura requiere un Pase para una partitura o un plan.",
+        footnote: "1 reconocimiento simple gratuito de por vida en la vía estándar, normalmente una foto o un PDF A4/Letter de unas 5 páginas como máximo, según la comprobación. Los 25 créditos mensuales sirven para proyectos existentes; no habilitan el escaneo de nuevas partituras. Pase para una partitura: pago único de 2,99 USD, 10 créditos compartidos por la partitura y sus partes extraídas, sin caducidad. Starter: 7,99 USD/mes, 50 créditos mensuales para varias partituras. Ambos incluyen las vías estándar y de archivos grandes, según la comprobación, sin recargo de vía.",
         success: "Cuenta creada. Redirigiendo...",
       },
       login: {
@@ -950,7 +950,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Fahren Sie mit Google fort oder erstellen Sie ein Konto mit E-Mail und Passwort. Erstellen Sie ein dauerhaft kostenloses Projekt aus einem vollständigen mehrseitigen PDF oder Notenbild.",
         submit: "Konto erstellen",
         switch: "Ich habe bereits ein Konto",
-        footnote: "Kostenlos enthalten sind ein vollständiges, dauerhaftes Notenprojekt, die aktuellen Werkzeuge für Korrektur, Wiedergabe, Transposition, Jianpu, Versionen, Teilen und Export sowie monatlich 25 Credits für Exporte und Werkzeuge. Für eine weitere Partitur-Erkennung ist ein Einzelpartitur-Pass oder ein Abo nötig.",
+        footnote: "1 lebenslang kostenlose einfache Erkennung in der Standardverarbeitung, üblicherweise für ein Foto oder ein A4/Letter-PDF mit bis zu etwa 5 Seiten, je nach Dateiprüfung. Die 25 monatlichen Credits dienen vorhandenen Projekten; sie schalten keine Erkennung neuer Partituren frei. Einzelpartitur-Pass: einmalig 2,99 USD, 10 gemeinsame Credits für eine Partitur und ihre extrahierten Stimmen, ohne Ablaufdatum. Starter: 7,99 USD/Monat, 50 monatliche Credits für mehrere Partituren. Beide umfassen Standardverarbeitung und Verarbeitung großer Dateien im Rahmen der Dateiprüfung, ohne zusätzlichen Aufpreis für den Verarbeitungsweg.",
         success: "Konto erstellt. Weiterleitung...",
       },
       login: {
@@ -1062,7 +1062,7 @@ export const AUTH_MESSAGE_CATALOGS = {
         body: "Продолжите через Google или создайте аккаунт с электронной почтой и паролем. Создайте один бессрочный бесплатный проект из полного многостраничного PDF или изображения нот.",
         submit: "Создать аккаунт",
         switch: "У меня уже есть аккаунт",
-        footnote: "Бесплатный план включает один полный бессрочный нотный проект, текущие инструменты исправления, воспроизведения, транспонирования, цифровой записи, версий, публикации и экспорта, а также 25 кредитов ежемесячно на экспорт и инструменты. Для сканирования другой партитуры нужен пакет для одной партитуры или тариф.",
+        footnote: "1 бесплатное простое распознавание за всё время в стандартной очереди, обычно для одной фотографии или PDF A4/Letter примерно до 5 страниц, по результатам проверки файла. Ежемесячные 25 кредитов доступны для существующих проектов, но не открывают распознавание новых партитур. Пакет для одной партитуры: разовая оплата 2,99 USD, 10 общих кредитов для партитуры и извлечённых партий без срока действия. Starter: 7,99 USD/месяц, 50 кредитов в месяц для нескольких партитур. Оба варианта включают стандартную очередь и очередь больших файлов по результатам проверки, без доплаты за очередь.",
         success: "Аккаунт создан. Переходим дальше...",
       },
       login: {
