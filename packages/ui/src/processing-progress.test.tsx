@@ -55,16 +55,21 @@ import { RecognitionPurchaseActions, needsBigRecognitionLane } from './recogniti
 import { SUPPORTED_LOCALES, getRecognitionExperienceMessages } from '@score/i18n';
 
 test('large-score purchase offers put Starter first and the $2.99 pass second in every locale', () => {
-  assert.equal(needsBigRecognitionLane({ lane: 'normal', enabled: true }, 'complex'), true);
+  assert.equal(needsBigRecognitionLane({ lane: 'normal', enabled: true }, 'complex'), false);
   assert.equal(needsBigRecognitionLane({ lane: 'normal', enabled: true }, 'simple'), false);
   assert.equal(needsBigRecognitionLane({ lane: 'normal', enabled: false }, 'complex'), false);
   assert.equal(needsBigRecognitionLane({ lane: 'unsupported', enabled: true }, 'complex'), false);
+  assert.equal(needsBigRecognitionLane({ lane: 'big', enabled: true }, 'simple'), true);
+  assert.equal(needsBigRecognitionLane({ lane: 'big', enabled: true }, 'complex'), true);
   for (const locale of SUPPORTED_LOCALES) {
     const html = renderToStaticMarkup(<RecognitionPurchaseActions messages={getRecognitionExperienceMessages(locale)} onStarter={() => undefined} onPass={() => undefined} />);
     const copy = getRecognitionExperienceMessages(locale);
     assert.ok(html.indexOf('data-plan-type="subscription"') < html.indexOf('data-plan-type="one_score"'));
     assert.ok(html.includes(copy.starterCta));
     assert.ok(html.includes(copy.passCta));
+    assert.match(copy.passCta, /2[.,]99/);
+    assert.match(html, /class="button button-primary" data-plan-type="subscription"/);
+    assert.match(html, /class="button button-secondary" data-plan-type="one_score"/);
     assert.match(html, /data-upsell-primary="starter"/);
   }
 });

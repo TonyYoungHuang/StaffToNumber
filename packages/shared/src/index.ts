@@ -312,6 +312,7 @@ export type JobResultKind = "none" | "final" | "draft";
 
 export type ScoreRecognitionMode = "simple" | "complex";
 export type RecognitionLane = "normal" | "big" | "unsupported";
+export { RECOGNITION_MEMORY_BUDGET, estimateRecognitionMemoryMb, recognitionMemoryLane } from "./recognition-memory.ts";
 export type PhotoCorner = { x: number; y: number };
 export type RecognitionMemoryAssessment = {
   version: 1; capacityVersion: string; lane: RecognitionLane; estimatedMemoryMb: number;
@@ -341,7 +342,7 @@ export type ScoreStructurePreflight = {
   /** Admission only, never a promise of note accuracy. */
   recognitionSupport?: {
     supported: boolean;
-    code: "READY" | "PDF_ADAPTIVE_RENDER" | "PDF_PAGE_PIXEL_LIMIT" | "PDF_TOTAL_PIXEL_LIMIT" | "PDF_INVALID";
+    code: "READY" | "PDF_ADAPTIVE_RENDER" | "PDF_PAGE_PIXEL_LIMIT" | "PDF_TOTAL_PIXEL_LIMIT" | "PDF_INVALID" | "RECOGNITION_CAPACITY_LIMIT";
     pageDpi?: number[];
   };
   pages: Array<{

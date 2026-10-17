@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SUPPORTED_LOCALES } from './locales.ts';
-import { getScorePreflightMessages, getScoreRequestWaitingMessages } from './score-preflight-messages.ts';
+import { getScorePreflightMessages, getScoreRequestWaitingMessages, getScoreRecognitionSupportMessage } from './score-preflight-messages.ts';
 import { getPercentProgressMessages, getStagedUploadMessages } from './percent-progress-messages.ts';
 
 test('progress and staged expiry actions are translated in all nine locales', () => {
@@ -78,6 +78,8 @@ test('recognition lanes, photo corners, alternatives and honest failures are tra
     }
     assert.match(copy.passCta, /2[.,]99/);
     assert.match(copy.starterCta, /Starter/);
+    assert.equal(getScoreRecognitionSupportMessage(locale, 'RECOGNITION_CAPACITY_LIMIT'), copy.unsupportedLane);
+    assert.notEqual(getScoreRecognitionSupportMessage(locale, 'RECOGNITION_CAPACITY_LIMIT'), getScoreRecognitionSupportMessage(locale, 'READY'));
     assert.equal(getRecognitionFailureMessage(locale, 'COVER_ONLY'), copy.coverFailure);
     assert.equal(getRecognitionFailureMessage(locale, 'LOW_RESOLUTION'), copy.blurFailure);
     assert.equal(getRecognitionFailureMessage(locale, 'NON_STAFF'), copy.notationFailure);

@@ -13,7 +13,7 @@
     "test": "node --import tsx --test src/lib/google-login.test.ts src/lib/canonical-host.test.ts src/lib/checkout-localization.test.ts src/lib/feature-seo.test.ts src/lib/homepage-localization.test.ts src/lib/homepage-media.test.ts src/lib/locale-routing.test.ts src/lib/organization-schema.test.ts src/lib/paddle-checkout.test.ts src/lib/practice-demo-state.test.ts src/lib/pricing-catalog.test.ts src/lib/purchase-flow.test.ts src/lib/checkout-return.test.ts src/lib/product-media/product-media.test.ts src/lib/public-content.test.ts src/lib/public-score-library.test.ts src/lib/static-marketing-localization.test.ts src/lib/support-legal-localization.test.ts src/lib/pricing-facts.test.ts src/lib/pricing-body-copy.test.ts src/lib/scanner-faq.test.ts src/lib/home-commercial-copy.test.ts src/lib/guest-sample.test.ts src/lib/api.test.ts && npm run test:locale-ui",
     "typecheck": "next typegen && tsc --noEmit",
     "budget:homepage": "node scripts/check-homepage-budget.mjs",
-    "test:locale-ui": "tsx --tsconfig tsconfig.test.json --test src/components/SiteLocaleSwitcher.test.tsx"
+    "test:locale-ui": "tsx --tsconfig tsconfig.test.json --test src/components/SiteLocaleSwitcher.test.tsx src/components/HomeRecognitionPreflightResult.test.tsx"
   },
   "dependencies": {
     "@score/i18n": "0.1.0",

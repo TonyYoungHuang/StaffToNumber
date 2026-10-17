@@ -18,15 +18,15 @@ function candidate(id: string, values: Partial<RasterQuality>): RasterEnhancemen
   return { id, outputDir: id, status: "succeeded", variant: {} as RasterVariant, quality: { ...quality, ...values } };
 }
 
-test("normal lane freezes one light configuration; big has no more than three", () => {
-  assert.deepEqual(rasterVariantIds({ ...options, lane: "normal" }), ["gray"]);
+test("both memory lanes retain at most three bounded quality configurations", () => {
+  assert.deepEqual(rasterVariantIds({ ...options, lane: "normal" }), ["gray", "detail", "shadow-detail"]);
   assert.deepEqual(rasterVariantIds(options), ["gray", "detail", "shadow-detail"]);
 });
 
-test("one shared PDF budget limits comparisons to two pages and P+4 calls", () => {
+test("normal-lane PDF budget limits comparisons to two pages and P+4 calls", () => {
   const budget = createRasterEnhancementBudget(8);
   for (let page = 1; page <= 8; page++) {
-    const ids = rasterVariantIds({ ...options, budget, pageNumber: page });
+    const ids = rasterVariantIds({ ...options, lane: "normal", budget, pageNumber: page });
     ids.forEach((_, index) => assert.equal(claimRasterCall(budget, page, index > 0), true));
   }
   assert.equal(budget.calls, 12);

@@ -1,9 +1,17 @@
+import { recognitionMemoryLane, RECOGNITION_MEMORY_BUDGET } from "@score/shared";
+
 export type RecognitionLane = "normal" | "big";
 const positive=(value:string|undefined,fallback:number)=>{const n=Number(value);return Number.isSafeInteger(n)&&n>0?n:fallback;};
 export function recognitionLaneResourcePolicy(input:{lane:RecognitionLane;estimatedMemoryMb?:number;normalHeapMb:number}) {
   const cap=positive(process.env.RECOGNITION_BIG_MAX_MB,2048);
   const normalHeap=Number.isSafeInteger(input.normalHeapMb)&&input.normalHeapMb>=256?input.normalHeapMb:768;
-  if(input.lane==="normal")return {heapMb:normalHeap,reservationMb:Math.max(input.estimatedMemoryMb??1024,normalHeap+256)};
+  const normalCap=positive(process.env.RECOGNITION_NORMAL_MAX_MB,RECOGNITION_MEMORY_BUDGET.normalMaxMb);
+  if(input.lane==="normal") {
+    const reservationMb=Math.max(input.estimatedMemoryMb??1024,normalHeap+256);
+    const legacyNormalCap=process.env.RECOGNITION_LANES_ENABLED === "true" ? normalCap : cap;
+    if(recognitionMemoryLane(reservationMb,legacyNormalCap,cap)!=="normal")throw new Error("ENGINE_RESOURCE_UNAVAILABLE: normal-score memory does not match its accepted lane.");
+    return {heapMb:normalHeap,reservationMb};
+  }
   if(cap<1024)throw new Error("ENGINE_RESOURCE_UNAVAILABLE: large-score memory capacity is not configured safely.");
   const heapMb=Math.max(256,Math.min(positive(process.env.RECOGNITION_BIG_HEAP_MB,normalHeap),cap-512));
   const reservationMb=Math.max(input.estimatedMemoryMb??1024,heapMb+512);

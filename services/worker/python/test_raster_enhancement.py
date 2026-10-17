@@ -45,10 +45,11 @@ class RasterEnhancementTest(unittest.TestCase):
             np.testing.assert_allclose(inverse @ forward, np.eye(3), atol=1e-8)
         self.assertGreaterEqual(sum(detail["crop"][1::2]), 390)
 
-    def test_normal_lane_has_one_light_variant(self):
+    def test_normal_lane_keeps_bounded_quality_alternatives(self):
         result = self.prepare(lane="normal")
-        self.assertEqual([variant["id"] for variant in result["variants"]], ["gray"])
-        self.assertFalse(result["variants"][0]["requiresBigLane"])
+        self.assertEqual([variant["id"] for variant in result["variants"]], ["gray", "detail", "shadow-detail"])
+        self.assertTrue(all(not variant["requiresBigLane"] for variant in result["variants"]))
+        self.assertTrue(all(variant["width"] * variant["height"] <= 12_000_000 for variant in result["variants"]))
 
     def test_pixel_budget_prevents_an_unaffordable_2x_resize(self):
         result = self.prepare(maxPixels=300_000)
@@ -64,7 +65,7 @@ class RasterEnhancementTest(unittest.TestCase):
         self.assertIn("staff-spacing-budget-fit", detail["operations"])
 
     def test_manual_corners_have_invertible_perspective_mapping(self):
-        result = self.prepare(corners=[[.1, .1], [.9, .05], [.95, .95], [.05, .9]])
+        result = self.prepare(lane="normal", corners=[[.1, .1], [.9, .05], [.95, .95], [.05, .9]])
         self.assertIn("manual-perspective", result["variants"][0]["operations"])
         matrix = np.asarray(result["variants"][0]["sourceToImage"]).reshape(3, 3)
         self.assertNotEqual(matrix[2, 0], 0)

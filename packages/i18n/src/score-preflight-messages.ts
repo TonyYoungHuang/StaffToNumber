@@ -1,4 +1,5 @@
 import type { SupportedLocale } from './locales.ts';
+import { getRecognitionExperienceMessages } from './recognition-experience-messages.ts';
 
 const requestWaitingCopy: Record<SupportedLocale, readonly [string, string]> = {
   en: ['Waiting for the score check. Busy servers queue requests automatically; keep this page open. Your file is still selected.', 'This score is taking longer to load. Keep this page open; you can retry if the request times out.'],
@@ -29,6 +30,7 @@ const supportCopy: Record<SupportedLocale, readonly [string, string, string, str
 };
 
 export function getScoreRecognitionSupportMessage(locale: SupportedLocale, code: string) {
+  if (code === 'RECOGNITION_CAPACITY_LIMIT') return getRecognitionExperienceMessages(locale).unsupportedLane;
   return supportCopy[locale][code === 'READY' ? 0 : code === 'PDF_ADAPTIVE_RENDER' ? 1 : code === 'PDF_INVALID' ? 3 : 2];
 }
 

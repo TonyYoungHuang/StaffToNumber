@@ -121,20 +121,40 @@ test("full and out-of-order refunds revoke a pass and duplicate paid events cann
   }
 });
 
+const TIFF_ENTRY_COUNT = 9;
+const TIFF_NEXT_IFD_OFFSET = 2 + TIFF_ENTRY_COUNT * 12;
+const TIFF_PAGE_BYTES = TIFF_NEXT_IFD_OFFSET + 4 + 1;
+
 function tiffPages(pageCount: number) {
-  const bytes = new Uint8Array(8 + pageCount * 6), view = new DataView(bytes.buffer);
+  // Real uncompressed 1x1 grayscale frames: dimensions and pixel strips let
+  // both the directory validator and memory admission inspect the same source.
+  const bytes = new Uint8Array(8 + pageCount * TIFF_PAGE_BYTES), view = new DataView(bytes.buffer);
   bytes[0] = bytes[1] = 0x49; view.setUint16(2, 42, true); view.setUint32(4, 8, true);
-  for (let i = 0; i < pageCount; i++) view.setUint32(8 + i * 6 + 2, i === pageCount - 1 ? 0 : 8 + (i + 1) * 6, true);
+  for (let i = 0; i < pageCount; i++) {
+    const offset = 8 + i * TIFF_PAGE_BYTES;
+    const stripOffset = offset + TIFF_NEXT_IFD_OFFSET + 4;
+    view.setUint16(offset, TIFF_ENTRY_COUNT, true);
+    const entries = [[256, 4, 1], [257, 4, 1], [258, 3, 8], [259, 3, 1], [262, 3, 1],
+      [273, 4, stripOffset], [277, 3, 1], [278, 4, 1], [279, 4, 1]] as const;
+    entries.forEach(([tag, type, value], index) => {
+      const entry = offset + 2 + index * 12;
+      view.setUint16(entry, tag, true); view.setUint16(entry + 2, type, true);
+      view.setUint32(entry + 4, 1, true); view.setUint32(entry + 8, value, true);
+    });
+    view.setUint32(offset + TIFF_NEXT_IFD_OFFSET, i === pageCount - 1 ? 0 : offset + TIFF_PAGE_BYTES, true);
+    bytes[stripOffset] = 255;
+  }
   return bytes;
 }
 
 test("multi-page TIFF counts all eleven pages; malformed and cyclic directories after page six fail closed", () => {
   const bytes = tiffPages(11), view = new DataView(bytes.buffer);
   assert.equal(countTiffPages(bytes), 11);
-  view.setUint32(8 + 10 * 6 + 2, 8, true); assert.equal(countTiffPages(bytes), 0);
-  view.setUint32(8 + 10 * 6 + 2, bytes.length, true); assert.equal(countTiffPages(bytes), 0);
-  view.setUint32(8 + 10 * 6 + 2, 0, true); assert.equal(countTiffPages(bytes), 11);
-  view.setUint32(10, 8, true); assert.equal(countTiffPages(bytes), 0);
+  const lastNext = 8 + 10 * TIFF_PAGE_BYTES + TIFF_NEXT_IFD_OFFSET;
+  view.setUint32(lastNext, 8, true); assert.equal(countTiffPages(bytes), 0);
+  view.setUint32(lastNext, bytes.length, true); assert.equal(countTiffPages(bytes), 0);
+  view.setUint32(lastNext, 0, true); assert.equal(countTiffPages(bytes), 11);
+  view.setUint32(8 + TIFF_NEXT_IFD_OFFSET, 8, true); assert.equal(countTiffPages(bytes), 0);
   view.setUint16(2, 43, true); assert.equal(countTiffPages(bytes), 0);
 });
 
@@ -209,7 +229,7 @@ for (const paid of [false, true]) test(`HTTP TIFF admission with pass=${paid} co
   };
   try {
     const malformed = tiffPages(11);
-    new DataView(malformed.buffer).setUint32(8 + 10 * 6 + 2, 8, true);
+    new DataView(malformed.buffer).setUint32(8 + 10 * TIFF_PAGE_BYTES + TIFF_NEXT_IFD_OFFSET, 8, true);
     const rejected = await upload(malformed);
     assert.equal(rejected.statusCode, 422, rejected.body);
     assert.equal(rejected.json().code, "SCORE_SOURCE_PAGE_COUNT_INVALID");

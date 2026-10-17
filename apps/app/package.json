@@ -13,7 +13,7 @@
     "test:auth-ui": "tsx --tsconfig tsconfig.test.json --test src/components/AuthForm.test.tsx src/lib/auth-storage.test.ts",
     "test:requests": "node --import tsx --test src/lib/score-requests.test.ts",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:locale-ui": "tsx --tsconfig tsconfig.test.json --test src/components/AppLocaleSwitcher.test.tsx"
+    "test:locale-ui": "tsx --tsconfig tsconfig.test.json --test src/components/AppLocaleSwitcher.test.tsx src/components/ScoreRecognitionPreflight.test.tsx"
   },
   "dependencies": {
     "@coderline/alphatab": "1.8.4",

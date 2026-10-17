@@ -7,6 +7,28 @@ import xml.etree.ElementTree as ET
 import complex_omr_adapter as adapter
 
 
+class RasterSourceAdmissionTests(unittest.TestCase):
+    def test_25_megapixel_source_matches_api_and_is_reduced_to_processing_canvas(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "synthetic-25mp.png"
+            Image.new("1", (5000, 5000), 1).save(source)
+            result = adapter.prepare({"inputPath": str(source), "outputDir": str(Path(directory) / "prepared"),
+                                      "maxPagePixels": 12_000_000})
+            self.assertEqual(result["sourcePageCount"], 1)
+            self.assertLessEqual(result["pages"][0]["width"] * result["pages"][0]["height"], 12_000_000)
+            self.assertEqual(result["pages"][0]["sourceWidth"], 5000)
+
+    def test_source_above_32_megapixels_is_refused_before_decode(self):
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "synthetic-oversized.png"
+            Image.new("1", (6401, 5000), 1).save(source)
+            with self.assertRaisesRegex(ValueError, "input pixel budget"):
+                adapter.prepare({"inputPath": str(source), "outputDir": str(Path(directory) / "prepared"),
+                                 "maxPagePixels": 12_000_000})
+
+
 class LineInventoryTests(unittest.TestCase):
     def test_low_resolution_staffs_with_ledger_marks_do_not_become_tab(self):
         import cv2

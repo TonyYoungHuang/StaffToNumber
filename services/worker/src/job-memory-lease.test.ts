@@ -3,6 +3,24 @@ import test from "node:test";
 import { getJobMemoryLeaseEnvironment, hasJobMemoryLease, jobMemoryLeaseReady, withJobMemoryLease } from "./job-memory-lease.js";
 import { recognitionLaneResourcePolicy } from "./recognition-lane.js";
 
+test("worker reservations use the API's normal/big capacity boundaries and legacy flag never bypasses the hard cap", () => {
+  const previous = process.env.RECOGNITION_LANES_ENABLED;
+  try {
+    process.env.RECOGNITION_LANES_ENABLED = "true";
+    assert.equal(recognitionLaneResourcePolicy({ lane: "normal", estimatedMemoryMb: 1536, normalHeapMb: 768 }).reservationMb, 1536);
+    assert.throws(() => recognitionLaneResourcePolicy({ lane: "normal", estimatedMemoryMb: 1792, normalHeapMb: 768 }), /accepted lane/);
+    for (const estimatedMemoryMb of [1792, 2048]) {
+      assert.equal(recognitionLaneResourcePolicy({ lane: "big", estimatedMemoryMb, normalHeapMb: 768 }).reservationMb, estimatedMemoryMb);
+    }
+    assert.throws(() => recognitionLaneResourcePolicy({ lane: "big", estimatedMemoryMb: 2304, normalHeapMb: 768 }), /exceeds/);
+    process.env.RECOGNITION_LANES_ENABLED = "false";
+    assert.equal(recognitionLaneResourcePolicy({ lane: "normal", estimatedMemoryMb: 2048, normalHeapMb: 768 }).reservationMb, 2048);
+    assert.throws(() => recognitionLaneResourcePolicy({ lane: "normal", estimatedMemoryMb: 2304, normalHeapMb: 768 }), /accepted lane/);
+  } finally {
+    if (previous === undefined) delete process.env.RECOGNITION_LANES_ENABLED; else process.env.RECOGNITION_LANES_ENABLED = previous;
+  }
+});
+
 test("invalid large-lane settings cannot launch an uncapped JVM or exceed its reservation",()=>{
   const previousCap=process.env.RECOGNITION_BIG_MAX_MB,previousHeap=process.env.RECOGNITION_BIG_HEAP_MB;
   try {

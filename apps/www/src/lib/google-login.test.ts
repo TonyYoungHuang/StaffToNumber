@@ -14,7 +14,7 @@ test("current-language homepage runtime slices preserve all original recovery an
     for (const error of [null, "unknown failure", "too low interline", "low-resolution", "time-out", "timed out", "budget exhausted", "execution budget", "not configured", "could not start", "missing from storage", "adapter is missing", "STORAGE_CAPACITY_REACHED", "storage capacity temporarily unavailable"]) {
       assert.deepEqual(homeProcessingFailure(error, copy.failure), getScoreProcessingFailureMessages(locale, error), `${locale}:${error}`);
     }
-    for (const code of ["READY", "PDF_ADAPTIVE_RENDER", "PDF_INVALID", "PDF_PAGE_PIXEL_LIMIT", "unknown"]) {
+    for (const code of ["READY", "PDF_ADAPTIVE_RENDER", "PDF_INVALID", "PDF_PAGE_PIXEL_LIMIT", "RECOGNITION_CAPACITY_LIMIT", "unknown"]) {
       assert.equal(copy.support[code] ?? copy.support.fallback, getScoreRecognitionSupportMessage(locale, code), `${locale}:${code}`);
     }
   }

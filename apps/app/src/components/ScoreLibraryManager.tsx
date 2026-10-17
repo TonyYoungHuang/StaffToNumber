@@ -17,7 +17,7 @@ import { useAppLocale } from "./AppLocaleProvider";
 import { RecognitionModeCards } from "./RecognitionModeCards";
 import { OneScorePassUpsell } from "./OneScorePassUpsell";
 import { ScoreRecognitionPreflight } from "./ScoreRecognitionPreflight";
-import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, parseScoreRecognitionPreflight, PreflightRequestGuard, type ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
+import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, isScoreRecognitionRejected, parseScoreRecognitionPreflight, PreflightRequestGuard, type ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
 import { recognitionOption, type RecognitionMode, type RecognitionOptions } from "../lib/recognition-options";
 import { boundedScoreTransfer, fetchScoreUpload, forgetUploadReceipt, getUploadReceipt, latestUploadReceipt, ScoreTransferError } from "../lib/score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
@@ -262,15 +262,16 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const recognitionQuote = selectedRecognitionMode ? recognitionOption(recognitionOptions, selectedRecognitionMode) : null;
   const simpleQuote = recognitionOption(recognitionOptions, "simple");
   const memory = preflight.status === "ready" ? preflight.result.memoryAssessment : null;
-  const bigNeedsPayment = needsBigRecognitionLane(memory, selectedRecognitionMode) && recognitionQuote?.creditSource !== "plan" && recognitionQuote?.creditSource !== "score_pass";
-  const recognitionReady = !bigNeedsPayment && memory?.lane !== "unsupported" && canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
+  const preflightRejected = preflight.status === "ready" && isScoreRecognitionRejected(preflight.result);
+  const bigNeedsPayment = !preflightRejected && needsBigRecognitionLane(memory, selectedRecognitionMode) && recognitionQuote?.creditSource !== "plan" && recognitionQuote?.creditSource !== "score_pass";
+  const recognitionReady = !bigNeedsPayment && canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
   const freeSimplePath = Boolean(access) && kind === "omr" && isFreeSimpleScanPath({
     freeTrialAvailable: access?.freeTrial.available === true && !bigNeedsPayment,
     selectedMode: selectedRecognitionMode,
     simpleQuote,
     preflight,
   });
-  const showModePicker = mode === "file" && kind === "omr" && Boolean(access) && preflight.status === "ready" && (!freeSimplePath || showAdvancedModes);
+  const showModePicker = mode === "file" && kind === "omr" && Boolean(access) && preflight.status === "ready" && !preflightRejected && (!freeSimplePath || showAdvancedModes);
   const hasUnusedPass = access?.scorePasses?.some(p => !p.documentId) ?? false;
   const canImport = mode === "file" && kind === "omr" ? recognitionQuote?.canSubmit === true : access?.entitlement.status === "active";
   function chooseFile(selected: File | null, corners: PhotoCorners | null = null, photoChecked = false) {
@@ -293,7 +294,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     try {
       if (serverDraft) return uploadDraftCheckoutContext(serverDraft, currentWorkPath());
       if (mode === "file" && kind === "omr") {
-        if (preflight.status !== "ready" || preflight.result.memoryAssessment?.lane === "unsupported" || !selectedRecognitionMode || !token) throw new Error(preflightCopy.notReady);
+        if (preflight.status !== "ready" || isScoreRecognitionRejected(preflight.result) || !selectedRecognitionMode || !token) throw new Error(preflightCopy.notReady);
         // The server source is sufficient for payment recovery; IndexedDB only
         // provides a convenient local fallback and must not block promotion.
         await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined, photoCorners }).catch(() => setDraftFailed(true));
@@ -546,13 +547,13 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
             <button type="button" className="button button-tertiary" disabled={busy} onClick={() => setShowAdvancedModes(true)}>{preflightCopy.showModes}</button>
           </div> : null}
           {freeSimplePath && showAdvancedModes ? <button type="button" className="button button-tertiary" disabled={busy} onClick={() => { setShowAdvancedModes(false); setSelectedRecognitionMode("simple"); }}>{preflightCopy.hideModes}</button> : null}
-          {!freeSimplePath && recognitionQuote ? <p className="helper-copy" data-recognition-quote={selectedRecognitionMode}>{recognitionQuote.canSubmit ? formatMessage(preflightCopy.price, { credits: formatNumber(recognitionQuote.creditCost, locale) }) : preflightCopy.noCredit}</p> : null}
+          {!preflightRejected && !freeSimplePath && recognitionQuote ? <p className="helper-copy" data-recognition-quote={selectedRecognitionMode}>{recognitionQuote.canSubmit ? formatMessage(preflightCopy.price, { credits: formatNumber(recognitionQuote.creditCost, locale) }) : preflightCopy.noCredit}</p> : null}
         </> : mode === "file" && !file ? <p className="helper-copy">{preflightCopy.freeBody}</p> : null}
         {recognitionMode === "complex" ? <p className="helper-copy">{recognitionCopy.structuredImport}</p> : null}
-        {access && !bigNeedsPayment && memory?.lane !== "unsupported" && access.entitlement.status !== "active" && (kind !== "omr" || selectedRecognitionMode) && !freeSimplePath ? <p className="helper-copy">{(kind === "omr" ? selectedRecognitionMode : recognitionMode) === "simple" && access.freeTrial.available ? copy.scan.freeBody : hasUnusedPass ? getSingleScorePassCopy(locale).paid : kind === "omr" && selectedRecognitionMode === "complex" ? preflightCopy.noCredit : copy.scan.exhaustedBody}</p> : null}
+        {access && !preflightRejected && !bigNeedsPayment && access.entitlement.status !== "active" && (kind !== "omr" || selectedRecognitionMode) && !freeSimplePath ? <p className="helper-copy">{(kind === "omr" ? selectedRecognitionMode : recognitionMode) === "simple" && access.freeTrial.available ? copy.scan.freeBody : hasUnusedPass ? getSingleScorePassCopy(locale).paid : kind === "omr" && selectedRecognitionMode === "complex" ? preflightCopy.noCredit : copy.scan.exhaustedBody}</p> : null}
         <div className="button-row">
-          <button className="button button-primary" type="submit" data-recognition-confirm={mode === "file" && kind === "omr" && access ? "true" : undefined} disabled={busy || (mode === "file" ? !file || (Boolean(access) && kind === "omr" && !recognitionReady) : !jianpuText.trim())}>{busy ? flow.processing : !access ? copy.signInFirst : mode === "file" && kind === "omr" ? recognitionReady ? (freeSimplePath ? preflightCopy.startRecognition : formatMessage(preflightCopy.confirmRecognition, { mode: selectedRecognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(recognitionQuote!.creditCost, locale) })) : (preflight.status === "checking" ? preflightCopy.checking : preflightCopy.notReady) : canImport ? flow.start : flow.upgrade}</button>
-          {mode === "file" && kind === "omr" && preflight.status === "ready" && memory?.lane !== "unsupported" && recognitionQuote && (!recognitionQuote.canSubmit || bigNeedsPayment) ? <OneScorePassUpsell starterPrimary={bigNeedsPayment} source="score_import" disabled={busy} beforeCheckout={saveDraftBeforePass} onSubscriptionClick={() => { void upgrade(); }} /> : null}
+          {!preflightRejected && !bigNeedsPayment ? <button className="button button-primary" type="submit" data-recognition-confirm={mode === "file" && kind === "omr" && access ? "true" : undefined} disabled={busy || (mode === "file" ? !file || (Boolean(access) && kind === "omr" && !recognitionReady) : !jianpuText.trim())}>{busy ? flow.processing : !access ? copy.signInFirst : mode === "file" && kind === "omr" ? recognitionReady ? (freeSimplePath ? preflightCopy.startRecognition : formatMessage(preflightCopy.confirmRecognition, { mode: selectedRecognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(recognitionQuote!.creditCost, locale) })) : (preflight.status === "checking" ? preflightCopy.checking : preflightCopy.notReady) : canImport ? flow.start : flow.upgrade}</button> : null}
+          {mode === "file" && kind === "omr" && preflight.status === "ready" && !preflightRejected && recognitionQuote && (!recognitionQuote.canSubmit || bigNeedsPayment) ? <OneScorePassUpsell starterPrimary={bigNeedsPayment} source="score_import" disabled={busy} beforeCheckout={saveDraftBeforePass} onSubscriptionClick={() => { void upgrade(); }} /> : null}
           {file && !busy && mode === "file" ? <button type="button" className="button button-secondary" onClick={() => chooseFile(null)}>{copy.common.clearSelection}</button> : null}
           {draftFailed ? <Link className="button button-secondary" href={upgradePath(currentWorkPath())} onClick={() => trackFunnelEvent("upgrade_click", { source: "score_import_draft_failed" })}>{flow.upgrade}</Link> : null}
           {!access && failed ? <button type="button" className="button button-secondary" onClick={() => setAccessAttempt(n => n + 1)}>{flow.retry}</button> : null}

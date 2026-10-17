@@ -165,8 +165,9 @@ def prepare(request):
         gray = cv2.rotate(gray, code)
         matrix = np.asarray(orientation_matrix) @ matrix
     diagnostics = inspect(gray)
-    big = request.get("lane") == "big"
-    ids = ["gray", "detail", "shadow-detail"] if big else ["gray"]
+    # Quality alternatives are sequential and share the admitted pixel budget.
+    # A low-confidence photo must retain enhancement on the ordinary lane.
+    ids = ["gray", "detail", "shadow-detail"]
     requested = request.get("variantIds")
     if requested:
         ids = [identifier for identifier in ids if identifier in requested]
@@ -230,7 +231,7 @@ def prepare(request):
             "sourceToImage": transform.reshape(-1).tolist(), "imageToSource": np.linalg.inv(transform).reshape(-1).tolist(),
             "coordinateSpace": "exif-oriented-source", "exifOrientation": orientation,
             "sourceWidth": original_width, "sourceHeight": original_height,
-            "requiresBigLane": identifier != "gray",
+            "requiresBigLane": False,
         })
     diagnostics["staffCountEvidence"] = staff_count_evidence
     if staff_count_evidence:

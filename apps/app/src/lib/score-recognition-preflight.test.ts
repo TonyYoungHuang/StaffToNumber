@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, parseScoreRecognitionPreflight, PreflightRequestGuard, recommendedRecognitionMode, type ScoreRecognitionPreflight } from "./score-recognition-preflight";
+import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, isScoreRecognitionRejected, parseScoreRecognitionPreflight, PreflightRequestGuard, recommendedRecognitionMode, type ScoreRecognitionPreflight } from "./score-recognition-preflight";
 
 const result: ScoreRecognitionPreflight = {
   schemaVersion: 1, recommendation: "simple", confidence: "high", sourcePageCount: 1, pagesAnalyzed: 1, complete: true,
@@ -83,8 +83,35 @@ test('large-score free offers cannot start; eligible paid quotes use the same re
   assert.equal(canConfirmScoreRecognition({ ...input, preflight: { ...preflight, result: { ...preflight.result, memoryAssessment: { ...memoryAssessment, lane: 'unsupported' } } }, quote }), false);
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: 'simple', simpleQuote: input.quote, preflight }), false);
   const complex = { ...input, selectedMode: 'complex' as const, quote: { ...input.quote, mode: 'complex' as const }, preflight: { ...preflight, result: { ...preflight.result, memoryAssessment: { ...memoryAssessment, lane: 'normal' as const } } } };
-  assert.equal(canConfirmScoreRecognition(complex), false);
+  assert.equal(canConfirmScoreRecognition(complex), true);
   assert.equal(canConfirmScoreRecognition({ ...complex, quote: { ...complex.quote, creditSource: 'plan' } }), true);
+});
+
+test('memory refusals cannot coexist with support and capacity refusal codes stay consistent', () => {
+  const memoryAssessment = { version: 1 as const, capacityVersion: 'cx33-test', lane: 'unsupported' as const, estimatedMemoryMb: 2_000, reasonCodes: ['MEMORY_LIMIT'], waitEstimateSeconds: [0, 0] as [number, number], sourcePageCount: 1, maxPagePixels: 100_000_000, enabled: true };
+  const denied = { ...result, memoryAssessment, recognitionSupport: { supported: false, code: 'RECOGNITION_CAPACITY_LIMIT' as const } };
+  assert.ok(parseScoreRecognitionPreflight(denied));
+  assert.equal(isScoreRecognitionRejected(denied), true);
+  assert.equal(parseScoreRecognitionPreflight({ ...denied, recognitionSupport: { supported: true, code: 'READY' } }), null);
+  assert.equal(parseScoreRecognitionPreflight({ ...denied, memoryAssessment: { ...memoryAssessment, lane: 'normal' } }), null);
+  assert.ok(parseScoreRecognitionPreflight({ ...denied, memoryAssessment: { ...memoryAssessment, estimatedMemoryMb: 0 }, recognitionSupport: { supported: false, code: 'PDF_TOTAL_PIXEL_LIMIT' } }));
+  assert.equal(parseScoreRecognitionPreflight({ ...result, memoryAssessment: { ...memoryAssessment, estimatedMemoryMb: 0, lane: 'normal' } }), null);
+  assert.equal(isScoreRecognitionRejected({ ...result, recognitionSupport: { supported: false, code: 'PDF_INVALID' } }), true);
+});
+
+test('uncertain normal photos keep free and credit recognition available for original and straightened inputs', () => {
+  const memoryAssessment = { version: 1 as const, capacityVersion: 'cx33-test', lane: 'normal' as const, estimatedMemoryMb: 600, reasonCodes: ['MEMORY_WITHIN_NORMAL_LIMIT'], waitEstimateSeconds: [0, 0] as [number, number], sourcePageCount: 1, maxPagePixels: 2_796_000, enabled: true };
+  for (const name of ['40e5a46b-original.jpg', '40e5a46b-straightened.jpg']) {
+    const photo = new File(['photo'], name, { type: 'image/jpeg' });
+    const uncertain = { ...result, recommendation: 'uncertain' as const, confidence: 'low' as const, memoryAssessment, recognitionSupport: { supported: true, code: 'READY' as const } };
+    const preflight = { status: 'ready' as const, file: photo, result: uncertain, ...staged };
+    const freeQuote = { ...quote, creditSource: 'free_trial' as const };
+    assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: 'simple', simpleQuote: freeQuote, preflight }), true, name);
+    for (const creditSource of ['free_trial', 'plan'] as const) {
+      const photoQuote = { ...freeQuote, creditSource };
+      assert.equal(canConfirmScoreRecognition({ file: photo, preflight, selectedMode: 'simple', quote: photoQuote, quoteLoading: false, quoteError: null }), true, `${name} ${creditSource}`);
+    }
+  }
 });
 
 test('page selection keeps one interpretation per source page and preserves explicit ordering', () => {

@@ -3065,7 +3065,10 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
     lane: params.recognitionLane === "big" ? "big" as const : "normal" as const,
     pythonCommand: workerConfig.homrPythonCommand,
     pythonScriptPath: process.env.RASTER_ENHANCEMENT_SCRIPT || path.join(path.dirname(workerConfig.complexOmrAdapterPath), "raster_enhancement.py"),
-    maxPixels: workerConfig.omrPdfMaxPagePixels, photoCorners: params.photoCorners, pageRotations:params.sourceOrientations,
+    // PDF admission estimates this render canvas, including adaptive long-book
+    // downscaling. Quality alternatives cannot silently grow it back to 12 MP.
+    maxPixels: pdfPlan ? Math.min(workerConfig.omrPdfMaxPagePixels, Math.max(...pdfPlan.pages.map(page => page.pixelCount))) : workerConfig.omrPdfMaxPagePixels,
+    photoCorners: params.photoCorners, pageRotations:params.sourceOrientations,
     budget: rasterBudget.sourcePageCount === (pdfPlan?.pageCount ?? 1) ? rasterBudget : Object.assign(rasterBudget, createRasterEnhancementBudget(pdfPlan?.pageCount ?? 1)),
   };
 

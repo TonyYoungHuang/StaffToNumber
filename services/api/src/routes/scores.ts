@@ -5371,15 +5371,17 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const pageCount = verified.pdfRasterInspection?.pageCount ?? (verified.detectedKind === "tiff"
         ? countTiffPages(await fs.promises.readFile(targetPath)) : 1);
-      const memoryAssessment = await assessRecognitionSource({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
-      revalidateRecognitionAssessment(staged?.metadata.memoryAssessment);
-      revalidateRecognitionAssessment(memoryAssessment);
       try {
+        // Reject malformed/cyclic TIFF directory chains as invalid sources
+        // before estimating memory; an unreadable source is not a large score.
         assertScoreSourcePageCount(pageCount);
       } catch (error) {
         await fs.promises.rm(targetPath, { force: true });
         throw error;
       }
+      const memoryAssessment = await assessRecognitionSource({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
+      revalidateRecognitionAssessment(staged?.metadata.memoryAssessment);
+      revalidateRecognitionAssessment(memoryAssessment);
 
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
       try {

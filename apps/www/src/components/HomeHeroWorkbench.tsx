@@ -13,6 +13,7 @@ import { localizePublicHref } from "../lib/locale-routing";
 import { getAppScoreUrl, siteConfig } from "../lib/site";
 import styles from "../app/home-page.module.css";
 import { HomeCandidatePreview } from "./HomeCandidatePreview";
+import { HomeRecognitionPreflightResult, isHomeRecognitionRejected } from "./HomeRecognitionPreflightResult";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { homeCommercialCopy } from "../lib/home-commercial-copy";
 import type { HomeRuntimeCopy } from "../lib/home-runtime-copy";
@@ -440,7 +441,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   }
 
   async function continueBigUpload(plan: "starter-monthly" | "single-score") {
-    if (!stagedUpload || !recognitionMode || preflight?.memoryAssessment?.lane === "unsupported" || submissionLock.current) return;
+    if (!stagedUpload || !recognitionMode || isHomeRecognitionRejected(preflight) || submissionLock.current) return;
     submissionLock.current = true; setConfirming(true); setRecognitionError(null);
     try {
       const identity = `score-home-prepare:${sessionAccountId.current}:${stagedUpload.stagedUploadId}:${recognitionMode}`;
@@ -464,8 +465,9 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   const busy = confirming || uploading || job?.status === "queued" || job?.status === "processing";
   const chosenOption = recognitionOptions.find(option => option.mode === recognitionMode);
   const memory = preflight?.memoryAssessment;
+  const preflightRejected = isHomeRecognitionRejected(preflight);
   const effectiveBigLane = needsBigRecognitionLane(memory, recognitionMode);
-  const bigNeedsPayment = effectiveBigLane && chosenOption?.creditSource !== "plan" && chosenOption?.creditSource !== "score_pass";
+  const bigNeedsPayment = !preflightRejected && effectiveBigLane && chosenOption?.creditSource !== "plan" && chosenOption?.creditSource !== "score_pass";
 
   return (
     <div id="home-workbench" className={styles.workbench} aria-label={copy.workbenchLabel}>
@@ -494,25 +496,12 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
         <ProcessingProgress active={confirming} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
 
         {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking" || preflightState === "waiting"}>
-          <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span><p>{preflightCopy.freeBody}</p>
+          <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span>{!preflightRejected ? <p>{preflightCopy.freeBody}</p> : null}
           {checking && !uploading ? <p>{progressCopy.preflightBody}</p> : null}
           {preflightState === "failed" ? <><p>{stagedUnavailable ? recognitionError : preflightCopy.failed}</p><button type="button" className={styles.preflightRetry} onClick={() => void startPreflight(pendingFile, true)}>{stagedUnavailable ? stagedCopy.retry : preflightCopy.retry}</button></> : null}
-          {preflightState === "ready" && preflight ? <>
-            <strong role="status">{!preflight.complete || preflight.recommendation === "uncertain" ? preflightCopy.recommendationUncertain : preflight.recommendation === "simple" ? preflightCopy.recommendedSimple : preflightCopy.recommendedComplex}</strong>
-            <p>{formatMessage(preflightCopy.summary, { pages: formatNumber(preflight.sourcePageCount, locale), analyzed: formatNumber(preflight.pagesAnalyzed, locale), staves: formatNumber(Math.max(0, ...preflight.pages.map(page => page.maxStavesPerSystem)), locale), systems: formatNumber(preflight.pages.reduce((sum, page) => sum + page.systemCount, 0), locale) })}</p>
-            {!preflight.complete ? <p>{preflightCopy.incomplete}</p> : null}
-            {memory ? <div data-recognition-lane={memory.lane === "unsupported" ? "unsupported" : effectiveBigLane ? "big" : "normal"}><strong>{memory.lane === "unsupported" ? experience.unsupportedLane : effectiveBigLane ? experience.bigLane : experience.normalLane}</strong>{effectiveBigLane ? <p>{experience.bigBody}</p> : null}{memory.waitEstimateSeconds[1] > 0 && memory.lane !== "unsupported" ? <p>{formatMessage(experience.wait, { minutes: formatNumber(Math.ceil(memory.waitEstimateSeconds[1] / 60), locale) })}</p> : null}</div> : null}
-            {preflight.recognitionSupport ? <p role={preflight.recognitionSupport.supported ? "status" : "alert"}>{runtimeCopy.support[preflight.recognitionSupport.code] ?? runtimeCopy.support.fallback}</p> : null}
-            {preflight.reasonCodes.length ? <ul>{Array.from(new Set(preflight.reasonCodes.map(code => preflightCopy.reasonStrings[code] ?? preflightCopy.uncertainStructure))).map(reason => <li key={reason}>{reason}</li>)}</ul> : null}
-            {!preflight.complete || preflight.recommendation === "uncertain" ? <p>{preflightCopy.manualChoice}</p> : null}
-            <fieldset className={styles.preflightModes} disabled={busy}><legend>{preflightCopy.chooseMode}</legend>{(["simple", "complex"] as const).map(optionMode => {
-              const option = recognitionOptions.find(item => item.mode === optionMode);
-              return <label key={optionMode}><input type="radio" name="home-recognition-mode" value={optionMode} checked={recognitionMode === optionMode} onChange={() => { setRecognitionMode(optionMode); setRecognitionError(null); }} /><span><strong>{optionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle}</strong><small>{option ? formatMessage(preflightCopy.price, { credits: formatNumber(option.creditCost, locale) }) : preflightCopy.notReady}</small>{option && !option.canSubmit ? <small>{preflightCopy.noCredit}</small> : null}</span></label>;
-            })}</fieldset>
-            <p>{preflightCopy.selectedFilePreserved}</p>
-          </> : null}
-          <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || !stagedUpload || preflight?.recognitionSupport?.supported === false || memory?.lane === "unsupported" || bigNeedsPayment || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button>
-          {preflightState === "ready" && memory?.lane !== "unsupported" && (bigNeedsPayment || !chosenOption?.canSubmit) ? <div data-upsell-primary="starter"><p>{experience.continueInApp}</p><RecognitionPurchaseActions messages={experience} disabled={busy || !recognitionMode} onStarter={() => { void continueBigUpload("starter-monthly"); }} onPass={() => { void continueBigUpload("single-score"); }} primaryClassName={styles.workbenchAction} secondaryClassName={styles.preflightRetry} /></div> : null}
+          {preflightState === "ready" && preflight ? <HomeRecognitionPreflightResult locale={locale} copy={preflightCopy} runtimeCopy={runtimeCopy} preflight={preflight} recognitionMode={recognitionMode} options={recognitionOptions} busy={busy} modeClassName={styles.preflightModes} onSelectMode={optionMode => { setRecognitionMode(optionMode); setRecognitionError(null); }} /> : null}
+          {!preflightRejected && !bigNeedsPayment ? <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || !stagedUpload || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button> : null}
+          {preflightState === "ready" && !preflightRejected && (bigNeedsPayment || !chosenOption?.canSubmit) ? <div data-upsell-primary="starter"><p>{experience.continueInApp}</p><RecognitionPurchaseActions messages={experience} disabled={busy || !recognitionMode} onStarter={() => { void continueBigUpload("starter-monthly"); }} onPass={() => { void continueBigUpload("single-score"); }} primaryClassName={styles.workbenchAction} secondaryClassName={styles.preflightRetry} /></div> : null}
         </section> : null}
 
         {mode === "recognize" && (job || recognitionError) ? (

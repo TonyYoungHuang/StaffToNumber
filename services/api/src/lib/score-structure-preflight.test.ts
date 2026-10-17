@@ -281,6 +281,33 @@ test("preflight discloses unsupported formal PDF admission before any credit res
   } finally { await f.close(); }
 });
 
+test("memory-capacity rejection has no supported marker and final admission also refuses without charging", async () => {
+  const f = await fixture(`fs.writeFileSync(response,JSON.stringify(${JSON.stringify({ ...validResult, sourcePageCount: 25, complete: false })}));`);
+  const previous = process.env.RECOGNITION_LANES_ENABLED;
+  process.env.RECOGNITION_LANES_ENABLED = "true";
+  const pdf = await PDFDocument.create();
+  for (let page = 0; page < 25; page++) pdf.addPage([612, 792]);
+  try {
+    const checked = await f.upload(Buffer.from(await pdf.save()));
+    assert.equal(checked.statusCode, 200, checked.body);
+    const result = checked.json().preflight;
+    assert.equal(result.memoryAssessment.lane, "unsupported");
+    assert.equal(result.memoryAssessment.estimatedMemoryMb, 2304);
+    assert.deepEqual(result.recognitionSupport, { supported: false, code: "RECOGNITION_CAPACITY_LIMIT" });
+    assert.equal(JSON.stringify(result).includes('"supported":true'), false);
+    const stagePath = path.join(config.storageDir, ".staged-omr", checked.json().stagedUploadId, "metadata.json");
+    const stored = JSON.parse(await fs.readFile(stagePath, "utf8"));
+    assert.deepEqual(stored.preflight.recognitionSupport, result.recognitionSupport);
+    const confirmed = await f.confirm(checked.json().stagedUploadId);
+    assert.equal(confirmed.statusCode, 422, confirmed.body);
+    assert.equal(confirmed.json().code, "RECOGNITION_UNSUPPORTED");
+    assert.deepEqual(persistentCounts(f.user.id), [0, 0, 0, 0]);
+  } finally {
+    if (previous === undefined) delete process.env.RECOGNITION_LANES_ENABLED; else process.env.RECOGNITION_LANES_ENABLED = previous;
+    await f.close();
+  }
+});
+
 test("oversized preflight upload returns a size error and leaves no partial file", async () => {
   const f = await fixture("process.exit(1);"); const previousLimit = config.uploadMaxBytes;
   config.uploadMaxBytes = 128;

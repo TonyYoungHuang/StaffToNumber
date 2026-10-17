@@ -50,7 +50,7 @@ const mockEnhancementScript = path.join(tempDir, "mock-enhancement.cjs");
 fs.writeFileSync(mockEnhancementScript, `
 const fs=require('node:fs'),path=require('node:path');
 const request=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
-const variants=request.variantIds.map(id=>{ const imagePath=path.join(request.outputDir,id+'.png');fs.copyFileSync(request.inputPath,imagePath);return {id,imagePath,width:100,height:100,scale:id==='detail'?3:1,operations:['grayscale-detail'],requiresBigLane:id!=='gray',crop:[0,0,100,100],sourceToImage:[1,0,0,0,1,0,0,0,1],imageToSource:[1,0,0,0,1,0,0,0,1]};});
+const variants=request.variantIds.map(id=>{ const imagePath=path.join(request.outputDir,id+'.png');fs.copyFileSync(request.inputPath,imagePath);return {id,imagePath,width:100,height:100,scale:id==='detail'?3:1,operations:['grayscale-detail'],requiresBigLane:false,crop:[0,0,100,100],sourceToImage:[1,0,0,0,1,0,0,0,1],imageToSource:[1,0,0,0,1,0,0,0,1]};});
 fs.writeFileSync(process.argv[3],JSON.stringify({schemaVersion:1,diagnostics:{expectedStaffCount:null,staffDetection:'uncertain'},variants}));
 `, "utf8");
 
@@ -227,6 +227,19 @@ test("bounded enhancement does not accept a successful process with empty output
     inputPath: source, outputDir: path.join(tempDir, "empty-enhancement-output"), timeoutMs: 15_000,
     enhancement: { enabled: true, lane: "normal", pythonCommand: process.execPath, pythonScriptPath: mockEnhancementScript },
   }), /No five-line music/);
+});
+
+test("ordinary photo keeps sequential detail and shadow alternatives in the normal lane", async () => {
+  const source = path.join(tempDir, "normal-phone.png"); fs.writeFileSync(source, "fixture");
+  const result = await runAudiverisWithRotationFallback({
+    command: process.execPath, commandArgsPrefix: [mockScript, "enhancement"], imageMagickCommand: "",
+    inputPath: source, outputDir: path.join(tempDir, "normal-phone-output"), timeoutMs: 15_000,
+    enhancement: { enabled: true, lane: "normal", pythonCommand: process.execPath, pythonScriptPath: mockEnhancementScript,
+      photoCorners: [{ x: .1, y: .1 }, { x: .9, y: .1 }, { x: .9, y: .9 }, { x: .1, y: .9 }] },
+  });
+  assert.equal(result.enhancement?.selectedVariantId, "detail");
+  assert.equal(result.enhancement?.variants.length, 3);
+  assert.equal(result.enhancement?.calls, 3);
 });
 
 test("a heavier variant allocation failure preserves an earlier delivered draft", async () => {

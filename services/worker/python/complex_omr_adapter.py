@@ -91,7 +91,10 @@ def prepare(request):
             pdf.close()
     else:
         with Image.open(source) as raw:
-            if raw.width * raw.height > page_limit * 2:
+            # Source decode and processing-canvas limits are separate. API,
+            # structure preflight and raster enhancement all admit up to 32 MP
+            # originals, then reduce the working page to its <=12 MP budget.
+            if raw.width * raw.height > 32_000_000:
                 raise ValueError("Raster source exceeds the complex OMR input pixel budget")
             original_size = raw.size
             orientation = int(raw.getexif().get(274, 1))

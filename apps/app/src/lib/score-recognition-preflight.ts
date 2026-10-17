@@ -32,20 +32,27 @@ export function parseScoreRecognitionPreflight(value: unknown): ScoreRecognition
   if (result.recognitionSupport !== undefined) {
     if (!result.recognitionSupport || typeof result.recognitionSupport !== "object") return null;
     const support = result.recognitionSupport as Record<string, unknown>;
-    if (typeof support.supported !== "boolean" || !["READY", "PDF_ADAPTIVE_RENDER", "PDF_PAGE_PIXEL_LIMIT", "PDF_TOTAL_PIXEL_LIMIT", "PDF_INVALID"].includes(String(support.code)) ||
+    if (typeof support.supported !== "boolean" || !["READY", "PDF_ADAPTIVE_RENDER", "PDF_PAGE_PIXEL_LIMIT", "PDF_TOTAL_PIXEL_LIMIT", "PDF_INVALID", "RECOGNITION_CAPACITY_LIMIT"].includes(String(support.code)) ||
         (support.pageDpi !== undefined && (!Array.isArray(support.pageDpi) || support.pageDpi.length !== result.sourcePageCount || !support.pageDpi.every(dpi => isCount(dpi, 1))))) return null;
     if (support.supported !== ["READY", "PDF_ADAPTIVE_RENDER"].includes(String(support.code))) return null;
   }
   if (result.memoryAssessment !== undefined) {
     const memory = result.memoryAssessment as Record<string, unknown>;
     if (!memory || typeof memory !== "object" || memory.version !== 1 || !["normal", "big", "unsupported"].includes(String(memory.lane)) ||
-      !isCount(memory.estimatedMemoryMb, 1) || typeof memory.capacityVersion !== "string" || !Array.isArray(memory.waitEstimateSeconds) || memory.waitEstimateSeconds.length !== 2 ||
+      !isCount(memory.estimatedMemoryMb, memory.lane === "unsupported" ? 0 : 1) || typeof memory.capacityVersion !== "string" || !Array.isArray(memory.waitEstimateSeconds) || memory.waitEstimateSeconds.length !== 2 ||
       !memory.waitEstimateSeconds.every(seconds => isCount(seconds)) || Number(memory.waitEstimateSeconds[0]) > Number(memory.waitEstimateSeconds[1]) ||
       !Array.isArray(memory.reasonCodes) || !memory.reasonCodes.every(reason => typeof reason === "string")) return null;
   }
   const parsed = result as unknown as ScoreRecognitionPreflight;
+  if (parsed.memoryAssessment?.lane === "unsupported" && parsed.recognitionSupport?.supported === true) return null;
+  if (parsed.recognitionSupport?.code === "RECOGNITION_CAPACITY_LIMIT" && parsed.memoryAssessment?.lane !== "unsupported") return null;
   // Partial page coverage must never silently select the more expensive recognition.
   return result.complete ? parsed : { ...parsed, recommendation: "uncertain" };
+}
+
+/** Every presentation and action must honor either source of an admission refusal. */
+export function isScoreRecognitionRejected(result: ScoreRecognitionPreflight): boolean {
+  return result.memoryAssessment?.lane === "unsupported" || result.recognitionSupport?.supported === false;
 }
 
 export function recommendedRecognitionMode(result: ScoreRecognitionPreflight): RecognitionMode | null {
@@ -65,7 +72,7 @@ export function isFreeSimpleScanPath(input: {
 }) {
   if (input.selectedMode !== "simple") return false;
   if (input.preflight.status !== "ready") return false;
-  if (input.preflight.result.recognitionSupport?.supported === false || input.preflight.result.memoryAssessment?.lane === "unsupported" || input.preflight.result.memoryAssessment?.lane === "big") return false;
+  if (isScoreRecognitionRejected(input.preflight.result) || needsBigRecognitionLane(input.preflight.result.memoryAssessment)) return false;
   const quote = input.simpleQuote;
   if (!quote?.canSubmit || quote.mode !== "simple") return false;
   return input.freeTrialAvailable || quote.creditSource === "free_trial";
@@ -79,7 +86,7 @@ export function canConfirmScoreRecognition(input: {
   quoteLoading: boolean;
   quoteError: string | null;
 }) {
-  return input.file !== null && input.preflight.status === "ready" && input.preflight.file === input.file && Boolean(input.preflight.stagedUploadId?.trim()) && input.preflight.result.recognitionSupport?.supported !== false && input.preflight.result.memoryAssessment?.lane !== "unsupported" &&
+  return input.file !== null && input.preflight.status === "ready" && input.preflight.file === input.file && Boolean(input.preflight.stagedUploadId?.trim()) && !isScoreRecognitionRejected(input.preflight.result) &&
     !(needsBigRecognitionLane(input.preflight.result.memoryAssessment, input.selectedMode) && input.quote?.creditSource !== "plan" && input.quote?.creditSource !== "score_pass") &&
     input.selectedMode !== null && input.quote?.mode === input.selectedMode && input.quote.canSubmit &&
     Number.isSafeInteger(input.quote.creditCost) && input.quote.creditCost > 0 && !input.quoteLoading && !input.quoteError;

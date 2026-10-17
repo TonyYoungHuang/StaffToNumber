@@ -73,7 +73,8 @@ export type RasterEnhancementSummary = {
 
 /** Frozen configuration list: no rotations × enhancements retry tree. */
 export function rasterVariantIds(options: RasterEnhancementOptions): string[] {
-  if (options.lane !== "big") return ["gray"];
+  // Both lanes keep the bounded quality alternatives. They run sequentially,
+  // within the same pixel/memory reservation and the same P+4 attempt budget.
   const budget = options.budget;
   const page = options.pageNumber ?? 1;
   if (budget && (budget.extraCalls >= 4 || (!budget.sampledPages.includes(page) && budget.sampledPages.length >= 2))) return [budget.preferredVariantId ?? "gray"];

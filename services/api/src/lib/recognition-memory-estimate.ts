@@ -1,6 +1,8 @@
 import type { PhotoCorner, RecognitionMemoryAssessment, ScoreRecognitionMode, ScoreStructurePreflight } from "@score/shared";
+import { estimateRecognitionMemoryMb, recognitionMemoryLane, RECOGNITION_MEMORY_BUDGET } from "@score/shared";
 import { inspectPdfRasterSafety } from "./upload-security.js";
 import fs from "node:fs/promises";
+import { recognitionImageMetadata } from "./recognition-image-metadata.js";
 
 const positive = (key: string, fallback: number) => {
   const value = Number(process.env[key]);
@@ -24,26 +26,25 @@ export function parsePhotoCorners(value: unknown): PhotoCorner[] | undefined {
   if (!cross.every(n => n > .0001) || area<.05) throw new RecognitionAdmissionError("INVALID_PHOTO_CORNERS", "The four corners must surround a visible page without crossing.", 400);
   return points;
 }
-/** Conservative admission model, in MiB. Disabled by default until full-service capacity qualification. */
+/** Memory-only admission shared with worker reservation validation. */
 export function estimateRecognitionMemory(input: { sizeBytes: number; pageCount: number; maxPagePixels: number; mode?: ScoreRecognitionMode;
   preflight?: ScoreStructurePreflight; supported?: boolean; heavyEnhancement?: boolean }, env = {
-    enabled: recognitionLanesEnabled(), normalMb: positive("RECOGNITION_NORMAL_MAX_MB", 1536),
-    bigMb: positive("RECOGNITION_BIG_MAX_MB", 2048), capacityVersion: process.env.RECOGNITION_CAPACITY_VERSION || "cx33-conservative-v1",
+    enabled: recognitionLanesEnabled(), normalMb: positive("RECOGNITION_NORMAL_MAX_MB", RECOGNITION_MEMORY_BUDGET.normalMaxMb),
+    bigMb: positive("RECOGNITION_BIG_MAX_MB", RECOGNITION_MEMORY_BUDGET.bigMaxMb), capacityVersion: process.env.RECOGNITION_CAPACITY_VERSION || "cx33-raster-v2",
   }): RecognitionMemoryAssessment {
-  const complex = input.mode === "complex";
-  const staffCount = Math.max(0, ...(input.preflight?.pages.map(p => p.staffCount) ?? []));
-  const uncertain = input.preflight ? !input.preflight.complete || input.preflight.confidence === "low" : true;
-  let raw = Math.max(complex ? 1536 : 1024, (complex ? 1536 : 768) + 24 * input.maxPagePixels / 1e6 +
-    4 * input.pageCount + 8 * staffCount + 1.5 * input.sizeBytes / 1048576);
-  if (uncertain) raw *= 1.5;
-  let estimatedMemoryMb = Math.ceil((raw + Math.max(256, raw * .25)) / 256) * 256;
-  const reasonCodes = [...(uncertain ? ["INCOMPLETE_INSPECTION"] : []), ...(complex ? ["HEAVY_ENGINE"] : []),
-    ...(input.heavyEnhancement ? ["RASTER_ENHANCEMENT"] : []), ...(input.pageCount > 20 ? ["LONG_SCORE"] : [])];
-  let lane: RecognitionMemoryAssessment["lane"] = estimatedMemoryMb > env.normalMb || complex || input.heavyEnhancement || input.pageCount > 20 ? "big" : "normal";
-  if(lane==="big")estimatedMemoryMb=Math.max(estimatedMemoryMb,Math.ceil((positive("RECOGNITION_BIG_HEAP_MB",768)+512)/256)*256);
-  if (input.supported === false || (env.enabled && estimatedMemoryMb > env.bigMb)) { lane = "unsupported"; reasonCodes.push("CAPACITY_CEILING"); }
-  return { version: 1, capacityVersion: env.capacityVersion, lane: !env.enabled && input.supported !== false ? "normal" : lane,
-    estimatedMemoryMb, reasonCodes, waitEstimateSeconds: lane === "big" ? [60, 600] : [0, 120], sourcePageCount: input.pageCount,
+  // The shipped complex path reuses Audiveris sequentially; HOMR is offline
+  // evaluation only. Its confidence and mode are quality diagnostics, not RAM.
+  const normalHeapMb = positive("AUDIVERIS_MAX_HEAP_MB", RECOGNITION_MEMORY_BUDGET.heapMb);
+  const bigHeapMb = Math.max(256, Math.min(positive("RECOGNITION_BIG_HEAP_MB", normalHeapMb), env.bigMb - 512));
+  const estimatedMemoryMb = estimateRecognitionMemoryMb({ ...input, heapMb: Math.max(normalHeapMb, bigHeapMb) });
+  let lane = recognitionMemoryLane(estimatedMemoryMb, env.normalMb, env.bigMb);
+  const reasonCodes = lane === "big" ? ["MEMORY_NORMAL_CEILING"] : [];
+  if (input.supported === false || lane === "unsupported") { lane = "unsupported"; reasonCodes.push("CAPACITY_CEILING"); }
+  // Disabling queue separation preserves the legacy normal queue, never a
+  // bypass of the machine's absolute capacity or source-decoder safeguards.
+  const acceptedLane = !env.enabled && lane === "big" ? "normal" : lane;
+  return { version: 1, capacityVersion: env.capacityVersion, lane: acceptedLane,
+    estimatedMemoryMb, reasonCodes, waitEstimateSeconds: acceptedLane === "big" ? [60, 600] : acceptedLane === "unsupported" ? [0, 0] : [0, 120], sourcePageCount: input.pageCount,
     maxPagePixels: input.maxPagePixels, enabled: env.enabled };
 }
 export function revalidateRecognitionAssessment(assessment: RecognitionMemoryAssessment | undefined) {
@@ -51,17 +52,24 @@ export function revalidateRecognitionAssessment(assessment: RecognitionMemoryAss
     if (recognitionLanesEnabled()) throw new RecognitionAdmissionError("RECOGNITION_ASSESSMENT_REQUIRED", "Check this file's processing needs before continuing.", 409);
     return;
   }
-  if (assessment.lane === "unsupported" || (recognitionLanesEnabled() && assessment.estimatedMemoryMb > positive("RECOGNITION_BIG_MAX_MB", 2048))) {
+  const lane = recognitionMemoryLane(assessment.estimatedMemoryMb,
+    positive("RECOGNITION_NORMAL_MAX_MB", RECOGNITION_MEMORY_BUDGET.normalMaxMb), positive("RECOGNITION_BIG_MAX_MB", RECOGNITION_MEMORY_BUDGET.bigMaxMb));
+  if (assessment.lane === "unsupported" || lane === "unsupported" || (recognitionLanesEnabled() && lane !== assessment.lane)) {
     throw new RecognitionAdmissionError("RECOGNITION_UNSUPPORTED", "This file exceeds our current processing capacity. No credits will be charged. Use MusicXML or a smaller file.");
   }
 }
 export async function assessRecognitionSource(input: { sourcePath: string; detectedKind: string; sizeBytes: number; mode?: ScoreRecognitionMode;
   preflight?: ScoreStructurePreflight; supported?: boolean; photoCorners?: PhotoCorner[] }) {
-  const pdf = input.detectedKind === "pdf" ? await inspectPdfRasterSafety(await fs.readFile(input.sourcePath)) : undefined;
-  const pageCount = pdf?.pageCount ?? input.preflight?.sourcePageCount ?? 1;
-  // Image decoder limits remain enforced by upload security and the worker. The
-  // metadata preflight supplies actual decoded dimensions; unknown sources use the ceiling.
-  const maxPagePixels = pdf ? Math.max(...pdf.pages.map(p => p.pixelCount)) : Math.max(1, ...(input.preflight?.pages.map(p => (p.sourceWidth ?? p.width ?? 12000)*(p.sourceHeight ?? p.height ?? 1000)) ?? [12_000_000]));
+  const bytes = await fs.readFile(input.sourcePath);
+  const pdf = input.detectedKind === "pdf" ? await inspectPdfRasterSafety(bytes) : undefined;
+  const image = pdf ? undefined : recognitionImageMetadata(bytes, input.detectedKind);
+  // Preflight and final/direct admission read the same original header. Quality
+  // thumbnails and manual rectification must not change its source decode budget.
+  const pageCount = pdf?.pageCount ?? image?.pageCount ?? 1;
+  // A small image may be enlarged by a quality alternative up to 12 MP. Reserve
+  // for that processing canvas as well as the original source decode. PDF page
+  // alternatives use their accepted render-plan ceiling in the worker.
+  const maxPagePixels = pdf ? Math.max(...pdf.pages.map(p => p.pixelCount)) : image ? Math.max(12_000_000, image.maxPagePixels) : Number.MAX_SAFE_INTEGER;
   return estimateRecognitionMemory({ ...input, pageCount, maxPagePixels,
-    heavyEnhancement: Boolean(input.photoCorners?.length) || (process.env.RASTER_ENHANCEMENT_ENABLED === "true" && Boolean(input.preflight?.pages.some(p => p.uncertain || (p.staffSpacing != null && p.staffSpacing < 10)))) });
+    supported: input.supported !== false && (Boolean(pdf) || Boolean(image && image.maxPagePixels <= 32_000_000)) });
 }
