@@ -1,22 +1,21 @@
 "use client";
 
-import { formatMessage, formatNumber, localizeApiError, type ScorePreflightMessages } from "@score/i18n";
+import { formatMessage, formatNumber, localizeApiError, resolveRecognitionRequestFailure, resolveRecognitionFailure, type ScorePreflightMessages } from "@score/i18n";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getGoogleAuthCopy, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
-import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress } from "@score/ui";
+import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
 import { localizePublicHref } from "../lib/locale-routing";
-import { getAppScoreUrl } from "../lib/site";
+import { getAppScoreUrl, siteConfig } from "../lib/site";
 import styles from "../app/home-page.module.css";
 import { HomeCandidatePreview } from "./HomeCandidatePreview";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { homeCommercialCopy } from "../lib/home-commercial-copy";
 import type { HomeRuntimeCopy } from "../lib/home-runtime-copy";
-import { homeProcessingFailure } from "../lib/home-runtime-client";
 
 type WorkbenchMode = "recognize" | "process" | "transcribe";
 type SessionState = "checking" | "anonymous" | "authenticated";
@@ -45,11 +44,7 @@ type HomeHeroWorkbenchProps = {
 
 const HOME_SCAN_EVENT = "scoretransposer:start-free-scan";
 const acceptedScoreFiles = ".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/png,image/jpeg,image/webp,image/tiff";
-const savedOriginalRetryLabels: Record<SupportedLocale, string> = {
-  "zh-CN": "用原文件重试", "zh-TW": "使用原檔案重試", en: "Retry saved original",
-  ja: "元のファイルで再試行", ko: "저장된 원본으로 재시도", fr: "Réessayer avec l’original",
-  es: "Reintentar con el original", de: "Mit Original erneut versuchen", ru: "Повторить с оригиналом",
-};
+
 
 const modeFormats = {
   recognize: ["PDF", "PNG", "JPG", "WEBP", "TIFF"],
@@ -72,6 +67,10 @@ function apiErrorOrFallback(error: string | undefined, fallback: string) {
 
 export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, preflightCopy, waitingCopy, runtimeCopy }: HomeHeroWorkbenchProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const photoCorners = useRef<PhotoCorners | null>(null);
+  const experience = runtimeCopy.recognitionExperience;
   const [mode, setMode] = useState<WorkbenchMode>("recognize");
   const [pendingFileSelection, setPendingFileSelection] = useState(false);
   const [session, setSession] = useState<SessionState>("checking");
@@ -86,7 +85,6 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   const [musicXml, setMusicXml] = useState<string | null>(null);
   const [recognitionError, setRecognitionError] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState(false);
-  const [retrying, setRetrying] = useState(false);
   const progressCopy = runtimeCopy.processing;
   const stagedCopy = runtimeCopy.staged;
   const [preflightState, setPreflightState] = useState<PreflightState>("idle");
@@ -237,7 +235,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     try {
       const [response, optionsResult] = await Promise.all([
         fetchScorePreflight<{ preflight?: ScoreStructurePreflight; stagedUploadId?: string; stagedUploadExpiresAt?: string; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, {
-          signal: controller.signal, accountId: sessionAccountId.current, retryKey: preflightRetryKey.current,
+          signal: controller.signal, accountId: sessionAccountId.current, retryKey: preflightRetryKey.current, photoCorners: photoCorners.current ?? undefined,
           onUploadProgress: percent => { if (!controller.signal.aborted && generation === preflightGeneration.current) setUploadProgress(percent); },
         }),
         apiRequest<RecognitionOptionsPayload>("/api/scores/recognition-options", { signal: controller.signal }),
@@ -253,7 +251,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       }
       if (!response.ok || !payload.preflight || !optionsResult.ok) {
         setPreflightState("failed");
-        setRecognitionError(localizeApiError({ error: payload.error ?? (!optionsResult.ok ? optionsResult.error : preflightCopy.failed), status: response.status, code: payload.code }, locale));
+        setRecognitionError(resolveRecognitionRequestFailure(experience, payload.code) ?? localizeApiError({ error: payload.error ?? (!optionsResult.ok ? optionsResult.error : preflightCopy.failed), status: response.status, code: payload.code }, locale));
         return;
       }
       const result = payload.preflight;
@@ -286,7 +284,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   }, []);
 
   const startRecognition = useCallback((file: File, chosenMode: ScoreRecognitionMode, creditCost: number) => {
-    if (!stagedUpload || preflight?.recognitionSupport?.supported === false) return;
+    if (!stagedUpload || preflight?.recognitionSupport?.supported === false || preflight?.memoryAssessment?.lane === "unsupported") return;
     setRecognitionError(null);
     setMusicXml(null);
     setScoreId(null);
@@ -336,7 +334,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       }
       if (code === "STAGED_UPLOAD_BUSY") { setRecognitionError(stagedCopy.busy); return; }
       if (xhr.status < 200 || xhr.status >= 300 || !payload || !("score" in payload) || !("job" in payload)) {
-        setRecognitionError(localizeApiError({ error: apiErrorOrFallback(payload && "error" in payload ? payload.error : undefined, copy.uploadFailed), status: xhr.status, code: payload && "code" in payload && typeof payload.code === "string" ? payload.code : undefined }, locale));
+        setRecognitionError(resolveRecognitionRequestFailure(experience, code) ?? localizeApiError({ error: apiErrorOrFallback(payload && "error" in payload ? payload.error : undefined, copy.uploadFailed), status: xhr.status, code: payload && "code" in payload && typeof payload.code === "string" ? payload.code : undefined }, locale));
         return;
       }
       setScoreId(payload.score.id);
@@ -351,7 +349,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   }, [copy.uploadFailed, flow.signIn, locale, preflightCopy.priceChanged, preflight, stagedUpload, stagedCopy]);
 
   const confirmRecognition = async () => {
-    if (preflight?.recognitionSupport?.supported === false) return;
+    if (preflight?.recognitionSupport?.supported === false || preflight?.memoryAssessment?.lane === "unsupported" || bigNeedsPayment) return;
     const file = currentFile.current;
     const selected = recognitionOptions.find(option => option.mode === recognitionMode);
     if (submissionLock.current || !file || preflightState !== "ready" || !preflight || !stagedUpload || !selected?.canSubmit || !recognitionMode) return;
@@ -419,18 +417,12 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     else if (session === "anonymous" && waitingForLogin.current) flow.signIn("login", { automatic: true });
   }, [session, startPreflight]);
 
-  async function retrySavedScore() {
-    if (!scoreId || !job || submissionLock.current || retrying) return;
-    submissionLock.current = true; setRetrying(true); setRecognitionError(null);
-    try {
-      const result = await apiRequest<{ job: JobPayload["jobs"][number] }>(`/api/scores/${scoreId}/jobs/${job.id}/retry`, { method: "POST" });
-      if (result.ok) { setJob(result.data.job); setConnectionError(false); }
-      else setRecognitionError(localizeApiError(result, locale));
-    } finally { submissionLock.current = false; setRetrying(false); }
-  }
-
-  function acceptFile(file: File | undefined) {
+  function acceptFile(file: File | undefined, corners: PhotoCorners | null = null, photoChecked = false) {
     if (!file || submissionLock.current || (uploadProgress !== null && uploadProgress < 100) || job?.status === "queued" || job?.status === "processing") return;
+    photoCorners.current = corners;
+    if (file.size > 20 * 1024 * 1024) { setRecognitionError(preflightCopy.fileTooLarge); return; }
+    if (/\.(png|jpe?g|webp)$/iu.test(file.name) && !photoChecked) { preflightAbort.current?.abort(); ++preflightGeneration.current; currentFile.current = null; setPendingFile(null); setStagedUpload(null); setPreflight(null); setPreflightState("idle"); setRecognitionMode(null); setPhotoFile(file); return; }
+    setPhotoFile(null);
     if (session !== "authenticated") {
       preflightAbort.current?.abort();
       ++preflightGeneration.current;
@@ -447,16 +439,38 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     void startPreflight(file);
   }
 
+  async function continueBigUpload(plan: "starter-monthly" | "single-score") {
+    if (!stagedUpload || !recognitionMode || preflight?.memoryAssessment?.lane === "unsupported" || submissionLock.current) return;
+    submissionLock.current = true; setConfirming(true); setRecognitionError(null);
+    try {
+      const identity = `score-home-prepare:${sessionAccountId.current}:${stagedUpload.stagedUploadId}:${recognitionMode}`;
+      let key = window.localStorage.getItem(identity);
+      if (!key) { key = crypto.randomUUID(); window.localStorage.setItem(identity, key); }
+      const prepared = await apiRequest<{ draft: { id: string; documentId: string; mode: "simple" | "complex" } }>("/api/scores/upload-drafts/prepare", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify({ stagedUploadId: stagedUpload.stagedUploadId, recognitionMode, title: scoreTitle ?? undefined }) });
+      if (!prepared.ok) { setRecognitionError(resolveRecognitionRequestFailure(experience, prepared.code) ?? localizeApiError(prepared, locale)); return; }
+      const draft = prepared.data.draft;
+      const returnPath = `/scores?uploadDraft=${encodeURIComponent(draft.id)}#free-scan`;
+      const params = new URLSearchParams({ targetDocumentId: draft.documentId, plan, billing: plan === "single-score" ? "one_time" : "subscription", next: returnPath, intendedAction: JSON.stringify({ kind: "recognition", mode: draft.mode, uploadDraftId: draft.id }), returnState: JSON.stringify({ version: 1, intent: "continue_action", uploadDraftId: draft.id, confirmation: "required" }) });
+      const handoff = new URL('/api/locale', siteConfig.appUrl);
+      handoff.searchParams.set('locale', locale); handoff.searchParams.set('next', `/checkout?${params}`);
+      window.location.assign(handoff.toString());
+    } catch { setRecognitionError(experience.failed); }
+    finally { submissionLock.current = false; setConfirming(false); }
+  }
+
   const jobLabel = job ? copy[job.status] : null;
   const uploading = uploadProgress !== null && uploadProgress < 100;
   const checking = preflightState === "checking" || preflightState === "waiting";
-  const busy = confirming || retrying || uploading || job?.status === "queued" || job?.status === "processing";
+  const busy = confirming || uploading || job?.status === "queued" || job?.status === "processing";
   const chosenOption = recognitionOptions.find(option => option.mode === recognitionMode);
-  const failure = homeProcessingFailure(job?.errorMessage, runtimeCopy.failure);
+  const memory = preflight?.memoryAssessment;
+  const effectiveBigLane = needsBigRecognitionLane(memory, recognitionMode);
+  const bigNeedsPayment = effectiveBigLane && chosenOption?.creditSource !== "plan" && chosenOption?.creditSource !== "score_pass";
 
   return (
     <div id="home-workbench" className={styles.workbench} aria-label={copy.workbenchLabel}>
       <input ref={fileInputRef} className={styles.visuallyHidden} type="file" accept={acceptedScoreFiles} tabIndex={-1} aria-hidden="true" onChange={(event) => acceptFile(event.target.files?.[0])} />
+      <input ref={cameraRef} className={styles.visuallyHidden} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label={experience.photoCapture} onChange={event => { acceptFile(event.target.files?.[0]); event.target.value = ""; }} />
       <div className={styles.workbenchHeading}><span><SparkIcon width={16} height={16} />{copy.workbenchLabel}</span><em>{copy.workbenchBadge}</em></div>
 
       <div className={styles.modeTabs} role="tablist" aria-label={copy.taskTypeLabel}>
@@ -474,9 +488,10 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
 
         {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
+        {mode === "recognize" ? <div className={styles.recognitionPanel}><button type="button" className={styles.preflightRetry} disabled={busy} onClick={() => cameraRef.current?.click()}>{experience.photoCapture}</button><p>{experience.photoGuide}</p>{photoFile ? <PhotoCornerEditor file={photoFile} messages={experience} onContinue={corners => acceptFile(photoFile, corners, true)} /> : null}</div> : null}
         <ProcessingProgress active={mode === "recognize" && uploading} label={progressCopy.uploadTitle} progressPercent={uploadProgress} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
         <ProcessingProgress active={mode === "recognize" && checking && !uploading} label={preflightState === "waiting" ? waitingCopy.preflight : preflightCopy.checking} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
-        <ProcessingProgress active={confirming || retrying} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
+        <ProcessingProgress active={confirming} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
 
         {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking" || preflightState === "waiting"}>
           <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span><p>{preflightCopy.freeBody}</p>
@@ -486,6 +501,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
             <strong role="status">{!preflight.complete || preflight.recommendation === "uncertain" ? preflightCopy.recommendationUncertain : preflight.recommendation === "simple" ? preflightCopy.recommendedSimple : preflightCopy.recommendedComplex}</strong>
             <p>{formatMessage(preflightCopy.summary, { pages: formatNumber(preflight.sourcePageCount, locale), analyzed: formatNumber(preflight.pagesAnalyzed, locale), staves: formatNumber(Math.max(0, ...preflight.pages.map(page => page.maxStavesPerSystem)), locale), systems: formatNumber(preflight.pages.reduce((sum, page) => sum + page.systemCount, 0), locale) })}</p>
             {!preflight.complete ? <p>{preflightCopy.incomplete}</p> : null}
+            {memory ? <div data-recognition-lane={memory.lane === "unsupported" ? "unsupported" : effectiveBigLane ? "big" : "normal"}><strong>{memory.lane === "unsupported" ? experience.unsupportedLane : effectiveBigLane ? experience.bigLane : experience.normalLane}</strong>{effectiveBigLane ? <p>{experience.bigBody}</p> : null}{memory.waitEstimateSeconds[1] > 0 && memory.lane !== "unsupported" ? <p>{formatMessage(experience.wait, { minutes: formatNumber(Math.ceil(memory.waitEstimateSeconds[1] / 60), locale) })}</p> : null}</div> : null}
             {preflight.recognitionSupport ? <p role={preflight.recognitionSupport.supported ? "status" : "alert"}>{runtimeCopy.support[preflight.recognitionSupport.code] ?? runtimeCopy.support.fallback}</p> : null}
             {preflight.reasonCodes.length ? <ul>{Array.from(new Set(preflight.reasonCodes.map(code => preflightCopy.reasonStrings[code] ?? preflightCopy.uncertainStructure))).map(reason => <li key={reason}>{reason}</li>)}</ul> : null}
             {!preflight.complete || preflight.recommendation === "uncertain" ? <p>{preflightCopy.manualChoice}</p> : null}
@@ -495,17 +511,18 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
             })}</fieldset>
             <p>{preflightCopy.selectedFilePreserved}</p>
           </> : null}
-          <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || !stagedUpload || preflight?.recognitionSupport?.supported === false || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button>
+          <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || !stagedUpload || preflight?.recognitionSupport?.supported === false || memory?.lane === "unsupported" || bigNeedsPayment || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button>
+          {preflightState === "ready" && memory?.lane !== "unsupported" && (bigNeedsPayment || !chosenOption?.canSubmit) ? <div data-upsell-primary="starter"><p>{experience.continueInApp}</p><RecognitionPurchaseActions messages={experience} disabled={busy || !recognitionMode} onStarter={() => { void continueBigUpload("starter-monthly"); }} onPass={() => { void continueBigUpload("single-score"); }} primaryClassName={styles.workbenchAction} secondaryClassName={styles.preflightRetry} /></div> : null}
         </section> : null}
 
         {mode === "recognize" && (job || recognitionError) ? (
           <section className={styles.recognitionPanel} aria-live="polite">
             <div className={styles.recognitionHeading}><div><small>{copy.candidateTitle}</small><strong>{scoreTitle ?? activeMode.title}</strong></div><span className={recognitionError && !connectionError ? styles.statusError : job?.status === "completed" ? styles.statusDone : styles.statusWorking}>{recognitionError && !connectionError ? copy.failed : jobLabel}</span></div>
             {job && !["failed", "cancelled"].includes(job.status) ? <ScoreProcessingPanel job={job} copy={progressCopy} locale={locale} connectionError={connectionError} /> : null}
-            {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{failure.reason}</strong></p><p>{failure.recovery}</p>{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
+            {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{resolveRecognitionFailure(experience, job.errorMessage)}</strong></p><p>{experience.creditsOnly}</p>{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
             {job?.status === "completed" ? <p>{copy.candidateBody}</p> : null}
             {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} locale={locale} /> : null}
-            <div className={styles.recognitionActions}>{scoreId ? <a href={getAppScoreUrl(scoreId, locale, submittedMode)}>{copy.openProject}<ArrowNorthEastIcon width={15} height={15} /></a> : null}{!busy ? <button type="button" onClick={() => job && ["failed", "cancelled"].includes(job.status) ? void retrySavedScore() : beginFileSelection()}>{job && ["failed", "cancelled"].includes(job.status) ? savedOriginalRetryLabels[locale] : copy.retry}</button> : null}</div>
+            <div className={styles.recognitionActions}>{scoreId ? <a href={getAppScoreUrl(scoreId, locale, submittedMode)}>{copy.openProject}<ArrowNorthEastIcon width={15} height={15} /></a> : null}{!busy && !job ? <button type="button" onClick={beginFileSelection}>{activeMode.action}</button> : null}</div>
           </section>
         ) : null}
       </div>

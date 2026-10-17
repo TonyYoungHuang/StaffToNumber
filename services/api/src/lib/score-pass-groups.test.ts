@@ -28,9 +28,9 @@ function purchase(userId: string, targetDocumentId?: string) {
   return { order, session, pay: () => fulfillOneTimePurchase(db, session), refund: () => applyOneTimeRefund(db, { payment_intent: session.payment_intent, amount: 299, amount_refunded: 299, metadata: session.metadata }) };
 }
 
-test("schema 27 maps existing own scores atomically, and duplicate fulfillment cannot move or add credits", () => {
+test("schema 28 retains atomic score-pass mappings and duplicate fulfillment cannot move or add credits", () => {
   const user = account(), root = document(user.id), other = document(user.id), bought = purchase(user.id, root);
-  assert.equal(DATABASE_SCHEMA_VERSION, 27);
+  assert.equal(DATABASE_SCHEMA_VERSION, 28);
   assert.equal(findOneTimePurchase(db, bought.order.id)!.target_document_id, root);
   assert.equal(scorePassForDocument(db, user.id, root), undefined);
   bought.pay(); bought.pay();
@@ -142,7 +142,7 @@ test("SQLite schema 26 upgrades additively to 27 and backfills sold roots withou
   db.prepare("DELETE FROM score_pass_documents WHERE pass_id = ?").run(original.order.id);
   db.exec("PRAGMA user_version = 26");
   initDb();
-  assert.equal((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version, 27);
+  assert.equal((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version, 28);
   assert.ok(db.prepare("SELECT document_id FROM score_pass_documents WHERE pass_id = ? AND role = 'root'").get(original.order.id));
   assert.equal(scorePassForDocument(db, user.id, root)!.credits, 10);
   assert.equal(scorePassForDocument(db, user.id, root)!.remaining, 9);

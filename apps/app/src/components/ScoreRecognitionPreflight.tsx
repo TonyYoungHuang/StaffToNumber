@@ -3,15 +3,17 @@
 import { useFlowMessages } from "../lib/flow-messages/client";
 
 import { formatMessage, formatNumber, getScoreRecognitionSupportMessage } from "@score/i18n";
-import { ProcessingProgress } from "@score/ui";
+import { ProcessingProgress, needsBigRecognitionLane } from "@score/ui";
 import type { ScoreRecognitionPreflightState } from "../lib/score-recognition-preflight";
 import { useAppLocale } from "./AppLocaleProvider";
 
-export function ScoreRecognitionPreflight({ state, onRetry, compact = false }: { state: ScoreRecognitionPreflightState; onRetry: () => void; compact?: boolean }) {
+export function ScoreRecognitionPreflight({ state, onRetry, mode, compact = false }: { state: ScoreRecognitionPreflightState; mode?: "simple" | "complex" | null; onRetry: () => void; compact?: boolean }) {
   const { locale } = useAppLocale();
   const flow = useFlowMessages();
+  const experience = flow.recognitionExperience;
   const copy = flow.preflight;
   const result = state.status === "ready" ? state.result : null;
+  const effectiveBigLane = needsBigRecognitionLane(result?.memoryAssessment, mode);
   const reasons = result ? result.reasonCodes.map(code => copy.reasonStrings[code] ?? copy.uncertainStructure) : [];
   const pending = state.status === "checking" || state.status === "waiting";
   const uploadPercent = pending ? state.uploadProgress : null;
@@ -27,6 +29,7 @@ export function ScoreRecognitionPreflight({ state, onRetry, compact = false }: {
       <button type="button" className="button button-secondary" onClick={onRetry}>{state.stagedUnavailable ? flow.stagedUpload.retry : copy.retry}</button>
     </div> : null}
     {result ? <div className="stack-sm" role="status" data-preflight-recommendation={result.recommendation}>
+      {result.memoryAssessment ? <div data-recognition-lane={result.memoryAssessment.lane === "unsupported" ? "unsupported" : effectiveBigLane ? "big" : "normal"}><strong>{result.memoryAssessment.lane === "unsupported" ? experience.unsupportedLane : effectiveBigLane ? experience.bigLane : experience.normalLane}</strong>{effectiveBigLane ? <p>{experience.bigBody}</p> : null}{result.memoryAssessment.waitEstimateSeconds[1] > 0 && result.memoryAssessment.lane !== "unsupported" ? <p>{formatMessage(experience.wait, { minutes: formatNumber(Math.ceil(result.memoryAssessment.waitEstimateSeconds[1] / 60), locale) })}</p> : null}</div> : null}
       {result.recognitionSupport ? <p className={result.recognitionSupport.supported ? "helper-copy" : "form-status error"} role={result.recognitionSupport.supported ? undefined : "alert"}>{getScoreRecognitionSupportMessage(locale, result.recognitionSupport.code)}</p> : null}
       {!compact ? <strong>{result.recommendation === "simple" ? copy.recommendedSimple : result.recommendation === "complex" ? copy.recommendedComplex : copy.recommendationUncertain}</strong> : null}
       <p className="body-copy">{formatMessage(copy.summary, {

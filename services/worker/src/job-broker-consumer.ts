@@ -16,7 +16,8 @@ export async function consumeBrokerJob(input: {
   processLegacyJob: (job: ClaimedLegacyJob) => Promise<void>;
 }) {
   const payload = input.brokerJob.data;
-  if (!payload || payload.dispatchId !== input.brokerJob.id || !["legacy", "score"].includes(payload.family) || !payload.jobId) {
+  if (!payload || payload.dispatchId !== input.brokerJob.id || !["legacy", "score"].includes(payload.family) || !payload.jobId ||
+      (payload.lane !== undefined && payload.lane !== "normal" && payload.lane !== "big")) {
     throw new Error("BullMQ score-processing payload is invalid.");
   }
   const timestamp = input.now();
@@ -31,7 +32,8 @@ export async function consumeBrokerJob(input: {
   };
 
   if (payload.family === "score") {
-    const claimed = claimScoreJobById(input.db, { timestamp, jobId: payload.jobId, brokerJobId: payload.dispatchId });
+    const claimed = claimScoreJobById(input.db, { timestamp, jobId: payload.jobId, brokerJobId: payload.dispatchId,
+      ...(payload.lane ? { lane: payload.lane } : {}) });
     acknowledge();
     if (!claimed) return { claimed: false, family: payload.family } as const;
     await input.processScoreJob(claimed);

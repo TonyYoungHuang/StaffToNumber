@@ -4,11 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ScoreJson } from "@score/shared";
 import { AudiverisProcessError, runAudiverisWithRotationFallback, type RunAudiverisInput } from "./audiveris-runner.js";
-import { findAudiverisMusicXmlOutput, readAudiverisMusicXml } from "./audiveris-output.js";
+import { enumerateAudiverisMusicXmlOutputs, enumerateAudiverisProjectOutputs, readAudiverisMusicXmlCandidates, musicXmlMovementTitle, normalizeMovementTitle, type OmrRecognitionCandidate } from "./audiveris-output.js";
 import { homrEngineSlotWeight, withOmrEngineSlot } from "./omr-engine-gate.js";
 import { createEngineExecutionClock } from "./engine-execution-clock.js";
 import { engineResourceError } from "./engine-resource-error.js";
 import { engineMemoryReservationMb } from "./engine-memory.js";
+import { getJobMemoryLeaseEnvironment } from "./job-memory-lease.js";
 
 export type RegionBox = { x: number; y: number; width: number; height: number };
 type PreparedPage = { page: number; width: number; height: number; imagePath: string };
@@ -50,6 +51,8 @@ export type ComplexOmrInput = {
   pythonArgsPrefix?: string[];
   adapterPath: string;
   homrSourceDir: string;
+  /** HOMR remains offline evaluation only; never required by the shipped path. */
+  enableHomrEvaluation?: boolean;
   timeoutMs: number;
   attemptTimeoutMs: number;
   maxGroupAttempts: number;
@@ -66,7 +69,7 @@ export type ComplexOmrInput = {
   adapter?: <T>(action: string, request: Record<string, unknown>, timeoutMs: number) => Promise<T>;
   recognizeAudiveris?: (inputPath: string, outputDir: string, timeoutMs: number) => Promise<{ musicXmlPath: string; analysis: XmlAnalysis }>;
 };
-export type ComplexOmrResult = { musicXml: string; musicXmlPath: string; coverage: ComplexCoverage; sourceRefs: ComplexSourceRef[]; staffBindings?: ComplexStaffBinding[]; pageImagePaths: string[]; reportPath: string; stdout: string; stderr: string; appliedRotationDegrees: 0 | 90 | 180 | 270 };
+export type ComplexOmrResult = { musicXml: string; musicXmlPath: string; coverage: ComplexCoverage; sourceRefs: ComplexSourceRef[]; staffBindings?: ComplexStaffBinding[]; pageImagePaths: string[]; reportPath: string; stdout: string; stderr: string; appliedRotationDegrees: 0 | 90 | 180 | 270; candidates: OmrRecognitionCandidate[]; recognizedPages: number[]; projectPaths: string[]; rawOutputPaths: string[]; rawOutputWarnings: Array<{ outputPath: string; message: string }> };
 
 export class ComplexOmrFailure extends Error {
   constructor(message: string, readonly coverage: ComplexCoverage) { super(message); this.name = "ComplexOmrFailure"; }
@@ -100,7 +103,7 @@ async function runComplexAdapterWithSlot<T>(input: Pick<ComplexOmrInput, "python
       onQueueTimeout: (cause) => terminate("resource", cause.message), onTimeout: () => terminate("timeout") });
     const child = spawn(input.pythonCommand, [...(input.pythonArgsPrefix ?? []), input.adapterPath, action, requestPath, resultPath], {
       shell: false, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "ignore", "pipe"],
-      env: { ...process.env, ...clock.environment, PYTHONUTF8: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
+      env: { ...process.env, ...clock.environment, ...getJobMemoryLeaseEnvironment(), PYTHONUTF8: "1", OMP_NUM_THREADS: "1", OPENBLAS_NUM_THREADS: "1" },
     });
     let stderr = "";
     let error: AudiverisProcessError | undefined;
@@ -160,8 +163,8 @@ export function recognitionStructurePenalty(analysis: XmlAnalysis, staffs: Inven
 }
 
 export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrResult> {
-  if (!input.pythonCommand.trim() || !fs.existsSync(input.adapterPath) || !fs.existsSync(input.homrSourceDir)) {
-    throw new Error("Complex recognition requires the provisioned Python adapter and pinned homr source/models.");
+  if (!input.pythonCommand.trim() || !fs.existsSync(input.adapterPath) || (input.enableHomrEvaluation && !fs.existsSync(input.homrSourceDir))) {
+    throw new Error("Complex recognition requires the provisioned Python adapter; HOMR evaluation additionally requires its offline models.");
   }
   fs.mkdirSync(input.outputDir, { recursive: true });
   const startedAt = Date.now();
@@ -172,6 +175,19 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
   const gaps: CoverageGap[] = [];
   const inventories: PageInventory[] = [];
   const chunks: Chunk[] = [];
+  const candidates: OmrRecognitionCandidate[] = [];
+  const projectPaths: string[] = [];
+  const rawOutputPaths: string[] = [];
+  const rawOutputWarnings: ComplexOmrResult["rawOutputWarnings"] = [];
+  const validatedCandidatePaths = new Set<string>();
+  const retainCandidate = (musicXmlPath: string, page: number, warnings: string[] = []) => {
+    containedPath(input.outputDir, musicXmlPath);
+    if (candidates.some(candidate => candidate.musicXmlPath === musicXmlPath && candidate.sourcePages.includes(page))) return;
+    const musicXml = fs.readFileSync(musicXmlPath, "utf8");
+    const originalTitle = musicXmlMovementTitle(musicXml);
+    candidates.push({ id: `original-${candidates.length + 1}`, musicXmlPath, musicXml, sourcePages: [page], originalTitle,
+      normalizedTitle: originalTitle ? normalizeMovementTitle(originalTitle) : undefined, relationship: "original", warnings });
+  };
   let groupAttempts = 0;
   const remaining = (reserve = 0) => {
     if (input.isCancelled?.()) throw new AudiverisProcessError("Complex recognition was cancelled.", "cancelled");
@@ -221,7 +237,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
     const labelGroups = layoutSystem?.groups.filter((group) => expectedStaffs.some((staff) => group.staffIds.includes(staff.id))) ?? [];
     const groupStaffCounts = labelGroups.map((group) => expectedStaffs.filter((staff) => group.staffIds.includes(staff.id) && staff.kind !== "tablature" && (!systemId || staff.systemId === systemId)).length);
     const penalty = (analysis: XmlAnalysis) => layoutPenalty(analysis, expectedStaffs, expectedSystems, expectedMeasures, groupStaffCounts.length ? groupStaffCounts : undefined);
-    for (const engine of ["audiveris", "homr"] as const) {
+    for (const engine of (input.enableHomrEvaluation ? ["audiveris", "homr"] : ["audiveris"]) as Array<"audiveris" | "homr">) {
       const budget = Math.min(input.attemptTimeoutMs, remaining(assemblyReserve));
       if (budget <= 0) break;
       if (engine === "audiveris" && !input.audiveris.command.trim()) continue;
@@ -231,16 +247,47 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
           if (engine === "homr") return call<{ musicXmlPath: string; analysis: XmlAnalysis }>("recognize", { imagePath }, budget);
           if (input.recognizeAudiveris) return input.recognizeAudiveris(imagePath, outputDir, budget);
           fs.mkdirSync(outputDir, { recursive: true });
-          const recognizedRun = await runAudiverisWithRotationFallback({ ...input.audiveris, imageMagickCommand: input.imageMagickCommand ?? "convert", allowedRotations: [0], inputPath: imagePath, outputDir, timeoutMs: budget, isCancelled: input.isCancelled, onQueueWait,
+          const recognizedRun = await runAudiverisWithRotationFallback({ ...input.audiveris,
+            ...(input.audiveris.enhancement ? { enhancement: { ...input.audiveris.enhancement, pageNumber: page } } : {}), imageMagickCommand: input.imageMagickCommand ?? "convert", allowedRotations: [0], inputPath: imagePath, outputDir, timeoutMs: budget, isCancelled: input.isCancelled, onQueueWait,
             onProgress: stage => input.onProgress?.({ stage, message: "Recognizing musical content.", attempts: attempts.length, page, totalPages: prepared.sourcePageCount }) });
-          const exported = findAudiverisMusicXmlOutput(recognizedRun.recognitionOutputDir ?? outputDir, { rotationDegrees: recognizedRun.recognitionOutputDir ? 0 : recognizedRun.appliedRotationDegrees });
-          if (!exported) throw new Error("Audiveris did not export a score for this region.");
-          const xmlPath = path.join(outputDir, "region.musicxml");
-          fs.writeFileSync(xmlPath, readAudiverisMusicXml(exported), "utf8");
-          const analysis = await call<XmlAnalysis>("analyze", { musicXmlPath: xmlPath }, Math.min(30_000, remaining()));
-          return { musicXmlPath: xmlPath, analysis };
+          const selectedDir = recognizedRun.recognitionOutputDir ?? outputDir;
+          const directories = [...new Set([selectedDir, ...(recognizedRun.enhancement?.variants.filter(variant => variant.status === "succeeded").map(variant => variant.outputDir) ?? [])])];
+          const outputs: Array<{ musicXmlPath: string; analysis: XmlAnalysis }> = [];
+          for (const directory of directories) {
+            projectPaths.push(...enumerateAudiverisProjectOutputs(directory, { rotationDegrees: directory === outputDir ? recognizedRun.appliedRotationDegrees : 0 }));
+            for (const exported of enumerateAudiverisMusicXmlOutputs(directory, { rotationDegrees: directory === outputDir ? recognizedRun.appliedRotationDegrees : 0 })) {
+              rawOutputPaths.push(exported);
+              try {
+                for (const score of readAudiverisMusicXmlCandidates(exported)) {
+                  const xmlPath = path.join(outputDir, `region-${candidates.length + outputs.length + 1}.musicxml`);
+                  fs.writeFileSync(xmlPath, score.musicXml, "utf8");
+                  retainCandidate(xmlPath, page);
+                  const enhancement = recognizedRun.enhancement?.variants.find(variant => variant.outputDir === directory);
+                  if (enhancement) {
+                    const { imagePath: _path, ...geometry } = enhancement.variant;
+                    candidates.find(candidate => candidate.musicXmlPath === xmlPath)!.enhancement = { variantId: enhancement.id, geometry, quality: enhancement.quality };
+                  }
+                  try {
+                    const analysis = await call<XmlAnalysis>("analyze", { musicXmlPath: xmlPath }, Math.min(30_000, remaining()));
+                    if (analysis.partCount && analysis.measureCount) { outputs.push({ musicXmlPath: xmlPath, analysis }); validatedCandidatePaths.add(xmlPath); }
+                  } catch (error) {
+                    if (engineResourceError(error) || (error instanceof AudiverisProcessError && error.reason === "cancelled")) throw error;
+                    addGap({ kind: "unreadable-result", page, systemId, message: "One exported result could not be analyzed; the original and other results are retained.", severity: "warning" });
+                  }
+                }
+              } catch (error) {
+                if (engineResourceError(error) || (error instanceof AudiverisProcessError && error.reason === "cancelled")) throw error;
+                rawOutputWarnings.push({ outputPath: exported, message: "This exported result could not be read. The original output and other results are retained." });
+                addGap({ kind: "unreadable-result", page, systemId, message: "One exported result could not be read; other results are retained.", severity: "warning" });
+              }
+            }
+          }
+          if (!outputs.length) throw new Error("Audiveris did not export a readable score for this region.");
+          return outputs.sort((left, right) => penalty(left.analysis) - penalty(right.analysis))[0];
         });
         if (recognized.analysis.partCount === 0 || recognized.analysis.measureCount === 0) throw new Error("The region contains no recognized musical parts/measures.");
+        validatedCandidatePaths.add(recognized.musicXmlPath);
+        retainCandidate(recognized.musicXmlPath, page, recognized.analysis.issues.map(issue => issue.message));
         const matchingLayout = recognized.analysis.partCount === labelGroups.length && labelGroups.every((group, index) => recognized.analysis.parts[index].staffCount === expectedStaffs.filter((staff) => group.staffIds.includes(staff.id) && staff.kind !== "tablature").length);
         if (matchingLayout && labelGroups.some((group) => group.name)) {
           const annotated = await call<{ analysis: XmlAnalysis; issues: XmlIssue[] }>("annotate", { musicXmlPath: recognized.musicXmlPath, labels: labelGroups }, Math.min(30_000, remaining()));
@@ -256,13 +303,14 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
         if (best && penalty(best.analysis) === 0 && best.analysis.issues.length === 0) break;
       } catch (error) {
         if (engineResourceError(error)) throw error;
-        if (error instanceof AudiverisProcessError && error.reason === "cancelled") throw error;
+        if (error instanceof AudiverisProcessError && (error.reason === "cancelled" || error.reason === "timeout")) throw error;
         input.onProgress?.({ message: `${engine} ${scope} recognition needs recovery.`, attempts: attempts.length, page });
       }
     }
     return best;
   };
   for (const page of prepared.pages) {
+    try {
     containedPath(input.outputDir, page.imagePath);
     if (remaining(assemblyReserve) <= 0) {
       addGap({ kind: "budget-exhausted", page: page.page, message: "This source page was retained but not recognized within the total job budget.", severity: "error" });
@@ -272,7 +320,7 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
     input.onProgress?.({ stage: "layout", message: "Building independent page, system, and staff inventory.", attempts: attempts.length, page: page.page, totalPages: prepared.sourcePageCount });
     let inventory: PageInventory;
     try {
-      inventory = await audit("layout", "inventory", page.page, undefined, () => call<PageInventory>("orient", { ...page }, Math.min(input.attemptTimeoutMs, remaining(assemblyReserve))));
+      inventory = await audit("layout", "inventory", page.page, undefined, () => call<PageInventory>("orient", { ...page, lineOnly: !input.enableHomrEvaluation }, Math.min(input.attemptTimeoutMs, remaining(assemblyReserve))));
     } catch (error) {
       if (engineResourceError(error)) throw error;
       if (error instanceof AudiverisProcessError && error.reason === "cancelled") throw error;
@@ -357,8 +405,21 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
       chunks.push({ musicXmlPath: full.musicXmlPath, page: page.page, systemOrder: 0, scope: "page" });
       addGap({ kind: "missing-staff", page: page.page, message: "Only the whole-page fallback is available; original system coverage remains unresolved.", severity: "error" });
     }
+    } catch (error) {
+      const exhausted = engineResourceError(error) || (error instanceof AudiverisProcessError && error.reason === "timeout");
+      if (!exhausted || (!chunks.length && !validatedCandidatePaths.size)) throw error;
+      for (const remainingPage of prepared.pages.filter(candidate => candidate.page >= page.page)) {
+        addGap({ kind: "resource-budget-exhausted", page: remainingPage.page, message: "Processing capacity was reached. Earlier readable results are retained; only delivered pages are charged.", severity: "error" });
+        if (!inventories.some(inventory => inventory.page === remainingPage.page)) inventories.push({ ...remainingPage, staffs: [], systems: [], warnings: ["Page processing was not completed"] });
+      }
+      break;
+    }
   }
   if (input.isCancelled?.()) throw new AudiverisProcessError("Complex recognition was cancelled before assembly.", "cancelled");
+  if (chunks.length === 0 && validatedCandidatePaths.size) {
+    const fallback = candidates.find(candidate => validatedCandidatePaths.has(candidate.musicXmlPath));
+    if (fallback) chunks.push({ musicXmlPath: fallback.musicXmlPath, page: fallback.sourcePages[0], systemOrder: 0, scope: "page" });
+  }
   if (chunks.length === 0) {
     const coverage: ComplexCoverage = {
       schemaVersion: 1, status: "incomplete", coverageBasis: "detected-layout", sourcePageCount: prepared.sourcePageCount,
@@ -367,11 +428,29 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
       staffs: inventories.flatMap(page => page.staffs), gaps, attempts,
     };
     fs.writeFileSync(path.join(input.outputDir, "coverage-report.json"), JSON.stringify({ coverage, inventories }, null, 2));
-    throw new ComplexOmrFailure("Complex recognition could not create readable musical material. Your source and layout diagnostics are retained; retry recognition.", coverage);
+    throw new ComplexOmrFailure("No readable staff notation was produced. Covers, severe blur, handwritten symbols or non-staff notation may prevent recognition. Your source is retained and recognition credits are released.", coverage);
   }
   const mergedPath = path.join(input.outputDir, "complex-candidate.musicxml");
   input.onProgress?.({ stage: "verify", message: "Assembling and checking recognized structure.", attempts: attempts.length, totalPages: prepared.sourcePageCount });
-  const merged = await audit("layout", "merge", undefined, undefined, () => call<{ musicXmlPath: string; sourceRefs: ComplexSourceRef[]; staffBindings?: ComplexStaffBinding[]; issues: XmlIssue[]; analysis: XmlAnalysis }>("merge", { chunks, outputPath: mergedPath }, Math.max(1, remaining())));
+  type Assembled = { musicXmlPath: string; sourceRefs: ComplexSourceRef[]; staffBindings?: ComplexStaffBinding[]; issues: XmlIssue[]; analysis: XmlAnalysis; sourcePages?: number[]; memberPaths?: string[] };
+  let merged: Assembled & { alternatives?: Assembled[] };
+  try {
+    merged = await audit("layout", "merge", undefined, undefined, () => call<typeof merged>("merge", { chunks, outputPath: mergedPath }, Math.max(1, remaining())));
+    for (const [index, assembled] of (merged.alternatives ?? [merged]).entries()) {
+      containedPath(input.outputDir, assembled.musicXmlPath);
+      const musicXml = fs.readFileSync(assembled.musicXmlPath, "utf8");
+      const originalTitle = musicXmlMovementTitle(musicXml);
+      candidates.push({ id: `assembled-${index + 1}`, musicXmlPath: assembled.musicXmlPath, musicXml,
+        sourcePages: assembled.sourcePages ?? [...new Set(chunks.map(chunk => chunk.page))], originalTitle,
+        normalizedTitle: originalTitle ? normalizeMovementTitle(originalTitle) : undefined, relationship: "assembled",
+        memberIds: candidates.filter(candidate => (assembled.memberPaths ?? chunks.map(chunk => chunk.musicXmlPath)).includes(candidate.musicXmlPath)).map(candidate => candidate.id) });
+    }
+  } catch (error) {
+    if (error instanceof AudiverisProcessError && error.reason === "cancelled") throw error;
+    const fallback = candidates.find(candidate => chunks.some(chunk => chunk.musicXmlPath === candidate.musicXmlPath));
+    if (!fallback) throw error;
+    merged = { musicXmlPath: fallback.musicXmlPath, sourceRefs: [], issues: [{ kind: "assembly-unavailable", message: "Automatic assembly could not finish. All readable source results are retained separately." }], analysis: { partCount: 0, physicalStaffCount: 0, systemCount: 0, measureCount: 0, parts: [], issues: [] } };
+  }
   containedPath(input.outputDir, merged.musicXmlPath);
   for (const issue of [...merged.issues, ...merged.analysis.issues]) addGap({ kind: issue.kind, page: issue.page ?? 1, systemId: issue.systemId, partId: issue.partId, measureNumber: issue.measure, message: issue.message, severity: "error" });
   // Passing structure checks is not proof of note accuracy or a complete source inventory.
@@ -382,11 +461,11 @@ export async function runComplexOmr(input: ComplexOmrInput): Promise<ComplexOmrR
     staffs: inventories.flatMap((page) => page.staffs), gaps, attempts,
   };
   const reportPath = path.join(input.outputDir, "coverage-report.json");
-  fs.writeFileSync(reportPath, JSON.stringify({ coverage, sourceRefs: merged.sourceRefs, staffBindings: merged.staffBindings, inventories, chunks, elapsedMs: Date.now() - startedAt }, null, 2), "utf8");
+  fs.writeFileSync(reportPath, JSON.stringify({ coverage, sourceRefs: merged.sourceRefs, staffBindings: merged.staffBindings, inventories, chunks, alternatives: candidates.map(({ musicXml: _xml, ...candidate }) => candidate), elapsedMs: Date.now() - startedAt }, null, 2), "utf8");
   const firstTransform = inventories[0]?.sourceTransform;
   const exifRotation = ({ 3: 180, 6: 90, 8: 270 } as Record<number, number>)[firstTransform?.exifOrientation ?? 1] ?? 0;
   const singlePageRotation = inventories.length === 1 ? ((firstTransform?.rotationDegrees ?? 0) + exifRotation) % 360 : 0;
-  return { musicXml: fs.readFileSync(merged.musicXmlPath, "utf8"), musicXmlPath: merged.musicXmlPath, coverage, sourceRefs: merged.sourceRefs, staffBindings: merged.staffBindings, pageImagePaths: prepared.pages.map((page) => page.imagePath), reportPath, stdout: `Complex OMR completed ${attempts.length} serial attempts; candidate coverage ${coverage.status}.`, stderr: "", appliedRotationDegrees: singlePageRotation as 0 | 90 | 180 | 270 };
+  return { musicXml: fs.readFileSync(merged.musicXmlPath, "utf8"), musicXmlPath: merged.musicXmlPath, coverage, sourceRefs: merged.sourceRefs, staffBindings: merged.staffBindings, pageImagePaths: prepared.pages.map((page) => page.imagePath), reportPath, candidates, projectPaths: [...new Set(projectPaths)], rawOutputPaths: [...new Set(rawOutputPaths)], rawOutputWarnings, recognizedPages: [...new Set(chunks.map(chunk => chunk.page))], stdout: `Complex OMR completed ${attempts.length} serial attempts; candidate coverage ${coverage.status}.`, stderr: "", appliedRotationDegrees: singlePageRotation as 0 | 90 | 180 | 270 };
 }
 
 export function applyComplexCoverage(score: ScoreJson, result: Pick<ComplexOmrResult, "coverage" | "sourceRefs" | "staffBindings">): ScoreJson {
@@ -418,7 +497,7 @@ export function applyComplexCoverage(score: ScoreJson, result: Pick<ComplexOmrRe
     ...score,
     measures,
     recognitionLayer: {
-      engine: "hybrid", recognitionMode: "complex", engineVersion: "homr-33baa326900faa12702df8c4bdcbea034a3d6a34",
+      engine: "hybrid", recognitionMode: "complex", engineVersion: "audiveris-layout-v2",
       pages: result.coverage.pages.map((page) => ({ page: page.page, width: page.width, height: page.height })), symbols: [], coverage: { ...result.coverage, staffs },
     },
     metadata: { ...score.metadata, warnings: [...score.metadata.warnings, ...result.coverage.gaps.map((gap) => `[${gap.kind}] ${gap.message}`)] },
@@ -430,6 +509,7 @@ export function complexEvidenceEntries(result: Pick<ComplexOmrResult, "reportPat
   const directory = path.dirname(result.reportPath);
   const report = JSON.parse(fs.readFileSync(containedPath(directory, result.reportPath), "utf8")) as {
     coverage: ComplexCoverage; sourceRefs: ComplexSourceRef[]; inventories: PageInventory[]; chunks: Chunk[]; elapsedMs: number;
+    alternatives?: Array<Omit<OmrRecognitionCandidate, "musicXml">>;
   };
   const entries: Array<{ name: string; content: Buffer }> = [];
   const chunks = report.chunks.map((chunk, index) => {
@@ -442,6 +522,11 @@ export function complexEvidenceEntries(result: Pick<ComplexOmrResult, "reportPat
     coverage: { ...report.coverage, attempts: report.coverage.attempts.map((attempt) => ({ ...attempt, ...(attempt.message ? { message: attempt.message.trim().split(/\r?\n/u).at(-1) } : {}) })) },
     inventories: report.inventories.map(({ imagePath: _path, homrError, ...inventory }) => ({ ...inventory, imagePath: `source-page-${String(inventory.page).padStart(3, "0")}.png`, ...(homrError ? { homrError: homrError.trim().split(/\r?\n/u).at(-1) } : {}) })),
     chunks,
+    alternatives: (report.alternatives ?? []).map((candidate, index) => {
+      const name = `alternatives/result-${index + 1}.musicxml`;
+      entries.push({ name, content: fs.readFileSync(containedPath(directory, candidate.musicXmlPath)) });
+      return { ...candidate, musicXmlPath: name };
+    }),
   };
   entries.push({ name: "coverage-report.json", content: Buffer.from(JSON.stringify(publicReport, null, 2), "utf8") });
   entries.push({ name: "candidate.musicxml", content: fs.readFileSync(containedPath(directory, result.musicXmlPath)) });

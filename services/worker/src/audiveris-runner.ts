@@ -5,6 +5,9 @@ import { withOmrEngineSlot } from "./omr-engine-gate.js";
 import { createEngineExecutionClock } from "./engine-execution-clock.js";
 import { engineResourceError } from "./engine-resource-error.js";
 import { engineMemoryReservationMb } from "./engine-memory.js";
+import { getJobMemoryLeaseEnvironment } from "./job-memory-lease.js";
+import { claimRasterCall, createRasterEnhancementBudget, inspectRasterQuality, prepareRasterEnhancement, RasterPreparationError, selectRasterVariant,
+  type RasterEnhancementOptions, type RasterEnhancementRun, type RasterEnhancementSummary } from "./raster-enhancement.js";
 
 export type AudiverisFailureReason = "cancelled" | "timeout" | "spawn" | "exit" | "resource";
 
@@ -32,6 +35,8 @@ export type RunAudiverisInput = {
   isCancelled?: () => boolean;
   cancellationPollMs?: number;
   onQueueWait?: (elapsedMs: number) => void;
+  /** Off by default; heavy configurations require an accepted big-memory lane. */
+  enhancement?: RasterEnhancementOptions;
 };
 
 type RunAudiverisWithRotationFallbackInput = RunAudiverisInput & {
@@ -49,7 +54,8 @@ export type AudiverisRunResult = {
   /** Successful recovery directory; failed attempts must not supply artifacts. */
   recognitionOutputDir?: string;
   /** Requested enlargement, still capped by the normal 3000-pixel side limit. */
-  rasterScale?: 2;
+  rasterScale?: 2 | 3;
+  enhancement?: RasterEnhancementSummary;
 };
 
 const MAX_CAPTURED_OUTPUT = 4 * 1024 * 1024;
@@ -103,7 +109,7 @@ function runAudiverisCommandWithSlot(input: RunAudiverisInput) {
       onQueueTimeout: (error) => terminate(new AudiverisProcessError(error.message, "resource")),
       onTimeout: () => terminate(new AudiverisProcessError(`Audiveris timed out after ${input.timeoutMs} ms.`, "timeout")) });
     const child = spawn(input.command, args, {
-      env: { ...buildAudiverisEnvironment(input.maxHeapMb), ...clock.environment },
+      env: { ...buildAudiverisEnvironment(input.maxHeapMb), ...clock.environment, ...getJobMemoryLeaseEnvironment() },
       shell: false,
       detached: process.platform !== "win32",
       windowsHide: true,
@@ -190,6 +196,7 @@ export async function runAudiverisWithRotationFallback(
     const result = await runAudiverisCommand(input);
     return { ...result, appliedRotationDegrees: 0 };
   }
+  if (input.enhancement?.enabled) return runAudiverisEnhancement(input, input.enhancement);
   if (!input.imageMagickCommand.trim()) {
     throw new AudiverisProcessError(
       "ImageMagick is required to normalize raster score images before Audiveris recognition.",
@@ -281,6 +288,72 @@ export async function runAudiverisWithRotationFallback(
   );
 }
 
+async function runAudiverisEnhancement(input: RunAudiverisWithRotationFallbackInput, options: RasterEnhancementOptions): Promise<AudiverisRunResult> {
+  let deadline = Date.now() + input.timeoutMs;
+  const onQueueWait = (elapsedMs: number) => { deadline += elapsedMs; input.onQueueWait?.(elapsedMs); };
+  const budget = options.budget ?? createRasterEnhancementBudget(1);
+  const rotationDegrees = options.rotationDegrees ?? options.pageRotations?.[String(options.pageNumber ?? 1)]
+    ?? (input.allowedRotations?.length === 1 ? input.allowedRotations[0] : 0);
+  let manifest;
+  try {
+    manifest = await prepareRasterEnhancement({ inputPath: input.inputPath, outputDir: path.join(input.outputDir, "raster-enhancement"),
+      options: { ...options, budget, rotationDegrees },
+      timeoutMs: Math.min(15_000, Math.max(1, deadline - Date.now())), isCancelled: input.isCancelled, onQueueWait });
+  } catch (error) {
+    if (error instanceof RasterPreparationError) throw new AudiverisProcessError(error.message, error.reason);
+    throw error;
+  }
+  const runs: RasterEnhancementRun[] = [];
+  const outputs = new Map<string, { stdout: string; stderr: string }>();
+  let lastError: AudiverisProcessError | undefined;
+  // The list is frozen by preparation. No orientation/enhancement retry loops;
+  // all attempts share the original execution deadline and job call ledger.
+  for (const [index, variant] of manifest.variants.entries()) {
+    if (input.isCancelled?.()) throw new AudiverisProcessError("Audiveris processing was cancelled.", "cancelled");
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    if (!claimRasterCall(budget, options.pageNumber ?? 1, index > 0)) break;
+    const outputDir = path.join(input.outputDir, `enhanced-${variant.id}`);
+    fs.mkdirSync(outputDir, { recursive: true });
+    input.onProgress?.(index ? "restore-image" : "recognize");
+    try {
+      const output = await runAudiverisCommand({ ...input, inputPath: variant.imagePath, outputDir, timeoutMs: remaining, onQueueWait });
+      const quality = inspectRasterQuality(outputDir, manifest.diagnostics.expectedStaffCount);
+      runs.push({ id: variant.id, outputDir, variant, quality, status: quality.valid ? "succeeded" : "failed", ...(!quality.valid ? { message: "No nonempty MusicXML draft was produced." } : {}) });
+      if (quality.valid) outputs.set(variant.id, output);
+    } catch (error) {
+      if (!(error instanceof AudiverisProcessError)) throw error;
+      if (error.reason === "cancelled") throw error;
+      // A later, heavier comparison cannot invalidate a draft already obtained
+      // in this one-shot job. Retain it instead of requesting another fallback.
+      if ((error.reason === "resource" || error.reason === "spawn") && runs.some((run) => run.status === "succeeded")) {
+        runs.push({ id: variant.id, outputDir, variant, status: "failed", message: error.message });
+        break;
+      }
+      if (error.reason === "resource" || error.reason === "spawn") throw error;
+      lastError = error;
+      runs.push({ id: variant.id, outputDir, variant, status: "failed", message: error.message });
+      if (error.reason === "timeout") break;
+    }
+  }
+  const selected = selectRasterVariant(runs);
+  if (!selected) {
+    if (lastError?.reason === "timeout" || deadline <= Date.now()) throw lastError ?? new AudiverisProcessError("Audiveris execution budget was exhausted.", "timeout");
+    const reason = manifest.diagnostics.staffDetection === "uncertain"
+      ? "[RASTER_NO_STAFF] No five-line music was found. This may be a cover, numbered notation, a single-line drum part, or a photo whose page needs its corners adjusted."
+      : manifest.diagnostics.staffSpacing !== null && manifest.diagnostics.staffSpacing < 5
+        ? "[RASTER_TOO_SMALL] The music symbols contain too few pixels to separate reliably. A larger source or a closer photo is needed."
+        : "[RASTER_UNREADABLE] Music lines were found, but a usable draft could not be reconstructed. Check focus, shadows, and page corners.";
+    throw new AudiverisRecognitionError(reason, "exit", lastError?.exitCode ?? null);
+  }
+  budget.preferredVariantId = selected.id;
+  const reasons = ["Valid MusicXML and musical content", "Staff coverage, known time signatures, durations, and engine diagnostics take priority over note count."];
+  if (selected.quality?.coverage === null) reasons.push("Source staff coverage is uncertain; this recommendation needs review.");
+  return { ...outputs.get(selected.id)!, appliedRotationDegrees: rotationDegrees, recognitionOutputDir: selected.outputDir,
+    ...(selected.variant.scale === 2 || selected.variant.scale === 3 ? { rasterScale: selected.variant.scale } : {}),
+    enhancement: { selectedVariantId: selected.id, reasons, diagnostics: manifest.diagnostics, variants: runs, calls: budget.calls, maxCalls: budget.maxCalls } };
+}
+
 type ImageMagickNormalizationInput = {
   command: string;
   commandArgsPrefix?: string[];
@@ -325,7 +398,7 @@ function runImageMagickNormalizationWithSlot(input: ImageMagickNormalizationInpu
       ...(input.rotation ? ["-rotate", String(input.rotation)] : []),
       input.outputPath,
     ];
-    const child = spawn(input.command, args, { shell: false, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
+    const child = spawn(input.command, args, { shell: false, windowsHide: true, env: { ...process.env, ...getJobMemoryLeaseEnvironment() }, stdio: ["ignore", "ignore", "pipe"] });
     let stderr = "";
     let settled = false;
     let terminationError: AudiverisProcessError | undefined;

@@ -1,5 +1,6 @@
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
 import type { ScoreJobType } from "@score/shared";
+import { recognitionLaneFromParams, type RecognitionLane } from "./recognition-lane.js";
 
 export type ClaimedScoreJob = {
   id: string;
@@ -34,7 +35,12 @@ export function claimNextScoreJob(db: RuntimeDatabaseLike, timestamp: string): C
     `,
   ).get(timestamp, timestamp) as ClaimedScoreJob | undefined;
 }
-export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: string; jobId: string; brokerJobId: string }) {
+export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: string; jobId: string; brokerJobId: string; lane?: RecognitionLane; lanesEnabled?: boolean }) {
+  if (input.lane) {
+    const source = db.prepare("SELECT job_type, params_json FROM score_jobs WHERE id = ?").get(input.jobId) as { job_type: string; params_json: string | null } | undefined;
+    const lane = source?.job_type === "omr_import" ? recognitionLaneFromParams(source.params_json, input.lanesEnabled) : "normal";
+    if (input.lane !== lane) throw new Error("Broker recognition lane does not match the stored admission snapshot.");
+  }
   return db.prepare(`
     UPDATE score_jobs
     SET status = 'processing',
@@ -45,7 +51,7 @@ export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: s
         attempt_count = CASE WHEN status = 'queued' THEN attempt_count + 1 ELSE attempt_count END,
         broker_job_id = ?
     WHERE id = ?
-      AND (status = 'queued' OR (status = 'processing' AND broker_job_id = ?))
+      AND status = 'queued'
     RETURNING id, user_id, document_id, input_file_id, job_type, params_json, request_id, trace_id
-  `).get(input.timestamp, input.timestamp, input.brokerJobId, input.jobId, input.brokerJobId) as ClaimedScoreJob | undefined;
+  `).get(input.timestamp, input.timestamp, input.brokerJobId, input.jobId) as ClaimedScoreJob | undefined;
 }

@@ -106,6 +106,26 @@ deadline = time.monotonic() + positive_setting("MUSIC_ENGINE_QUEUE_WAIT_MS", 120
 group = os.uname().nodename
 directory = os.environ.get("MUSIC_ENGINE_LOCK_DIR", "/data/.music-engine-slots")
 os.makedirs(directory, exist_ok=True)
+# A job-level lease holds these exact slots through preparation, recognition and
+# saving. Only a matching token on a *currently locked* slot avoids double
+# reservation. Ordinary API/export commands continue through the existing gate.
+job_token = os.environ.get("MUSIC_ENGINE_JOB_TOKEN", "")
+if job_token and os.environ.get("RECOGNITION_LANES_ENABLED") == "true":
+    validated = False
+    for index in range(capacity):
+        with open(os.path.join(directory, f"slot-{index}.lock"), "a+") as slot:
+            try:
+                fcntl.flock(slot, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(slot, fcntl.LOCK_UN)
+            except BlockingIOError:
+                slot.seek(0)
+                if json.load(slot).get("job_token") == job_token:
+                    validated = True
+    if not validated:
+        resource_failure("ENGINE_RESOURCE_UNAVAILABLE", "Task memory lease is no longer held")
+    if os.environ.get("SCORE_ENGINE_START_NOTIFY") == "1":
+        os.write(2, b"SCORE_ENGINE_STARTED\n")
+    os.execv(engine, [engine, *args])
 slots = []
 memory_blocked = False
 with open(os.path.join(directory, "dispatcher.lock"), "a") as dispatcher:
@@ -135,6 +155,13 @@ with open(os.path.join(directory, "dispatcher.lock"), "a") as dispatcher:
             snapshot = memory_snapshot()
             admitted, host_baseline, group_baseline = memory_admissible(snapshot, active, reservation, margin, group)
             memory_blocked = not admitted
+            if os.environ.get("RECOGNITION_LANES_ENABLED") == "true":
+                with open(os.path.join(directory, "big-intent.lock"), "a") as big_intent:
+                    try:
+                        fcntl.flock(big_intent, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        fcntl.flock(big_intent, fcntl.LOCK_UN)
+                    except BlockingIOError:
+                        admitted = False
             if admitted and len(slots) >= weight:
                 # Only the first held descriptor owns this process reservation.
                 for index, slot in enumerate(slots[:weight]):

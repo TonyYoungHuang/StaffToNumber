@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { config } from "../config.js";
 import type { DetectedUploadKind } from "./upload-security.js";
+import type { RecognitionMemoryAssessment, PhotoCorner, ScoreStructurePreflight } from "@score/shared";
 
 export const STAGED_OMR_TTL_MS = 24 * 60 * 60 * 1000;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/iu;
@@ -10,6 +11,9 @@ export type StagedOmrUpload = {
   id: string; userId: string; filename: string; sizeBytes: number; mimeType: string;
   detectedKind: DetectedUploadKind; checksumSha256: string; createdAt: string; expiresAt: string;
   consumed?: boolean;
+  memoryAssessment?: RecognitionMemoryAssessment;
+  preflight?: ScoreStructurePreflight;
+  photoCorners?: PhotoCorner[];
 };
 
 export class StagedOmrUploadError extends Error {
@@ -58,12 +62,14 @@ export async function cleanupExpiredStagedOmrUploads(now = Date.now()) {
 
 export async function stageOmrUpload(input: {
   sourcePath: string; userId: string; filename: string; sizeBytes: number; mimeType: string; detectedKind: DetectedUploadKind;
+  memoryAssessment?: RecognitionMemoryAssessment; preflight?: ScoreStructurePreflight; photoCorners?: PhotoCorner[];
 }, now = Date.now()) {
   await cleanupExpiredStagedOmrUploads(now);
   const id = randomUUID(), dir = directory(id);
   const metadata: StagedOmrUpload = {
     id, userId: input.userId, filename: input.filename, sizeBytes: input.sizeBytes,
     mimeType: input.mimeType, detectedKind: input.detectedKind,
+    memoryAssessment: input.memoryAssessment, preflight: input.preflight, photoCorners: input.photoCorners,
     checksumSha256: createHash("sha256").update(await fs.readFile(input.sourcePath)).digest("hex"),
     createdAt: new Date(now).toISOString(), expiresAt: new Date(now + STAGED_OMR_TTL_MS).toISOString(),
   };

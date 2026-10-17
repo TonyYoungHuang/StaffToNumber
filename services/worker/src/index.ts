@@ -28,11 +28,20 @@ import { renderScoreExport } from "./score-export-renderer.js";
 import { AudiverisProcessError, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
 import { runBasicPitch } from "./basic-pitch-runner.js";
 import { workerFailureMessage } from "./engine-resource-error.js";
+import { engineResourceError } from "./engine-resource-error.js";
+import { withJobMemoryLease, jobMemoryLeaseLost } from "./job-memory-lease.js";
+import { recognitionLaneResourcePolicy } from "./recognition-lane.js";
+import { createRasterEnhancementBudget } from "./raster-enhancement.js";
 import { ComplexOmrFailure, applyComplexCoverage, complexEvidenceEntries, runComplexOmr, type ComplexOmrResult } from "./complex-omr.js";
 import {
   findAudiverisMusicXmlOutput,
   findAudiverisProjectOutput,
   readAudiverisMusicXml,
+  enumerateAudiverisMusicXmlOutputs,
+  enumerateAudiverisProjectOutputs,
+  readAudiverisMusicXmlCandidates,
+  musicXmlMovementTitle,
+  type OmrRecognitionCandidate,
 } from "./audiveris-output.js";
 import { claimNextScoreJob, type ClaimedScoreJob } from "./score-job-claim.js";
 import { claimNextLegacyJob, type ClaimedLegacyJob } from "./legacy-job-claim.js";
@@ -571,6 +580,7 @@ function createScoreAsset(input: {
 }
 
 function isScoreJobCancelled(jobId: string) {
+  if (jobMemoryLeaseLost()) return true;
   const row = db.prepare("SELECT status FROM score_jobs WHERE id = ?").get(jobId) as { status: string } | undefined;
   return row?.status === "cancelled";
 }
@@ -2966,6 +2976,9 @@ async function processStaffPdfJob(job: ClaimedLegacyJob, inputFile: FileRow) {
 }
 
 async function processScoreOmrJob(job: ScoreJobRow) {
+  const initialParams = job.params_json ? JSON.parse(job.params_json) : {};
+  let remainingExecutionBudget = initialParams.recognitionMode === "complex" ? workerConfig.complexOmrTimeoutMs : workerConfig.audiverisTimeoutMs;
+  const rasterBudget = createRasterEnhancementBudget(initialParams.memoryAssessment?.sourcePageCount ?? 1);
   const progress = createOmrProgressReporter(update => {
     const current = db.prepare("SELECT params_json FROM score_jobs WHERE id = ? AND status = 'processing'").get(job.id) as { params_json: string | null } | undefined;
     if (!current) return;
@@ -2973,18 +2986,51 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     db.prepare("UPDATE score_jobs SET params_json = ?, updated_at = ? WHERE id = ? AND status = 'processing'")
       .run(JSON.stringify({ ...params, processingProgress: update }), update.heartbeatAt, job.id);
   });
-  try { await processScoreOmrJobWithProgress(job, progress); } finally { progress.stop(); }
+  const execute = async (params: Record<string, any>) => withJobMemoryLease({
+    lane: params.recognitionLane === "big" ? "big" : "normal",
+    memoryMb: recognitionLaneResourcePolicy({lane:params.recognitionLane==="big"?"big":"normal",estimatedMemoryMb:params.memoryAssessment?.estimatedMemoryMb,normalHeapMb:workerConfig.audiverisMaxHeapMb}).reservationMb,
+    isCancelled: () => isScoreJobCancelled(job.id),
+    pythonCommand: process.env.JOB_LEASE_PYTHON_COMMAND || (process.platform === "win32" ? "python" : "/usr/bin/python3"),
+    scriptPath: process.env.JOB_MEMORY_LEASE_SCRIPT || path.join(path.dirname(workerConfig.complexOmrAdapterPath), "job_memory_lease.py"),
+  }, async () => {
+    const executionDeadline = Date.now() + remainingExecutionBudget;
+    try {return await processScoreOmrJobWithProgress({ ...job, params_json: JSON.stringify(params) }, progress, rasterBudget, executionDeadline);}
+    finally {remainingExecutionBudget=Math.max(0,executionDeadline-Date.now());}
+  });
+  try {
+    const params = job.params_json ? JSON.parse(job.params_json) as Record<string, any> : {};
+    try { await execute(params); }
+    catch (error) {
+      const capacity = Number(process.env.RECOGNITION_BIG_MAX_MB || 2048);
+      if (process.env.RECOGNITION_LANES_ENABLED !== "true" || params.recognitionLane === "big" || params.fallbackUsed ||
+        engineResourceError(error)?.code !== "ENGINE_MEMORY_PRESSURE" || isScoreJobCancelled(job.id) ||
+        (params.memoryAssessment?.estimatedMemoryMb ?? 1024) > capacity) throw error;
+      // Same business job and credit reservation; no failed transition, new
+      // purchase or retry factory. The old engine/lease has fully exited here.
+      const current = db.prepare("SELECT params_json FROM score_jobs WHERE id = ? AND status = 'processing'").get(job.id) as {params_json:string|null}|undefined;
+      if (!current) throw error;
+      const latest = current.params_json ? JSON.parse(current.params_json) : {};
+      if (latest.fallbackUsed) throw error;
+      const escalated = { ...latest, fallbackUsed: true, recognitionLane: "big" };
+      const changed = db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ? AND status = 'processing' AND params_json = ?")
+        .run(JSON.stringify(escalated), job.id, current.params_json);
+      if (changed.changes !== 1) throw error;
+      await execute(escalated);
+    }
+  } finally { progress.stop(); }
 }
 
-async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: ReturnType<typeof createOmrProgressReporter>) {
+async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: ReturnType<typeof createOmrProgressReporter>, rasterBudget: ReturnType<typeof createRasterEnhancementBudget>, executionDeadline: number) {
   if (!job.document_id || !job.input_file_id) {
     markScoreJobFailed(job.id, "OMR job is missing its score document or input file.");
     return;
   }
 
-  const jobDir = path.join(workerConfig.storageDir, job.user_id, "scores", "omr-jobs", job.id);
-  const params = job.params_json ? JSON.parse(job.params_json) as { recognitionMode?: "simple" | "complex" } : {};
+  const params = job.params_json ? JSON.parse(job.params_json) as { recognitionMode?: "simple" | "complex"; recognitionLane?:"normal"|"big"; fallbackUsed?:boolean; photoCorners?:Array<{x:number;y:number}>; sourceOrientations?:Record<string,0|90|180|270>; creditCost?:number } : {};
+  const jobDir = path.join(workerConfig.storageDir, job.user_id, "scores", "omr-jobs", job.id, params.fallbackUsed ? "big-fallback" : "initial");
   const recognitionMode = params.recognitionMode === "complex" ? "complex" : "simple";
+  const remainingExecutionMs = () => { const remaining=executionDeadline-Date.now(); if(remaining<=0)throw new AudiverisProcessError("Recognition exceeded its one-shot execution budget.","timeout"); return remaining; };
+  const maxHeapMb=recognitionLaneResourcePolicy({lane:params.recognitionLane==="big"?"big":"normal",normalHeapMb:workerConfig.audiverisMaxHeapMb}).heapMb;
   const storedInputFile = findInputFile(job.input_file_id);
   progress.report({ stage: "fetch-source" });
   let inputFile: FileRow;
@@ -3014,6 +3060,14 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
     maxPagePixels: workerConfig.omrPdfMaxPagePixels,
     maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
   });
+  const enhancement = {
+    enabled: process.env.RASTER_ENHANCEMENT_ENABLED === "true" || Boolean(params.photoCorners?.length),
+    lane: params.recognitionLane === "big" ? "big" as const : "normal" as const,
+    pythonCommand: workerConfig.homrPythonCommand,
+    pythonScriptPath: process.env.RASTER_ENHANCEMENT_SCRIPT || path.join(path.dirname(workerConfig.complexOmrAdapterPath), "raster_enhancement.py"),
+    maxPixels: workerConfig.omrPdfMaxPagePixels, photoCorners: params.photoCorners, pageRotations:params.sourceOrientations,
+    budget: rasterBudget.sourcePageCount === (pdfPlan?.pageCount ?? 1) ? rasterBudget : Object.assign(rasterBudget, createRasterEnhancementBudget(pdfPlan?.pageCount ?? 1)),
+  };
 
   if (!workerConfig.audiverisCommand) {
     const message = "AUDIVERIS_COMMAND is not configured. Install Audiveris and set AUDIVERIS_COMMAND so omr_import jobs can produce MusicXML.";
@@ -3054,7 +3108,7 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
         pythonCommand: workerConfig.homrPythonCommand,
         adapterPath: workerConfig.complexOmrAdapterPath,
         homrSourceDir: workerConfig.homrSourceDir,
-        timeoutMs: workerConfig.complexOmrTimeoutMs,
+        timeoutMs: remainingExecutionMs(),
         attemptTimeoutMs: workerConfig.complexOmrAttemptTimeoutMs,
         maxGroupAttempts: workerConfig.complexOmrMaxGroupAttempts,
         renderPlan: pdfPlan?.pages,
@@ -3062,7 +3116,7 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
         dpi: workerConfig.omrPdfRasterDpi,
         maxPagePixels: workerConfig.omrPdfMaxPagePixels,
         maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
-        audiveris: { command: workerConfig.audiverisCommand, maxHeapMb: workerConfig.audiverisMaxHeapMb },
+        audiveris: { command: workerConfig.audiverisCommand, maxHeapMb, enhancement:{...enhancement,pageRotations:undefined,rotationDegrees:0} },
         isCancelled: () => isScoreJobCancelled(job.id),
         onProgress: (update) => { if (update.stage) progress.report({ stage: update.stage, page: update.page, totalPages: update.totalPages }); insertOmrDiagnostic({
           jobId: job.id,
@@ -3076,8 +3130,8 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
         inputPath: inputFile.storage_path, outputDir: path.join(jobDir, "pdf-output"),
         pythonCommand: workerConfig.homrPythonCommand, adapterPath: workerConfig.complexOmrAdapterPath, homrSourceDir: workerConfig.homrSourceDir,
         renderPlan: pdfPlan.pages, dpi: workerConfig.omrPdfRasterDpi, maxPagePixels: workerConfig.omrPdfMaxPagePixels, maxTotalPixels: workerConfig.omrPdfMaxTotalPixels,
-        timeoutMs: workerConfig.audiverisTimeoutMs, imageMagickCommand: workerConfig.audiverisImageMagickCommand,
-        audiveris: { command: workerConfig.audiverisCommand, maxHeapMb: workerConfig.audiverisMaxHeapMb },
+        timeoutMs: remainingExecutionMs(), imageMagickCommand: workerConfig.audiverisImageMagickCommand,
+        audiveris: { command: workerConfig.audiverisCommand, maxHeapMb, enhancement },
         isCancelled: () => isScoreJobCancelled(job.id),
         onProgress: update => progress.report(update),
       });
@@ -3088,8 +3142,9 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
       imageMagickCommand: workerConfig.audiverisImageMagickCommand,
       inputPath: inputFile.storage_path,
       outputDir,
-      timeoutMs: workerConfig.audiverisTimeoutMs,
-      maxHeapMb: workerConfig.audiverisMaxHeapMb,
+      timeoutMs: remainingExecutionMs(),
+      maxHeapMb,
+      enhancement,
       onProgress: stage => progress.report({ stage, totalPages: 1, page: 1 }),
       isCancelled: () => isScoreJobCancelled(job.id),
       });
@@ -3145,141 +3200,108 @@ async function processScoreOmrJobWithProgress(job: ScoreJobRow, progress: Return
   }
   const recognizedOutputDir = audiverisResult.recognitionOutputDir ?? outputDir;
   const outputSelection = { rotationDegrees: audiverisResult.recognitionOutputDir ? 0 as const : audiverisResult.appliedRotationDegrees };
-  let musicXmlPath: string | undefined;
-  let omrProjectPath: string | undefined;
-  let musicXml: string;
-  try {
-    musicXmlPath = complexResult?.musicXmlPath ?? simplePdfResult?.musicXmlPath ?? findAudiverisMusicXmlOutput(recognizedOutputDir, outputSelection);
-    omrProjectPath = complexResult || simplePdfResult ? undefined : findAudiverisProjectOutput(recognizedOutputDir, outputSelection);
-    musicXml = complexResult?.musicXml ?? simplePdfResult?.musicXml ?? (musicXmlPath ? readAudiverisMusicXml(musicXmlPath) : "");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Audiveris output could not be selected.";
-    insertOmrDiagnostic({
-      jobId: job.id,
-      documentId: job.document_id,
-      diagnostics: {
-        status: "failed",
-        engine: "audiveris",
-        message,
-        rotationDegrees: audiverisResult.appliedRotationDegrees,
-        stdout: audiverisResult.stdout.slice(-4000),
-        stderr: audiverisResult.stderr.slice(-4000),
-      },
-    });
-    markScoreJobFailed(job.id, message);
-    return;
+  const candidates: OmrRecognitionCandidate[] = [...(complexResult?.candidates ?? simplePdfResult?.candidates ?? [])];
+  const primaryPath=complexResult?.musicXmlPath??simplePdfResult?.musicXmlPath;
+  if(primaryPath)candidates.sort((a,b)=>Number(b.musicXmlPath===primaryPath)-Number(a.musicXmlPath===primaryPath));
+  const projectPaths: string[] = [...(complexResult?.projectPaths ?? simplePdfResult?.projectPaths ?? [])];
+  const candidateWarnings: string[] = [];
+  if (!complexResult && !simplePdfResult) {
+    const directories = [...new Set([recognizedOutputDir, ...(audiverisResult.enhancement?.variants.filter(v => v.status === "succeeded").map(v => v.outputDir) ?? [])])];
+    for (const directory of directories) {
+      const selection = directory === recognizedOutputDir ? outputSelection : {rotationDegrees:0 as const};
+      projectPaths.push(...enumerateAudiverisProjectOutputs(directory, selection));
+      for (const exported of enumerateAudiverisMusicXmlOutputs(directory, selection)) {
+        try {
+          for (const candidate of readAudiverisMusicXmlCandidates(exported)) {
+            candidates.push({id:crypto.randomUUID(),musicXmlPath:exported,musicXml:candidate.musicXml,
+              sourcePages:[1],originalTitle:musicXmlMovementTitle(candidate.musicXml),relationship:"original"});
+          }
+        } catch { candidateWarnings.push("An additional engine output could not be parsed. The other readable results are retained."); }
+      }
+    }
   }
-  if (!musicXmlPath) {
-    const message = "Audiveris finished but no .musicxml, .mxl, or .xml output was found.";
-    insertOmrDiagnostic({
-      jobId: job.id,
-      documentId: job.document_id,
-      diagnostics: {
-        status: "failed",
-        engine: "audiveris",
-        message,
-        stdout: audiverisResult.stdout.slice(-4000),
-        stderr: audiverisResult.stderr.slice(-4000),
-      },
-    });
-    markScoreJobFailed(job.id, message);
-    return;
-  }
-
-  const originalName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-${recognitionMode === "complex" ? "ensemble-candidate" : "audiveris"}.musicxml`;
+  if (!candidates.length) throw new Error("No readable staff notation was found. The file may contain only covers, very blurred symbols or unsupported notation. No recognition credits are charged.");
   progress.report({ stage: "save" });
-  const storedMusicXmlPath = path.join(jobDir, originalName);
-  fs.writeFileSync(storedMusicXmlPath, musicXml, "utf8");
-  const musicXmlFileId = await insertStoredFile({
-    userId: job.user_id,
-    originalName,
-    storagePath: storedMusicXmlPath,
-    mimeType: "application/vnd.recordare.musicxml+xml",
-    fileKind: "score_musicxml",
-  });
-
-  const structuralScoreJson = addStructuralOmrDiagnostics(parseAudiverisMusicXmlToScoreJson({
-    musicXml,
-    title: inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""),
-    sourceFileId: musicXmlFileId,
-    sourceOriginalName: originalName,
-    importedAt: nowIso(),
-  }));
-  if (simplePdfResult) structuralScoreJson.metadata.warnings.push(...simplePdfResult.issues.map(issue => `[${issue.kind}] ${issue.message}`));
-  const scoreJson = complexResult ? applyComplexCoverage(structuralScoreJson, complexResult) : omrProjectPath ? applyAudiverisOmrDiagnostics(structuralScoreJson, omrProjectPath) : structuralScoreJson;
-  let omrBundleFileId: string | null = null;
-  const omrPageImageFileIds: string[] = [];
-  if (complexResult || simplePdfResult) {
-    const sourcePagePaths = complexResult?.pageImagePaths ?? simplePdfResult!.pages.map(page => page.imagePath);
-    for (const [index, pageImagePath] of sourcePagePaths.entries()) {
-      const pageImageName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-source-page-${String(index + 1).padStart(3, "0")}.png`;
-      const pageImageFileId = await insertStoredFile({
-        userId: job.user_id,
-        originalName: pageImageName,
-        storagePath: pageImagePath,
-        mimeType: "image/png",
-        fileKind: "omr_page_image",
-      });
-      omrPageImageFileIds.push(pageImageFileId);
+  const manifestCandidates: import("@score/shared").RecognitionCandidate[] = [];
+  const resultAssets: Array<{fileId:string;assetKind:StoredFileKind;params?:Record<string,unknown>}> = [];
+  const rawOutputPaths=complexResult?.rawOutputPaths??simplePdfResult?.rawOutputPaths??candidates.map(candidate=>candidate.musicXmlPath);
+  const coreFileIds: string[] = [];
+  let scoreJson: ScoreJson | undefined;
+  let musicXmlFileId: string | undefined;
+  const seen = new Map<string,string>();
+  for (const candidate of candidates) {
+    const checksum = crypto.createHash("sha256").update(candidate.musicXml).digest("hex");
+    // Identical bytes share an object; every provenance/member remains listed.
+    let fileId=seen.get(checksum);
+    if (!fileId) {
+      try {
+        const candidatePath=path.join(jobDir,`${crypto.randomUUID()}.musicxml`);
+        fs.writeFileSync(candidatePath,candidate.musicXml,"utf8");
+        fileId=await insertStoredFile({userId:job.user_id,originalName:`recognition-result-${coreFileIds.length+1}.musicxml`,storagePath:candidatePath,
+          mimeType:"application/vnd.recordare.musicxml+xml",fileKind:"score_musicxml"});
+        seen.set(checksum,fileId);coreFileIds.push(fileId);
+      } catch {
+        candidateWarnings.push("One additional result could not be saved. Already saved editable results are retained and only delivered pages are charged.");
+        continue;
+      }
     }
-  }
-  if (complexResult) {
-    const bundle = new AdmZip();
-    for (const entry of complexEvidenceEntries(complexResult)) bundle.addFile(entry.name, entry.content);
-    const bundlePath = path.join(jobDir, "ensemble-evidence.zip");
-    bundle.writeZip(bundlePath);
-    omrBundleFileId = await insertStoredFile({
-      userId: job.user_id, originalName: "ensemble-evidence.zip", storagePath: bundlePath, mimeType: "application/zip", fileKind: "omr_bundle",
-    });
-  }
-  if (omrProjectPath) {
-    const omrBundleName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris.omr`;
-    const storedOmrPath = path.join(jobDir, omrBundleName);
-    fs.copyFileSync(omrProjectPath, storedOmrPath);
-    omrBundleFileId = await insertStoredFile({
-      userId: job.user_id,
-      originalName: omrBundleName,
-      storagePath: storedOmrPath,
-      mimeType: "application/zip",
-      fileKind: "omr_bundle",
-    });
-    const omrArchive = new AdmZip(omrProjectPath);
-    const pageEntries = omrArchive
-      .getEntries()
-      .map((entry) => ({ entry, match: /^sheet#(\d+)\/BINARY\.png$/i.exec(entry.entryName) }))
-      .filter((item): item is { entry: AdmZip.IZipEntry; match: RegExpExecArray } => Boolean(item.match))
-      .sort((left, right) => Number(left.match[1]) - Number(right.match[1]));
-    for (const { entry, match } of pageEntries) {
-      const pageImage = omrArchive.readFile(entry);
-      if (!pageImage) continue;
-      const pageNumber = Number(match[1]);
-      const pageImageName = `${sanitizeFilename(inputFile.original_name.replace(/\.(pdf|png|jpe?g|webp|tiff?)$/i, ""))}-audiveris-page-${String(pageNumber).padStart(3, "0")}.png`;
-      const pageImagePath = path.join(jobDir, pageImageName);
-      fs.writeFileSync(pageImagePath, pageImage);
-      const pageImageFileId = await insertStoredFile({
-        userId: job.user_id,
-        originalName: pageImageName,
-        storagePath: pageImagePath,
-        mimeType: "image/png",
-        fileKind: "omr_page_image",
-      });
-      omrPageImageFileIds.push(pageImageFileId);
+    let parsed:ScoreJson;
+    try { parsed=addStructuralOmrDiagnostics(parseAudiverisMusicXmlToScoreJson({musicXml:candidate.musicXml,
+      title:candidate.originalTitle || inputFile.original_name.replace(/\.[^.]+$/u,""),sourceFileId:fileId,sourceOriginalName:"recognition-result.musicxml",importedAt:nowIso()})); }
+    catch { candidateWarnings.push("A saved result cannot be opened in the editor. Other results remain available.");
+      resultAssets.push({fileId,assetKind:"score_musicxml",params:{candidateId:candidate.id,parseStatus:"unreadable"}});continue; }
+    if (!parsed.measures.some(measure=>measure.events.length)) {
+      resultAssets.push({fileId,assetKind:"score_musicxml",params:{candidateId:candidate.id,parseStatus:"empty"}});continue;
     }
+    const warnings=[...(candidate.warnings??[]),...candidateWarnings];
+    const item:import("@score/shared").RecognitionCandidate={id:candidate.id,title:candidate.originalTitle || parsed.title,
+      musicxmlFileId:fileId,sourcePages:candidate.sourcePages,relationship:candidate.relationship,
+      memberIds:candidate.memberIds,warnings,recommended:manifestCandidates.length===0};
+    manifestCandidates.push(item);
+    resultAssets.push({fileId,assetKind:"score_musicxml",params:{candidateId:item.id,sourcePages:item.sourcePages,scoreJson:parsed,
+      originalTitle:candidate.originalTitle,relationship:candidate.relationship,enhancement:candidate.enhancement ?? (audiverisResult.enhancement ? {
+        selectedVariantId:audiverisResult.enhancement.selectedVariantId,diagnostics:audiverisResult.enhancement.diagnostics,
+        variants:audiverisResult.enhancement.variants.map(({id,variant:{imagePath,...geometry},quality})=>({id,geometry,quality}))} : undefined)}});
+    if (!scoreJson) {scoreJson=parsed;musicXmlFileId=fileId;}
   }
-  const confidenceSummary = summarizeAudiverisConfidence(scoreJson);
-  const outputFileIds = [musicXmlFileId, ...(omrBundleFileId ? [omrBundleFileId] : []), ...omrPageImageFileIds];
-  const revisionId = commitOmrCandidate(db, {
-    jobId: job.id,
-    documentId: job.document_id,
-    scoreJson,
-    musicXmlFileId,
-    outputFileIds,
-    assets: [
-      { fileId: musicXmlFileId, assetKind: "score_musicxml" },
-      ...(omrBundleFileId ? [{ fileId: omrBundleFileId, assetKind: "omr_bundle" as const }] : []),
-      ...omrPageImageFileIds.map((fileId) => ({ fileId, assetKind: "omr_page_image" as const })),
-    ],
-  });
+  if (!scoreJson || !musicXmlFileId) throw new Error("The recognizer could not produce an editable score. The original is retained and processing credits are released.");
+  scoreJson.metadata.warnings.push(...candidateWarnings);
+  for(const item of manifestCandidates)item.warnings=[...new Set([...(item.warnings??[]),...candidateWarnings])];
+  for(const [index,rawPath] of [...new Set(rawOutputPaths)].entries()) {
+    try {const rawChecksum=crypto.createHash("sha256").update(fs.readFileSync(rawPath)).digest("hex");
+      const rawId=seen.get(rawChecksum)??await insertStoredFile({userId:job.user_id,originalName:`engine-original-${index+1}${path.extname(rawPath)}`,storagePath:rawPath,
+      mimeType:/\.mxl$/iu.test(rawPath)?"application/vnd.recordare.musicxml":"application/vnd.recordare.musicxml+xml",fileKind:"score_musicxml"});
+      resultAssets.push({fileId:rawId,assetKind:"score_musicxml",params:{originalEngineOutput:true}});
+    } catch {candidateWarnings.push("One original engine output could not be retained. Its readable score alternatives are still available.");}
+  }
+  if (simplePdfResult) scoreJson.metadata.warnings.push(...simplePdfResult.issues.map(issue=>`[${issue.kind}] ${issue.message}`));
+  if (complexResult) scoreJson=applyComplexCoverage(scoreJson,complexResult);
+  // Auxiliary evidence is best effort. A corrupt OMR/thumbnail must never erase
+  // reliably stored musical results. Binary previews retain their own geometry.
+  let omrBundleFileId:string|null=null;
+  const omrPageImageFileIds:string[]=[];
+  for(const project of [...new Set(projectPaths)]) {
+    try {
+      const fileId=await insertStoredFile({userId:job.user_id,originalName:`recognition-evidence-${crypto.randomUUID()}.omr`,storagePath:project,mimeType:"application/zip",fileKind:"omr_bundle"});
+      omrBundleFileId??=fileId;resultAssets.push({fileId,assetKind:"omr_bundle"});coreFileIds.push(fileId);
+      // Each MusicXML can only use diagnostics from a uniquely corresponding project.
+      if(projectPaths.length===1 && manifestCandidates.length===1)scoreJson=applyAudiverisOmrDiagnostics(scoreJson,project);
+    } catch {scoreJson.metadata.warnings.push("Original-image symbol locations are unavailable for this result.");}
+  }
+  const pagePaths=complexResult?.pageImagePaths??simplePdfResult?.pages.map(p=>p.imagePath)??[];
+  for(const [index,pagePath] of pagePaths.entries()) {
+    try {const fileId=await insertStoredFile({userId:job.user_id,originalName:`source-page-${index+1}.png`,storagePath:pagePath,mimeType:"image/png",fileKind:"omr_page_image"});
+      omrPageImageFileIds.push(fileId);resultAssets.push({fileId,assetKind:"omr_page_image"});}
+    catch {scoreJson.metadata.warnings.push(`Source page ${index+1} preview is unavailable; its recognized music is retained.`);}
+  }
+  const deliveredPages=[...new Set(manifestCandidates.flatMap(candidate=>candidate.sourcePages))].sort((a,b)=>a-b);
+  const sourcePageCount=pdfPlan?.pageCount??complexResult?.coverage.sourcePageCount??1;
+  const resultManifest:import("@score/shared").RecognitionResultManifest={version:1,jobId:job.id,documentId:job.document_id,
+    sourcePageCount,deliveredPages,candidates:manifestCandidates,selectedCandidateId:manifestCandidates[0]?.id};
+  const confidenceSummary=summarizeAudiverisConfidence(scoreJson);
+  const outputFileIds=[...new Set([...coreFileIds,...resultAssets.map(asset=>asset.fileId),...omrPageImageFileIds])];
+  const revisionId=commitOmrCandidate(db,{jobId:job.id,documentId:job.document_id,scoreJson,musicXmlFileId,outputFileIds,
+    assets:resultAssets,resultManifest,creditSettlement:{quotedCredits:params.creditCost??(recognitionMode==="complex"?5:1),sourcePageCount,deliveredPages}});
   if (!revisionId) {
     insertOmrDiagnostic({
       jobId: job.id,

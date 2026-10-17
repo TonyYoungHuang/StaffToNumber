@@ -2,20 +2,25 @@ import fs from "node:fs";
 import path from "node:path";
 import type { PdfRasterPageEstimate } from "@score/shared";
 import { AudiverisProcessError, AudiverisRecognitionError, runAudiverisWithRotationFallback, type AudiverisRunResult } from "./audiveris-runner.js";
-import { findAudiverisMusicXmlOutput, readAudiverisMusicXml } from "./audiveris-output.js";
+import { enumerateAudiverisMusicXmlOutputs, enumerateAudiverisProjectOutputs, readAudiverisMusicXmlCandidates, musicXmlMovementTitle, normalizeMovementTitle, type OmrRecognitionCandidate } from "./audiveris-output.js";
 import { runComplexAdapter, type ComplexOmrInput } from "./complex-omr.js";
+import { engineResourceError } from "./engine-resource-error.js";
 
 type AdapterInput = Pick<ComplexOmrInput, "pythonCommand" | "adapterPath" | "homrSourceDir" | "outputDir" | "isCancelled" | "onQueueWait">;
 type Page = { page: number; imagePath: string; width: number; height: number; renderDpi: number };
-type SkippedPage = { page: number; reason: "NO_MUSIC_RECOGNIZED" };
+type SkippedPage = { page: number; reason: "NO_MUSIC_RECOGNIZED" | "RESOURCE_BUDGET_EXHAUSTED" };
 export type SimplePdfResult = AudiverisRunResult & {
   musicXml: string; musicXmlPath: string; pages: Page[]; issues: Array<{ kind: string; message: string }>;
   recognizedPages: number[]; skippedPages: SkippedPage[];
+  candidates: OmrRecognitionCandidate[];
+  projectPaths: string[];
+  rawOutputPaths: string[];
+  rawOutputWarnings: Array<{ outputPath: string; message: string }>;
 };
 
 export class SimplePdfOmrFailure extends Error {
   constructor(readonly skippedPages: SkippedPage[]) {
-    super("No music could be recognized on any PDF page. The original PDF is retained; check the score and retry recognition.");
+    super("No readable staff notation was found. This file may contain covers, very blurred pages or notation this recognizer cannot read. The original is retained and no recognition credits are charged.");
     this.name = "SimplePdfOmrFailure";
   }
 }
@@ -52,6 +57,11 @@ export async function runSimplePdfOmr(input: AdapterInput & {
     throw new Error("PDF renderer did not preserve the admitted page plan.");
   }
   const chunks = [];
+  const candidates: OmrRecognitionCandidate[] = [];
+  const projectPaths: string[] = [];
+  const rawOutputPaths: string[] = [];
+  const rawOutputWarnings: SimplePdfResult["rawOutputWarnings"] = [];
+  const outputIssues: SimplePdfResult["issues"] = [];
   const skippedPages: SkippedPage[] = [];
   const recognize = input.recognize ?? runAudiverisWithRotationFallback;
   for (const page of prepared.pages) {
@@ -60,34 +70,82 @@ export async function runSimplePdfOmr(input: AdapterInput & {
     fs.mkdirSync(outputDir, { recursive: true });
     let result: AudiverisRunResult;
     try {
-      result = await recognize({ ...input.audiveris, inputPath: page.imagePath, outputDir,
+      result = await recognize({ ...input.audiveris,
+        ...(input.audiveris.enhancement ? { enhancement: { ...input.audiveris.enhancement, pageNumber: page.page } } : {}), inputPath: page.imagePath, outputDir,
         imageMagickCommand: input.imageMagickCommand, timeoutMs: remaining(), isCancelled: input.isCancelled, onQueueWait,
         onProgress: stage => input.onProgress?.({ stage, page: page.page, totalPages: prepared.sourcePageCount }) });
     } catch (error) {
+      if (candidates.length && (engineResourceError(error) || (error instanceof AudiverisProcessError && error.reason === "timeout"))) {
+        for (const remainingPage of prepared.pages.filter(candidate => candidate.page >= page.page)) skippedPages.push({ page: remainingPage.page, reason: "RESOURCE_BUDGET_EXHAUSTED" });
+        outputIssues.push({ kind: "partial-delivery", message: "Recognition reached its processing budget. Earlier readable pages are retained and only delivered pages are charged." });
+        break;
+      }
       if (!(error instanceof AudiverisRecognitionError)) throw error;
       skippedPages.push({ page: page.page, reason: "NO_MUSIC_RECOGNIZED" });
       continue;
     }
-    const selected = findAudiverisMusicXmlOutput(result.recognitionOutputDir ?? outputDir,
-      { rotationDegrees: result.recognitionOutputDir ? 0 : result.appliedRotationDegrees });
-    const musicXml = selected ? readAudiverisMusicXml(selected) : "";
-    if (!/<note\b/u.test(musicXml)) {
+    const selectedDir = result.recognitionOutputDir ?? outputDir;
+    const directories = [...new Set([selectedDir, ...(result.enhancement?.variants.filter(variant => variant.status === "succeeded").map(variant => variant.outputDir) ?? [])])];
+    const pageCandidates: OmrRecognitionCandidate[] = [];
+    for (const directory of directories) {
+      projectPaths.push(...enumerateAudiverisProjectOutputs(directory, { rotationDegrees: directory === outputDir ? result.appliedRotationDegrees : 0 }));
+      const enhancement = result.enhancement?.variants.find(variant => variant.outputDir === directory);
+      const geometry = enhancement ? (({ imagePath: _path, ...value }) => value)(enhancement.variant) : undefined;
+      for (const exported of enumerateAudiverisMusicXmlOutputs(directory, { rotationDegrees: directory === outputDir ? result.appliedRotationDegrees : 0 })) {
+        rawOutputPaths.push(exported);
+        try {
+          for (const score of readAudiverisMusicXmlCandidates(exported)) {
+            if (!/<note\b/u.test(score.musicXml)) continue;
+            const id = `page-${page.page}-result-${pageCandidates.length + 1}`;
+            const musicXmlPath = path.join(outputDir, `${id}.musicxml`);
+            fs.writeFileSync(musicXmlPath, score.musicXml, "utf8");
+            const originalTitle = musicXmlMovementTitle(score.musicXml);
+            pageCandidates.push({ id, musicXmlPath, musicXml: score.musicXml, sourcePages: [page.page], originalTitle,
+              normalizedTitle: originalTitle ? normalizeMovementTitle(originalTitle) : undefined, relationship: "original",
+              ...(enhancement ? { enhancement: { variantId: enhancement.id, geometry, quality: enhancement.quality } } : {}) });
+          }
+        } catch (error) {
+          const message = `One result on page ${page.page} could not be read; other results are retained.`;
+          rawOutputWarnings.push({ outputPath: exported, message });
+          outputIssues.push({ kind: "unreadable-result", message });
+        }
+      }
+    }
+    if (!pageCandidates.length) {
       skippedPages.push({ page: page.page, reason: "NO_MUSIC_RECOGNIZED" });
       continue;
     }
-    const musicXmlPath = path.join(outputDir, "candidate.musicxml");
-    fs.writeFileSync(musicXmlPath, musicXml, "utf8");
-    chunks.push({ page: page.page, systemOrder: 0, scope: "page", musicXmlPath });
+    candidates.push(...pageCandidates);
+    // Same-page alternatives are never concatenated. First successful variant
+    // of each distinct piece participates in automatic assembly.
+    const titles = new Set<string>();
+    for (const candidate of pageCandidates) {
+      const key = candidate.normalizedTitle ?? "untitled";
+      if (titles.has(key)) continue;
+      titles.add(key);
+      chunks.push({ page: page.page, systemOrder: 0, scope: "page", musicXmlPath: candidate.musicXmlPath });
+    }
   }
-  remaining();
   if (!chunks.length) throw new SimplePdfOmrFailure(skippedPages);
   input.onProgress?.({ stage: "verify", totalPages: prepared.sourcePageCount });
-  const merged = await call<{ musicXmlPath: string; issues: SimplePdfResult["issues"] }>("merge", {
-    chunks, outputPath: path.join(input.outputDir, "candidate.musicxml"),
-  }, remaining());
+  let merged: { musicXmlPath: string; issues: SimplePdfResult["issues"]; alternatives?: Array<{ musicXmlPath: string; sourcePages: number[]; memberPaths: string[] }> };
+  try {
+    merged = await call<typeof merged>("merge", { chunks, outputPath: path.join(input.outputDir, "candidate.musicxml") }, remaining());
+    for (const [index, assembled] of (merged.alternatives ?? [{ ...merged, sourcePages: [...new Set(chunks.map(chunk => chunk.page))], memberPaths: chunks.map(chunk => chunk.musicXmlPath) }]).entries()) {
+      const musicXml = fs.readFileSync(assembled.musicXmlPath, "utf8");
+      const originalTitle = musicXmlMovementTitle(musicXml);
+      candidates.push({ id: `assembled-${index + 1}`, musicXml, musicXmlPath: assembled.musicXmlPath, sourcePages: assembled.sourcePages,
+        originalTitle, normalizedTitle: originalTitle ? normalizeMovementTitle(originalTitle) : undefined, relationship: "assembled",
+        memberIds: candidates.filter(candidate => assembled.memberPaths.includes(candidate.musicXmlPath)).map(candidate => candidate.id) });
+    }
+  } catch (error) {
+    if (error instanceof AudiverisProcessError && error.reason === "cancelled") throw error;
+    merged = { musicXmlPath: candidates[0].musicXmlPath, issues: [{ kind: "assembly-unavailable", message: "Automatic assembly could not finish. All readable page results are available separately in this project." }] };
+  }
   return { musicXml: fs.readFileSync(merged.musicXmlPath, "utf8"), musicXmlPath: merged.musicXmlPath,
-    pages: prepared.pages, recognizedPages: chunks.map(chunk => chunk.page), skippedPages,
-    issues: [...merged.issues, ...skippedPages.map(({ page }) => ({ kind: "skipped-page",
-      message: `Source page ${page} was skipped because no music could be recognized. Review the original page; it may be a cover or require another recognition attempt.` }))],
+    pages: prepared.pages, recognizedPages: [...new Set(chunks.map(chunk => chunk.page))], skippedPages, candidates, projectPaths,
+    rawOutputPaths: [...new Set(rawOutputPaths)], rawOutputWarnings,
+    issues: [...outputIssues, ...merged.issues, ...skippedPages.map(({ page }) => ({ kind: "skipped-page",
+      message: `Source page ${page} has no readable music and is excluded from the delivered page count. It may be a cover, artwork or too blurred to read.` }))],
     stdout: "", stderr: "", appliedRotationDegrees: 0 };
 }

@@ -5,6 +5,7 @@ import test from "node:test";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import { PDFDocument } from "pdf-lib";
+import { settleRecognitionCredits } from "@score/runtime-database";
 import { config } from "../config.js";
 import { db, initDb } from "../db.js";
 import { createUser, createSession } from "../repositories/auth-repository.js";
@@ -124,6 +125,43 @@ test("retrying an old-month complex job reserves the original five credits in th
   assert.notEqual(retry.created_at, "2020-01-01T00:00:00.000Z");
   assert.equal((db.prepare("SELECT created_at FROM score_jobs WHERE id=?").get(complex.job!.id) as {created_at:string}).created_at, "2020-01-01T00:00:00.000Z");
   assert.equal(getPlanQuotaUsage(user.id).jobs.used, 5);
+});
+
+test("deliberate partial-result restart reserves the original quote and resets attempt results, settlement and fallback state", () => {
+  const { user, input } = fixture(true);
+  const original = createOmrImportScoreDocument({ ...input, recognitionMode: "complex", pageCount: 15 });
+  const jobId = original.job!.id;
+  db.prepare("UPDATE score_jobs SET status='processing' WHERE id=?").run(jobId);
+  settleRecognitionCredits(db, { jobId, quotedCredits: 5, sourcePageCount: 15, deliveredPages: 8 });
+  const settledParams = JSON.parse((db.prepare("SELECT params_json FROM score_jobs WHERE id=?").get(jobId) as { params_json: string }).params_json);
+  const memoryAssessment = { lane: "normal", sourcePageCount: 15, capacityVersion: "local-test" };
+  const photoCorners = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+  const oldParams = { ...settledParams, memoryAssessment, photoCorners, sourceOrientations: { "1": 90 }, recognitionLane: "big", fallbackUsed: true,
+    resultManifest: { candidates: [{ id: "old-result" }] }, resultOperations: { old: "revision" }, processingProgress: { stage: "completed" },
+    rasterBudget: { exhausted: true }, remainingExecutionBudget: 0, sourcePageCount: 15, deliveredPages: [1, 2] };
+  db.prepare("UPDATE score_jobs SET status='completed',params_json=? WHERE id=?").run(JSON.stringify(oldParams), jobId);
+  assert.equal(getPlanQuotaUsage(user.id).jobs.used, 2.6666);
+
+  const restarted = retryScoreJob({ userId: user.id, documentId: original.document!.id, jobId, restartRecognition: true })!;
+  assert.ok(restarted);
+  assert.notEqual(restarted.id, jobId);
+  const fresh = JSON.parse(restarted.params_json!);
+  assert.equal(fresh.creditCost, 5);
+  assert.equal(fresh.recoveryOfJobId, jobId);
+  assert.equal(fresh.recognitionLane, "normal");
+  assert.equal(fresh.fallbackUsed, false);
+  assert.deepEqual(fresh.memoryAssessment, memoryAssessment);
+  assert.deepEqual(fresh.photoCorners, photoCorners);
+  assert.deepEqual(fresh.sourceOrientations, { "1": 90 });
+  for (const key of ["creditSettlement", "settledCreditCost", "creditsReturned", "resultManifest", "resultOperations", "processingProgress", "rasterBudget", "remainingExecutionBudget", "sourcePageCount", "deliveredPages"])
+    assert.equal(Object.hasOwn(fresh, key), false, key);
+  assert.equal(getPlanQuotaUsage(user.id).jobs.used, 7.6666);
+  assert.deepEqual(JSON.parse((db.prepare("SELECT params_json FROM score_jobs WHERE id=?").get(jobId) as { params_json: string }).params_json), oldParams);
+
+  db.prepare("UPDATE score_jobs SET status='processing' WHERE id=?").run(restarted.id);
+  settleRecognitionCredits(db, { jobId: restarted.id, quotedCredits: 5, sourcePageCount: 15, deliveredPages: 15 });
+  db.prepare("UPDATE score_jobs SET status='completed' WHERE id=?").run(restarted.id);
+  assert.equal(getPlanQuotaUsage(user.id).jobs.used, 7.6666, "Each attempt keeps its own delivered charge");
 });
 
 test("HTTP quotes require login and multipart/query modes reject conflicts; client creditCost cannot discount complex", async () => {

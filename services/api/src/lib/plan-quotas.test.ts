@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { config } from "../config.js";
-import { assertAccountStorageQuota } from "@score/runtime-database";
+import { assertAccountStorageQuota, settleRecognitionCredits } from "@score/runtime-database";
 import { db, initDb } from "../db.js";
 import { processBillingWebhookEvent } from "../repositories/billing-repository.js";
 import {
@@ -18,6 +18,24 @@ function insertUser(id: string, email: string) {
     VALUES (?, ?, 'hash', 'salt', ?, ?, 'active')
   `).run(id, email, now, now);
 }
+
+test("monthly recognition usage settles to delivered pages and failed jobs release credit reservations", () => {
+  initDb();
+  const userId = `monthly-partial-${crypto.randomUUID()}`, jobId = crypto.randomUUID(), now = new Date().toISOString();
+  insertUser(userId, `${userId}@quota.test`);
+  db.prepare("INSERT INTO score_jobs (id,user_id,job_type,status,params_json,created_at,updated_at) VALUES (?,?,'omr_import','processing',?,?,?)")
+    .run(jobId, userId, JSON.stringify({ recognitionMode: "complex", creditCost: 5 }), now, now);
+  assert.equal(getPlanQuotaUsage(userId).monthly.used, 5);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    settleRecognitionCredits(db, { jobId, quotedCredits: 5, sourcePageCount: 10, deliveredPages: 8 });
+    db.prepare("UPDATE score_jobs SET status='completed' WHERE id=?").run(jobId);
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+  assert.equal(getPlanQuotaUsage(userId).monthly.used, 4);
+  db.prepare("UPDATE score_jobs SET status='failed' WHERE id=?").run(jobId);
+  assert.equal(getPlanQuotaUsage(userId).monthly.used, 0);
+});
 
 test("generated outputs and uploads share the free account storage boundary", () => {
   initDb();

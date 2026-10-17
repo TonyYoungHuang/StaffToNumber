@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { RecognitionPurchaseActions } from "@score/ui";
+import { useFlowMessages } from "../lib/flow-messages/client";
 import { useEffect, useRef, useState } from "react";
 import { SINGLE_SCORE_PASS, type CheckoutIntendedAction, type CheckoutReturnState } from "@score/shared";
 import { apiRequest } from "../lib/api";
@@ -23,6 +25,7 @@ type CheckoutPayload = { orderId: string; url: string; code?: string };
  */
 export function OneScorePassUpsell({
   source,
+  starterPrimary = false,
   returnTo,
   targetDocumentId,
   beforeCheckout,
@@ -31,6 +34,7 @@ export function OneScorePassUpsell({
   disabled = false,
 }: {
   source: string;
+  starterPrimary?: boolean;
   returnTo?: string;
   targetDocumentId?: string;
   /** Runs before checkout or plan navigation (e.g. persist an import draft). Return false to abort. */
@@ -43,6 +47,7 @@ export function OneScorePassUpsell({
   const signIn = useAppAuthModal();
   const { locale } = useAppLocale();
   const copy = getOneScoreUpsellCopy(locale);
+  const experience = useFlowMessages().recognitionExperience;
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
   const lock = useRef(false);
@@ -115,14 +120,14 @@ export function OneScorePassUpsell({
 
   const trackSubscription = () => trackFunnelEvent("upgrade_click", { source: `${source}_subscription`, plan_type: "subscription" });
   return <div className="stack-sm" data-checkout-control data-one-score-upsell={source}>
-    <div className="button-row">
+    {starterPrimary ? <RecognitionPurchaseActions messages={experience} disabled={busy || disabled || !checkoutAvailable} onStarter={() => { trackSubscription(); if (onSubscriptionClick) onSubscriptionClick(); else window.location.assign(`${upgradePath(next())}&plan=starter-monthly&billing=subscription${targetQuery}`); }} onPass={() => { void buyPass(); }} /> : <div className="button-row" data-upsell-primary="one_score">
       <button type="button" className="button button-primary" data-plan-type="one_score" disabled={busy || disabled || !checkoutAvailable} onClick={() => { void buyPass(); }}>
         {busy ? copy.loading : copy.passCta}
       </button>
       {onSubscriptionClick
         ? <button type="button" className="button button-secondary" data-plan-type="subscription" disabled={busy || disabled} onClick={() => { trackSubscription(); onSubscriptionClick(); }}>{copy.subscriptionCta}</button>
         : <Link href={`${upgradePath(next())}&plan=starter-monthly&billing=subscription${targetQuery}`} className="button button-secondary" data-plan-type="subscription" onClick={trackSubscription}>{copy.subscriptionCta}</Link>}
-    </div>
+    </div>}
     {showNote ? <p className="micro-copy">{copy.passNote}</p> : null}
     {!checkoutAvailable ? <p className="micro-copy" role="status">{copy.building}</p> : null}
     {status ? <p className={`form-status ${status.error ? "error" : "success"}`} role={status.error ? "alert" : "status"}>{status.text}</p> : null}

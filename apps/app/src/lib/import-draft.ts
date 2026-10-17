@@ -10,7 +10,7 @@ export function detectScoreImport(name: string): ImportKind | null {
   if (["wav", "mp3", "m4a", "aac", "flac", "ogg", "aif", "aiff"].includes(extension ?? "")) return "audio";
   return null;
 }
-export type ImportDraft = { ownerId: string; file: File | null; title: string; text: string; mode: "file" | "jianpu"; createdAt: number; intent?: ScoreTaskIntent };
+export type ImportDraft = { ownerId: string; file: File | null; title: string; text: string; mode: "file" | "jianpu"; createdAt: number; intent?: ScoreTaskIntent; photoCorners?: Array<{ x: number; y: number }> | null };
 /** Local-only draft key used before sign-in so #free-scan can resume after auth. */
 export const GUEST_IMPORT_OWNER_ID = "__guest__";
 async function draftStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {

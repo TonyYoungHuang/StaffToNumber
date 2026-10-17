@@ -12,7 +12,7 @@ export const PREPAID_TABLES_SQL = `
     job_family TEXT NOT NULL CHECK (job_family IN ('score', 'legacy')),
     job_id TEXT NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    credit_cost INTEGER NOT NULL CHECK (credit_cost > 0),
+    credit_cost NUMERIC NOT NULL CHECK (credit_cost > 0),
     status TEXT NOT NULL CHECK (status IN ('reserved', 'spent', 'released')),
     created_at TEXT NOT NULL,
     PRIMARY KEY (job_family, job_id)

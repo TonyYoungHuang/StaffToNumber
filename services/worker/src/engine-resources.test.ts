@@ -67,11 +67,11 @@ test("unreadable resource sensors end safely before launching an engine", async 
   (error: unknown) => error instanceof EngineResourceError && error.code === "ENGINE_RESOURCE_UNAVAILABLE");
 });
 
-test("spawn, JVM, Python and export allocation errors have one readable retry class", () => {
+test("spawn, JVM, Python and export allocation errors retain the source and release credits without retry instructions", () => {
   for (const value of ["spawn ENOMEM", "java.lang.OutOfMemoryError: Java heap space", "MemoryError", "std::bad_alloc", "Cannot allocate memory"]) {
     const error = engineResourceError(new Error(value));
     assert.equal(error?.code, "ENGINE_MEMORY_PRESSURE");
-    assert.match(workerFailureMessage(value), /original score is retained.*Retry/iu);
+    assert.match(workerFailureMessage(value), /original is retained.*credits are released/iu);
     assert.doesNotMatch(workerFailureMessage(value), /spawn ENOMEM/u);
   }
   assert.equal(engineResourceError("Audiveris exited with code 7: invalid score image"), undefined);

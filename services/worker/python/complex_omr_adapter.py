@@ -15,6 +15,7 @@ import math
 from pathlib import Path
 import re
 import sys
+import unicodedata
 import xml.etree.ElementTree as ET
 
 
@@ -534,6 +535,18 @@ def parse_xml(xml):
     if len(xml.encode("utf-8")) > 20 * 1024 * 1024 or "<!ENTITY" in xml.upper():
         raise ValueError("Unsafe or oversized MusicXML")
     root = ET.fromstring(xml, parser=ET.XMLParser(target=ET.TreeBuilder(insert_comments=True)))
+    if root.tag == "score-timewise":
+        converted = ET.Element("score-partwise", root.attrib)
+        converted.extend(copy.deepcopy(node) for node in root if node.tag != "measure")
+        parts = {}
+        for measure in root.findall("measure"):
+            for source_part in measure.findall("part"):
+                identifier = source_part.get("id", "")
+                if identifier not in parts:
+                    parts[identifier] = ET.SubElement(converted, "part", id=identifier)
+                target = ET.SubElement(parts[identifier], "measure", measure.attrib)
+                target.extend(copy.deepcopy(node) for node in source_part)
+        root = converted
     if root.tag != "score-partwise":
         raise ValueError("Complex assembly currently requires score-partwise MusicXML")
     return root
@@ -766,6 +779,12 @@ def normalize_xml(root):
     return issues
 
 
+def normalize_movement_title(title):
+    value = unicodedata.normalize("NFKC", title).casefold()
+    value = re.sub(r"(?:\s*[-–—]\s*\d+|\s*\(\s*\d+\s*\))\s*$", "", value)
+    return "".join(character for character in value if not character.isspace() and not unicodedata.category(character).startswith("P"))
+
+
 def merge(request):
     """Join sequential segments and simultaneous instrument-group segments.
 
@@ -774,7 +793,7 @@ def merge(request):
     recorded. Missing material produces a flagged silent forward, not a fake
     rest, note, or a claim of complete recognition.
     """
-    chunks = sorted(request["chunks"], key=lambda chunk: (chunk["page"], chunk["systemOrder"], chunk.get("groupOrdinal", -1)))
+    chunks = sorted(request["chunks"], key=lambda chunk: (chunk.get("order", chunk["page"]), chunk["systemOrder"], chunk.get("groupOrdinal", -1)))
     if not chunks:
         raise ValueError("No recognized regions are available for a candidate")
     sequences = {}
@@ -785,13 +804,24 @@ def merge(request):
         root = parse_xml(Path(chunk["musicXmlPath"]).read_text(encoding="utf-8"))
         normalization_issues.extend({**issue, "page": chunk["page"], "systemId": chunk.get("systemId"), "_sourceXmlPath": chunk["musicXmlPath"]} for issue in normalize_xml(root))
         facts = analyze_xml(ET.tostring(root, encoding="unicode"))
-        if facts["movementTitle"]:
-            movements.add(facts["movementTitle"])
-        key = (chunk["page"], chunk["systemOrder"])
+        title = facts["movementTitle"] or root.findtext("work/work-title", "")
+        if title:
+            movements.add(normalize_movement_title(title))
+        key = (chunk.get("order", chunk["page"]), chunk["page"], chunk["systemOrder"])
         parsed.append((chunk, root, facts))
         sequences.setdefault(key, []).append((chunk, root, facts))
-    if len(movements) > 1:
-        raise ValueError("MOVEMENT_AMBIGUOUS: different named movements must remain separate documents")
+    if len(movements) > 1 and not request.get("combineDifferentTitles"):
+        # Independent movements remain alternatives in the same project.
+        groups = {}
+        for chunk, root, facts in parsed:
+            key = normalize_movement_title(facts["movementTitle"] or root.findtext("work/work-title", ""))
+            groups.setdefault(key or f"untitled-{chunk['page']}", []).append(chunk)
+        output = Path(request["outputPath"])
+        alternatives = []
+        for index, (title_key, members) in enumerate(groups.items()):
+            piece = merge({**request, "chunks": members, "outputPath": str(output.with_name(f"{output.stem}-piece-{index + 1}{output.suffix}")), "combineDifferentTitles": True})
+            alternatives.append({**piece, "normalizedTitle": title_key, "sourcePages": sorted({chunk["page"] for chunk in members}), "memberPaths": [chunk["musicXmlPath"] for chunk in members]})
+        return {**alternatives[0], "alternatives": alternatives, "issues": [*alternatives[0]["issues"], {"kind": "independent-pieces", "message": "Different pieces are retained separately in this project; compare and choose a result."}]}
     merged = ET.Element("score-partwise", version=parsed[0][1].get("version", "4.0"))
     for node in parsed[0][1]:
         if node.tag not in ("part", "part-list"):
@@ -809,8 +839,11 @@ def merge(request):
     tracks = []
     slots = []
     issues = normalization_issues
+    original_titles = {facts["movementTitle"] or root.findtext("work/work-title", "") for _, root, facts in parsed}
+    if len(original_titles - {""}) > 1 and len(movements) <= 1:
+        issues.append({"kind": "title-format-normalized", "message": "Title formatting differs; segments were assembled in source order and all original titles remain in the source results."})
     last_layout = None
-    for (page, system_order), segment_chunks in sequences.items():
+    for (_, page, system_order), segment_chunks in sequences.items():
         entries = []
         for chunk, root, facts in segment_chunks:
             descriptor_map = {item.get("id"): item for item in root.findall("part-list/score-part")}

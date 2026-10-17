@@ -63,6 +63,15 @@ class StructurePreflightTest(unittest.TestCase):
         self.assertEqual(result["pages"][0]["maxStavesPerSystem"], 1)
         self.assertTrue(result["complete"])
 
+    def test_source_dimensions_survive_thumbnailing_for_memory_assessment(self):
+        image = sheet((1, 1)).resize((2400, 3000))
+        result = self.inspect(image, limits={"maxPagePixels": 1_000_000})
+        page = result["pages"][0]
+        self.assertEqual((page["sourceWidth"], page["sourceHeight"]), (2400, 3000))
+        self.assertLessEqual(page["width"] * page["height"], 1_000_000)
+        self.assertGreater(page["staffSpacing"], 15)
+        self.assertGreaterEqual(page["brightness"], 0)
+
     def test_ordinary_piano_grand_staff_is_simple(self):
         result = self.inspect(sheet((2, 2)))
         self.assertEqual(result["recommendation"], "simple")
@@ -149,6 +158,16 @@ class StructurePreflightTest(unittest.TestCase):
         self.assertEqual(result["pagesAnalyzed"], 1)
         self.assertFalse(result["complete"])
         self.assertIn("ANALYSIS_LIMIT_REACHED", result["reasonCodes"])
+
+    def test_long_pdf_samples_first_middle_last_and_largest_page(self):
+        filename = self.directory / "sampled.pdf"
+        images = [sheet((1,)) for _ in range(9)]
+        images[2] = sheet((1,)).resize((1000, 1200))
+        images[0].save(filename, format="PDF", save_all=True, append_images=images[1:], resolution=100)
+        result = self.inspect(name="sampled.pdf", limits={"maxPages": 4})
+        self.assertEqual([page["page"] for page in result["pages"]], [1, 3, 5, 9])
+        self.assertEqual(result["sourcePageCount"], 9)
+        self.assertFalse(result["complete"])
 
     def test_total_pixel_budget_has_explicit_partial_result(self):
         filename = self.directory / "frames.tiff"

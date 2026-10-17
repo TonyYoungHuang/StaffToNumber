@@ -70,3 +70,35 @@ test("isFreeSimpleScanPath requires ready simple free-trial quote", () => {
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: "complex", simpleQuote: quote, preflight: ready }), false);
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: false, selectedMode: "simple", simpleQuote: { ...quote, creditSource: "plan", canSubmit: false }, preflight: ready }), false);
 });
+
+import { selectRecognitionCandidate, recognitionSettlementNumbers } from './recognition-candidates';
+
+test('large-score free offers cannot start; eligible paid quotes use the same recognition mode', () => {
+  const memoryAssessment = { version: 1 as const, capacityVersion: 'cx33-test', lane: 'big' as const, estimatedMemoryMb: 3072, reasonCodes: ['DENSE_LAYOUT'], waitEstimateSeconds: [60, 120] as [number, number], sourcePageCount: 1, maxPagePixels: 8_000_000, enabled: true };
+  const preflight = { status: 'ready' as const, file, result: { ...result, memoryAssessment }, ...staged };
+  const input = { file, preflight, selectedMode: 'simple' as const, quote: { ...quote, creditSource: 'free_trial' as const }, quoteLoading: false, quoteError: null };
+  assert.equal(canConfirmScoreRecognition(input), false);
+  assert.equal(canConfirmScoreRecognition({ ...input, quote }), true);
+  assert.equal(canConfirmScoreRecognition({ ...input, quote: { ...quote, creditSource: 'score_pass' } }), true);
+  assert.equal(canConfirmScoreRecognition({ ...input, preflight: { ...preflight, result: { ...preflight.result, memoryAssessment: { ...memoryAssessment, lane: 'unsupported' } } }, quote }), false);
+  assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: 'simple', simpleQuote: input.quote, preflight }), false);
+  const complex = { ...input, selectedMode: 'complex' as const, quote: { ...input.quote, mode: 'complex' as const }, preflight: { ...preflight, result: { ...preflight.result, memoryAssessment: { ...memoryAssessment, lane: 'normal' as const } } } };
+  assert.equal(canConfirmScoreRecognition(complex), false);
+  assert.equal(canConfirmScoreRecognition({ ...complex, quote: { ...complex.quote, creditSource: 'plan' } }), true);
+});
+
+test('page selection keeps one interpretation per source page and preserves explicit ordering', () => {
+  const candidates = [{ id: 'page1-a', sourcePages: [1] }, { id: 'page1-b', sourcePages: [1] }, { id: 'page2', sourcePages: [2] }, { id: 'assembled', sourcePages: [1, 2] }];
+  assert.deepEqual(selectRecognitionCandidate(['page2', 'page1-a'], candidates[1]!, candidates), ['page2', 'page1-b']);
+  assert.deepEqual(selectRecognitionCandidate(['page1-a', 'page2'], candidates[3]!, candidates), ['assembled']);
+  assert.deepEqual(selectRecognitionCandidate(['page2'], candidates[2]!, candidates), []);
+  assert.deepEqual(selectRecognitionCandidate(['page1-a'], candidates[1]!, candidates, 'parallel'), ['page1-a', 'page1-b']);
+  const pieces = [{ id: 'first', sourcePages: [1], title: 'First song' }, { id: 'second', sourcePages: [1], title: 'Second song' }, { id: 'first-copy', sourcePages: [1], title: 'ＦＩＲＳＴ　ＳＯＮＧ - 1' }];
+  assert.deepEqual(selectRecognitionCandidate(['first'], pieces[1]!, pieces), ['first', 'second']);
+  assert.deepEqual(selectRecognitionCandidate(['first', 'second'], pieces[2]!, pieces), ['second', 'first-copy']);
+});
+
+test('partial-delivery credit display retains fractional charges and credit-only returns', () => {
+  assert.deepEqual(recognitionSettlementNumbers({ quotedCredits: 5, settledCreditCost: 4, creditsReturned: 1, refundMethod: 'credits-only' }, 'en'), { charged: '4', returned: '1', quoted: '5' });
+  assert.deepEqual(recognitionSettlementNumbers({ quotedCredits: 1, settledCreditCost: .6667, creditsReturned: .3333, refundMethod: 'credits-only' }, 'en'), { charged: '0.6667', returned: '0.3333', quoted: '1' });
+});

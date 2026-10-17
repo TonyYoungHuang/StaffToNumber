@@ -20,7 +20,7 @@ function candidateDatabase(jobStatus: "processing" | "cancelled") {
     CREATE TABLE score_jobs (
       id TEXT PRIMARY KEY, status TEXT NOT NULL, result_revision_id TEXT,
       output_file_ids_json TEXT, error_message TEXT, progress_percent INTEGER,
-      updated_at TEXT, completed_at TEXT
+      updated_at TEXT, completed_at TEXT, params_json TEXT
     );
     CREATE TABLE score_documents (
       id TEXT PRIMARY KEY, pending_revision_id TEXT, status TEXT NOT NULL, updated_at TEXT
@@ -32,7 +32,7 @@ function candidateDatabase(jobStatus: "processing" | "cancelled") {
     );
     CREATE TABLE score_assets (
       id TEXT PRIMARY KEY, document_id TEXT NOT NULL, file_id TEXT NOT NULL,
-      asset_kind TEXT NOT NULL, created_at TEXT NOT NULL
+      asset_kind TEXT NOT NULL, created_at TEXT NOT NULL, params_json TEXT, revision_id TEXT
     );
   `);
   db.prepare("INSERT INTO score_jobs (id, status, progress_percent) VALUES ('job-1', ?, 1)").run(jobStatus);
@@ -97,5 +97,40 @@ test("can join a caller-managed transaction without committing it", () => {
   db.exec("ROLLBACK");
   assert.equal((db.prepare("SELECT COUNT(*) AS count FROM score_revisions").get() as { count: number }).count, 0);
   assert.equal((db.prepare("SELECT status FROM score_jobs WHERE id = 'job-1'").get() as { status: string }).status, "processing");
+  db.close();
+});
+
+test("publishes one result manifest atomically while preserving admission and billing params", () => {
+  const db = candidateDatabase("processing");
+  db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = 'job-1'").run(JSON.stringify({ recognitionMode: "complex", creditSource: "prepaid", creditCost: 5, recoveryOfJobId: "original-job" }));
+  const manifest = { schemaVersion: 1, manifestVersion: 1, selectedCandidateId: "piece-1", candidates: [{ id: "piece-1", fileId: "musicxml-1" }, { id: "piece-2", fileId: "musicxml-2" }] };
+  assert.ok(commitOmrCandidate(db, { jobId: "job-1", documentId: "document-1", scoreJson: score, musicXmlFileId: "musicxml-1",
+    outputFileIds: ["musicxml-1", "musicxml-2"], assets: [{ fileId: "musicxml-1", assetKind: "score_musicxml", params: { candidateId: "piece-1" } },
+      { fileId: "musicxml-2", assetKind: "score_musicxml", params: { candidateId: "piece-2" } }], resultManifest: manifest,
+    paramsPatch: { deliveredPages: 8, sourcePageCount: 10 } }));
+  const job = db.prepare("SELECT params_json, output_file_ids_json FROM score_jobs WHERE id = 'job-1'").get() as { params_json: string; output_file_ids_json: string };
+  const params = JSON.parse(job.params_json);
+  assert.equal(params.creditCost, 5);
+  assert.equal(params.creditSource, "prepaid");
+  assert.equal(params.recoveryOfJobId, "original-job");
+  assert.deepEqual(params.resultManifest, manifest);
+  assert.equal(params.deliveredPages, 8);
+  assert.deepEqual(JSON.parse(job.output_file_ids_json), ["musicxml-1", "musicxml-2"]);
+  assert.equal((db.prepare("SELECT COUNT(*) AS count FROM score_revisions").get() as { count: number }).count, 1);
+  const assets = db.prepare("SELECT params_json, revision_id FROM score_assets ORDER BY file_id").all() as Array<{ params_json: string; revision_id: string | null }>;
+  assert.deepEqual(assets.map(asset => JSON.parse(asset.params_json).candidateId), ["piece-1", "piece-2"]);
+  assert.ok(assets.every(asset => asset.revision_id === null));
+  db.close();
+});
+
+test("identical candidate bytes share a file while each asset keeps its own source metadata", () => {
+  const db = candidateDatabase("processing");
+  assert.ok(commitOmrCandidate(db, { jobId: "job-1", documentId: "document-1", scoreJson: score, musicXmlFileId: "same-file",
+    outputFileIds: ["same-file"], assets: [
+      { fileId: "same-file", assetKind: "score_musicxml", params: { candidateId: "original", sourcePages: [1] } },
+      { fileId: "same-file", assetKind: "score_musicxml", params: { candidateId: "assembled", memberIds: ["original"] } },
+    ] }));
+  const assets = db.prepare("SELECT params_json FROM score_assets").all() as Array<{ params_json: string }>;
+  assert.deepEqual(assets.map(asset => JSON.parse(asset.params_json).candidateId).sort(), ["assembled", "original"]);
   db.close();
 });

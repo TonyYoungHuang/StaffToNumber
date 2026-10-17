@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import type { ScoreStructurePreflight } from "@score/shared";
 import { config } from "../config.js";
+import { acquireNativeMemoryAdmission } from "./native-memory-admission.js";
 
 export class ScorePreflightError extends Error {
   constructor(readonly code: "SCORE_PREFLIGHT_BUSY" | "SCORE_PREFLIGHT_RATE_LIMIT" | "SCORE_PREFLIGHT_UNAVAILABLE" | "SCORE_PREFLIGHT_TIMEOUT" | "SCORE_PREFLIGHT_INVALID_SOURCE" | "SCORE_PREFLIGHT_FAILED", message: string, readonly statusCode: number) {
@@ -82,7 +83,7 @@ export class ScorePreflightQueue {
 }
 
 const preflightQueue = new ScorePreflightQueue(() => ({
-  maxConcurrency: config.scorePreflightMaxConcurrency,
+  maxConcurrency: process.env.RECOGNITION_LANES_ENABLED === "true" ? Math.min(1,config.scorePreflightMaxConcurrency) : config.scorePreflightMaxConcurrency,
   queueWaitMs: config.scorePreflightQueueWaitMs,
   requestsPerMinute: config.scorePreflightRequestsPerMinute,
 }));
@@ -116,8 +117,15 @@ function validateResult(value: unknown): ScoreStructurePreflight {
       page: page.page as number, staffCount: page.staffCount as number, systemCount: page.systemCount as number,
       maxStavesPerSystem: page.maxStavesPerSystem as number, hasTab: page.hasTab, uncertain: page.uncertain,
     };
-    for (const name of ["width", "height", "standardStaffCount", "tabStaffCount"] as const) {
+    for (const name of ["width", "height", "sourceWidth", "sourceHeight", "standardStaffCount", "tabStaffCount"] as const) {
       if (page[name] !== undefined) { if (!integer(page[name], 0, 100_000)) throw invalid(); result[name] = page[name] as number; }
+    }
+    for (const name of ["staffSpacing", "brightness", "blurVariance"] as const) {
+      if (page[name] === null && name === "staffSpacing") { result.staffSpacing = null; continue; }
+      if (page[name] !== undefined) {
+        if (typeof page[name] !== "number" || !Number.isFinite(page[name]) || page[name] < 0 || page[name] > 1e9) throw invalid();
+        result[name] = page[name];
+      }
     }
     if (page.rotation !== undefined) {
       if (page.rotation !== null && ![0, 90, 180, 270].includes(page.rotation as number)) throw invalid();
@@ -155,7 +163,8 @@ export async function runScoreStructurePreflight(input: { sourcePath: string; wo
     maxPagePixels: 1_000_000, maxTotalPixels: 30_000_000,
     maxPages: config.scorePreflightMaxPages, dpi: 100, budgetMs: Math.max(100, config.scorePreflightTimeoutMs - 1000),
   } }), { flag: "wx" });
-  await new Promise<void>((resolve, reject) => {
+  const releaseMemory = await acquireNativeMemoryAdmission({memoryMb:256,signal:input.signal});
+  try { await new Promise<void>((resolve, reject) => {
     let failure: ScorePreflightError | undefined;
     if (input.signal?.aborted) { reject(new ScorePreflightError("SCORE_PREFLIGHT_FAILED", "The structure check was cancelled. Please retry.", 503)); return; }
     const pythonArgs = /^python(?:\d+(?:\.\d+)*)?(?:\.exe)?$/iu.test(path.basename(config.scorePreflightPythonCommand)) ? ["-B", "-X", "utf8"] : [];
@@ -181,7 +190,7 @@ export async function runScoreStructurePreflight(input: { sourcePath: string; wo
       else if (code !== 0) reject(new ScorePreflightError("SCORE_PREFLIGHT_FAILED", "The free structure check could not finish. Please retry.", 503));
       else resolve();
     });
-  });
+  }); } finally { releaseMemory(); }
   try {
     const stat = await fs.stat(responsePath);
     if (!stat.isFile() || stat.size > 128_000) throw new Error("Invalid response file");

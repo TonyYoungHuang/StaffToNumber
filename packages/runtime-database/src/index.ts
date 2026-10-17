@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { deserialize } from "node:v8";
 import { Worker } from "node:worker_threads";
 export { assertAccountStorageQuota, resolveStorageQuotaTier, storageQuotaPolicyFromEnv } from "./storage-quota.js";
+export { recognitionCreditSettlement, settleRecognitionCredits, settledRecognitionCreditCost, type RecognitionCreditSettlement, type RecognitionCreditSettlementInput } from "./recognition-credit-settlement.js";
 
 export type RuntimeDatabasePrimary = "sqlite" | "postgres";
 
@@ -74,11 +75,15 @@ class PostgresRuntimeDatabase implements RuntimeDatabase {
   readonly #worker: Worker;
   readonly #queryTimeoutMs: number;
   readonly #responseBufferBytes: number;
+  readonly #responseBuffer: SharedArrayBuffer;
   #closed = false;
 
   constructor(url: string, schema: string, queryTimeoutMs: number, responseBufferBytes: number) {
     this.#queryTimeoutMs = queryTimeoutMs;
     this.#responseBufferBytes = responseBufferBytes;
+    // Calls block synchronously until their worker response is complete. Reuse
+    // one bounded buffer instead of allocating 64 MiB for every SQL statement.
+    this.#responseBuffer = new SharedArrayBuffer(responseBufferBytes);
     this.#worker = new Worker(new URL("./postgres-worker.js", import.meta.url), {
       workerData: { url, schema, statementTimeoutMs: queryTimeoutMs },
     });
@@ -119,10 +124,16 @@ class PostgresRuntimeDatabase implements RuntimeDatabase {
     if (message.ignored) return { ok: true, rows: [], rowCount: 0 };
     const signal = new SharedArrayBuffer(16);
     const signalView = new Int32Array(signal);
-    const response = new SharedArrayBuffer(this.#responseBufferBytes);
+    const response = this.#responseBuffer;
     this.#worker.postMessage({ ...message, signal, response });
     const waitResult = Atomics.wait(signalView, 0, 0, this.#queryTimeoutMs + 5_000);
-    if (waitResult === "timed-out") throw new Error(`PostgreSQL runtime query exceeded ${this.#queryTimeoutMs + 5_000}ms.`);
+    if (waitResult === "timed-out") {
+      // A timed-out worker could still write its old response. Never reuse this
+      // connection/buffer after losing the synchronous completion boundary.
+      this.#closed = true;
+      void this.#worker.terminate();
+      throw new Error(`PostgreSQL runtime query exceeded ${this.#queryTimeoutMs + 5_000}ms.`);
+    }
     const byteLength = Atomics.load(signalView, 1);
     if (byteLength <= 0 || byteLength > this.#responseBufferBytes) throw new Error("PostgreSQL runtime returned an invalid response.");
     const result = deserialize(Buffer.from(new Uint8Array(response, 0, byteLength))) as WorkerResponse;

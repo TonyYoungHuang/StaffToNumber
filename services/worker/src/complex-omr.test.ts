@@ -88,6 +88,7 @@ test("failed recognition retains the detected layout, gaps and actual engine fai
 
 test("a model failure keeps independent staff structure and explicit uncertainty", async t => {
   const { input, inventory } = fixture(t); const adapter = input.adapter!;
+  input.enableHomrEvaluation = true;
   input.adapter = async <T>(action: string, request: Record<string, unknown>, timeout: number) => {
     if (action === "orient" && !request.lineOnly) throw new Error("Layout model timeout");
     return adapter<T>(action, request, timeout);
@@ -111,12 +112,15 @@ test("memory pressure ends recognition without starting fallback models or extra
 
 test("equal layout coverage retains the primary score and exposes timing/engine disagreement", async t => {
   const { input, xml } = fixture(t); const adapter = input.adapter!;
+  input.enableHomrEvaluation = true;
+  const secondaryXml = path.join(input.outputDir, "secondary.musicxml");
+  fs.copyFileSync(xml, secondaryXml);
   const primary = analysis(2, 1, [{ kind: "duration-mismatch", message: "Review measure 38 timing" }]);
   input.recognizeAudiveris = async () => ({ musicXmlPath: xml, analysis: primary });
   const secondary = analysis(2); secondary.measureCount = 2;
   let chosen: unknown;
   input.adapter = async <T>(action: string, request: Record<string, unknown>, timeout: number) => {
-    if (action === "recognize") return { musicXmlPath: "secondary.musicxml", analysis: secondary } as T;
+    if (action === "recognize") return { musicXmlPath: secondaryXml, analysis: secondary } as T;
     if (action === "merge") chosen = (request.chunks as Array<{ musicXmlPath: string }>)[0].musicXmlPath;
     return adapter<T>(action, request, timeout);
   };
@@ -124,6 +128,48 @@ test("equal layout coverage retains the primary score and exposes timing/engine 
   assert.equal(chosen, xml);
   assert.ok(result.coverage.gaps.some(gap => gap.kind === "duration-mismatch"));
   assert.ok(result.coverage.gaps.some(gap => gap.kind === "engine-disagreement"));
+});
+
+test("HOMR evaluation stays disabled when the model directory is absent", async t => {
+  const { input, calls } = fixture(t);
+  input.homrSourceDir = path.join(input.outputDir, "models-not-installed");
+  const result = await runComplexOmr(input);
+  assert.equal(calls.includes("recognize"), false);
+  assert.ok(result.candidates.some(candidate => candidate.relationship === "original"));
+  assert.deepEqual(result.recognizedPages, [1]);
+});
+
+test("assembly failure delivers retained region candidates without another recognition run", async t => {
+  const { input, calls } = fixture(t); const adapter = input.adapter!;
+  input.adapter = async <T>(action: string, request: Record<string, unknown>, timeout: number) => {
+    if (action === "merge") throw new Error("Synthetic assembly failure");
+    return adapter<T>(action, request, timeout);
+  };
+  const result = await runComplexOmr(input);
+  assert.ok(result.candidates.length > 0);
+  assert.equal(calls.filter(call => call === "audiveris").length, 1);
+  assert.ok(result.coverage.gaps.some(gap => gap.kind === "assembly-unavailable"));
+});
+
+test("later page resource exhaustion retains earlier readable pages and stops further launches", async t => {
+  const { input, inventory, xml } = fixture(t); const adapter = input.adapter!;
+  let launches = 0;
+  input.adapter = async <T>(action: string, request: Record<string, unknown>, timeout: number) => {
+    if (action === "prepare") return { pages: [1, 2, 3].map(page => ({ page, width: 1000, height: 1000, imagePath: input.inputPath })), sourcePageCount: 3 } as T;
+    if (action === "orient") return { ...inventory, page: request.page } as T;
+    return adapter<T>(action, request, timeout);
+  };
+  input.recognizeAudiveris = async () => {
+    launches += 1;
+    if (launches === 2) throw new EngineResourceError("ENGINE_MEMORY_PRESSURE");
+    return { musicXmlPath: xml, analysis: analysis() };
+  };
+  const result = await runComplexOmr(input);
+  assert.equal(launches, 2);
+  assert.deepEqual(result.recognizedPages, [1]);
+  assert.equal(result.coverage.sourcePageCount, 3);
+  assert.ok(result.coverage.gaps.some(gap => gap.page === 2 && gap.kind === "resource-budget-exhausted"));
+  assert.ok(result.candidates.some(candidate => candidate.sourcePages.includes(1)));
 });
 
 test("TAB remains a visible source gap and is masked only in the recognition copy", async (t) => {

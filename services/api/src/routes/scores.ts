@@ -7,6 +7,12 @@ import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from
 import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
 import { registerScoreUploadDraftRoutes } from "./score-upload-drafts.js";
+import { assessRecognitionSource, revalidateRecognitionAssessment } from "../lib/recognition-memory-estimate.js";
+import { registerScoreRecognitionResultRoutes } from "./score-recognition-results.js";
+import { extractMusicXmlCandidatesFromCompressedMxl, normalizeMusicXmlScore } from "../lib/musicxml-container.js";
+import { parseMusicXmlToScoreJson } from "../lib/musicxml-score-parser.js";
+import { nowIso } from "../lib/time.js";
+import { RecognitionAdmissionError } from "../lib/recognition-memory-estimate.js";
 import { startScoreUploadDraftRecognition } from "../lib/score-upload-drafts.js";
 import { claimStagedOmrUpload, StagedOmrUploadError } from "../lib/staged-omr-uploads.js";
 import { countTiffPages } from "../lib/score-pass-pages.js";
@@ -1583,7 +1589,9 @@ export async function scoreRoutes(app: FastifyInstance) {
 
   registerScoreStructurePreflightRoute(app);
   registerScoreUploadDraftRoutes(app);
+  registerScoreRecognitionResultRoutes(app);
   app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof RecognitionAdmissionError) return reply.code(error.statusCode).send({code:error.code,error:error.message});
     if (error instanceof StagedOmrUploadError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreCoverageReviewRequiredError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreEditRevisionConflictError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
@@ -5049,9 +5057,13 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const isCompressed = verified.detectedKind === "zip";
       let musicXml: string;
-
+      let importedRoots: Array<{rootPath:string;musicXml:string}> = [];
+      let rejectedRoots: Array<{rootPath:string;message:string}> = [];
       try {
-        musicXml = isCompressed ? extractMusicXmlFromCompressedMxl(fs.readFileSync(targetPath)) : fs.readFileSync(targetPath, "utf8");
+        if (isCompressed) { const expanded=extractMusicXmlCandidatesFromCompressedMxl(fs.readFileSync(targetPath));importedRoots=expanded.candidates;rejectedRoots=expanded.rejected; }
+        else importedRoots=[{rootPath:filename,musicXml:normalizeMusicXmlScore(fs.readFileSync(targetPath,"utf8"))}];
+        if(!importedRoots.length)throw new Error("No readable scores were found in this package.");
+        musicXml=importedRoots[0]!.musicXml;
       } catch (error) {
         fs.rmSync(targetPath, { force: true });
         request.log.warn({ error }, "Compressed MusicXML import failed.");
@@ -5091,6 +5103,32 @@ export async function scoreRoutes(app: FastifyInstance) {
       if (!document) {
         return reply.code(500).send({ error: "Could not create a score document." });
       }
+
+      // One source package stays in one project. Every root has its own saved
+      // candidate; importing/previewing/selecting them creates no processing jobs.
+      const catalogId=createId();
+      db.prepare("INSERT INTO score_jobs(id,user_id,document_id,input_file_id,job_type,status,params_json,progress_percent,created_at,updated_at,completed_at) VALUES(?,?,?,?,'musicxml_import','completed',?,100,?,?,?)")
+        .run(catalogId,request.authUserId!,document.id,storedFile.id,JSON.stringify({catalogOnly:true}),nowIso(),nowIso(),nowIso());
+      const importedCandidates: import("@score/shared").RecognitionCandidate[]=[];
+      for(const [index,root] of importedRoots.entries()) {
+        try {
+          const candidateId=createId();
+          const rootName=`${candidateId}.musicxml`,rootPath=path.join(userDir,rootName);
+          fs.writeFileSync(rootPath,root.musicXml,"utf8");
+          const rootFile=await createStoredFile({userId:request.authUserId!,originalName:path.basename(root.rootPath),storedName:rootName,storagePath:rootPath,
+            mimeType:"application/vnd.recordare.musicxml+xml",sizeBytes:Buffer.byteLength(root.musicXml),fileKind:"score_musicxml"});
+          if(!rootFile)throw new Error("Could not retain one result.");
+          const scoreJson=parseMusicXmlToScoreJson({musicXml:root.musicXml,title:deriveTitle(root.rootPath),sourceFileId:rootFile.id,sourceOriginalName:root.rootPath,importedAt:nowIso()});
+          const candidate={id:candidateId,title:scoreJson.title,musicxmlFileId:rootFile.id,sourcePages:[],relationship:"original" as const,recommended:index===0};
+          importedCandidates.push(candidate);
+          db.prepare("INSERT INTO score_assets(id,document_id,file_id,asset_kind,params_json,created_at) VALUES(?,?,?,'score_musicxml',?,?)")
+            .run(createId(),document.id,rootFile.id,JSON.stringify({candidateId,scoreJson,sourceRoot:root.rootPath}),nowIso());
+        } catch(error) {rejectedRoots.push({rootPath:root.rootPath,message:error instanceof Error?error.message:"Result cannot be opened."});}
+      }
+      const importJob=db.prepare("SELECT id,params_json FROM score_jobs WHERE id = ?").get(catalogId) as {id:string;params_json:string|null}|undefined;
+      if(importJob)db.prepare("UPDATE score_jobs SET params_json = ?, output_file_ids_json = ? WHERE id = ?").run(JSON.stringify({...JSON.parse(importJob.params_json??"{}"),
+        resultManifest:{version:1,jobId:importJob.id,documentId:document.id,sourcePageCount:0,deliveredPages:[],candidates:importedCandidates,rejectedRoots,selectedCandidateId:importedCandidates[0]?.id}}),
+        JSON.stringify(importedCandidates.map(candidate=>candidate.musicxmlFileId)),importJob.id);
 
       return reply.code(201).send({
         score: mapScoreDocumentForApi(document),
@@ -5333,6 +5371,9 @@ export async function scoreRoutes(app: FastifyInstance) {
       }
       const pageCount = verified.pdfRasterInspection?.pageCount ?? (verified.detectedKind === "tiff"
         ? countTiffPages(await fs.promises.readFile(targetPath)) : 1);
+      const memoryAssessment = await assessRecognitionSource({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
+      revalidateRecognitionAssessment(staged?.metadata.memoryAssessment);
+      revalidateRecognitionAssessment(memoryAssessment);
       try {
         assertScoreSourcePageCount(pageCount);
       } catch (error) {
@@ -5374,6 +5415,9 @@ export async function scoreRoutes(app: FastifyInstance) {
         pageCount,
         recognitionMode,
         expectedCreditCost,
+        memoryAssessment,
+        photoCorners: staged?.metadata.photoCorners,
+        sourceOrientations:Object.fromEntries((staged?.metadata.preflight?.pages??[]).filter(p=>p.orientationCertain && p.rotation!=null).map(p=>[String(p.page),p.rotation!])) as Record<string,0|90|180|270>,
       });
       } catch (error) {
         // Another request may have reserved the last credits while this file uploaded.

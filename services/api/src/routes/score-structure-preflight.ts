@@ -5,6 +5,7 @@ import { config } from "../config.js";
 import { acquireScorePreflightSlot, runScoreStructurePreflight, ScorePreflightError } from "../lib/score-structure-preflight.js";
 import { inspectPdfStructurePreflight, inspectPdfRasterSafety, UploadSecurityError, storeVerifiedUpload, uploadErrorResponse, uploadKinds } from "../lib/upload-security.js";
 import { stageOmrUpload } from "../lib/staged-omr-uploads.js";
+import { assessRecognitionSource, parsePhotoCorners, RecognitionAdmissionError } from "../lib/recognition-memory-estimate.js";
 
 export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
   app.post("/scores/import/omr/preflight", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
@@ -48,10 +49,16 @@ export function registerScoreStructurePreflightRoute(app: FastifyInstance) {
         }
       }
       const preflight = await runScoreStructurePreflight({ sourcePath, workspace, signal: cancellation.signal });
+      const cornerField = file.fields.photoCorners;
+      const photoCorners = parsePhotoCorners(cornerField && !Array.isArray(cornerField) && cornerField.type === "field" ? cornerField.value : undefined);
+      const memoryAssessment = recognitionSupport.supported ? await assessRecognitionSource({ sourcePath, ...verified, preflight, photoCorners }) :
+        { version: 1 as const, capacityVersion: "pixel-safety-v1", lane: "unsupported" as const, estimatedMemoryMb: 0,
+          reasonCodes: [recognitionSupport.code], waitEstimateSeconds: [0, 0] as [number, number], sourcePageCount: preflight.sourcePageCount, maxPagePixels: 0, enabled: true };
       if (cancellation.signal.aborted) throw new ScorePreflightError("SCORE_PREFLIGHT_TIMEOUT", "The structure check was cancelled. Please retry.", 504);
-      const staged = await stageOmrUpload({ sourcePath, userId: request.authUserId!, filename: file.filename || "score-source.pdf", ...verified });
-      return { statusCode: 200, body: { preflight: { ...preflight, recognitionSupport }, stagedUploadId: staged.id, stagedUploadExpiresAt: staged.expiresAt } };
+      const staged = await stageOmrUpload({ sourcePath, userId: request.authUserId!, filename: file.filename || "score-source.pdf", ...verified, memoryAssessment, preflight, photoCorners });
+      return { statusCode: 200, body: { preflight: { ...preflight, recognitionSupport, memoryAssessment }, stagedUploadId: staged.id, stagedUploadExpiresAt: staged.expiresAt } };
     } catch (error) {
+      if (error instanceof RecognitionAdmissionError) return { statusCode: error.statusCode, body: { code: error.code, error: error.message } };
       if (cancellation.signal.aborted) return { statusCode: 504, body: { code: "SCORE_PREFLIGHT_TIMEOUT", error: "The structure check was cancelled or timed out. Your file was not imported; please retry." } };
       if (error instanceof ScorePreflightError) {
         if (error.statusCode === 429) reply.header("Retry-After", error.code === "SCORE_PREFLIGHT_RATE_LIMIT" ? "60" : "5");

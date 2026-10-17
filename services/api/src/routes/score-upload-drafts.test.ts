@@ -13,7 +13,9 @@ import { createPaymentOrder } from "../repositories/payment-repository.js";
 import { createScoreRevisionFromScoreJson, findScoreDocumentById, listScoreJobsByDocumentId } from "../repositories/score-repository.js";
 import { scoreRoutes } from "./scores.js";
 import { stageOmrUpload } from "../lib/staged-omr-uploads.js";
-import { cleanupExpiredScoreUploadDrafts, findScoreUploadDraft, reconcileExpiredUploadDraftOrders } from "../lib/score-upload-drafts.js";
+import { cleanupExpiredScoreUploadDrafts, findScoreUploadDraft, reconcileExpiredUploadDraftOrders, startScoreUploadDraftRecognition } from "../lib/score-upload-drafts.js";
+import { paymentRoutes } from "./payments.js";
+import { readDraftAssessment } from "../lib/recognition-assessment-store.js";
 import { normalizeCheckoutContinuation } from "../lib/checkout-continuation.js";
 import { bindScorePass, scorePassForDocument } from "../lib/score-passes.js";
 import { hashPaymentOrderToken, type retrieveStripeCheckoutSession } from "../lib/payments.js";
@@ -45,6 +47,52 @@ function paidOrder(f: Awaited<ReturnType<typeof fixture>>) {
   bindScorePass(db, f.user.id, f.draft.documentId, 1);
   return payment;
 }
+
+function setServerAssessment(f: Awaited<ReturnType<typeof fixture>>, lane: "big" | "unsupported") {
+  const stored = readDraftAssessment(f.draft.documentId, f.user.id);
+  const memoryAssessment = { ...stored.memoryAssessment!, lane, estimatedMemoryMb: lane === "big" ? 2048 : 4096, enabled: true };
+  db.prepare("UPDATE score_assets SET params_json=? WHERE document_id=? AND asset_kind='source_pdf'")
+    .run(JSON.stringify({ ...stored, memoryAssessment }), f.draft.documentId);
+  return memoryAssessment;
+}
+
+test("paid draft continuation trusts the server big-lane snapshot and ignores a forged client assessment", async () => {
+  const f = await fixture(), order = paidOrder(f), previous = process.env.RECOGNITION_LANES_ENABLED;
+  const memoryAssessment = setServerAssessment(f, "big");
+  process.env.RECOGNITION_LANES_ENABLED = "true";
+  try {
+    const response = await f.app.inject({ method: "POST", url: `/api/payments/orders/${order.id}/continue`, headers: f.headers,
+      payload: { token: order.public_token, confirmed: true, memoryAssessment: { lane: "normal", estimatedMemoryMb: 1 }, recognitionLane: "normal" } });
+    assert.equal(response.statusCode, 200, response.body);
+    const job = listScoreJobsByDocumentId(f.draft.documentId)[0];
+    assert.equal(JSON.parse(job.params_json!).recognitionLane, "big");
+    assert.deepEqual(JSON.parse(job.params_json!).memoryAssessment, memoryAssessment);
+    assert.equal(scorePassForDocument(db, f.user.id, f.draft.documentId)!.remaining, 9);
+  } finally {
+    if (previous === undefined) delete process.env.RECOGNITION_LANES_ENABLED; else process.env.RECOGNITION_LANES_ENABLED = previous;
+    await f.app.close();
+  }
+});
+
+test("hard capacity ceiling blocks checkout and recognition before any order or credit reservation", async () => {
+  const f = await fixture(), previous = process.env.RECOGNITION_LANES_ENABLED;
+  setServerAssessment(f, "unsupported"); process.env.RECOGNITION_LANES_ENABLED = "true";
+  const payments = Fastify(); await payments.register(authPlugin); await payments.register(paymentRoutes, { prefix: "/api" });
+  try {
+    const response = await payments.inject({ method: "POST", url: "/api/payments/checkout/authenticated", headers: f.headers,
+      payload: { provider: "stripe", planCode: "starter-monthly", targetDocumentId: f.draft.documentId,
+        intendedAction: { kind: "recognition", uploadDraftId: f.draft.id, mode: "simple" }, memoryAssessment: { lane: "normal", estimatedMemoryMb: 1 } } });
+    assert.ok([400, 422].includes(response.statusCode), response.body);
+    assert.match(response.json().error, /exceeds our current processing capacity/u);
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM payment_orders WHERE user_id=?").get(f.user.id) as { n: number }).n, 0);
+    assert.throws(() => startScoreUploadDraftRecognition({ userId: f.user.id, draftId: f.draft.id, documentId: f.draft.documentId, orderId: "not-created" }), /No credits will be charged/u);
+    assert.equal(listScoreJobsByDocumentId(f.draft.documentId).length, 0);
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM prepaid_credit_charges WHERE user_id=?").get(f.user.id) as { n: number }).n, 0);
+  } finally {
+    if (previous === undefined) delete process.env.RECOGNITION_LANES_ENABLED; else process.env.RECOGNITION_LANES_ENABLED = previous;
+    await payments.close(); await f.app.close();
+  }
+});
 
 test("prepare promotes an owned staged source once without a task or debit, and survives receipt replay", async () => {
   const f = await fixture();

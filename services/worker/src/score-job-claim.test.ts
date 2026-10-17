@@ -49,7 +49,7 @@ test("claims one queued score job exactly once", () => {
   db.close();
 });
 
-test("broker retries can reclaim only the same processing dispatch", () => {
+test("duplicate broker deliveries never reclaim a processing recognition job", () => {
   const db = queueDatabase();
   const createdAt = "2026-07-15T00:00:00.000Z";
   db.prepare("INSERT INTO score_jobs (id, user_id, job_type, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)")
@@ -60,8 +60,18 @@ test("broker retries can reclaim only the same processing dispatch", () => {
   const state = db.prepare("SELECT status, attempt_count, broker_job_id FROM score_jobs WHERE id = ?").get("omr-broker") as Record<string, unknown>;
   assert.equal(first?.id, "omr-broker");
   assert.equal(wrongRetry, undefined);
-  assert.equal(sameRetry?.id, "omr-broker");
+  assert.equal(sameRetry, undefined);
   assert.deepEqual({ ...state }, { status: "processing", attempt_count: 1, broker_job_id: "dispatch-1" });
+  db.close();
+});
+
+test("enabled claim lanes validate the server snapshot and reject mismatched broker claims", () => {
+  const db = queueDatabase(), timestamp = "2026-10-17T00:00:00.000Z";
+  db.prepare("INSERT INTO score_jobs (id,user_id,job_type,status,params_json,created_at,updated_at) VALUES ('big-score','user-1','omr_import','queued',?,?,?)")
+    .run(JSON.stringify({ recognitionLane: "big", memoryAssessment: { estimatedMemoryMb: 2048 } }), timestamp, timestamp);
+  assert.throws(() => claimScoreJobById(db, { timestamp, jobId: "big-score", brokerJobId: "normal-dispatch", lane: "normal", lanesEnabled: true }), /lane does not match/u);
+  assert.equal(claimScoreJobById(db, { timestamp, jobId: "big-score", brokerJobId: "big-dispatch", lane: "big", lanesEnabled: true })?.id, "big-score");
+  assert.equal(claimScoreJobById(db, { timestamp, jobId: "big-score", brokerJobId: "big-dispatch", lane: "big", lanesEnabled: true }), undefined);
   db.close();
 });
 

@@ -1443,4 +1443,6 @@ function validatePostgresSchema() {
   const availableColumns = new Set(columns.map(column => `${column.table_name}.${column.column_name}`));
   const missingColumns = requiredColumns.filter(column => !availableColumns.has(column));
   if (missingColumns.length) throw new Error(`PostgreSQL runtime columns are incomplete (${missingColumns.join(", ")}). Run the schema 27 additive migration before starting API traffic.`);
+  const creditColumn = db.prepare("SELECT data_type FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'prepaid_credit_charges' AND column_name = 'credit_cost'").get() as { data_type: string } | undefined;
+  if (creditColumn?.data_type !== "numeric") throw new Error("PostgreSQL schema 28 is required for partial recognition credits. Apply and verify recognition-partial-credits-schema28.sql before starting this API version.");
 }

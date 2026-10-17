@@ -1,4 +1,4 @@
-import { getScorePreflightMessages, getScoreRequestWaitingMessages, getScoreProcessingMessages, getStagedUploadMessages, getPercentProgressMessages, type SupportedLocale } from "@score/i18n";
+import { getScorePreflightMessages, getScoreRequestWaitingMessages, getScoreProcessingMessages, getStagedUploadMessages, getPercentProgressMessages, getRecognitionExperienceMessages, type SupportedLocale } from "@score/i18n";
 import { getAuthMessages } from "./auth-messages";
 import { getEnsembleMessages } from "./ensemble-messages";
 import { getScoreTaskMessages } from "./score-task-messages";
@@ -8,6 +8,7 @@ import { getScoreReadinessMessages } from "./score-readiness-messages";
 
 const keys = ["edit", "jianpu", "transpose", "play", "export", "more", "advanced", "share", "history", "teaching", "parts", "source", "close", "importTitle", "chooseFile", "formats", "start", "upgrade", "back", "format", "download", "retry", "processing", "savedFile", "fileLost", "unsupported", "tooLarge", "autoSave", "resume", "waitingAccess", "accountMismatch", "paymentOptions", "planDetails", "legacy", "saveBeforeLeave"] as const;
 export type FlowMessages = Record<typeof keys[number], string> & {
+  recognitionExperience: ReturnType<typeof getRecognitionExperienceMessages>;
   scoreReadiness: ReturnType<typeof getScoreReadinessMessages>; scoreOperations: ReturnType<typeof getScoreOperationMessages>;
   preflight: ReturnType<typeof getScorePreflightMessages>; requestWaiting: ReturnType<typeof getScoreRequestWaitingMessages>;
   ensemble: ReturnType<typeof getEnsembleMessages>; scoreTasks: ReturnType<typeof getScoreTaskMessages>;
@@ -28,7 +29,7 @@ const catalogs: Record<SupportedLocale, readonly string[]> = {
 export function getFlowMessages(locale: SupportedLocale): FlowMessages {
   const values = catalogs[locale];
   return { ...Object.fromEntries(keys.map((key, i) => [key, values[i] ?? catalogs.en[i]])), scoreReadiness: getScoreReadinessMessages(locale), scoreOperations: getScoreOperationMessages(locale),
-    preflight: getScorePreflightMessages(locale), requestWaiting: getScoreRequestWaitingMessages(locale), ensemble: getEnsembleMessages(locale),
+    recognitionExperience: getRecognitionExperienceMessages(locale), preflight: getScorePreflightMessages(locale), requestWaiting: getScoreRequestWaitingMessages(locale), ensemble: getEnsembleMessages(locale),
     scoreTasks: getScoreTaskMessages(locale), signInLabel: getAuthMessages(locale).form.login.submit, importRecovery: getScoreImportRecoveryCatalog(locale),
     processing: getScoreProcessingMessages(locale), stagedUpload: getStagedUploadMessages(locale), percentProgress: getPercentProgressMessages(locale),
   } as FlowMessages;

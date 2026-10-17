@@ -7,6 +7,7 @@ import Link from "next/link";
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES } from "@score/shared";
 import type { ScoreJson } from "@score/shared";
+import { ScoreRecognitionCandidates } from "./ScoreRecognitionCandidates";
 import { ScoreMusicXmlPreview } from "./ScoreMusicXmlPreview";
 import { ScoreOmrReviewPanel, type ScoreSourceRegion } from "./ScoreOmrReviewPanel";
 import { ScoreCorrectionPanel } from "./ScoreCorrectionPanel";
@@ -162,6 +163,7 @@ export function ScoreCandidateReviewWorkspace({
           )}
         </div>
       </div>
+      <ScoreRecognitionCandidates scoreId={scoreId} token={token} locale={locale} expectedEditableRevisionId={revision.id} onUpdated={onCandidateUpdated} />
       {!freeEditing ? <p className="review-confirmation-help">{copy.confirmationHelp}</p> : null}
 
       {actionError ? <p className="form-status error" role="alert">{actionError}</p> : null}

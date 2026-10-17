@@ -118,7 +118,7 @@ test("fresh, 26-to-27 and already-run old 27 schema additions are repeatable wit
     const columns = db.prepare("PRAGMA table_info(payment_orders)").all() as Array<{ name: string }>;
     for (const column of PAYMENT_RETURN_COLUMNS) assert.ok(columns.some(item => item.name === column), column);
     assert.equal(findPaymentOrderById(order.id)!.public_token, order.public_token);
-    assert.equal((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version, 27);
+    assert.equal((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version, 28);
     for (const table of ["score_document_derivations", "score_upload_drafts"]) assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
   }
 });

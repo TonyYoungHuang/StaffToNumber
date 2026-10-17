@@ -1,4 +1,5 @@
 import { EngineResourceError } from "./engine-resource-error.js";
+import { hasJobMemoryLease } from "./job-memory-lease.js";
 import { canReserveEngineMemory, engineMemoryReservationMb, readEngineMemory, type EngineMemorySnapshot } from "./engine-memory.js";
 
 /** Local development also needs protection when using bare engine binaries.
@@ -32,6 +33,7 @@ export async function withOmrEngineSlot<T>(input: {
 }, operation: (executionTimeoutMs: number) => Promise<T>): Promise<T> {
   if (input.isCancelled?.()) throw input.cancelledError();
   if (input.timeoutMs <= 0) throw input.timeoutError();
+  if (hasJobMemoryLease()) return operation(input.timeoutMs);
   const capacity = omrEngineCapacity();
   const slots = Math.max(1, Math.min(capacity, input.slots ?? 1));
   const requestedBytes = (input.memoryMb ?? engineMemoryReservationMb()) * 1024 * 1024;

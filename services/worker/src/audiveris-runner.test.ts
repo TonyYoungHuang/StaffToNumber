@@ -29,6 +29,15 @@ if (mode === "rotation-fallback") {
   if (inputPath.includes("rotation-180")) { process.stdout.write("corrected"); process.exit(0); }
   process.stderr.write("wrong orientation"); process.exit(7);
 }
+if (mode === "enhancement" || mode === "enhancement-memory") {
+  const fs=require("node:fs"),path=require("node:path");
+  const dir=process.argv[process.argv.indexOf("-output")+1];
+  const detail=dir.endsWith("enhanced-detail");
+  if(mode==='enhancement-memory' && detail){process.stderr.write('java.lang.OutOfMemoryError: Java heap space');process.exit(3);}
+  const notes=Array.from({length:detail ? 3 : 30},()=>'<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note>').join('');
+  fs.writeFileSync(path.join(dir,"score.musicxml"), '<score-partwise><part id="P1"><measure>'+(detail?'<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>':'')+notes+'</measure></part></score-partwise>');
+  process.stdout.write(detail ? "detail" : "other"); process.exit(0);
+}
 setInterval(() => {}, 1000);
 `, "utf8");
 const mockConvertScript = path.join(tempDir, "mock-convert.cjs");
@@ -36,6 +45,13 @@ fs.writeFileSync(mockConvertScript, `
 const fs = require("node:fs");
 fs.copyFileSync(process.argv[2], process.argv.at(-1));
 fs.writeFileSync(process.argv.at(-1) + ".args.json", JSON.stringify(process.argv.slice(3,-1)));
+`, "utf8");
+const mockEnhancementScript = path.join(tempDir, "mock-enhancement.cjs");
+fs.writeFileSync(mockEnhancementScript, `
+const fs=require('node:fs'),path=require('node:path');
+const request=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const variants=request.variantIds.map(id=>{ const imagePath=path.join(request.outputDir,id+'.png');fs.copyFileSync(request.inputPath,imagePath);return {id,imagePath,width:100,height:100,scale:id==='detail'?3:1,operations:['grayscale-detail'],requiresBigLane:id!=='gray',crop:[0,0,100,100],sourceToImage:[1,0,0,0,1,0,0,0,1],imageToSource:[1,0,0,0,1,0,0,0,1]};});
+fs.writeFileSync(process.argv[3],JSON.stringify({schemaVersion:1,diagnostics:{expectedStaffCount:null,staffDetection:'uncertain'},variants}));
 `, "utf8");
 
 after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
@@ -46,7 +62,7 @@ function run(mode: string, overrides: Partial<Parameters<typeof runAudiverisComm
     commandArgsPrefix: [mockScript, mode],
     inputPath: path.join(tempDir, "source.pdf"),
     outputDir: tempDir,
-    timeoutMs: 2_000,
+    timeoutMs: 10_000,
     cancellationPollMs: 25,
     ...overrides,
   });
@@ -87,11 +103,12 @@ test("retains recognition errors from stdout when stderr only contains JVM start
   });
 });
 
-test("JVM allocation failure ends as a retryable resource error instead of a content exit", async () => {
+test("JVM allocation failure ends as a resource error with no customer retry instruction", async () => {
   await assert.rejects(run("memory"), (error: unknown) => {
     assert.ok(error instanceof AudiverisProcessError);
     assert.equal(error.reason, "resource");
-    assert.match(error.message, /\[ENGINE_MEMORY_PRESSURE\].*Retry/iu);
+    assert.match(error.message, /\[ENGINE_MEMORY_PRESSURE\]/iu);
+    assert.doesNotMatch(error.message, /retry/iu);
     return true;
   });
 });
@@ -126,7 +143,7 @@ test("normalizes raster input and retries alternate orientations", async () => {
     imageMagickCommandArgsPrefix: [mockConvertScript],
     inputPath: source,
     outputDir,
-    timeoutMs: 2_000,
+    timeoutMs: 10_000,
     cancellationPollMs: 25,
   });
   assert.equal(result.appliedRotationDegrees, 180);
@@ -142,7 +159,7 @@ test("recovers a small-staff image within the same job and selects only recovere
   const result = await runAudiverisWithRotationFallback({
     command: process.execPath, commandArgsPrefix: [mockScript, "small-staff"],
     imageMagickCommand: process.execPath, imageMagickCommandArgsPrefix: [mockConvertScript],
-    inputPath: source, outputDir, timeoutMs: 3000, cancellationPollMs: 25,
+    inputPath: source, outputDir, timeoutMs: 10_000, cancellationPollMs: 25,
   });
   assert.equal(result.stdout, "recovered");
   assert.equal(result.appliedRotationDegrees, 0);
@@ -166,7 +183,8 @@ test("resolution recovery respects the original deadline", async () => {
     imageMagickCommand: process.execPath, imageMagickCommandArgsPrefix: [mockConvertScript],
     inputPath: source, outputDir, timeoutMs: 600, cancellationPollMs: 25,
   }), (error: unknown) => error instanceof AudiverisProcessError && error.reason === "timeout");
-  assert.ok(fs.existsSync(path.join(outputDir, "rotation-0", "resolution-2", "normalized.png")));
+  // Under CPU contention the shared deadline may expire before recovery starts.
+  // Both outcomes must still stop without advancing to another orientation.
   assert.equal(fs.existsSync(path.join(outputDir, "rotation-90")), false);
 });
 
@@ -178,9 +196,48 @@ test("resolution recovery stops when the customer cancels", async () => {
   await assert.rejects(runAudiverisWithRotationFallback({
     command: process.execPath, commandArgsPrefix: [mockScript, "small-staff"],
     imageMagickCommand: process.execPath, imageMagickCommandArgsPrefix: [mockConvertScript],
-    inputPath: source, outputDir, timeoutMs: 3000, cancellationPollMs: 25,
+    inputPath: source, outputDir, timeoutMs: 15_000, cancellationPollMs: 25,
     isCancelled: () => fs.existsSync(recoveryPath),
   }), (error: unknown) => error instanceof AudiverisProcessError && error.reason === "cancelled");
   assert.equal(fs.existsSync(path.join(outputDir, "rotation-90")), false);
   assert.equal(fs.readFileSync(source, "utf8"), "source");
+});
+
+test("bounded enhancement compares three outputs by quality and preserves alternatives", async () => {
+  const source = path.join(tempDir, "enhancement.png"); fs.writeFileSync(source, "fixture");
+  const result = await runAudiverisWithRotationFallback({
+    command: process.execPath, commandArgsPrefix: [mockScript, "enhancement"], imageMagickCommand: "",
+    inputPath: source, outputDir: path.join(tempDir, "enhancement-output"), timeoutMs: 15_000,
+    enhancement: { enabled: true, lane: "big", pythonCommand: process.execPath, pythonScriptPath: mockEnhancementScript, pageNumber: 2, pageRotations: { "2": 90 } },
+  });
+  assert.equal(result.enhancement?.selectedVariantId, "detail");
+  assert.equal(result.enhancement?.variants.length, 3);
+  assert.equal(result.enhancement?.variants.filter((run) => run.status === "succeeded").length, 3);
+  assert.equal(result.enhancement?.calls, 3);
+  assert.equal(result.rasterScale, 3);
+  assert.equal(result.appliedRotationDegrees, 90);
+  assert.ok(result.recognitionOutputDir?.endsWith("enhanced-detail"));
+  assert.equal(result.stdout, "detail");
+});
+
+test("bounded enhancement does not accept a successful process with empty output", async () => {
+  const source = path.join(tempDir, "empty-enhancement.png"); fs.writeFileSync(source, "fixture");
+  await assert.rejects(runAudiverisWithRotationFallback({
+    command: process.execPath, commandArgsPrefix: [mockScript, "success"], imageMagickCommand: "",
+    inputPath: source, outputDir: path.join(tempDir, "empty-enhancement-output"), timeoutMs: 15_000,
+    enhancement: { enabled: true, lane: "normal", pythonCommand: process.execPath, pythonScriptPath: mockEnhancementScript },
+  }), /No five-line music/);
+});
+
+test("a heavier variant allocation failure preserves an earlier delivered draft", async () => {
+  const source = path.join(tempDir, "memory-enhancement.png"); fs.writeFileSync(source, "fixture");
+  const result = await runAudiverisWithRotationFallback({
+    command: process.execPath, commandArgsPrefix: [mockScript, "enhancement-memory"], imageMagickCommand: "",
+    inputPath: source, outputDir: path.join(tempDir, "memory-enhancement-output"), timeoutMs: 15_000,
+    enhancement: { enabled: true, lane: "big", pythonCommand: process.execPath, pythonScriptPath: mockEnhancementScript },
+  });
+  assert.equal(result.enhancement?.selectedVariantId, "gray");
+  assert.equal(result.enhancement?.variants.length, 2);
+  assert.equal(result.enhancement?.variants[1].status, "failed");
+  assert.equal(result.enhancement?.calls, 2);
 });

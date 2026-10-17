@@ -104,3 +104,29 @@ test("all non-musical PDF pages fail without merging; infrastructure errors are 
     }
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test("multiple results survive later resource exhaustion and assembly failure as a partial delivery", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pdf-partial-results-"));
+  const plan = planPdfRasterBudget(Array.from({ length: 3 }, () => ({ widthPoints: 612, heightPoints: 792 })), policy);
+  const seen: number[] = [];
+  try {
+    const result = await runSimplePdfOmr({ inputPath: "source.pdf", outputDir: root, pythonCommand: "unused", adapterPath: "unused", homrSourceDir: "unused",
+      renderPlan: plan.pages, ...policy, timeoutMs: 10_000, audiveris: { command: "unused" }, imageMagickCommand: "unused",
+      adapter: async <T>(action: string) => {
+        if (action === "prepare") return { sourcePageCount: 3, pages: plan.pages.map(page => ({ page: page.pageNumber, renderDpi: page.dpi, imagePath: `${page.pageNumber}.png`, width: page.widthPixels, height: page.heightPixels })) } as T;
+        throw new Error("Synthetic assembly failure");
+      },
+      recognize: async input => {
+        const page = Number(path.basename(input.outputDir).split("-").at(-1)); seen.push(page);
+        if (page === 2) throw new AudiverisProcessError("ENGINE_MEMORY_PRESSURE", "resource");
+        for (const name of ["first", "second"]) fs.writeFileSync(path.join(input.outputDir, `${name}.musicxml`), `<score-partwise><movement-title>${name}</movement-title><part><measure><note><rest/></note></measure></part></score-partwise>`);
+        return { stdout: "", stderr: "", appliedRotationDegrees: 0 };
+      } });
+    assert.deepEqual(seen, [1, 2]);
+    assert.deepEqual(result.recognizedPages, [1]);
+    assert.equal(result.candidates.length, 2);
+    assert.deepEqual(result.candidates.map(candidate => candidate.originalTitle), ["first", "second"]);
+    assert.deepEqual(result.skippedPages.map(page => page.page), [2, 3]);
+    assert.ok(result.issues.some(issue => issue.kind === "assembly-unavailable"));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

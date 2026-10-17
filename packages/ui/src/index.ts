@@ -5,3 +5,5 @@ export * from "./site-shell";
 export * from "./credit-plan-card";
 export * from "./score-processing-panel";
 export * from "./processing-progress";
+export * from "./photo-corner-editor";
+export * from "./recognition-purchase-actions";

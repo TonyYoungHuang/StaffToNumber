@@ -311,6 +311,22 @@ export type JobStatus = "queued" | "processing" | "completed" | "failed" | "canc
 export type JobResultKind = "none" | "final" | "draft";
 
 export type ScoreRecognitionMode = "simple" | "complex";
+export type RecognitionLane = "normal" | "big" | "unsupported";
+export type PhotoCorner = { x: number; y: number };
+export type RecognitionMemoryAssessment = {
+  version: 1; capacityVersion: string; lane: RecognitionLane; estimatedMemoryMb: number;
+  reasonCodes: string[]; waitEstimateSeconds: [number, number]; sourcePageCount: number;
+  maxPagePixels: number; enabled: boolean;
+};
+export type RecognitionCandidate = {
+  id: string; title: string; musicxmlFileId: string; sourcePages: number[];
+  relationship: "original" | "assembled"; memberIds?: string[]; warnings?: string[];
+  recommended?: boolean; scoreJson?: ScoreJson;
+};
+export type RecognitionResultManifest = {
+  version: 1; jobId: string; documentId: string; sourcePageCount: number;
+  deliveredPages: number[]; candidates: RecognitionCandidate[]; selectedCandidateId?: string;
+};
 /** Free structural inspection; it does not recognize notes or reserve credits. */
 export type ScoreStructurePreflight = {
   schemaVersion: 1;
@@ -321,6 +337,7 @@ export type ScoreStructurePreflight = {
   complete: boolean;
   reasonCodes: string[];
   elapsedMs?: number;
+  memoryAssessment?: RecognitionMemoryAssessment;
   /** Admission only, never a promise of note accuracy. */
   recognitionSupport?: {
     supported: boolean;
@@ -336,6 +353,11 @@ export type ScoreStructurePreflight = {
     uncertain: boolean;
     width?: number;
     height?: number;
+    sourceWidth?: number;
+    sourceHeight?: number;
+    staffSpacing?: number | null;
+    brightness?: number;
+    blurVariance?: number;
     rotation?: 0 | 90 | 180 | 270 | null;
     orientationCertain?: boolean;
     standardStaffCount?: number;
@@ -363,6 +385,7 @@ export type JobBrokerPayload = {
   jobId: string;
   requestId?: string;
   traceId?: string;
+  lane?: "normal" | "big";
 };
 
 export type ScoreDocumentStatus = "imported" | "candidate" | "needs_review" | "ready" | "archived";

@@ -57,3 +57,16 @@ test("consumer rejects a broker identity that does not match the payload", async
   }), /payload is invalid/u);
   db.close();
 });
+
+test("a duplicate delivery acknowledges the existing dispatch without rerunning recognition", async () => {
+  const db = brokerDatabase(), now = "2026-10-17T00:00:00.000Z";
+  db.prepare("INSERT INTO score_jobs (id,user_id,job_type,status,created_at,updated_at) VALUES ('score-duplicate','user-1','omr_import','queued',?,?)").run(now, now);
+  db.prepare("INSERT INTO job_dispatch_outbox VALUES ('duplicate-dispatch','dispatched',NULL,NULL,NULL,NULL,?)").run(now);
+  let launches = 0;
+  const input = { db, brokerJob: { id: "duplicate-dispatch", data: { dispatchId: "duplicate-dispatch", family: "score" as const, jobId: "score-duplicate" } },
+    now: () => now, processScoreJob: async () => { launches += 1; }, processLegacyJob: async () => undefined };
+  assert.equal((await consumeBrokerJob(input)).claimed, true);
+  assert.equal((await consumeBrokerJob(input)).claimed, false);
+  assert.equal(launches, 1);
+  db.close();
+});

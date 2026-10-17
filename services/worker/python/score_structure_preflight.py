@@ -143,7 +143,7 @@ def _systems(staffs, ink):
     return groups, uncertain
 
 
-def analyze_page(image, page_number, exif_orientation=1):
+def analyze_page(image, page_number, exif_orientation=1, source_width=None, source_height=None):
     import cv2
     import numpy as np
 
@@ -193,10 +193,21 @@ def analyze_page(image, page_number, exif_orientation=1):
     if staffs and min(staff["unit"] for staff in staffs) < 3.5:
         reasons.append("LOW_RESOLUTION")
     uncertain = not staffs or not orientation_certain or grouping_uncertain or "LOW_RESOLUTION" in reasons
+    source_width = source_width or image.width
+    source_height = source_height or image.height
+    scale_to_source = (source_height if angle in (90, 270) else source_width) / selected.shape[1]
+    gray = cv2.cvtColor(selected, cv2.COLOR_BGR2GRAY)
     return {
         "page": page_number,
         "width": selected.shape[1],
         "height": selected.shape[0],
+        # Full EXIF-oriented source/header dimensions, never thumbnail sizes.
+        # PDF dimensions represent the normal 300dpi recognition raster.
+        "sourceWidth": source_width,
+        "sourceHeight": source_height,
+        "staffSpacing": round(float(np.median([staff["unit"] for staff in staffs])) * scale_to_source, 3) if staffs else None,
+        "brightness": round(float(np.median(gray)), 2),
+        "blurVariance": round(float(cv2.Laplacian(gray, cv2.CV_64F).var()), 2),
         "staffCount": len(staffs),
         "standardStaffCount": len(staffs) - tab_count,
         "tabStaffCount": tab_count,
@@ -259,8 +270,26 @@ def preflight(request):
         document = pdfium.PdfDocument(str(source))
         try:
             source_page_count = len(document)
-            for index in range(source_page_count):
-                if index >= limits["maxPages"] or time.monotonic() >= deadline:
+            selected_indices = range(source_page_count)
+            if source_page_count > limits["maxPages"]:
+                # Read only page dimensions while finding the largest page;
+                # rasterize first/middle/last/largest rather than claiming the
+                # first N pages describe a whole long document.
+                largest_index, largest_area = 0, 0
+                for candidate_index in range(source_page_count):
+                    if time.monotonic() >= deadline:
+                        break
+                    candidate_page = document[candidate_index]
+                    try:
+                        candidate_width, candidate_height = candidate_page.get_size()
+                        if candidate_width * candidate_height > largest_area:
+                            largest_index, largest_area = candidate_index, candidate_width * candidate_height
+                    finally:
+                        candidate_page.close()
+                selected_indices = sorted({0, source_page_count // 2, source_page_count - 1, largest_index})[:limits["maxPages"]]
+                limit_reached = True
+            for sample_ordinal, index in enumerate(selected_indices):
+                if sample_ordinal >= limits["maxPages"] or time.monotonic() >= deadline:
                     limit_reached = True
                     break
                 page = document[index]
@@ -268,7 +297,7 @@ def preflight(request):
                 try:
                     point_width, point_height = page.get_size()
                     initial_scale = limits["dpi"] / 72
-                    size = allowance(math.ceil(point_width * initial_scale), math.ceil(point_height * initial_scale), index)
+                    size = allowance(math.ceil(point_width * initial_scale), math.ceil(point_height * initial_scale), sample_ordinal)
                     if size is None:
                         break
                     # PDFium rounds up: subtract one output pixel in each axis
@@ -280,7 +309,7 @@ def preflight(request):
                         break
                     bitmap = page.render(scale=scale)
                     image = bitmap.to_pil().convert("RGB")
-                    pages.append(analyze_page(image, index + 1))
+                    pages.append(analyze_page(image, index + 1, source_width=math.ceil(point_width * 300 / 72), source_height=math.ceil(point_height * 300 / 72)))
                     image.close()
                 except Exception:
                     read_failed = True
@@ -311,6 +340,9 @@ def preflight(request):
                         if size is None:
                             break
                         orientation = int(raw.getexif().get(274, 1))
+                        source_width, source_height = raw.size
+                        if orientation in (5, 6, 7, 8):
+                            source_width, source_height = source_height, source_width
                         # JPEG draft scales during decoding; other formats are
                         # bounded by the checked source-raster guard above.
                         if index == 0 and source_page_count == 1 and raw.format == "JPEG":
@@ -329,7 +361,7 @@ def preflight(request):
                             rgba.close()
                         else:
                             image = image.convert("RGB")
-                        pages.append(analyze_page(image, index + 1, orientation))
+                        pages.append(analyze_page(image, index + 1, orientation, source_width, source_height))
                         image.close()
                     except Exception:
                         read_failed = True

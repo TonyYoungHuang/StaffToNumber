@@ -1,7 +1,7 @@
-import type { CheckoutIntendedAction, CheckoutReturnState } from "@score/shared";
+import type { CheckoutIntendedAction, CheckoutReturnState, RecognitionMemoryAssessment } from "@score/shared";
 import type { SupportedLocale } from "@score/i18n";
 
-export type UploadCheckoutDraft = { id: string; documentId: string; filename: string; title: string; mode: "simple" | "complex"; creditCost: number; status: string; expiresAt: string; taskId: string | null; confirmation: "required" };
+export type UploadCheckoutDraft = { id: string; documentId: string; filename: string; title: string; mode: "simple" | "complex"; creditCost: number; status: string; expiresAt: string; taskId: string | null; confirmation: "required"; memoryAssessment?: RecognitionMemoryAssessment };
 export type UploadCheckoutOrder = { id: string; token: string; status: string; resumeResult?: { documentId: string; job?: { id: string }; error?: string; code?: string } | null };
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 

@@ -9,11 +9,44 @@ import { dispatchJobOutboxBatch } from "./job-broker-dispatch.js";
 
 const redisUrl = process.env.JOB_BROKER_TEST_URL?.trim();
 
+test("dispatcher sends the trusted memory lane and permits one recognition delivery", async () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE jobs (id TEXT PRIMARY KEY,status TEXT,request_id TEXT,trace_id TEXT);
+    CREATE TABLE score_jobs (id TEXT PRIMARY KEY,status TEXT,job_type TEXT,params_json TEXT,request_id TEXT,trace_id TEXT);
+    CREATE TABLE job_dispatch_outbox (
+      id TEXT PRIMARY KEY, queue_name TEXT NOT NULL, job_family TEXT NOT NULL, job_id TEXT NOT NULL,
+      status TEXT NOT NULL, attempts INTEGER NOT NULL, next_attempt_at TEXT NOT NULL, locked_at TEXT,
+      dispatched_at TEXT, acknowledged_at TEXT, broker_job_id TEXT, last_error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+  `);
+  const now = new Date("2026-10-17T00:00:00.000Z"), previous = process.env.RECOGNITION_LANES_ENABLED;
+  process.env.RECOGNITION_LANES_ENABLED = "true";
+  try {
+    for (const lane of ["normal", "big"] as const) {
+      db.prepare("INSERT INTO score_jobs VALUES (?,'queued','omr_import',?,NULL,NULL)").run(lane, JSON.stringify({ recognitionLane: lane }));
+      db.prepare("INSERT INTO job_dispatch_outbox VALUES (?,?, 'score',?,'queued',0,?,NULL,NULL,NULL,NULL,NULL,?,?)")
+        .run(`dispatch-${lane}`, SCORE_PROCESSING_QUEUE, lane, now.toISOString(), now.toISOString(), now.toISOString());
+    }
+    const delivered: Array<{ payload: JobBrokerPayload; attempts: number | undefined }> = [];
+    const queue = { add: async (_name: string, payload: JobBrokerPayload, options?: { attempts?: number }) => {
+      delivered.push({ payload, attempts: options?.attempts }); return {} as never;
+    } };
+    const report = await dispatchJobOutboxBatch({ db, queue, now: () => now, staleMs: 300_000, retryBaseMs: 1000 });
+    assert.equal(report.published, 2);
+    assert.deepEqual(delivered.map(item => item.payload.lane).sort(), ["big", "normal"]);
+    assert.ok(delivered.every(item => item.attempts === 1));
+  } finally {
+    if (previous === undefined) delete process.env.RECOGNITION_LANES_ENABLED; else process.env.RECOGNITION_LANES_ENABLED = previous;
+    db.close();
+  }
+});
+
 test("real BullMQ receives a transaction-outbox dispatch with a stable job identity", { skip: !redisUrl }, async () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL, request_id TEXT, trace_id TEXT);
-    CREATE TABLE score_jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL, request_id TEXT, trace_id TEXT);
+    CREATE TABLE score_jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL, request_id TEXT, trace_id TEXT, job_type TEXT, params_json TEXT);
     CREATE TABLE job_dispatch_outbox (
       id TEXT PRIMARY KEY, queue_name TEXT NOT NULL, job_family TEXT NOT NULL, job_id TEXT NOT NULL,
       status TEXT NOT NULL, attempts INTEGER NOT NULL, next_attempt_at TEXT NOT NULL, locked_at TEXT,
@@ -23,7 +56,7 @@ test("real BullMQ receives a transaction-outbox dispatch with a stable job ident
   `);
   const now = new Date("2026-07-17T00:00:00.000Z");
   const dispatchId = randomUUID().replace(/-/gu, "");
-  db.prepare("INSERT INTO score_jobs VALUES ('score-1', 'queued', 'request-1', '0123456789abcdef0123456789abcdef')").run();
+  db.prepare("INSERT INTO score_jobs (id,status,request_id,trace_id) VALUES ('score-1', 'queued', 'request-1', '0123456789abcdef0123456789abcdef')").run();
   db.prepare("INSERT INTO job_dispatch_outbox VALUES (?, ?, 'score', 'score-1', 'queued', 0, ?, NULL, NULL, NULL, NULL, NULL, ?, ?)")
     .run(dispatchId, SCORE_PROCESSING_QUEUE, now.toISOString(), now.toISOString(), now.toISOString());
 

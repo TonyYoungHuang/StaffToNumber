@@ -63,3 +63,23 @@ test('every structural reason is translated in every locale, including partial a
     }
   }
 });
+
+import { getRecognitionExperienceMessages, getRecognitionFailureMessage, recognitionExperienceCatalogIssues } from './recognition-experience-messages.ts';
+
+test('recognition lanes, photo corners, alternatives and honest failures are translated in all nine locales', () => {
+  assert.deepEqual(recognitionExperienceCatalogIssues(), []);
+  const english = getRecognitionExperienceMessages('en');
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getRecognitionExperienceMessages(locale);
+    assert.deepEqual(Object.keys(copy), Object.keys(english));
+    for (const [key, value] of Object.entries(copy)) {
+      assert.ok(value?.trim(), `${locale}.${key}`);
+      assert.deepEqual(placeholders(value), placeholders(english[key as keyof typeof english]), `${locale}.${key}`);
+    }
+    assert.match(copy.passCta, /2[.,]99/);
+    assert.match(copy.starterCta, /Starter/);
+    assert.equal(getRecognitionFailureMessage(locale, 'COVER_ONLY'), copy.coverFailure);
+    assert.equal(getRecognitionFailureMessage(locale, 'LOW_RESOLUTION'), copy.blurFailure);
+    assert.equal(getRecognitionFailureMessage(locale, 'NON_STAFF'), copy.notationFailure);
+  }
+});

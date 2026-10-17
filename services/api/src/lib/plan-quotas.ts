@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { db } from "../db.js";
-import { resolveStorageQuotaTier } from "@score/runtime-database";
+import { resolveStorageQuotaTier, settledRecognitionCreditCost } from "@score/runtime-database";
 import { assertMinimumFreeSpace } from "@score/storage";
 import type { ScoreRecognitionMode } from "@score/shared";
 import { prepaidCreditBalance, reservePrepaidCredits } from "./prepaid-credits.js";
@@ -18,8 +18,11 @@ export function processingJobParams(paramsJson: string | null): Record<string, u
 
 /** Existing jobs without a server quote retain their historic one-credit price. */
 export function processingJobCreditCost(job: { job_type?: string; params_json: string | null }) {
+  if (job.job_type === "musicxml_import" && processingJobParams(job.params_json).catalogOnly === true) return 0;
   if (job.job_type !== "omr_import") return 1;
   const params = processingJobParams(job.params_json);
+  const settled = settledRecognitionCreditCost(params);
+  if (settled !== null) return settled;
   if (params.recognitionMode !== "simple" && params.recognitionMode !== "complex") return 1;
   const cost = params.creditCost;
   return typeof cost === "number" && Number.isSafeInteger(cost) && cost > 0

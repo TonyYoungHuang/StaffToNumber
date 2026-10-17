@@ -123,6 +123,11 @@ function canonicalValue(value: unknown, columnType: string) {
     return { bytes: Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString("base64") };
   }
   if (columnType.trim().toUpperCase().includes("INT")) return String(value);
+  if (/NUM|DEC/u.test(columnType.trim().toUpperCase())) {
+    // PostgreSQL returns NUMERIC as text; SQLite returns a number. Fixed-scale
+    // trailing zeroes must not turn an otherwise identical migration unequal.
+    return String(value).replace(/(\.\d*?[1-9])0+$/u, "$1").replace(/\.0+$/u, "");
+  }
   if (typeof value === "bigint") return value.toString();
   return value;
 }
@@ -152,7 +157,8 @@ function sqliteTables(db: DatabaseSync) {
 }
 
 function tableColumns(db: DatabaseSync, table: string) {
-  return db.prepare(`PRAGMA table_info(${quoteIdentifier(table)})`).all() as SqliteColumn[];
+  const columns = db.prepare(`PRAGMA table_info(${quoteIdentifier(table)})`).all() as SqliteColumn[];
+  return columns.map(column => table === "prepaid_credit_charges" && column.name === "credit_cost" ? { ...column, type: "NUMERIC" } : column);
 }
 
 function tableIndexes(db: DatabaseSync, table: string) {
@@ -173,7 +179,10 @@ function tableForeignKeys(db: DatabaseSync, table: string) {
 function createTableSql(table: string, columns: SqliteColumn[]) {
   const primary = columns.filter((column) => column.pk > 0).sort((left, right) => left.pk - right.pk);
   const definitions = columns.map((column) => {
-    const parts = [quoteIdentifier(column.name), sqliteTypeToPostgres(column.type)];
+    // SQLite's older INTEGER affinity accepts fractions; preserve their value
+    // when migrating an upgraded schema-28 database to PostgreSQL.
+    const type = table === "prepaid_credit_charges" && column.name === "credit_cost" ? "NUMERIC(18,4)" : sqliteTypeToPostgres(column.type);
+    const parts = [quoteIdentifier(column.name), type];
     if (column.notnull) parts.push("NOT NULL");
     const defaultValue = portableDefault(column.dflt_value);
     if (defaultValue !== null) parts.push(`DEFAULT ${defaultValue}`);

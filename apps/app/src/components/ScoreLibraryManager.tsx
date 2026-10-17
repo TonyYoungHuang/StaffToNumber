@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { formatDateTime, formatMessage, formatNumber, localizeBrowserApiError, type SupportedLocale } from "@score/i18n";
+import { formatDateTime, formatMessage, formatNumber, localizeBrowserApiError, resolveRecognitionRequestFailure, type SupportedLocale } from "@score/i18n";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
-import { ProcessingProgress } from "@score/ui";
+import { ProcessingProgress, PhotoCornerEditor, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
@@ -53,6 +53,7 @@ export type ScoreImportView = "library" | "musicxml" | "backup" | "midi" | "scan
 export function ScoreLibraryManager({ view = "library", copy, recognitionMode = "simple" }: { view?: ScoreImportView; copy: ScoreEntryMessages["library"]; recognitionMode?: RecognitionMode }) {
   const { locale } = useAppLocale();
   const flow = useFlowMessages();
+  const experience = flow.recognitionExperience;
   const recognitionCopy = flow.ensemble;
   const preflightCopy = flow.preflight;
   const stagedCopy = flow.stagedUpload;
@@ -62,8 +63,8 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const transferCopy = scoreTransferCopy(locale);
   const serverDraftCopy = uploadDraftCopy(locale);
   const draftFailure = (problem: { error?: string; code?: string; status?: number }) =>
-    ["UPLOAD_DRAFT_NOT_FOUND", "CHECKOUT_SOURCE_NOT_FOUND", "STAGED_UPLOAD_EXPIRED", "STAGED_UPLOAD_NOT_FOUND", "STAGED_UPLOAD_CONSUMED"].includes(problem.code ?? "")
-      ? serverDraftCopy.unavailable : problem.code === "CHECKOUT_NOT_READY" ? serverDraftCopy.waiting : localizeBrowserApiError(problem);
+    resolveRecognitionRequestFailure(experience, problem.code) ?? (["UPLOAD_DRAFT_NOT_FOUND", "CHECKOUT_SOURCE_NOT_FOUND", "STAGED_UPLOAD_EXPIRED", "STAGED_UPLOAD_NOT_FOUND", "STAGED_UPLOAD_CONSUMED"].includes(problem.code ?? "")
+      ? serverDraftCopy.unavailable : problem.code === "CHECKOUT_NOT_READY" ? serverDraftCopy.waiting : localizeBrowserApiError(problem));
   const [taskIntent, setTaskIntent] = useState<ScoreTaskIntent | null>(null);
   const taskIntentRef = useRef<ScoreTaskIntent | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -79,6 +80,9 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const [access, setAccess] = useState<AccessUser | null>(null);
   const [mode, setMode] = useState<"file" | "jianpu">(view === "jianpu" ? "jianpu" : "file");
   const [file, setFile] = useState<File | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoCorners, setPhotoCorners] = useState<PhotoCorners | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [jianpuText, setJianpuText] = useState("1=C\n4/4\n1 2 3 4 | 5 - 5 - |");
   const [busy, setBusy] = useState(false);
@@ -95,8 +99,8 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const [preflightAttempt, setPreflightAttempt] = useState<string | number>(0);
   const [showAdvancedModes, setShowAdvancedModes] = useState(false);
   const preflightGuard = useRef(new PreflightRequestGuard());
-  const preflightMessages = useRef({ locale, failed: preflightCopy.failed, timeout: transferCopy.preflightTimeout, network: transferCopy.preflightNetwork });
-  preflightMessages.current = { locale, failed: preflightCopy.failed, timeout: transferCopy.preflightTimeout, network: transferCopy.preflightNetwork };
+  const preflightMessages = useRef({ locale, experience, failed: preflightCopy.failed, timeout: transferCopy.preflightTimeout, network: transferCopy.preflightNetwork });
+  preflightMessages.current = { locale, experience, failed: preflightCopy.failed, timeout: transferCopy.preflightTimeout, network: transferCopy.preflightNetwork };
   const submitLock = useRef(false);
   const uploadAbort = useRef<AbortController | null>(null);
   const [uploadRecovery, setUploadRecovery] = useState<{ key: string; identity: string } | null>(null);
@@ -142,7 +146,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     const draftKind = draft?.file ? detectScoreImport(draft.file.name) : null;
     const supportedDraft = recognitionMode === "simple" || (draft?.mode === "file" && ["omr", "musicxml", "score-json"].includes(draftKind ?? ""));
     if (!draft || !supportedDraft || edited.current) return;
-    setFile(draft.file); setTitle(draft.title); setJianpuText(draft.text); setMode(draft.mode);
+    setFile(draft.file); setPhotoCorners((draft.photoCorners as PhotoCorners | null) ?? null); setTitle(draft.title); setJianpuText(draft.text); setMode(draft.mode);
     if (!taskIntentRef.current && draft.intent) {
       taskIntentRef.current = draft.intent;
       setTaskIntent(draft.intent);
@@ -159,10 +163,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       void clearImportDraft(GUEST_IMPORT_OWNER_ID);
       return;
     }
-    void saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined }).catch(() => {
+    void saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined, photoCorners }).catch(() => {
       setDraftFailed(true); setStatus(flow.fileLost); setFailed(true);
     });
-  }, [token, access, file, title, jianpuText, mode, taskIntent, flow.fileLost]);
+  }, [token, access, file, photoCorners, title, jianpuText, mode, taskIntent, flow.fileLost]);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -228,7 +232,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     void (async () => {
       try {
         const response = await fetchScorePreflight<{ preflight?: unknown; stagedUploadId?: string; stagedUploadExpiresAt?: string; error?: string; code?: string }>(`${API_BASE_URL}/api/scores/import/omr/preflight`, file, {
-          headers, signal: request.signal, accountId: access.id, retryKey: preflightAttempt,
+          headers, signal: request.signal, accountId: access.id, retryKey: preflightAttempt, photoCorners: photoCorners ?? undefined,
           onUploadProgress: uploadProgress => {
             if (preflightGuard.current.isCurrent(request)) setPreflight(current => current.status === "checking" || current.status === "waiting" ? { ...current, uploadProgress } : current);
           },
@@ -236,7 +240,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         const data = response.payload;
         if (!preflightGuard.current.isCurrent(request)) return;
         const messages = preflightMessages.current;
-        if (!response.ok) throw new Error(scoreGenerationError({ error: data?.error, code: data?.code }, messages.locale) ?? localizeBrowserApiError({ error: data?.error ?? messages.failed, code: data?.code, status: response.status }));
+        if (!response.ok) throw new Error(resolveRecognitionRequestFailure(messages.experience, data?.code) ?? scoreGenerationError({ error: data?.error, code: data?.code }, messages.locale) ?? localizeBrowserApiError({ error: data?.error ?? messages.failed, code: data?.code, status: response.status }));
         const result = parseScoreRecognitionPreflight(data?.preflight);
         const staged = parseStagedPreflightMetadata(data);
         if (!result || !staged) throw new Error(messages.failed);
@@ -254,12 +258,14 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     })();
     return () => { clearTimeout(waiting); preflightGuard.current.invalidate(); };
   // Changing display language must not replay bytes after failure or cancellation.
-  }, [file, kind, mode, access?.id, token, preflightAttempt, serverDraft?.id]);
+  }, [file, photoCorners, kind, mode, access?.id, token, preflightAttempt, serverDraft?.id]);
   const recognitionQuote = selectedRecognitionMode ? recognitionOption(recognitionOptions, selectedRecognitionMode) : null;
   const simpleQuote = recognitionOption(recognitionOptions, "simple");
-  const recognitionReady = canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
+  const memory = preflight.status === "ready" ? preflight.result.memoryAssessment : null;
+  const bigNeedsPayment = needsBigRecognitionLane(memory, selectedRecognitionMode) && recognitionQuote?.creditSource !== "plan" && recognitionQuote?.creditSource !== "score_pass";
+  const recognitionReady = !bigNeedsPayment && memory?.lane !== "unsupported" && canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
   const freeSimplePath = Boolean(access) && kind === "omr" && isFreeSimpleScanPath({
-    freeTrialAvailable: access?.freeTrial.available === true,
+    freeTrialAvailable: access?.freeTrial.available === true && !bigNeedsPayment,
     selectedMode: selectedRecognitionMode,
     simpleQuote,
     preflight,
@@ -267,7 +273,8 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const showModePicker = mode === "file" && kind === "omr" && Boolean(access) && preflight.status === "ready" && (!freeSimplePath || showAdvancedModes);
   const hasUnusedPass = access?.scorePasses?.some(p => !p.documentId) ?? false;
   const canImport = mode === "file" && kind === "omr" ? recognitionQuote?.canSubmit === true : access?.entitlement.status === "active";
-  function chooseFile(selected: File | null) {
+  function chooseFile(selected: File | null, corners: PhotoCorners | null = null, photoChecked = false) {
+    setPhotoFile(null); setPhotoCorners(corners);
     setServerDraft(null); setDraftOrder(null);
     const sourceUrl = new URL(window.location.href);
     sourceUrl.searchParams.delete("uploadDraft"); sourceUrl.searchParams.delete("checkoutOrderId");
@@ -278,6 +285,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       setFile(null); setStatus(flow.unsupported); setFailed(true); return;
     }
     if (selected && selected.size > 20 * 1024 * 1024) { setFile(null); setStatus(flow.tooLarge); setFailed(true); return; }
+    if (selected && /\.(png|jpe?g|webp)$/iu.test(selected.name) && !photoChecked) { setFile(null); setPhotoFile(selected); return; }
     setFile(selected);
   }
   async function saveDraftBeforePass() {
@@ -285,10 +293,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     try {
       if (serverDraft) return uploadDraftCheckoutContext(serverDraft, currentWorkPath());
       if (mode === "file" && kind === "omr") {
-        if (preflight.status !== "ready" || !selectedRecognitionMode || !token) throw new Error(preflightCopy.notReady);
+        if (preflight.status !== "ready" || preflight.result.memoryAssessment?.lane === "unsupported" || !selectedRecognitionMode || !token) throw new Error(preflightCopy.notReady);
         // The server source is sufficient for payment recovery; IndexedDB only
         // provides a convenient local fallback and must not block promotion.
-        await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined }).catch(() => setDraftFailed(true));
+        await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined, photoCorners }).catch(() => setDraftFailed(true));
         const key = uploadDraftPrepareKey(access.id, preflight.stagedUploadId, selectedRecognitionMode, title);
         const result = await apiRequest<{ draft: UploadCheckoutDraft }>("/api/scores/upload-drafts/prepare", {
           method: "POST", headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": key },
@@ -300,7 +308,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         window.history.replaceState(window.history.state, "", context.returnPath);
         return context;
       }
-      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
+      await saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined, photoCorners });
       return true;
     } catch (error) {
       setDraftFailed(true); setStatus(error instanceof Error ? error.message : flow.fileLost); setFailed(true);
@@ -377,7 +385,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       if (mode === "file" && !file) return;
       if (mode === "jianpu" && !jianpuText.trim()) return;
       setStatus(copy.signInFirst); setFailed(false);
-      const saved = saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined });
+      const saved = saveGuestImportDraft({ file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined, photoCorners });
       // Open Google in this submit gesture. Persisting the file runs alongside
       // the popup and must complete before a blocked-popup redirect leaves.
       signIn("login", () => {
@@ -428,7 +436,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       }
       const uploadHeaders = new Headers(headers); uploadHeaders.set("Idempotency-Key", receipt.key);
       // A refresh after a lost response retains both the input and the original request.
-      await boundedScoreTransfer(() => saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined }), { timeoutMs: 5_000, signal: controller.signal }).catch(() => setDraftFailed(true));
+      await boundedScoreTransfer(() => saveImportDraft({ ownerId: access.id, file, title, text: jianpuText, mode, createdAt: Date.now(), intent: taskIntent ?? undefined, photoCorners }), { timeoutMs: 5_000, signal: controller.signal }).catch(() => setDraftFailed(true));
       if (controller.signal.aborted) throw new ScoreTransferError("CANCELLED");
       if (mode === "jianpu") {
         uploadHeaders.set("Content-Type", "application/json");
@@ -467,7 +475,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         if (stagedUnavailable && file) setPreflight({ status: "failed", file, error: stagedError!, stagedUnavailable: true });
         const knownRejected = server && server.status >= 400 && server.status < 500 && !["UPLOAD_IN_PROGRESS", "UPLOAD_RESULT_UNKNOWN", "IDEMPOTENCY_KEY_REUSED", "UPLOAD_IDEMPOTENCY_MISMATCH"].includes(server.code ?? "");
         if (knownRejected && attempt) releaseUploadReceipt(attempt.key);
-        setStatus(error.code === "CANCELLED" ? transferCopy.uploadCancelled : stagedError ?? (knownRejected ? scoreGenerationError(server, locale) ?? localizeBrowserApiError(server) : transferCopy.uploadUnknown));
+        setStatus(error.code === "CANCELLED" ? transferCopy.uploadCancelled : stagedError ?? (knownRejected ? resolveRecognitionRequestFailure(experience, server.code) ?? scoreGenerationError(server, locale) ?? localizeBrowserApiError(server) : transferCopy.uploadUnknown));
       } else {
         // No upload has been sent for quote or local-input failures.
         if (!uploadSent && attempt) releaseUploadReceipt(attempt.key);
@@ -484,6 +492,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       <h2 className="card-title">{taskIntent ? taskCopy.tasks[taskIntent.task] : flow.importTitle}</h2>
       {serverDraft ? <div className="stack-sm" data-server-upload-draft={serverDraft.id}>
         <p className="body-copy">{serverDraftCopy.ready}</p>
+        {serverDraft.memoryAssessment ? <p data-recognition-lane={serverDraft.memoryAssessment.lane}>{serverDraft.memoryAssessment.lane === "unsupported" ? experience.unsupportedLane : serverDraft.memoryAssessment.lane === "big" ? experience.bigLane : experience.normalLane}</p> : null}
         <p>{serverDraft.filename} · {serverDraft.mode === "complex" ? preflightCopy.complexTitle : preflightCopy.simpleTitle} · {serverDraftCopy.credits}: {formatNumber(serverDraft.creditCost, locale)}</p>
         <div className="button-row">
           {serverDraft.taskId ? <Link href={scoreTaskDocumentPath(serverDraft.documentId, taskIntent, serverDraft.mode === "complex")} className="button button-primary">{copy.list.open}</Link>
@@ -519,13 +528,17 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
             <span className="stack-sm"><strong className="dropzone-title">{file?.name || flow.chooseFile}</strong><span className="dropzone-copy">{file ? formatSize(file.size, locale) : flow.formats}</span></span>
             {kind ? <span className="status-chip tone-cyan">{kind.toUpperCase()}</span> : null}
           </button>
+          <div className="button-row"><button type="button" className="button button-secondary" disabled={busy} onClick={() => cameraRef.current?.click()}>{experience.photoCapture}</button></div>
+          <input ref={cameraRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label={experience.photoCapture} disabled={busy} onChange={event => { chooseFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
+          <p className="helper-copy">{experience.photoGuide}</p>
+          {photoFile ? <PhotoCornerEditor file={photoFile} messages={experience} onContinue={corners => chooseFile(photoFile, corners, true)} /> : null}
           <input ref={inputRef} id="score-file-input" className="sr-only" type="file" aria-label={flow.chooseFile} accept={recognitionMode === "complex" ? ".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.xml,.musicxml,.mxl,.json" : ".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.xml,.musicxml,.mxl,.mid,.midi,.json" + (audioAvailable ? ",.wav,.mp3,.m4a,.aac,.flac,.ogg,.aif,.aiff" : "")} disabled={busy} onChange={e => { chooseFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
         </> : <>
           <label className="field-group"><span>{copy.jianpu.titleLabel}</span><input className="field-control" value={title} disabled={busy} onChange={e => { edited.current = true; setTitle(e.target.value); }} /></label>
           <label id="jianpu-input" className="field-group"><span>{copy.jianpu.textLabel}</span><textarea className="field-control" rows={5} value={jianpuText} disabled={busy} onChange={e => { edited.current = true; setJianpuText(e.target.value); }} /></label>
         </>}
         {mode === "file" && kind === "omr" ? <>
-          <ScoreRecognitionPreflight state={preflight} compact={freeSimplePath || (preflight.status === "checking" && Boolean(access?.freeTrial.available))} onRetry={() => setPreflightAttempt(crypto.randomUUID())} />
+          <ScoreRecognitionPreflight state={preflight} mode={selectedRecognitionMode} compact={freeSimplePath || (preflight.status === "checking" && Boolean(access?.freeTrial.available))} onRetry={() => setPreflightAttempt(crypto.randomUUID())} />
           {(preflight.status === "checking" || preflight.status === "waiting") && file ? <button type="button" className="button button-secondary" onClick={() => { preflightGuard.current.invalidate(); setPreflight({ status: "failed", file, error: transferCopy.preflightCancelled }); }}>{transferCopy.cancel}</button> : null}
           {showModePicker ? <RecognitionModeCards options={recognitionOptions} selected={selectedRecognitionMode ?? undefined} loading={quoteLoading} error={quoteError} disabled={busy || preflight.status !== "ready" || preflight.file !== file} onSelect={selected => { setSelectedRecognitionMode(selected); setStatus(null); }} onRetry={() => setQuoteAttempt(n => n + 1)} /> : null}
           {freeSimplePath && !showAdvancedModes ? <div className="stack-sm">
@@ -536,10 +549,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
           {!freeSimplePath && recognitionQuote ? <p className="helper-copy" data-recognition-quote={selectedRecognitionMode}>{recognitionQuote.canSubmit ? formatMessage(preflightCopy.price, { credits: formatNumber(recognitionQuote.creditCost, locale) }) : preflightCopy.noCredit}</p> : null}
         </> : mode === "file" && !file ? <p className="helper-copy">{preflightCopy.freeBody}</p> : null}
         {recognitionMode === "complex" ? <p className="helper-copy">{recognitionCopy.structuredImport}</p> : null}
-        {access && access.entitlement.status !== "active" && (kind !== "omr" || selectedRecognitionMode) && !freeSimplePath ? <p className="helper-copy">{(kind === "omr" ? selectedRecognitionMode : recognitionMode) === "simple" && access.freeTrial.available ? copy.scan.freeBody : hasUnusedPass ? getSingleScorePassCopy(locale).paid : kind === "omr" && selectedRecognitionMode === "complex" ? preflightCopy.noCredit : copy.scan.exhaustedBody}</p> : null}
+        {access && !bigNeedsPayment && memory?.lane !== "unsupported" && access.entitlement.status !== "active" && (kind !== "omr" || selectedRecognitionMode) && !freeSimplePath ? <p className="helper-copy">{(kind === "omr" ? selectedRecognitionMode : recognitionMode) === "simple" && access.freeTrial.available ? copy.scan.freeBody : hasUnusedPass ? getSingleScorePassCopy(locale).paid : kind === "omr" && selectedRecognitionMode === "complex" ? preflightCopy.noCredit : copy.scan.exhaustedBody}</p> : null}
         <div className="button-row">
           <button className="button button-primary" type="submit" data-recognition-confirm={mode === "file" && kind === "omr" && access ? "true" : undefined} disabled={busy || (mode === "file" ? !file || (Boolean(access) && kind === "omr" && !recognitionReady) : !jianpuText.trim())}>{busy ? flow.processing : !access ? copy.signInFirst : mode === "file" && kind === "omr" ? recognitionReady ? (freeSimplePath ? preflightCopy.startRecognition : formatMessage(preflightCopy.confirmRecognition, { mode: selectedRecognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(recognitionQuote!.creditCost, locale) })) : (preflight.status === "checking" ? preflightCopy.checking : preflightCopy.notReady) : canImport ? flow.start : flow.upgrade}</button>
-          {mode === "file" && kind === "omr" && preflight.status === "ready" && recognitionQuote && !recognitionQuote.canSubmit ? <OneScorePassUpsell source="score_import" disabled={busy} beforeCheckout={saveDraftBeforePass} onSubscriptionClick={() => { void upgrade(); }} /> : null}
+          {mode === "file" && kind === "omr" && preflight.status === "ready" && memory?.lane !== "unsupported" && recognitionQuote && (!recognitionQuote.canSubmit || bigNeedsPayment) ? <OneScorePassUpsell starterPrimary={bigNeedsPayment} source="score_import" disabled={busy} beforeCheckout={saveDraftBeforePass} onSubscriptionClick={() => { void upgrade(); }} /> : null}
           {file && !busy && mode === "file" ? <button type="button" className="button button-secondary" onClick={() => chooseFile(null)}>{copy.common.clearSelection}</button> : null}
           {draftFailed ? <Link className="button button-secondary" href={upgradePath(currentWorkPath())} onClick={() => trackFunnelEvent("upgrade_click", { source: "score_import_draft_failed" })}>{flow.upgrade}</Link> : null}
           {!access && failed ? <button type="button" className="button button-secondary" onClick={() => setAccessAttempt(n => n + 1)}>{flow.retry}</button> : null}

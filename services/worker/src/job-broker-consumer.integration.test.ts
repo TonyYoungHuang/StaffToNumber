@@ -7,17 +7,18 @@ import { Redis } from "ioredis";
 import { SCORE_PROCESSING_QUEUE, type JobBrokerPayload } from "@score/shared";
 import { consumeBrokerJob } from "./job-broker-consumer.js";
 import { workerConfig } from "./config.js";
+import { recoverTerminalBrokerJobs } from "./broker-job-recovery.js";
 
 const redisUrl = process.env.JOB_BROKER_TEST_URL?.trim();
 
-test("real BullMQ retries the same database dispatch without double-counting an attempt", { skip: !redisUrl }, async () => {
+test("real BullMQ redelivery never reruns a crashed processing score", { skip: !redisUrl }, async () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE score_jobs (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, document_id TEXT, input_file_id TEXT,
       job_type TEXT NOT NULL, status TEXT NOT NULL, params_json TEXT, attempt_count INTEGER NOT NULL DEFAULT 0,
       progress_percent INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-      started_at TEXT, completed_at TEXT, broker_job_id TEXT, request_id TEXT, trace_id TEXT
+      started_at TEXT, completed_at TEXT, broker_job_id TEXT, request_id TEXT, trace_id TEXT, error_message TEXT
     );
     CREATE TABLE jobs (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, input_file_id TEXT NOT NULL, direction TEXT NOT NULL,
@@ -75,11 +76,15 @@ test("real BullMQ retries the same database dispatch without double-counting an 
     ]);
     const score = db.prepare("SELECT status, attempt_count, broker_job_id FROM score_jobs WHERE id = 'score-1'").get() as Record<string, unknown>;
     const outbox = db.prepare("SELECT status, acknowledged_at, broker_job_id FROM job_dispatch_outbox WHERE id = ?").get(dispatchId) as Record<string, unknown>;
-    assert.equal(handlerCalls, 2);
-    assert.deepEqual({ ...score }, { status: "completed", attempt_count: 1, broker_job_id: dispatchId });
+    assert.equal(handlerCalls, 1);
+    assert.deepEqual({ ...score }, { status: "processing", attempt_count: 1, broker_job_id: dispatchId });
     assert.equal(outbox.status, "acknowledged");
     assert.equal(outbox.acknowledged_at, now);
     assert.equal(outbox.broker_job_id, dispatchId);
+    const recovered = await recoverTerminalBrokerJobs({ db, timestamp: now, message: "Interrupted recognition; credits released.",
+      getBrokerState: async id => (await queue.getJob(id))?.getState() ?? null });
+    assert.equal(recovered.length, 1);
+    assert.equal((db.prepare("SELECT status FROM score_jobs WHERE id='score-1'").get() as { status: string }).status, "failed");
   } finally {
     await worker.close();
     await queue.obliterate({ force: true });

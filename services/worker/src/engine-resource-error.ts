@@ -1,9 +1,9 @@
 export type EngineResourceCode = "ENGINE_MEMORY_PRESSURE" | "ENGINE_RESOURCE_BUSY" | "ENGINE_RESOURCE_UNAVAILABLE";
 
 const messages: Record<EngineResourceCode, string> = {
-  ENGINE_MEMORY_PRESSURE: "The server does not have enough memory for this operation right now. Your original score is retained. Retry recognition or export in a few minutes.",
-  ENGINE_RESOURCE_BUSY: "The recognition and export queue is busy. This attempt has ended without a result. Your original score is retained; retry in a few minutes.",
-  ENGINE_RESOURCE_UNAVAILABLE: "The server could not verify available processing resources. This attempt has ended. Your original score is retained; retry in a few minutes.",
+  ENGINE_MEMORY_PRESSURE: "The server could not safely complete this score within its memory capacity. Your original is retained and unsuccessful processing credits are released.",
+  ENGINE_RESOURCE_BUSY: "The processing queue could not accept this operation in time. Your original is retained and unsuccessful processing credits are released.",
+  ENGINE_RESOURCE_UNAVAILABLE: "The server could not verify safe processing resources. Your original is retained and unsuccessful processing credits are released.",
 };
 
 export class EngineResourceError extends Error {

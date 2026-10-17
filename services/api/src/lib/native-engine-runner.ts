@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { acquireNativeMemoryAdmission } from "./native-memory-admission.js";
 
 const START_MARKER = "SCORE_ENGINE_STARTED\n";
 const MAX_CAPTURED_OUTPUT = 4 * 1024 * 1024;
@@ -76,7 +77,7 @@ function appendOutput(previous: string, value: string) {
   return result.length > MAX_CAPTURED_OUTPUT ? result.slice(-MAX_CAPTURED_OUTPUT) : result;
 }
 
-export function runNativeEngine(input: {
+export async function runNativeEngine(input: {
   command: string;
   args: string[];
   label: string;
@@ -85,7 +86,8 @@ export function runNativeEngine(input: {
   shell?: boolean;
   signal?: AbortSignal;
 }): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
+  const releaseAdmission = await acquireNativeMemoryAdmission({memoryMb:128,signal:input.signal,waitMs:input.queueWaitMs});
+  try {return await new Promise((resolve, reject) => {
     if (input.signal?.aborted) { reject(new Error(`${input.label} was cancelled.`)); return; }
     const managed = isManagedMusicEngine(input.command);
     const detached = process.platform !== "win32";
@@ -146,5 +148,5 @@ export function runNativeEngine(input: {
       else if (code !== 0) finish(new Error(`${input.label} exited with code ${code}. ${stderr || stdout}`.trim()));
       else finish();
     });
-  });
+  }); } finally {releaseAdmission();}
 }

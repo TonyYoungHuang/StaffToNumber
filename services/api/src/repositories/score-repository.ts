@@ -39,6 +39,7 @@ import { assertProcessingQuota, getPlanQuotaUsage, recordProcessingCredit, proce
 import { assertRecognitionQuote, normalizeRecognitionMode, RecognitionAccessError, resolveRecognitionAccess } from "../lib/recognition-options.js";
 import { assertFreeTrialOmrAvailable } from "../lib/free-trial.js";
 import { getUserProfile } from "./auth-repository.js";
+import { revalidateRecognitionAssessment, RecognitionAdmissionError } from "../lib/recognition-memory-estimate.js";
 
 type ScoreDocumentRow = {
   id: string;
@@ -643,9 +644,13 @@ export function createOmrImportScoreDocument(input: {
   expectedCreditCost?: number;
   existingDraft?: boolean;
   inTransaction?: boolean;
+  memoryAssessment?: import("@score/shared").RecognitionMemoryAssessment;
+  photoCorners?: import("@score/shared").PhotoCorner[];
+  sourceOrientations?:Record<string,0|90|180|270>;
 }) {
   const recognitionMode = normalizeRecognitionMode(input.recognitionMode);
   const creditCost = recognitionCreditCost(recognitionMode);
+  revalidateRecognitionAssessment(input.memoryAssessment);
   assertRecognitionQuote(recognitionMode, input.expectedCreditCost);
   const timestamp = nowIso();
   const documentId = input.documentId ?? createId();
@@ -668,6 +673,7 @@ export function createOmrImportScoreDocument(input: {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
     const freeTrial = !isPaid && !usePass;
+    if (freeTrial && input.memoryAssessment?.lane === "big") throw new RecognitionAdmissionError("BIG_RECOGNITION_ENTITLEMENT_REQUIRED", "This score needs the large-score lane. Choose Starter, or a $2.99 One Score Pass.", 403);
     const quota = assertProcessingQuota(input.userId, usePass, creditCost);
     if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
     if (input.existingDraft) {
@@ -715,6 +721,11 @@ export function createOmrImportScoreDocument(input: {
         creditCost,
         creditSource: passId ? "score_pass" : freeTrial ? "free_trial" : "plan",
         creditReservedAt: timestamp,
+        memoryAssessment: input.memoryAssessment,
+        recognitionLane: input.memoryAssessment?.lane ?? "normal",
+        photoCorners: input.photoCorners,
+        sourceOrientations:input.sourceOrientations,
+        fallbackUsed: false,
       }),
       context?.requestId ?? null,
       context?.traceId ?? null,
@@ -2517,7 +2528,13 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
     }
     const retryJobId = newOmrAttempt ? createId() : existing.id;
     const recognitionMode = existing.job_type === "omr_import" ? normalizeRecognitionMode(input.recognitionMode ?? params.recognitionMode) : "simple";
-    const creditCost = existing.job_type === "omr_import" && input.recognitionMode !== undefined ? recognitionCreditCost(recognitionMode) : processingJobCreditCost(existing);
+    // A new recognition attempt reserves its original quote, never the delivered
+    // fraction settled by the previous attempt.
+    const originalQuote = typeof params.creditCost === "number" && Number.isSafeInteger(params.creditCost) && params.creditCost > 0
+      ? params.creditCost : recognitionCreditCost(recognitionMode);
+    const creditCost = newOmrAttempt
+      ? input.recognitionMode !== undefined ? recognitionCreditCost(recognitionMode) : originalQuote
+      : processingJobCreditCost(existing);
     const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
     const allowance = getPlanQuotaUsage(input.userId);
     const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
@@ -2544,8 +2561,17 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
       recordProcessingCredit(input.userId, "score", retryJobId, quota, creditCost);
     }
     const timestamp = nowIso();
-    const nextParams = JSON.stringify({ ...params, creditReservedAt: timestamp,
-      ...(newOmrAttempt ? { recognitionMode, creditCost, recoveryOfJobId: existing.id, creditSource: passId ? "score_pass" : isPaid ? "plan" : "free_trial", freeTrial: !isPaid && !passId && params.freeTrial === true } : {}) });
+    const assessment = params.memoryAssessment && typeof params.memoryAssessment === "object" && !Array.isArray(params.memoryAssessment)
+      ? params.memoryAssessment as Record<string, unknown> : undefined;
+    // Carry source/admission inputs only. Results, settlement, progress and
+    // exhausted fallback/budget state belong to the immutable old attempt.
+    const nextParams = JSON.stringify(newOmrAttempt ? {
+      engine: "audiveris", sourceOriginalName: params.sourceOriginalName, sourceFileKind: params.sourceFileKind,
+      memoryAssessment: params.memoryAssessment, photoCorners: params.photoCorners, sourceOrientations: params.sourceOrientations,
+      recognitionLane: assessment?.lane === "big" || (!assessment && !params.fallbackUsed && params.recognitionLane === "big") ? "big" : "normal",
+      fallbackUsed: false, recognitionMode, creditCost, creditReservedAt: timestamp, recoveryOfJobId: existing.id,
+      creditSource: passId ? "score_pass" : isPaid ? "plan" : "free_trial", freeTrial: !isPaid && !passId && params.freeTrial === true,
+    } : { ...params, creditReservedAt: timestamp });
     let changed: number;
     if (newOmrAttempt) {
       changed = db.prepare(`INSERT INTO score_jobs (

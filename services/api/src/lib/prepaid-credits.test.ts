@@ -10,6 +10,7 @@ import { listScorePasses } from "./score-passes.js";
 import { getRecognitionOptions } from "./recognition-options.js";
 import { createJob } from "../repositories/job-repository.js";
 import { createSession } from "../repositories/auth-repository.js";
+import { settleRecognitionCredits } from "@score/runtime-database";
 
 function fixture(planCode: "credits-50" | "credits-200" | "single-score" = "credits-50") {
   initDb();
@@ -46,6 +47,41 @@ test("simple import and PDF export cost two credits; editing does not create a c
   assert.equal(prepaidCreditBalance(f.userId).remaining,48);
   f.create("complex");assert.equal(prepaidCreditBalance(f.userId).remaining,43);
   assert.equal(getPlanQuotaUsage(f.userId,new Date("2030-01-02")).jobs.remaining,43);
+});
+
+test("partial prepaid delivery settles fractional credits durably and failed work returns credits only", () => {
+  const f = fixture(), result = f.create("complex", 15), jobId = result.job!.id;
+  db.prepare("UPDATE score_jobs SET status='processing' WHERE id=?").run(jobId);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const settled = settleRecognitionCredits(db, { jobId, quotedCredits: 5, sourcePageCount: 15, deliveredPages: 8 });
+    assert.equal(settled.settledCreditCost, 2.6666);
+    db.prepare("UPDATE score_jobs SET status='completed' WHERE id=?").run(jobId);
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+  assert.equal(prepaidCreditBalance(f.userId).remaining, 47.3334);
+  db.prepare("DELETE FROM omr_diagnostics WHERE job_id=?").run(jobId);
+  db.prepare("DELETE FROM score_jobs WHERE id=?").run(jobId);
+  assert.equal(prepaidCreditBalance(f.userId).remaining, 47.3334, "Fractional spent ledger survives job deletion");
+  const failed = f.create("complex");
+  db.prepare("UPDATE score_jobs SET status='failed' WHERE id=?").run(failed.job!.id);
+  assert.equal(prepaidCreditBalance(f.userId).remaining, 47.3334);
+  assert.equal((db.prepare("SELECT COUNT(*) AS count FROM prepaid_credit_grants WHERE user_id=?").get(f.userId) as { count: number }).count, 1, "No monetary refund or additional purchase grant is created");
+});
+
+test("partial score-pass delivery costs the delivered fraction and cancellation releases the reservation", () => {
+  const f = fixture("single-score"), result = f.create("complex", 10), jobId = result.job!.id;
+  db.prepare("UPDATE score_jobs SET status='processing' WHERE id=?").run(jobId);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    settleRecognitionCredits(db, { jobId, quotedCredits: 5, sourcePageCount: 10, deliveredPages: 8 });
+    db.prepare("UPDATE score_jobs SET status='completed' WHERE id=?").run(jobId);
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+  assert.equal(listScorePasses(db, f.userId)[0].remaining, 6);
+  const failed = createScoreExportJob({ userId: f.userId, documentId: result.document!.id, params: { format: "pdf" } });
+  db.prepare("UPDATE score_jobs SET status='cancelled' WHERE id=?").run(failed!.id);
+  assert.equal(listScorePasses(db, f.userId)[0].remaining, 6);
 });
 
 test("failed/cancelled reservations release credits, retry reserves again, and deleting a successful job cannot restore credits", () => {

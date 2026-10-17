@@ -45,3 +45,7 @@ apps/*/AGENTS.md
 apps/*/CLAUDE.md
 
 .env*
+
+# Private offline recognition laboratory and customer originals
+raster-lab/
+tmp/raster-lab/

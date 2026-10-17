@@ -62,6 +62,8 @@ import { readSessionCookie } from "../lib/session-cookie.js";
 import { validateCheckoutReturn, issueCheckoutReturnToken, recoverCheckoutReturnToken, consumeCheckoutReturnToken, orderCheckoutReturnContext } from "../lib/checkout-return.js";
 import { findPaymentOrderByIntent, listPaymentOrdersForUser, claimPaddleCheckoutCreation, claimStripeCheckoutRequest } from "../repositories/payment-repository.js";
 import type { PaymentVerification, PaymentVerificationStatus } from "@score/shared";
+import { assertDraftAssessment } from "../lib/recognition-assessment-store.js";
+import { RecognitionAdmissionError } from "../lib/recognition-memory-estimate.js";
 
 function isProvider(value: unknown): value is PaymentProvider {
   return value === "stripe" || value === "paddle";
@@ -404,11 +406,12 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
           targetDocumentId = body.targetDocumentId.trim();
         }
         if (body.intendedAction && !targetDocumentId) return reply.code(400).send({ error: "An intended action requires a target score." });
+        if (targetDocumentId && db.prepare("SELECT id FROM score_upload_drafts WHERE document_id = ? AND user_id = ?").get(targetDocumentId, request.authUserId!)) assertDraftAssessment(targetDocumentId, request.authUserId!);
         const action = normalizeCheckoutContinuation(request.authUserId!, targetDocumentId, body.intendedAction);
         if (targetDocumentId && planCode === "single-score") assertScorePassPurchaseTarget(db, request.authUserId!, targetDocumentId);
         intendedActionJson = action ? JSON.stringify(action) : null;
       } catch (error) {
-        const typed = error instanceof ScorePassError || error instanceof CheckoutContinuationError;
+        const typed = error instanceof ScorePassError || error instanceof CheckoutContinuationError || error instanceof RecognitionAdmissionError;
         return reply.code(typed ? error.statusCode : 400).send({ error: error instanceof Error ? error.message : "Invalid checkout continuation.", code: typed ? error.code : "CHECKOUT_CONTINUATION_INVALID" });
       }
 

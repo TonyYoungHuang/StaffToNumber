@@ -14,6 +14,7 @@ import { deleteStoredFileObject } from "../lib/object-storage.js";
 import { createStoredFile } from "../repositories/file-repository.js";
 import { findScoreUploadDraft, mapScoreUploadDraft, UPLOAD_DRAFT_TTL_MS } from "../lib/score-upload-drafts.js";
 import { assertStorageQuota } from "../lib/plan-quotas.js";
+import { assessRecognitionSource, revalidateRecognitionAssessment } from "../lib/recognition-memory-estimate.js";
 
 export function registerScoreUploadDraftRoutes(app: FastifyInstance) {
   const receipts = new ScoreUploadReceipts(path.join(config.storageDir, ".draft-prepare-receipts"), (id, userId) => Boolean(findScoreUploadDraft(userId, id)));
@@ -45,6 +46,9 @@ export function registerScoreUploadDraftRoutes(app: FastifyInstance) {
       receipt = receipts.begin(userId, key, JSON.stringify([body?.stagedUploadId, recognitionMode, title]));
       if (receipt.replay) return { draft: mapScoreUploadDraft(findScoreUploadDraft(userId, receipt.scoreId)!) };
       staged = await claimStagedOmrUpload(userId, body?.stagedUploadId);
+      const memoryAssessment = await assessRecognitionSource({ sourcePath: staged.sourcePath, ...staged.metadata, mode: recognitionMode });
+      revalidateRecognitionAssessment(staged.metadata.memoryAssessment);
+      revalidateRecognitionAssessment(memoryAssessment);
       if (staged.metadata.sizeBytes > Math.min(config.uploadMaxBytes, 20 * 1024 * 1024)) throw new UploadSecurityError("The checked upload exceeds the current file size limit.", "FILE_TOO_LARGE", 413);
       if (!uploadKinds.omr.some(kind => kind === staged!.metadata.detectedKind)) throw new UploadSecurityError("The checked upload is not a supported score source.", "UNSUPPORTED_FILE_TYPE");
       const bytes = await fs.readFile(staged.sourcePath);
@@ -75,6 +79,9 @@ export function registerScoreUploadDraftRoutes(app: FastifyInstance) {
               VALUES (?, ?, ?, ?, 'candidate', ?, ?)`).run(draftId, userId, title || filename.replace(/\.[^.]+$/u, ""), record.id, now.toISOString(), now.toISOString());
             db.prepare("INSERT INTO score_assets (id, document_id, file_id, asset_kind, created_at) VALUES (?, ?, ?, ?, ?)")
               .run(createId(), draftId, record.id, fileKind, now.toISOString());
+            db.prepare("UPDATE score_assets SET params_json = ? WHERE document_id = ? AND file_id = ?")
+              .run(JSON.stringify({ memoryAssessment, photoCorners: staged!.metadata.photoCorners, checksumSha256: staged!.metadata.checksumSha256,
+                sourceOrientations:Object.fromEntries((staged!.metadata.preflight?.pages??[]).filter(p=>p.orientationCertain && p.rotation!=null).map(p=>[String(p.page),p.rotation])) }), draftId, record.id);
             db.prepare(`INSERT INTO score_upload_drafts (id, user_id, document_id, prepare_intent_id, recognition_mode, status, created_at, updated_at, expires_at)
               VALUES (?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?)`)
               .run(draftId, userId, draftId, key, recognitionMode, now.toISOString(), now.toISOString(), new Date(now.getTime() + UPLOAD_DRAFT_TTL_MS).toISOString());

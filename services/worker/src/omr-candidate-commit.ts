@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { RuntimeDatabaseLike } from "@score/runtime-database";
+import { settleRecognitionCredits, type RuntimeDatabaseLike, type RecognitionCreditSettlementInput } from "@score/runtime-database";
 import type { ScoreJson, StoredFileKind } from "@score/shared";
 
 type CommitOmrCandidateInput = {
@@ -8,7 +8,11 @@ type CommitOmrCandidateInput = {
   scoreJson: ScoreJson;
   musicXmlFileId: string;
   outputFileIds: string[];
-  assets: Array<{ fileId: string; assetKind: StoredFileKind }>;
+  assets: Array<{ fileId: string; assetKind: StoredFileKind; params?: Record<string, unknown> }>;
+  /** Durable result selection lives beside original admission/billing params. */
+  resultManifest?: object;
+  paramsPatch?: Record<string, unknown>;
+  creditSettlement?: Omit<RecognitionCreditSettlementInput, "jobId">;
   timestamp?: string;
   revisionId?: string;
   manageTransaction?: boolean;
@@ -65,8 +69,20 @@ export function commitOmrCandidate(db: RuntimeDatabaseLike, input: CommitOmrCand
       `,
     );
     for (const asset of input.assets) {
-      insertAsset.run(randomUUID(), input.documentId, asset.fileId, asset.assetKind, timestamp);
+      const assetId = randomUUID();
+      insertAsset.run(assetId, input.documentId, asset.fileId, asset.assetKind, timestamp);
+      if (asset.params) db.prepare("UPDATE score_assets SET params_json = ? WHERE id = ?")
+        .run(JSON.stringify(asset.params), assetId);
     }
+
+    if (input.resultManifest || input.paramsPatch) {
+      const stored = db.prepare("SELECT params_json FROM score_jobs WHERE id = ?").get(input.jobId) as { params_json?: string | null };
+      const params = stored.params_json ? JSON.parse(stored.params_json) as Record<string, unknown> : {};
+      db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ? AND status = 'processing'")
+        .run(JSON.stringify({ ...params, ...input.paramsPatch, ...(input.resultManifest ? { resultManifest: input.resultManifest } : {}) }), input.jobId);
+    }
+
+    if (input.creditSettlement) settleRecognitionCredits(db, { jobId: input.jobId, ...input.creditSettlement });
 
     const completed = db.prepare(
       `

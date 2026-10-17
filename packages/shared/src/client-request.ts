@@ -95,7 +95,7 @@ export function forgetStagedScorePreflight(stagedUploadId: string) {
   }
 }
 
-function uploadPreflight<T>(url: string, file: File, headers: Headers, signal: AbortSignal, report: (percent: number) => void, factory: () => XMLHttpRequest): Promise<ScorePreflightResponse<T>> {
+function uploadPreflight<T>(url: string, file: File, headers: Headers, signal: AbortSignal, report: (percent: number) => void, factory: () => XMLHttpRequest, photoCorners?: Array<{x:number;y:number}>): Promise<ScorePreflightResponse<T>> {
   return new Promise((resolve, reject) => {
     const xhr = factory();
     const abort = () => xhr.abort();
@@ -123,7 +123,7 @@ function uploadPreflight<T>(url: string, file: File, headers: Headers, signal: A
     };
     if (signal.aborted) { finish(undefined, abortError()); return; }
     signal.addEventListener("abort", abort, { once: true });
-    const body = new FormData(); body.append("file", file);
+    const body = new FormData(); if (photoCorners) body.append("photoCorners", JSON.stringify(photoCorners)); body.append("file", file);
     try { xhr.send(body); } catch (error) { finish(undefined, error instanceof Error ? error : new TypeError("Score upload failed.")); }
   });
 }
@@ -143,6 +143,7 @@ export async function fetchScorePreflight<T extends { code?: string }>(url: stri
   headers?: HeadersInit;
   accountId?: string;
   pages?: string;
+  photoCorners?: Array<{x:number;y:number}>;
   fetch?: typeof fetch;
   onUploadProgress?: (percent: number) => void;
   xhr?: () => XMLHttpRequest;
@@ -159,7 +160,7 @@ export async function fetchScorePreflight<T extends { code?: string }>(url: stri
   try {
   const identity = await abortable(scorePreflightFileKey(file, options.pages), consumerController.signal);
   const headers = new Headers(options.headers);
-  const key = `preflight:${url}:${headers.get("authorization") ?? options.accountId ?? "session"}:${JSON.stringify([file.name, identity])}:${options.retryKey ?? 0}`;
+  const key = `preflight:${url}:${headers.get("authorization") ?? options.accountId ?? "session"}:${JSON.stringify([file.name, identity, options.photoCorners])}:${options.retryKey ?? 0}`;
   // Keep the reference even when its TTL passes: confirmation reports expiry and
   // the user explicitly chooses a new upload instead of an effect replaying bytes.
   const staged = stagedPreflights.get(key);
@@ -180,12 +181,12 @@ export async function fetchScorePreflight<T extends { code?: string }>(url: stri
         for (const notify of progress!.listeners) notify(percent);
       };
       if (options.fetch || (typeof XMLHttpRequest === "undefined" && !options.xhr)) {
-        const body = new FormData(); body.append("file", file);
+        const body = new FormData(); if (options.photoCorners) body.append("photoCorners", JSON.stringify(options.photoCorners)); body.append("file", file);
         const response = await abortable((options.fetch ?? fetch)(url, { method: "POST", headers, body, credentials: "include", cache: "no-store", signal: controller.signal }), controller.signal);
         const payload = await abortable(response.json().catch(() => null), controller.signal) as T | null;
         result = { ok: response.ok, status: response.status, payload };
       } else {
-        result = await uploadPreflight<T>(url, file, headers, controller.signal, report, options.xhr ?? (() => new XMLHttpRequest()));
+        result = await uploadPreflight<T>(url, file, headers, controller.signal, report, options.xhr ?? (() => new XMLHttpRequest()), options.photoCorners);
       }
       if (result.ok && parseStagedPreflightMetadata(result.payload)) {
         stagedPreflights.set(key, result);

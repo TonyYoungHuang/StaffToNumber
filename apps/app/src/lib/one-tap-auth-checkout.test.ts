@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
-import { SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
+import { getRecognitionExperienceMessages, SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
 import { APP_ROUTES, getGoogleAuthCopy, getPricingPlanCatalog, SINGLE_SCORE_PASS } from "@score/shared";
 import { getBillingMessages } from "./billing-messages";
 import { getScorePassCopy } from "./billing-messages/score-pass-copy";
@@ -224,6 +224,7 @@ test("One Score Pass is the primary upsell in every locale and routes authentica
     const next = "/scores/score-1?task=transpose#transpose-score";
     const harness = componentHarness("../components/OneScorePassUpsell.tsx", {
       "next/link": "a", "./AppLocaleProvider": { useAppLocale: () => ({ locale }) }, "../lib/release": { checkoutAvailable: true },
+      "../lib/flow-messages/client": { useFlowMessages: () => ({ recognitionExperience: getRecognitionExperienceMessages(locale) }) },
       "../lib/auth-storage": { getStoredToken: () => "session-token" }, "../lib/analytics": { trackFunnelEvent() {} },
       "../lib/api": { apiRequest: async (path: string, init: RequestInit) => { requests.push({ path, init }); return { ok: true, data: { orderId: "order-1", url: "https://checkout.stripe.com/fixture" } }; } },
       "../lib/flow-return": { currentWorkPath: () => next, workReturnPath, upgradePath: (path: string) => `/checkout?${new URLSearchParams({ next: path })}`, saveCheckoutReturn: (...args: unknown[]) => saved.push(args) },
@@ -248,6 +249,7 @@ test("an unauthenticated pass purchase starts Google in the original click and p
   const requests: Array<{ path: string; init: RequestInit }> = [];
   const harness = componentHarness("../components/OneScorePassUpsell.tsx", {
     "next/link": "a", "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) }, "../lib/release": { checkoutAvailable: true },
+    "../lib/flow-messages/client": { useFlowMessages: () => ({ recognitionExperience: getRecognitionExperienceMessages("en") }) },
     "./AppAuthModal": { useAppAuthModal: () => (_mode: string, onDone: () => void) => { finish = onDone; } },
     "../lib/auth-storage": { getStoredToken: () => token }, "../lib/analytics": { trackFunnelEvent() {} },
     "../lib/api": { apiRequest: async (path: string, init: RequestInit) => { requests.push({ path, init }); return { ok: true, data: { orderId: "order-1", url: "https://checkout.stripe.com/fixture" } }; } },

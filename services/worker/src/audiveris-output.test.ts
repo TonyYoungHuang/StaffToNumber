@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test, { after } from "node:test";
 import AdmZip from "adm-zip";
-import { AudiverisOutputSelectionError, findAudiverisMusicXmlOutput, findAudiverisProjectOutput, readAudiverisMusicXml } from "./audiveris-output.js";
+import { enumerateAudiverisMusicXmlOutputs, enumerateAudiverisProjectOutputs, findAudiverisMusicXmlOutput, findAudiverisProjectOutput, normalizeMovementTitle, readAudiverisMusicXml, readAudiverisMusicXmlCandidates } from "./audiveris-output.js";
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "audiveris-output-"));
 after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
@@ -42,18 +42,14 @@ function scoreOutput(directory: string, name: string) {
   return file;
 }
 
-test("rejects separate movement exports regardless of file modification times", () => {
+test("retains every separate movement in stable order regardless of modification times", () => {
   const directory = path.join(tempDir, "movements");
   const files = [1, 2, 3].map((number) => scoreOutput(directory, `normalized.mvt${number}.mxl`));
   fs.utimesSync(files[0], 1, 1);
   fs.utimesSync(files[1], 3, 3);
   fs.utimesSync(files[2], 2, 2);
-  assert.throws(() => findAudiverisMusicXmlOutput(directory), (error: unknown) => {
-    assert.ok(error instanceof AudiverisOutputSelectionError);
-    assert.equal(error.code, "MULTIPLE_MOVEMENTS");
-    assert.deepEqual(error.candidatePaths, files);
-    return true;
-  });
+  assert.deepEqual(enumerateAudiverisMusicXmlOutputs(directory), files);
+  assert.equal(findAudiverisMusicXmlOutput(directory), files[0]);
   assert.ok(files.every((file) => fs.existsSync(file)));
 });
 
@@ -90,14 +86,14 @@ test("ignores ordinary XML metadata while retaining legacy single-score lookup",
   assert.equal(findAudiverisMusicXmlOutput(directory, { rotationDegrees: 0 }), successful);
 });
 
-test("rejects multiple score roots and opus documents inside compressed MusicXML", () => {
+test("retains multiple score roots and safely expands local opus documents", () => {
   const multiple = path.join(tempDir, "multiple-roots.mxl");
   const zip = new AdmZip();
   zip.addFile("META-INF/container.xml", Buffer.from('<container><rootfiles><rootfile full-path="first.xml"/><rootfile full-path="second.xml"/></rootfiles></container>'));
   zip.addFile("first.xml", Buffer.from("<score-partwise/>"));
   zip.addFile("second.xml", Buffer.from("<score-partwise/>"));
   zip.writeZip(multiple);
-  assert.throws(() => readAudiverisMusicXml(multiple), { code: "MULTIPLE_MOVEMENTS" });
+  assert.deepEqual(readAudiverisMusicXmlCandidates(multiple).map(candidate => candidate.rootPath), ["first.xml", "second.xml"]);
 
   const opus = path.join(tempDir, "opus.mxl");
   const opusZip = new AdmZip();
@@ -105,13 +101,62 @@ test("rejects multiple score roots and opus documents inside compressed MusicXML
   opusZip.addFile("first.xml", Buffer.from("<score-partwise/>"));
   opusZip.addFile("second.xml", Buffer.from("<score-partwise/>"));
   opusZip.writeZip(opus);
-  assert.throws(() => readAudiverisMusicXml(opus), { code: "MULTIPLE_MOVEMENTS" });
+  assert.deepEqual(readAudiverisMusicXmlCandidates(opus).map(candidate => candidate.rootPath), ["first.xml", "second.xml"]);
 });
 
-test("does not pick one project when an attempt contains multiple OMR bundles", () => {
+test("enumerates all OMR projects without failing usable musical output", () => {
   const directory = path.join(tempDir, "multiple-projects");
   fs.mkdirSync(directory);
   fs.writeFileSync(path.join(directory, "first.omr"), "first");
   fs.writeFileSync(path.join(directory, "second.omr"), "second");
-  assert.throws(() => findAudiverisProjectOutput(directory), { code: "MULTIPLE_PROJECTS" });
+  assert.deepEqual(enumerateAudiverisProjectOutputs(directory), ["first.omr", "second.omr"].map(name => path.join(directory, name)));
+  assert.equal(findAudiverisProjectOutput(directory), path.join(directory, "first.omr"));
+});
+
+test("title formatting is normalized while work and movement numbers stay meaningful", () => {
+  for (const title of ["MoonLight", "Moon Light", "moon-light!", "ＭＯＯＮ　ＬＩＧＨＴ", "Moon Light - 1", "Moon Light－２", "Moon Light (1)"]) {
+    assert.equal(normalizeMovementTitle(title), "moonlight");
+  }
+  assert.notEqual(normalizeMovementTitle("Sonata No. 1"), normalizeMovementTitle("Sonata No. 2"));
+  assert.notEqual(normalizeMovementTitle("I. Allegro"), normalizeMovementTitle("II. Adagio"));
+});
+
+test("a malformed score root does not erase a usable sibling", () => {
+  const outputPath = path.join(tempDir, "mixed-roots.mxl");
+  const zip = new AdmZip();
+  zip.addFile("broken.xml", Buffer.from("<score-partwise><part>"));
+  zip.addFile("good.xml", Buffer.from("<score-partwise/>"));
+  zip.writeZip(outputPath);
+  assert.deepEqual(readAudiverisMusicXmlCandidates(outputPath).map(candidate => candidate.rootPath), ["good.xml"]);
+});
+
+test("opus references cannot escape to external URLs or parent paths", () => {
+  for (const reference of ["https://example.com/score.xml", "../../score.xml"]) {
+    const outputPath = path.join(tempDir, "unsafe-opus.mxl");
+    const zip = new AdmZip();
+    zip.addFile("opus.xml", Buffer.from(`<opus><score href="${reference}"/></opus>`));
+    zip.addFile("score.xml", Buffer.from("<score-partwise/>"));
+    zip.writeZip(outputPath);
+    assert.throws(() => readAudiverisMusicXmlCandidates(outputPath), /External|Unsafe/u);
+  }
+});
+
+test("cyclic opus references are rejected without following an unbounded chain", () => {
+  const outputPath = path.join(tempDir, "cyclic-opus.mxl");
+  const zip = new AdmZip();
+  zip.addFile("a.xml", Buffer.from('<opus><opus-link href="b.xml"/></opus>'));
+  zip.addFile("b.xml", Buffer.from('<opus><opus-link href="a.xml"/></opus>'));
+  zip.addFile("score.xml", Buffer.from("<score-partwise/>"));
+  zip.writeZip(outputPath);
+  assert.throws(() => readAudiverisMusicXmlCandidates(outputPath), /cycle/u);
+});
+
+test("timewise output becomes an editable partwise alternative without losing lyrics or measure attributes", () => {
+  const file = path.join(tempDir, "timewise.musicxml");
+  fs.writeFileSync(file, '<score-timewise version="4.0"><movement-title>Timewise piece</movement-title><part-list><score-part id="P1"><part-name>Flute</part-name></score-part></part-list><measure number="8" implicit="yes"><part id="P1"><note><rest/><duration>4</duration><lyric><text>hello</text></lyric></note></part></measure></score-timewise>');
+  const xml = readAudiverisMusicXmlCandidates(file)[0].musicXml;
+  assert.match(xml, /<score-partwise/u);
+  assert.match(xml, /<part id="P1"><measure number="8" implicit="yes">/u);
+  assert.match(xml, /<lyric><text>hello<\/text><\/lyric>/u);
+  assert.match(fs.readFileSync(file, "utf8"), /<score-timewise/u, "The original remains unchanged");
 });

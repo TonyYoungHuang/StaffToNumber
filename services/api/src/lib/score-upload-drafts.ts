@@ -8,6 +8,7 @@ import type { ScoreRecognitionMode } from "@score/shared";
 import { retrievePaddleTransaction, retrieveStripeCheckoutSession, stripeSessionMatchesPaymentOrder } from "./payments.js";
 import { findPaymentOrderById } from "../repositories/payment-repository.js";
 import { saveDurablePaymentOrder } from "./payment-order-durable-store.js";
+import { assertDraftAssessment, readDraftAssessment } from "./recognition-assessment-store.js";
 
 export const UPLOAD_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 export type ScoreUploadDraftRow = {
@@ -28,7 +29,8 @@ export function mapScoreUploadDraft(draft: ScoreUploadDraftRow) {
   const source = document?.source_file_id ? findStoredFileById(document.source_file_id) : undefined;
   return { id: draft.id, documentId: draft.document_id, title: document?.title ?? source?.original_name ?? "",
     filename: source?.original_name ?? "", mode: draft.recognition_mode, creditCost: recognitionCreditCost(draft.recognition_mode),
-    status: draft.status, expiresAt: draft.expires_at, taskId: draft.task_id, confirmation: "required" as const };
+    status: draft.status, expiresAt: draft.expires_at, taskId: draft.task_id, confirmation: "required" as const,
+    memoryAssessment: readDraftAssessment(draft.document_id, draft.user_id).memoryAssessment };
 }
 
 /** Called inside checkout's account-locked transaction and savepoint. No placeholder job is created at preparation. */
@@ -41,13 +43,14 @@ export function startScoreUploadDraftRecognition(input: { userId: string; draftI
     return job;
   }
   const document = findScoreDocumentById(draft.document_id);
+  const assessment = assertDraftAssessment(draft.document_id, input.userId);
   const file = document?.source_file_id ? findStoredFileById(document.source_file_id) : undefined;
   if (!document || document.user_id !== input.userId || !file || file.user_id !== input.userId || !["source_pdf", "source_image"].includes(file.file_kind)) {
     throw new ScoreUploadDraftError("CHECKOUT_SOURCE_NOT_FOUND", "The original score source is no longer available.", 404);
   }
   const result = createOmrImportScoreDocument({ userId: input.userId, documentId: document.id, title: document.title,
     sourceFileId: file.id, sourceFileKind: file.file_kind as "source_pdf" | "source_image", sourceOriginalName: file.original_name,
-    recognitionMode: draft.recognition_mode, existingDraft: true, inTransaction: true });
+    recognitionMode: draft.recognition_mode, existingDraft: true, inTransaction: true, ...assessment });
   if (!result.job) throw new Error("Could not start recognition.");
   db.prepare("UPDATE score_upload_drafts SET status = 'queued', task_id = ?, confirmed_order_id = ?, updated_at = ? WHERE id = ? AND task_id IS NULL")
     .run(result.job.id, input.orderId, new Date().toISOString(), draft.id);

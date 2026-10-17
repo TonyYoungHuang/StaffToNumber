@@ -9,10 +9,61 @@ import { db, initDb } from "../db.js";
 import { generateActivationCodes, signInWithActivationCode } from "../repositories/auth-repository.js";
 import { createOmrImportScoreDocument } from "../repositories/score-repository.js";
 import { migrateSqliteToPostgres, ensurePostgresRuntimeTriggers } from "./postgres-migration.js";
+import { createRuntimeDatabase, settleRecognitionCredits } from "@score/runtime-database";
+import { prepaidPostgresTriggers } from "./prepaid-schema.js";
 
 const connectionString = process.env.POSTGRES_TEST_URL?.trim();
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 type ChildResult = { ok: boolean; value?: any; code?: string; error?: string };
+
+test("real PostgreSQL schema 28 settles fractional delivery and releases zero/failure reservations without cash refunds", { skip: !connectionString, timeout: 60_000 }, async () => {
+  const schema = `partial_qa_${randomUUID().replaceAll("-", "")}`, qualified = (table: string) => `${quote(schema)}.${quote(table)}`;
+  const pool = new Pool({ connectionString, max: 1 }), client = await pool.connect();
+  let runtime: ReturnType<typeof createRuntimeDatabase> | undefined;
+  try {
+    await client.query(`CREATE SCHEMA ${quote(schema)};
+      CREATE TABLE ${qualified("score_jobs")} (id TEXT PRIMARY KEY,job_type TEXT,status TEXT,params_json TEXT);
+      CREATE TABLE ${qualified("jobs")} (id TEXT PRIMARY KEY,status TEXT);
+      CREATE TABLE ${qualified("prepaid_credit_charges")} (job_family TEXT,job_id TEXT,user_id TEXT,credit_cost INTEGER NOT NULL CHECK(credit_cost>0),status TEXT,PRIMARY KEY(job_family,job_id));`);
+    const sql = readFileSync(new URL("../../../../deploy/hetzner/recognition-partial-credits-schema28.sql", import.meta.url), "utf8").replaceAll(':"runtime_schema"', quote(schema));
+    await client.query(sql); await client.query(sql);
+    await client.query(prepaidPostgresTriggers(schema));
+    runtime = createRuntimeDatabase({ primary: "postgres", postgresUrl: connectionString!, postgresSchema: schema });
+    const buffersBefore = process.memoryUsage().arrayBuffers;
+    const firstResponse = runtime.prepare("SELECT 7 AS count").get() as { count: number };
+    for (let index = 0; index < 50; index++) runtime.prepare("SELECT 1 AS count").get();
+    assert.equal(firstResponse.count, 7, "Reusing the transport buffer never mutates previously decoded responses");
+    assert.ok(process.memoryUsage().arrayBuffers - buffersBefore < 8 * 1024 * 1024, "Repeated synchronous SQL must not allocate one large response buffer per query");
+    const insert = async (id: string) => {
+      await client.query(`INSERT INTO ${qualified("score_jobs")} VALUES($1,'omr_import','processing',$2)`, [id, JSON.stringify({ recognitionMode: "complex", creditCost: 5 })]);
+      await client.query(`INSERT INTO ${qualified("prepaid_credit_charges")} VALUES('score',$1,'synthetic-user',5,'reserved')`, [id]);
+    };
+    await insert("partial");
+    runtime.exec("BEGIN IMMEDIATE");
+    const settlement = settleRecognitionCredits(runtime, { jobId: "partial", quotedCredits: 5, sourcePageCount: 15, deliveredPages: 8 });
+    runtime.prepare("UPDATE score_jobs SET status='completed' WHERE id=?").run("partial");
+    runtime.exec("COMMIT");
+    assert.equal(settlement.settledCreditCost, 2.6666);
+    const charged = (await client.query(`SELECT credit_cost,status FROM ${qualified("prepaid_credit_charges")} WHERE job_id='partial'`)).rows[0];
+    assert.equal(Number(charged.credit_cost), 2.6666); assert.equal(charged.status, "spent");
+    await client.query(`DELETE FROM ${qualified("score_jobs")} WHERE id='partial'`);
+    assert.equal(Number((await client.query(`SELECT credit_cost FROM ${qualified("prepaid_credit_charges")} WHERE job_id='partial'`)).rows[0].credit_cost), 2.6666);
+    await insert("none");
+    runtime.exec("BEGIN IMMEDIATE");
+    settleRecognitionCredits(runtime, { jobId: "none", quotedCredits: 5, sourcePageCount: 15, deliveredPages: 0 });
+    runtime.prepare("UPDATE score_jobs SET status='completed' WHERE id=?").run("none");
+    runtime.exec("COMMIT");
+    assert.equal((await client.query(`SELECT status FROM ${qualified("prepaid_credit_charges")} WHERE job_id='none'`)).rows[0].status, "released");
+    await insert("failed");
+    await client.query(`UPDATE ${qualified("score_jobs")} SET status='failed' WHERE id='failed'`);
+    assert.equal((await client.query(`SELECT status FROM ${qualified("prepaid_credit_charges")} WHERE job_id='failed'`)).rows[0].status, "released");
+    assert.equal(Number((await client.query(`SELECT SUM(credit_cost) AS used FROM ${qualified("prepaid_credit_charges")} WHERE status<>'released'`)).rows[0].used), 2.6666);
+  } finally {
+    runtime?.close();
+    await client.query(`DROP SCHEMA IF EXISTS ${quote(schema)} CASCADE`);
+    client.release(); await pool.end();
+  }
+});
 
 test("real PostgreSQL schema 25 upgrade preserves old rows; API grants, top-ups and two-process reservations are atomic", { skip: !connectionString, timeout: 240_000 }, async () => {
   initDb();
@@ -108,6 +159,9 @@ test("real PostgreSQL schema 25 upgrade preserves old rows; API grants, top-ups 
     const before=await snapshot();
     const sql=readFileSync(new URL("../../../../deploy/hetzner/prepaid-credit-packs.sql",import.meta.url),"utf8").replaceAll(':"runtime_schema"',quote(schema)).replaceAll(':"runtime_role"',quote(role));
     await client.query(sql); await client.query(sql);
+    const partialCreditsSql = readFileSync(new URL("../../../../deploy/hetzner/recognition-partial-credits-schema28.sql", import.meta.url), "utf8").replaceAll(':"runtime_schema"', quote(schema));
+    await client.query(partialCreditsSql); await client.query(partialCreditsSql);
+    assert.equal((await client.query("SELECT data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name='prepaid_credit_charges' AND column_name='credit_cost'", [schema])).rows[0].data_type, "numeric");
     assert.deepEqual(await snapshot(),before,"repeated additive upgrade must leave every legacy row unchanged");
     await ensurePostgresRuntimeTriggers({target:client,targetSchema:schema});
     const oldLogin=success(await run({action:"login",code:legacyCode.code}));

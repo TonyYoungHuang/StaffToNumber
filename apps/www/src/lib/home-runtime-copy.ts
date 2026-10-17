@@ -1,8 +1,9 @@
-import { getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRecognitionSupportMessage, getStagedUploadMessages, type SupportedLocale } from "@score/i18n";
+import { getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRecognitionSupportMessage, getStagedUploadMessages, getRecognitionExperienceMessages, type SupportedLocale } from "@score/i18n";
 
 /** Selected by the server: the browser receives only its current language. */
 export function getHomeRuntimeCopy(locale: SupportedLocale) {
   return {
+    recognitionExperience: getRecognitionExperienceMessages(locale),
     processing: getScoreProcessingMessages(locale),
     staged: getStagedUploadMessages(locale),
     failure: {

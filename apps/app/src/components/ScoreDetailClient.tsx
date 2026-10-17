@@ -37,6 +37,7 @@ import { PracticeRecorder } from "./PracticeRecorder";
 import { DEFAULT_PLAYBACK_PRACTICE_SETTINGS, ScorePlaybackPanel } from "./ScorePlaybackPanel";
 import { ScoreVisualEditorPanel, type ScoreEditorCollaborationMutation } from "./ScoreVisualEditorPanel";
 import { ScoreCollaborationPanel } from "./ScoreCollaborationPanel";
+import { ScoreRecognitionCandidates } from "./ScoreRecognitionCandidates";
 import { ScoreCandidateReviewWorkspace } from "./ScoreCandidateReviewWorkspace";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
 import { JianpuNotationView } from "./JianpuNotationView";
@@ -2622,6 +2623,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 
   return (
     <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
+<ScoreRecognitionCandidates scoreId={score.id} token={token} locale={locale} expectedEditableRevisionId={score.currentRevisionId} onUpdated={refreshScoreSnapshot} />
 {continuationError ? <p className="form-status error" role="alert">{continuationError}</p> : null}
 {downloadError ? <p className="form-status error">{downloadError}</p> : null}
 <ProcessingProgress active={downloadCount > 0} label={flow.percentProgress.downloading} error={Boolean(downloadError)} locale={locale} />
@@ -3312,7 +3314,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                           {jobActionId === job.id ? omrCopy.working : omrCopy.cancel}
                         </button>
                       ) : null}
-                      {(job.status === "failed" || job.status === "cancelled") ? (
+                      {(job.status === "failed" || job.status === "cancelled") && !["omr_import", "complex_omr_import"].includes(job.jobType) ? (
                         <button type="button" className="button button-primary" disabled={jobActionId === job.id} onClick={() => void handleScoreJobAction(job, "retry")}>
                           {jobActionId === job.id ? omrCopy.working : omrCopy.retry}
                         </button>

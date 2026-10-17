@@ -168,7 +168,8 @@ export function ScoreOmrReviewPanel({
   const problemMeasures = new Set(issueDiagnostics.map((item) => item.measureId).filter(Boolean));
   const overlayDiagnostics = pageDimensions ? pageDiagnostics.filter((item) => item.bbox && item.issues.length > 0).slice(0, 300) : [];
   const imageGeometryMatches = !pageDimensions || !imageDimensions || hasMatchingOmrImageDimensions(pageDimensions, imageDimensions.width, imageDimensions.height);
-  const focusedBbox = focusedSourceRegion?.page === activePage && focusedSourceRegion.bbox && pageDimensions && imageGeometryMatches && (showOverlayPage || !hasOverlayPages)
+  const canProjectOverlay = showOverlayPage && Boolean(imageDimensions) && imageGeometryMatches;
+  const focusedBbox = focusedSourceRegion?.page === activePage && focusedSourceRegion.bbox && pageDimensions && canProjectOverlay
     ? projectOmrBbox(pageDimensions, focusedSourceRegion.bbox) : null;
 
   useEffect(() => {
@@ -280,7 +281,7 @@ export function ScoreOmrReviewPanel({
                 onLoad={(event) => setImageDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
               />
               {focusedBbox && focusedSourceRegion ? <div data-coverage-region-id={focusedSourceRegion.id} aria-label={focusedSourceRegion.label} style={{ position: "absolute", pointerEvents: "none", border: "3px solid #d97706", background: "rgba(245,158,11,.12)", left: `${focusedBbox.leftPercent}%`, top: `${focusedBbox.topPercent}%`, width: `${focusedBbox.widthPercent}%`, height: `${focusedBbox.heightPercent}%` }} /> : null}
-              {pageDimensions && showOverlayPage ? (
+              {pageDimensions && canProjectOverlay ? (
                 <div className="score-source-symbol-layer" aria-label={copy.symbolLayer}>
                   {overlayDiagnostics.map((item) => {
                     const projected = projectOmrBbox(pageDimensions, item.bbox!);

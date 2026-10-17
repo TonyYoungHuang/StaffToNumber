@@ -102,8 +102,32 @@ class AssemblyTests(unittest.TestCase):
         self.assertEqual(len(root.findall(".//other-notation")), 2)
 
     def test_named_movements_are_not_silently_joined(self):
-        with self.assertRaisesRegex(ValueError, "MOVEMENT_AMBIGUOUS"):
-            self.merge([self.chunk(score(["Flute"], movement="I")), self.chunk(score(["Flute"], movement="II"), 2)])
+        result, root = self.merge([self.chunk(score(["Flute"], movement="I")), self.chunk(score(["Flute"], movement="II"), 2)])
+        self.assertEqual(root.findtext("movement-title"), "I")
+        self.assertEqual(len(result["alternatives"]), 2)
+        self.assertEqual([candidate["sourcePages"] for candidate in result["alternatives"]], [[1], [2]])
+        self.assertEqual([ET.parse(candidate["musicXmlPath"]).getroot().findtext("movement-title") for candidate in result["alternatives"]], ["I", "II"])
+
+    def test_title_formatting_does_not_block_assembly(self):
+        titles = ["MoonLight", "moon light!", "ＭＯＯＮ－ＬＩＧＨＴ", "Moon Light - 1", "Moon Light (2)"]
+        result, root = self.merge([self.chunk(score(["Flute"], movement=title), index + 1) for index, title in enumerate(titles)])
+        self.assertEqual(len(root.find("part").findall("measure")), len(titles))
+        self.assertTrue(any(issue["kind"] == "title-format-normalized" for issue in result["issues"]))
+        self.assertNotIn("alternatives", result)
+        self.assertNotEqual(adapter.normalize_movement_title("Sonata No.1"), adapter.normalize_movement_title("Sonata No.2"))
+
+    def test_explicit_display_order_retains_original_source_page_numbers(self):
+        first = self.chunk(score(["Flute"]), 1, order=2)
+        second = self.chunk(score(["Flute"]), 4, order=1)
+        result, _ = self.merge([first, second])
+        self.assertEqual([reference["page"] for reference in result["sourceRefs"]], [4, 1])
+
+    def test_timewise_input_is_converted_without_losing_measure_children(self):
+        xml = '<score-timewise><part-list><score-part id="P1"><part-name>Flute</part-name></score-part></part-list><measure number="7"><part id="P1"><attributes><divisions>1</divisions></attributes><note><rest/><duration>4</duration></note></part></measure></score-timewise>'
+        result, root = self.merge([self.chunk(xml)])
+        self.assertEqual(root.tag, "score-partwise")
+        self.assertEqual(len(root.findall("part/measure/note/rest")), 1)
+        self.assertEqual(result["sourceRefs"][0]["sourceMeasureNumber"], "7")
 
     def test_explicit_orchestral_group_and_source_comments_survive(self):
         xml = score(["Flute", "Violin"]).replace('<part-list>', '<part-list><part-group type="start" number="7"><group-name>Winds</group-name><group-symbol>bracket</group-symbol></part-group>').replace('</part-list>', '<part-group type="stop" number="7"/></part-list>').replace('<pitch>', '<!-- source-position 10,20 --><pitch>')
