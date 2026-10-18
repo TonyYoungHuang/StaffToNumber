@@ -568,6 +568,8 @@ img {
 .stack-lg,
 .stack-xl {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
 }
 
 .stack-xs {
@@ -1293,12 +1295,14 @@ img {
 .list-item-content,
 .job-card-content {
   flex: 1;
+  min-width: 0;
   display: grid;
   gap: 10px;
 }
 
 .item-title {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 1rem;
   font-weight: 800;
 }
