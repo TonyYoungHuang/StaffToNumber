@@ -7,7 +7,7 @@ import { getScoreOperationMessages } from "./score-operation-messages";
 import { getScoreReadinessMessages } from "./score-readiness-messages";
 
 const keys = ["edit", "jianpu", "transpose", "play", "export", "more", "advanced", "share", "history", "teaching", "parts", "source", "close", "importTitle", "chooseFile", "formats", "start", "upgrade", "back", "format", "download", "retry", "processing", "savedFile", "fileLost", "unsupported", "tooLarge", "autoSave", "resume", "waitingAccess", "accountMismatch", "paymentOptions", "planDetails", "legacy", "saveBeforeLeave"] as const;
-export type FlowMessages = Record<typeof keys[number], string> & {
+export type FlowMessages = Record<Exclude<typeof keys[number], "processing">, string> & {
   recognitionExperience: ReturnType<typeof getRecognitionExperienceMessages>;
   scoreReadiness: ReturnType<typeof getScoreReadinessMessages>; scoreOperations: ReturnType<typeof getScoreOperationMessages>;
   preflight: ReturnType<typeof getScorePreflightMessages>; requestWaiting: ReturnType<typeof getScoreRequestWaitingMessages>;

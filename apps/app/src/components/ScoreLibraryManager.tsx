@@ -8,7 +8,7 @@ import { ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, Recognit
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
-import { useFlowMessages } from "../lib/flow-messages/client";
+import { getScoreUploadProcessingLabel, useFlowMessages } from "../lib/flow-messages/client";
 import { currentWorkPath, upgradePath } from "../lib/flow-return";
 import { clearImportDraft, detectScoreImport, GUEST_IMPORT_OWNER_ID, loadImportDraft, resumeImportDraft, saveGuestImportDraft, saveImportDraft } from "../lib/import-draft";
 import { useAppAuthModal } from "./AppAuthModal";
@@ -54,6 +54,7 @@ export type ScoreImportView = "library" | "musicxml" | "backup" | "midi" | "scan
 export function ScoreLibraryManager({ view = "library", copy, recognitionMode = "simple" }: { view?: ScoreImportView; copy: ScoreEntryMessages["library"]; recognitionMode?: RecognitionMode }) {
   const { locale } = useAppLocale();
   const flow = useFlowMessages();
+  const processingLabel = getScoreUploadProcessingLabel(flow);
   const experience = flow.recognitionExperience;
   const recognitionCopy = flow.ensemble;
   const preflightCopy = flow.preflight;
@@ -566,7 +567,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
         {recognitionMode === "complex" ? <p className="helper-copy">{recognitionCopy.structuredImport}</p> : null}
         {access && !preflightRejected && !bigNeedsPayment && access.entitlement.status !== "active" && (kind !== "omr" || selectedRecognitionMode) && !freeSimplePath ? <p className="helper-copy">{hasUnusedPass ? getSingleScorePassCopy(locale).paid : access.freeTrial.available ? copy.scan.freeBody : copy.scan.exhaustedBody}</p> : null}
         <div className="button-row">
-          {!preflightRejected && !recognitionNeedsPurchase ? <button className="button button-primary" type="submit" data-recognition-confirm={mode === "file" && kind === "omr" && access ? "true" : undefined} disabled={busy || (mode === "file" ? !file || (Boolean(access) && kind === "omr" && !recognitionReady) : !jianpuText.trim())}>{busy ? flow.processing : !access ? copy.signInFirst : mode === "file" && kind === "omr" ? recognitionReady ? (freeSimplePath ? preflightCopy.startRecognition : formatMessage(preflightCopy.confirmRecognition, { mode: selectedRecognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(recognitionQuote!.creditCost, locale) })) : (preflight.status === "checking" ? preflightCopy.checking : preflightCopy.notReady) : canImport ? flow.start : flow.upgrade}</button> : null}
+          {!preflightRejected && !recognitionNeedsPurchase ? <button className="button button-primary" type="submit" data-recognition-confirm={mode === "file" && kind === "omr" && access ? "true" : undefined} disabled={busy || (mode === "file" ? !file || (Boolean(access) && kind === "omr" && !recognitionReady) : !jianpuText.trim())}>{busy ? processingLabel : !access ? copy.signInFirst : mode === "file" && kind === "omr" ? recognitionReady ? (freeSimplePath ? preflightCopy.startRecognition : formatMessage(preflightCopy.confirmRecognition, { mode: selectedRecognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(recognitionQuote!.creditCost, locale) })) : (preflight.status === "checking" ? preflightCopy.checking : preflightCopy.notReady) : canImport ? flow.start : flow.upgrade}</button> : null}
           {mode === "file" && kind === "omr" && preflight.status === "ready" && !preflightRejected && recognitionQuote && (!recognitionQuote.canSubmit || bigNeedsPayment) ? <RecognitionPurchaseDialog key={`${preflight.status === "ready" ? preflight.stagedUploadId : ""}:${selectedRecognitionMode}`}>{bigNeedsPayment && preflight.status === "ready" ? <p>{formatMessage(experience.bigReason, { pages: formatNumber(preflight.result.sourcePageCount, locale) })}</p> : null}<RecognitionPlanSummary messages={experience} /><OneScorePassUpsell starterPrimary={bigNeedsPayment} source="score_import" disabled={busy} beforeCheckout={saveDraftBeforePass} onSubscriptionClick={() => { void upgrade(); }} /></RecognitionPurchaseDialog> : null}
           {file && !busy && mode === "file" ? <button type="button" className="button button-secondary" onClick={() => chooseFile(null)}>{copy.common.clearSelection}</button> : null}
           {draftFailed ? <Link className="button button-secondary" href={upgradePath(currentWorkPath())} onClick={() => trackFunnelEvent("upgrade_click", { source: "score_import_draft_failed" })}>{flow.upgrade}</Link> : null}
@@ -575,7 +576,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
           {busy && uploadAbort.current ? <button type="button" className="button button-secondary" onClick={() => { uploadAbort.current?.abort(); setStatus(transferCopy.uploadCancelled); setFailed(true); }}>{transferCopy.cancel}</button> : null}
         </div>
       </form>
-      <ProcessingProgress active={busy} label={flow.processing} error={failed} operationKey={`${mode}:${file?.name ?? "jianpu"}`} locale={locale} />
+      <ProcessingProgress active={busy} label={processingLabel} error={failed} operationKey={`${mode}:${file?.name ?? "jianpu"}`} locale={locale} />
       {status ? <p className={`form-status ${failed ? "error" : "success"}`} role={failed ? "alert" : "status"}>{status}</p> : null}
     </section>
     <section className="surface-panel">

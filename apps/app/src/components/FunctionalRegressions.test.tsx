@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
-import { formatMessage, recognitionUsedPaidCredits } from "@score/i18n";
-import { RecognitionPlanSummary } from "@score/ui";
+import { SUPPORTED_LOCALES, formatMessage, getScoreProcessingMessages, recognitionUsedPaidCredits } from "@score/i18n";
+import { ProcessingProgress, RecognitionPlanSummary } from "@score/ui";
 import { getFlowMessages } from "../lib/flow-messages";
-import { FlowMessagesProvider } from "../lib/flow-messages/client";
+import { FlowMessagesProvider, getScoreUploadProcessingLabel } from "../lib/flow-messages/client";
 import { getAuthMessages } from "../lib/auth-messages";
 import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
 import { removeRecognitionPage } from "../lib/recognition-candidates";
@@ -15,6 +15,28 @@ import { AppLocaleProvider } from "./AppLocaleProvider";
 import { RecognitionPurchaseDialog } from "./RecognitionPurchaseDialog";
 import { OneScorePassUpsell } from "./OneScorePassUpsell";
 import { ScoreImportStatus } from "./ScoreImportStatus";
+
+test("upload busy buttons and progress render string labels from the structured processing catalog in every locale", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const flow = getFlowMessages(locale);
+    assert.equal(typeof flow.processing, "object", locale);
+    assert.equal(Array.isArray(flow.processing), false, locale);
+    assert.deepEqual(flow.processing, getScoreProcessingMessages(locale), locale);
+
+    const label = getScoreUploadProcessingLabel(flow);
+    assert.equal(typeof label, "string", locale);
+    assert.ok(label.trim().length > 0, locale);
+    assert.equal(label, flow.processing.uploadTitle, locale);
+    const $ = load(renderToStaticMarkup(<>
+      <button type="submit" disabled>{label}</button>
+      <ProcessingProgress active label={label} locale={locale} />
+    </>));
+    assert.equal($("button").text(), label, locale);
+    assert.equal($("[data-processing-progress='active']").length, 1, locale);
+    assert.equal($("[data-percent-progress] span").first().text(), label, locale);
+    assert.equal($("[role='progressbar']").attr("aria-label"), label, locale);
+  }
+});
 
 test("FA-03 upload payment options are an accessible modal containing both plans and the large-file reason", () => {
   for (const locale of ["en", "zh-CN"] as const) {
