@@ -87,7 +87,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
     <div className="stack-lg">
       <div className={styles.heading}><h2 id="score-upgrade-title" className="card-title">{copy.title}</h2><button type="button" className="button button-tertiary" disabled={Boolean(loading)} onClick={onClose}>{copy.close}</button></div>
       <p id="score-upgrade-body">{copy.body}</p><p className="helper-copy">{copy.sharedCredits}</p>
-      {(["starter-monthly", "converter-pro-monthly"] as const).map(code => {
+      {(["starter-monthly"] as const).map(code => {
         const plan = plans.find(item => item.code === code)!;
         return <div key={code} className={`${styles.option} ${code === "starter-monthly" ? styles.recommended : ""}`}>
           {code === "starter-monthly" ? <strong className={styles.badge}>{copy.recommended}</strong> : null}

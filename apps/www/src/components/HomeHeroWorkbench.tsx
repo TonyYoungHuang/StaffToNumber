@@ -13,7 +13,7 @@ import { localizePublicHref } from "../lib/locale-routing";
 import { getAppScoreUrl, siteConfig } from "../lib/site";
 import styles from "../app/home-page.module.css";
 import { HomeCandidatePreview } from "./HomeCandidatePreview";
-import { HomeRecognitionPreflightResult, isHomeRecognitionRejected } from "./HomeRecognitionPreflightResult";
+import { HomeRecognitionPreflightResult, homeRecognitionNeedsPurchase, isHomeRecognitionRejected } from "./HomeRecognitionPreflightResult";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { homeCommercialCopy } from "../lib/home-commercial-copy";
 import type { HomeRuntimeCopy } from "../lib/home-runtime-copy";
@@ -365,7 +365,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       }
       const latest = fresh.data.options.find(option => option.mode === recognitionMode);
       setRecognitionOptions(fresh.data.options);
-      if (!latest?.canSubmit) { setRecognitionError(preflightCopy.noCredit); return; }
+      if (!latest?.canSubmit) { setRecognitionError(homeRecognitionNeedsPurchase(latest) ? `${experience.passPlan} · ${experience.starterPlan}` : preflightCopy.noCredit); return; }
       if (latest.creditCost !== selected.creditCost) { setRecognitionError(preflightCopy.priceChanged); return; }
       if (currentFile.current !== file) return;
       startRecognition(file, recognitionMode, latest.creditCost);

@@ -1496,6 +1496,21 @@ function prepareQueuedScoreExport(document: NonNullable<ReturnType<typeof findSc
   return snapshot;
 }
 
+async function scoreRevisionPreviewMusicXml(userId: string, revision: { musicxml_file_id: string | null; score_json: string }) {
+  const file = revision.musicxml_file_id ? findStoredFileById(revision.musicxml_file_id) : null;
+  try {
+    if (file?.user_id === userId && await storedFileExists(file)) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of await openStoredFile(file)) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      const source = Buffer.concat(chunks);
+      // Preserve the original engraving and any source-only notation for OSMD.
+      return normalizeMusicXmlScore(isCompressedMusicXml(file.original_name, file.mime_type)
+        ? extractMusicXmlFromCompressedMxl(source) : source.toString("utf8"));
+    }
+  } catch { /* The editable score remains previewable if its stored artifact is unavailable. */ }
+  return scoreJsonToMusicXml(migrateScoreJson(JSON.parse(revision.score_json)));
+}
+
 export async function scoreRoutes(app: FastifyInstance) {
   app.post("/payments/orders/:id/continue", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -1838,7 +1853,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       return reply.send({
         revisionId: candidate.id,
-        musicXml: scoreJsonToMusicXml(migrateScoreJson(JSON.parse(candidate.score_json))),
+        musicXml: await scoreRevisionPreviewMusicXml(request.authUserId!, candidate),
       });
     },
   );
@@ -4381,9 +4396,8 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(409).send(scoreNotReadyResponse(document));
       }
 
-      const scoreJson = migrateScoreJson(JSON.parse(revision.score_json));
       return {
-        musicXml: scoreJsonToMusicXml(scoreJson),
+        musicXml: await scoreRevisionPreviewMusicXml(request.authUserId!, revision),
       };
     },
   );

@@ -673,8 +673,8 @@ export function createOmrImportScoreDocument(input: {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
     const freeTrial = !isPaid && !usePass;
-    if (freeTrial && input.memoryAssessment?.lane === "big") throw new RecognitionAdmissionError("BIG_RECOGNITION_ENTITLEMENT_REQUIRED", "This score needs the large-score lane. Choose Starter, or a $2.99 One Score Pass.", 403);
-    const quota = assertProcessingQuota(input.userId, usePass, creditCost);
+    if (freeTrial && input.memoryAssessment?.lane === "big") throw new RecognitionAdmissionError("BIG_RECOGNITION_ENTITLEMENT_REQUIRED", "This file is too large for the normal lane. Choose Starter, or a $2.99 One Score Pass.", 403);
+    const quota = assertProcessingQuota(input.userId, usePass || freeTrial, creditCost);
     if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
     if (input.existingDraft) {
       const updated = db.prepare(`UPDATE score_documents SET status = 'candidate', updated_at = ?
@@ -753,7 +753,7 @@ export function createOmrImportScoreDocument(input: {
     );
 
     if (passId) recordScorePassJob(db, passId, jobId);
-    else recordProcessingCredit(input.userId, "score", jobId, quota, creditCost);
+    else if (!freeTrial) recordProcessingCredit(input.userId, "score", jobId, quota, creditCost);
     if (!input.inTransaction) db.exec("COMMIT");
   } catch (error) {
     if (!input.inTransaction) db.exec("ROLLBACK");
@@ -2465,6 +2465,9 @@ export function createScoreExportJob(input: {
   if (!input.inTransaction) db.exec("BEGIN IMMEDIATE");
   try {
   lockScorePassAccount(db, input.userId);
+  if (getUserProfile(input.userId)?.entitlement.status !== "active" && !scorePassForDocument(db, input.userId, input.documentId)) {
+    throw new ScorePassError("SCORE_PASS_REQUIRED", "Choose a $2.99 One Score Pass or Starter to export this score.");
+  }
   const allowance = getPlanQuotaUsage(input.userId);
   const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (getUserProfile(input.userId)?.entitlement.status !== "active" || (allowance.monthly.remaining < 1 && allowance.prepaid.remaining < 1));
   const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId) : null;
@@ -2538,18 +2541,28 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
     const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
     const allowance = getPlanQuotaUsage(input.userId);
     const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
-    if (existing.job_type === "omr_import" && params.freeTrial === true && !isPaid && !usePass) {
+    const freeTrial = newOmrAttempt && params.freeTrial === true && !isPaid && !usePass;
+    if (freeTrial) {
       // A failed attempt releases the allowance. Retrying it must reserve that
       // allowance again so another queued/successful free project cannot overlap.
       assertFreeTrialOmrAvailable(input.userId);
+      if (params.recognitionLane === "big" || (params.memoryAssessment as { lane?: unknown } | undefined)?.lane === "big") {
+        throw new RecognitionAdmissionError("BIG_RECOGNITION_ENTITLEMENT_REQUIRED", "This file is too large for the normal lane. Choose Starter, or a $2.99 One Score Pass.", 403);
+      }
     }
     if (existing.job_type === "omr_import" && recognitionMode === "complex" && !isPaid && !usePass) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
+    if (!newOmrAttempt && !isPaid && !usePass) {
+      throw new ScorePassError("SCORE_PASS_REQUIRED", "Choose a $2.99 One Score Pass or Starter to process this score.");
+    }
+    if (newOmrAttempt && !isPaid && !usePass && !freeTrial) {
+      throw new ScorePassError("SCORE_PASS_REQUIRED", "Choose a $2.99 One Score Pass or Starter to recognize this score again.");
+    }
     const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
-    const quota = assertProcessingQuota(input.userId, Boolean(passId), creditCost);
+    const quota = assertProcessingQuota(input.userId, Boolean(passId) || freeTrial, creditCost);
     if (passId) recordScorePassJob(db, passId, retryJobId);
-    else {
+    else if (!freeTrial) {
       // A failed pass reservation is released. An upgrade may now pay from the account pool.
       if (!newOmrAttempt) db.prepare("DELETE FROM score_pass_jobs WHERE job_id = ?").run(retryJobId);
       if (!newOmrAttempt && quota.monthly.remaining >= creditCost) {

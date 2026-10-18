@@ -173,8 +173,8 @@ export const zhTWHomepage = {
   },
   plans: {
     free: {
-      badge: getRecognitionPricingCopy("zh-TW").freeShort, name: "Free", cycle: "終身", unitPrice: getRecognitionPricingCopy("zh-TW").freeUnit, credits: "終身 1 個免費辨識專案 · 每月 25 點（匯出等功能）", audience: getRecognitionPricingCopy("zh-TW").freeLead,
-      benefits: [getRecognitionPricingCopy("zh-TW").freeUnit, "線上樂譜編輯、聲部分譜副本產生器 Beta 與即時協作 Beta", "練習播放、瀏覽器錄音與練習回饋 Beta，以及智慧移調", "五線譜 ↔ 簡譜與 MusicXML ↔ MIDI 轉換", "在該免費樂譜中使用目前已推出的匯出與專案級工具"],
+      badge: getRecognitionPricingCopy("zh-TW").freeShort, name: "Free", cycle: "終身", unitPrice: getRecognitionPricingCopy("zh-TW").freeUnit, credits: "終身 1 次免費簡單辨識 · 一般通道 · 沒有每月點數", audience: getRecognitionPricingCopy("zh-TW").freeLead,
+      benefits: [getRecognitionPricingCopy("zh-TW").freeUnit, "在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。", "簡譜與 Score JSON 免費匯出；其他格式需單譜通行證或 Starter", "沒有每月點數；終身免費簡單辨識不扣點數。", "PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。"],
       resources: [getRecognitionPricingCopy("zh-TW").freeScope, "50 MB 檔案儲存空間", "開放樂譜庫與 CC0 下載", "無須信用卡；免費專案持續保留"], cta: "建立免費樂譜",
     },
     "starter-monthly": {

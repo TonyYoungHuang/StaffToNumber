@@ -16,7 +16,7 @@ import { cancelScoreJob, createOmrImportScoreDocument, createScoreExportJob, ret
 import { authPlugin } from "../plugins/auth.js";
 import { scoreRoutes } from "../routes/scores.js";
 import { getPlanQuotaUsage, PlanQuotaExceededError } from "./plan-quotas.js";
-import { getFreeTrialAccess } from "./free-trial.js";
+import { FreeTrialLimitError, getFreeTrialAccess } from "./free-trial.js";
 import { listScorePasses, ScorePassError } from "./score-passes.js";
 import { getRecognitionOptions, RecognitionAccessError } from "./recognition-options.js";
 
@@ -81,6 +81,8 @@ test("server quotes and reserves simple=1, complex=5; failed/cancelled reservati
 test("free lifetime trial remains simple-only and cannot submit complex through forged trial/pass flags", () => {
   const { user, input } = fixture();
   const quote = getRecognitionOptions(user.id);
+  assert.equal(quote.quota.monthly.limit, 0);
+  assert.equal(quote.quota.monthly.remaining, 0);
   assert.equal(quote.options[0].creditSource, "free_trial");
   assert.equal(quote.options[1].reason, "COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED");
   for (const extra of [{ freeTrial: true }, { scorePass: true }, { scorePass: true, freeTrial: true }]) {
@@ -89,11 +91,33 @@ test("free lifetime trial remains simple-only and cannot submit complex through 
   assert.equal(getPlanQuotaUsage(user.id).jobs.used, 0);
   const trial = createOmrImportScoreDocument({ ...input, freeTrial: true });
   assert.equal(JSON.parse(trial.job!.params_json!).creditCost, 1);
+  assert.equal(getPlanQuotaUsage(user.id).monthly.used, 0);
+  assert.equal(getPlanQuotaUsage(user.id).prepaid.used, 0);
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM prepaid_credit_charges WHERE user_id = ?").get(user.id) as { n: number }).n, 0);
   assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, 1);
   assert.equal(getRecognitionOptions(user.id).options[0].canSubmit, false);
+  assert.throws(() => createOmrImportScoreDocument(input), FreeTrialLimitError);
   cancelScoreJob({ userId: user.id, documentId: trial.document!.id, jobId: trial.job!.id });
   assert.equal(getFreeTrialAccess(user.id).available, true);
   assert.equal(getPlanQuotaUsage(user.id).jobs.used, 0);
+});
+
+test("a failed free scan retries without credits and cannot switch to complex or the big lane", () => {
+  const { user, input } = fixture();
+  const created = createOmrImportScoreDocument(input);
+  const job = created.job!, documentId = created.document!.id;
+  db.prepare("UPDATE score_jobs SET status = 'failed' WHERE id = ?").run(job.id);
+  assert.throws(() => retryScoreJob({ userId: user.id, documentId, jobId: job.id, recognitionMode: "complex" }), RecognitionAccessError);
+  const originalParams = JSON.parse(job.params_json!);
+  db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ?").run(JSON.stringify({ ...originalParams, recognitionLane: "big" }), job.id);
+  assert.throws(() => retryScoreJob({ userId: user.id, documentId, jobId: job.id }), error => (error as { code?: string }).code === "BIG_RECOGNITION_ENTITLEMENT_REQUIRED");
+  db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ?").run(job.params_json, job.id);
+  const retried = retryScoreJob({ userId: user.id, documentId, jobId: job.id })!;
+  assert.equal(retried.status, "queued");
+  assert.equal(JSON.parse(retried.params_json!).creditSource, "free_trial");
+  assert.equal(getPlanQuotaUsage(user.id).monthly.used, 0);
+  assert.equal(getPlanQuotaUsage(user.id).prepaid.used, 0);
+  assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, 1);
 });
 
 test("a paid single-score pass spends five for complex, releases failure, and membership funds its retry first", () => {

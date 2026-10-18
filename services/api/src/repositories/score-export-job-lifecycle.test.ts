@@ -31,6 +31,9 @@ const timestamp = new Date(0).toISOString();
 const userId = "export-test-user";
 db.prepare("INSERT INTO users (id, email, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
   .run(userId, "export@example.com", "hash", "salt", timestamp, timestamp);
+const { generateActivationCodes, redeemActivationCode } = await import("./auth-repository.js");
+const membership = generateActivationCodes({ planCode: "starter-monthly", quantity: 1, entitlementDays: 30 }).codes[0]!;
+assert.ok(redeemActivationCode(userId, membership.code).ok);
 
 after(() => {
   db.close();

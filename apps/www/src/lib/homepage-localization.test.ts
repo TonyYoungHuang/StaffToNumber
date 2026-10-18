@@ -99,7 +99,8 @@ test("localized plan displays preserve checkout and entitlement invariants", () 
     assert.deepEqual(localizedPlans.map((plan) => plan.featured), [false, false, true, false, false]);
     assert.deepEqual(localizedPlans.map((plan) => plan.benefits.length), [5, 5, 5, 5, 5]);
     assert.deepEqual(localizedPlans.map((plan) => plan.resources.length), [4, 4, 4, 4, 4]);
-    assert.match(localizedPlans[0]?.credits ?? "", /25/u);
+    assert.match(localizedPlans[0]?.credits ?? "", /1/u);
+    assert.doesNotMatch(localizedPlans[0]?.credits ?? "", /25/u);
     assert.ok(localizedPlans.slice(1, 3).every((plan) => /50/u.test(plan.credits)));
     assert.ok(localizedPlans.slice(3).every((plan) => /200/u.test(plan.credits)));
     assert.match(localizedPlans[2]?.resources.join(" ") ?? "", /46[.,]88/u);

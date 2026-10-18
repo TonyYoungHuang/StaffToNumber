@@ -47,8 +47,9 @@ import type { ScoreCollaborationOperation } from "../lib/score-collaboration-doc
 import type { ScoreDetailMessages } from "../lib/score-detail-messages/types";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { ScoreEnsembleWorkspace } from "./ScoreEnsembleWorkspace";
-import { checkExportQuote, exportQuoteOption, type ScoreExportQuote } from "../lib/score-export-cost";
+import { canRequestScoreExport, checkExportQuote, exportQuoteOption, type ScoreExportQuote } from "../lib/score-export-cost";
 import { hasUsableScoreOutputs, readScoreDownload } from "../lib/download-score-file";
+import { readScoreMusicXmlPreview } from "../lib/score-preview-request";
 import { ScoreTransferError } from "../lib/score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "../lib/score-transfer-messages/client";
 import { getScorePassCopy } from "../lib/billing-messages/client";
@@ -89,10 +90,6 @@ type ScorePayload = {
 
 type JianpuPayload = {
   jianpu: JianpuDocument;
-};
-
-type MusicXmlPreviewPayload = {
-  musicXml: string;
 };
 
 type TransposePayload = ScorePayload & {
@@ -914,6 +911,8 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   function exportCostHint(format: string) {
     const option = exportQuoteOption(exportQuote, format);
     if (!option || !exportQuote) return exportQuoteError ? exportCostCopy.unavailable : exportCostCopy.checking;
+    if (option.reason === "SCORE_PASS_REQUIRED") return `${flow.recognitionExperience.passPlan} · ${flow.recognitionExperience.starterPlan}`;
+    if (option.creditCost === 0 && exportQuote.options.some(item => item.reason === "SCORE_PASS_REQUIRED")) return exportCostCopy.freeFormat;
     const shared = exportQuote.balance.creditSource === "score_pass" ? ` · ${formatMessage(scorePassCopy.sharedBalance, { balance: formatNumber(exportQuote.balance.available, locale) })}` : "";
     return `${formatMessage(option.creditCost === 1 ? exportCostCopy.costSingle : exportCostCopy.costMultiple, { count: formatNumber(option.creditCost, locale) })} · ${formatMessage(exportCostCopy.balance, {
       source: exportCostCopy.sources[exportQuote.balance.creditSource], balance: formatNumber(exportQuote.balance.available, locale),
@@ -925,6 +924,11 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
     const fresh = await refreshExportQuote();
     const check = checkExportQuote(shown, fresh, format);
     if (check !== "ready") {
+      if (check === "paywall") {
+        onUpgrade(intendedAction, false);
+        setExportStatus(null); setExportStatusKind(null);
+        return null;
+      }
       if (check === "insufficient") onUpgrade(intendedAction, passRemaining !== null || fresh?.balance.creditSource === "score_pass");
       setExportStatus(check === "changed" ? exportCostCopy.priceChanged : check === "restricted" ? exportCostCopy.passFormatUnavailable : check === "insufficient" ? exportCostCopy.insufficient : exportCostCopy.unavailable);
       setExportStatusKind("error");
@@ -975,22 +979,17 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 
   useEffect(() => {
     const previewRevision = payload?.score.pendingRevision ?? payload?.score.currentRevision;
-    if (!token || !scoreId || !previewRevision?.scoreJson || previewRevision.musicxmlFileId) {
+    if (!token || !scoreId || !previewRevision?.scoreJson) {
       setGeneratedPreviewMusicXml(null);
       return;
     }
 
     let cancelled = false;
+    const controller = new AbortController();
+    setGeneratedPreviewMusicXml(null);
 
     async function loadGeneratedPreview() {
-      const previewPath = payload?.score.pendingRevision
-        ? `/api/scores/${scoreId}/candidate/musicxml-preview`
-        : `/api/scores/${scoreId}/musicxml-preview`;
-      const result = await apiRequest<MusicXmlPreviewPayload>(previewPath, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const result = await readScoreMusicXmlPreview({ documentId: scoreId, candidate: Boolean(payload?.score.pendingRevision), token, signal: controller.signal });
 
       if (cancelled) {
         return;
@@ -1003,6 +1002,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [
     payload?.score.currentRevisionId,
@@ -1015,7 +1015,6 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 
   const score = payload?.score ?? null;
   const reviewRevision = score?.pendingRevision ?? score?.currentRevision;
-  const musicxmlFileId = reviewRevision?.musicxmlFileId ?? null;
   const currentScoreJson = reviewRevision?.scoreJson;
   const sourcePreviewAsset = assets.find((asset) => asset.assetKind === "source_pdf" || asset.assetKind === "source_image") ?? null;
   const omrPageFiles = assets.filter((asset) =>
@@ -1225,7 +1224,10 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
     });
     setJobActionId(null);
     if (!result.ok) {
-      if (action === "retry" && isCreditUpgradeError(result)) onUpgrade({ kind: "retry", jobId: job.id }, passRemaining !== null);
+      if (action === "retry" && isCreditUpgradeError(result)) {
+        onUpgrade({ kind: "retry", jobId: job.id }, passRemaining !== null);
+        return;
+      }
       setJobsError(result.error);
       return;
     }
@@ -2299,6 +2301,10 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
     setExtractingParts(false);
 
     if (!result.ok) {
+      if (isCreditUpgradeError(result)) {
+        onUpgrade(undefined, passRemaining !== null);
+        return;
+      }
       setPartExtractStatus(result.error);
       setPartExtractStatusKind("error");
       return;
@@ -2382,7 +2388,11 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
         setExportQuote(changedQuote); setExportQuoteError(null);
         setExportStatus(exportCostCopy.priceChanged); setExportStatusKind("error"); return;
       }
-      if (isCreditUpgradeError(result)) onUpgrade(intendedAction, passRemaining !== null);
+      if (isCreditUpgradeError(result)) {
+        onUpgrade(intendedAction, passRemaining !== null);
+        await refreshExportQuote();
+        return;
+      }
       await refreshExportQuote();
       setExportStatus(scoreGenerationError({ error: result.error, code: (result.data as { code?: string } | undefined)?.code }, locale) ?? result.error);
       setExportStatusKind("error");
@@ -2537,9 +2547,20 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
       return true;
     } catch (error) {
       if (controller.signal.aborted) return false;
+      if (error instanceof ScoreTransferError && error.server && isCreditUpgradeError(error.server)) {
+        // Existing-file downloads have no continuation action. Return to this
+        // score after checkout so the same asset can be downloaded again.
+        onUpgrade(undefined, passRemaining !== null);
+        return false;
+      }
       const message = error instanceof ScoreTransferError ? error.code === "TIMEOUT" ? transferCopy.downloadTimeout : error.code === "READ" ? transferCopy.downloadRead : error.code === "INVALID_FILE" ? transferCopy.downloadInvalid : error.code === "RESPONSE" && error.server ? scoreGenerationError(error.server, locale) ?? localizeApiError(error.server, locale) : transferCopy.downloadNetwork : transferCopy.downloadRead;
       setDownloadError(message); return false;
     } finally { downloadReads.current.delete(controller); setDownloadCount(count => Math.max(0, count - 1)); }
+  }
+
+  function existingFileDownloadLabel() {
+    return !exportQuote || exportQuote.options.some(option => option.reason === "SCORE_PASS_REQUIRED") ? assetCopy.download
+      : formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) });
   }
 
   async function handleCandidateDecision(action: "accept" | "reject", coverageReviewed?: boolean) {
@@ -2582,7 +2603,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   if (score.pendingRevision) {
     return (
       <div className="page-stack">
-      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} fileId={score.pendingRevision.musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link>}
+      {ensemble ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={score.pendingRevision.scoreJson} candidatePreview token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={score.pendingRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview={false} onSourceRegionFocus={handleSourceRegionFocus} /> : <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link>}
       <ScoreCandidateReviewWorkspace
         returnTo={taskIntent ? scoreTaskEntryPath(taskIntent) : undefined}
         title={score.title}
@@ -2629,7 +2650,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 <ProcessingProgress active={downloadCount > 0} label={flow.percentProgress.downloading} error={Boolean(downloadError)} locale={locale} />
 <WorkspacePanel name="edit">{currentScoreJson ? (
         <>
-          {ensemble && reviewRevision ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={currentScoreJson} fileId={musicxmlFileId} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={reviewRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview onSourceRegionFocus={handleSourceRegionFocus} /> : null}
+          {ensemble && reviewRevision ? <ScoreEnsembleWorkspace scoreId={score.id} scoreJson={currentScoreJson} candidatePreview={Boolean(score.pendingRevision)} token={token} generatedMusicXml={generatedPreviewMusicXml} revisionId={reviewRevision.id} selectedEventId={selectedScoreEventId} onEventSelect={handleScoreEventSelect} onUpdated={refreshScoreSnapshot} showFullPreview onSourceRegionFocus={handleSourceRegionFocus} /> : null}
           <div id="visual-editor">
             <ScoreVisualEditorPanel
               scoreId={score.id}
@@ -3049,7 +3070,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
                   loadingLabel: exportCopy.exporting,
                   loading: exportingMidi || isExportRunning("midi"),
                   ...playbackExportProgress("midi"),
-                  disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "midi")?.canSubmit || isExportRunning("midi"),
+                  disabled: !currentScoreJson || !canRequestScoreExport(exportQuote, "midi") || isExportRunning("midi"),
                   onClick: () => void handleExportMidi(),
                 },
                 wav: {
@@ -3058,7 +3079,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
                   loadingLabel: wavExportCopy.exporting,
                   loading: exportingWav || isExportRunning("wav"),
                   ...playbackExportProgress("wav"),
-                  disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "wav")?.canSubmit || isExportRunning("wav"),
+                  disabled: !currentScoreJson || !canRequestScoreExport(exportQuote, "wav") || isExportRunning("wav"),
                   onClick: () => void handleExportWav(),
                 },
                 mp3: {
@@ -3067,7 +3088,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
                   loadingLabel: mp3ExportCopy.exporting,
                   loading: exportingMp3 || isExportRunning("mp3"),
                   ...playbackExportProgress("mp3"),
-                  disabled: !currentScoreJson || !exportQuoteOption(exportQuote, "mp3")?.canSubmit || isExportRunning("mp3"),
+                  disabled: !currentScoreJson || !canRequestScoreExport(exportQuote, "mp3") || isExportRunning("mp3"),
                   onClick: () => void handleExportMp3(),
                 },
               }}
@@ -3102,7 +3123,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 <ProcessingProgress active={exportQuoteLoading} label={exportCostCopy.checking} error={Boolean(exportQuoteError)} locale={locale} />
 {exportQuoteError ? <div className="stack-sm"><p className="form-status error">{exportCostCopy.unavailable}</p><button type="button" className="button button-secondary" onClick={() => void refreshExportQuote()}>{exportCostCopy.retryQuote}</button></div> : null}
 {selectedExportQuote && !selectedExportQuote.canSubmit ? <div className="stack-sm"><button type="button" className="button button-primary" onClick={() => onUpgrade(currentExportAction(), passRemaining !== null)}>{scorePassCopy.title}</button><Link className="micro-copy" href={scoreCheckoutPath(scoreId, currentExportAction(), passRemaining !== null)}>{scorePassCopy.fallback}</Link></div> : null}
-<button type="button" className="button button-primary" disabled={!currentScoreJson || !selectedExportQuote?.canSubmit || requestingExport || selectedExportRunning} onClick={() => {
+<button type="button" className="button button-primary" disabled={!currentScoreJson || !canRequestScoreExport(exportQuote, exportFormat) || requestingExport || selectedExportRunning} onClick={() => {
 const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMusicXml, midi: handleExportMidi, pdf: handleExportPdf, wav: handleExportWav, mp3: handleExportMp3, svg: () => handleExportRenderedImage("svg"), png: () => handleExportRenderedImage("png"), jianpu: handleExportJianpu, "score-json": handleExportScoreJson }; void actions[exportFormat]();
 }}>{requestingExport || selectedExportRunning ? `${flow.scoreOperations.exporting} ${exportFormat.toUpperCase()}` : formatMessage(exportCostCopy.generate, { format: exportFormat === "jianpu" ? `${flow.jianpu} TXT` : exportFormat === "score-json" ? "Score JSON" : exportFormat.toUpperCase() })}</button>
 {!["jianpu", "score-json"].includes(exportFormat) ? <p className="helper-copy">{exportCostCopy.regeneration}</p> : null}
@@ -3251,7 +3272,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                   className="button button-secondary button-ghost"
                   onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
                 >
-                  {formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) })}
+                  {existingFileDownloadLabel()}
                 </button>
               </div>
             ))}
@@ -3306,7 +3327,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                           key={`${job.id}-${asset.file.id}`}
                           onClick={() => void handleDownload(asset.file.id, asset.file.originalName)}
                         >
-                          {formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) })} · {formatAssetKind(asset.assetKind, assetCopy.kinds)}
+                          {existingFileDownloadLabel()} · {formatAssetKind(asset.assetKind, assetCopy.kinds)}
                         </button>
                       ))}
                       {(job.status === "queued" || job.status === "processing") ? (
@@ -3624,7 +3645,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                       className="button button-secondary button-ghost"
                       onClick={() => void handleDownload(revision.musicxmlFileId!, `${score.title}-v${revision.revisionNumber}.musicxml`)}
                     >
-                      {formatMessage(exportCostCopy.download, { count: formatNumber(exportQuote?.downloadCreditCost ?? 0, locale) })} · MusicXML
+                      {existingFileDownloadLabel()} · MusicXML
                     </button>
                   ) : null}
                   <button
@@ -3660,7 +3681,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
             <p className="body-copy">{copy.previewBody}</p>
           </div>
           <ScoreMusicXmlPreview
-            fileId={musicxmlFileId ?? null}
+            fileId={null}
             token={token}
             musicXml={generatedPreviewMusicXml}
             scoreJson={currentScoreJson}

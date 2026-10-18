@@ -27,7 +27,7 @@ export const zhCNStaticMarketing = {
       steps: [
         ["01", "从扫描件创建可编辑乐谱", "上传五线谱 PDF 或图片，查看识别候选，并在同一个乐谱工程中继续处理。"],
         ["02", "先了解适用范围", getRecognitionPricingCopy("zh-CN").freeScope + " " + getRecognitionPricingCopy("zh-CN").laneGuide],
-        ["03", "在应用内完成处理", "登录后可上传文件、查看任务和候选；免费项目内可继续使用当前已开放的编辑、播放、移调、简谱、版本、分享和导出工具，付费套餐增加处理与存储额度。"],
+        ["03", "在应用内完成处理", "在该乐谱内可免费编辑、移调、播放、选择识别结果、修改标题和分享，简谱及 Score JSON 导出免费。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 导出、新乐谱、复杂识谱、大文件通道和提取分谱需 US$2.99 单谱通行证，或 US$7.99/月起的 Starter。"],
       ],
     },
     audience: {

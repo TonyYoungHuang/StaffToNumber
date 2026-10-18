@@ -13,7 +13,8 @@ export const zhTWScoreDetailMessages = {
   clef: { eyebrow: "譜號助手", title: "自動譜號建議", body: "分析各聲部音域，並建立在首小節使用易讀譜號的新 Score JSON 版本。", load: "分析譜號", loading: "正在分析譜號...", apply: "套用建議譜號", applying: "正在套用譜號...", success: "已建立譜號建議版本。", failed: "無法更新譜號。", current: "目前", recommended: "建議", range: "音域", noNotes: "沒有帶音高的音符", line: "線", octave: "八度" },
   exports: {
     cost: {
-      passFormatUnavailable: "僅持有單首樂譜通行證時，暫不支援產生 TXT 和 Score JSON。請選擇其他匯出格式或方案。",
+      freeFormat: "此樂譜免費匯出，無須點數",
+      passFormatUnavailable: "此格式需單譜通行證或 Starter；簡譜與 Score JSON 免費匯出。",
       generate: "產生 {format}",
       costSingle: "本次：{count} 點數",
       costMultiple: "本次：{count} 點數",

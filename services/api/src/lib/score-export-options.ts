@@ -9,7 +9,7 @@ type ScoreExportOptionsQuote = {
   balance: { available: number; creditSource: "monthly" | "prepaid" | "score_pass" };
   downloadCreditCost: number;
   scorePass?: { rootDocumentId: string | null; remaining: number; sharedWithParts: true };
-  options: { format: string; creditCost: number; canSubmit: boolean }[];
+  options: { format: string; creditCost: number; canSubmit: boolean; reason?: "SCORE_PASS_REQUIRED" }[];
 };
 
 /** Read-only quote of the existing export paths. Reservation still happens in createScoreExportJob. */
@@ -18,19 +18,20 @@ export function getScoreExportOptions(userId: string, documentId: string): Score
   const quota = getPlanQuotaUsage(userId);
   const pass = scorePassForDocument(db, userId, documentId);
   const paid = getUserProfile(userId)?.entitlement.status === "active";
-  // Match createScoreExportJob: a bound pass is used before free monthly credits,
-  // and after paid monthly/prepaid credits. Unbound passes cannot pay for this score.
+  // Match createScoreExportJob: monthly/prepaid credits precede a bound pass.
+  // Unbound passes cannot pay for this score.
   const usePass = Boolean(pass) && (!paid ||
     (quota.monthly.remaining < creditCost && quota.prepaid.remaining < creditCost));
-  const creditSource = usePass ? "score_pass" as const : quota.monthly.remaining >= creditCost ? "monthly" as const : "prepaid" as const;
+  const creditSource = usePass ? "score_pass" as const : quota.monthly.remaining >= creditCost || !paid ? "monthly" as const : "prepaid" as const;
   const available = usePass ? pass!.remaining : creditSource === "monthly" ? quota.monthly.remaining : quota.prepaid.remaining;
-  const canSubmit = available >= creditCost;
+  const paidAccess = paid || Boolean(pass);
+  const canSubmit = paidAccess && available >= creditCost;
   return {
     balance: { available, creditSource },
     downloadCreditCost: 0,
     ...(pass ? { scorePass: { rootDocumentId: pass.documentId, remaining: pass.remaining, sharedWithParts: true as const } } : {}),
     options: [
-      ...QUEUED_EXPORT_FORMATS.map(format => ({ format, creditCost, canSubmit })),
+      ...QUEUED_EXPORT_FORMATS.map(format => ({ format, creditCost, canSubmit, ...(!paidAccess ? { reason: "SCORE_PASS_REQUIRED" as const } : {}) })),
       // These direct TXT/JSON routes create assets without a processing job.
       ...["jianpu", "score-json"].map(format => ({
         format, creditCost: 0, canSubmit: true,

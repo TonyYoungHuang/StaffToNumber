@@ -3002,7 +3002,8 @@ async function processScoreOmrJob(job: ScoreJobRow) {
     try { await execute(params); }
     catch (error) {
       const capacity = Number(process.env.RECOGNITION_BIG_MAX_MB || 2048);
-      if (process.env.RECOGNITION_LANES_ENABLED !== "true" || params.recognitionLane === "big" || params.fallbackUsed ||
+      if (process.env.RECOGNITION_LANES_ENABLED !== "true" || params.freeTrial === true || params.creditSource === "free_trial" ||
+        params.recognitionLane === "big" || params.fallbackUsed ||
         engineResourceError(error)?.code !== "ENGINE_MEMORY_PRESSURE" || isScoreJobCancelled(job.id) ||
         (params.memoryAssessment?.estimatedMemoryMb ?? 1024) > capacity) throw error;
       // Same business job and credit reservation; no failed transition, new

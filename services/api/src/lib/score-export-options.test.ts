@@ -1,19 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import { db, initDb } from "../db.js";
+import { config } from "../config.js";
+import type { StoredFileKind } from "@score/shared";
 import { authPlugin } from "../plugins/auth.js";
 import { scoreRoutes } from "../routes/scores.js";
 import { fileRoutes } from "../routes/files.js";
 import { createToken } from "./auth.js";
 import { getFreeTrialAccess } from "./free-trial.js";
 import { parseJianpuToScoreJson } from "./jianpu-score-parser.js";
+import { scoreJsonToMusicXml } from "./score-musicxml-export.js";
 import { getPlanQuotaUsage, processingJobCreditCost } from "./plan-quotas.js";
-import { bindScorePass } from "./score-passes.js";
+import { bindScorePass, ScorePassError } from "./score-passes.js";
 import { getScoreExportOptions, scoreExportPriceMatches } from "./score-export-options.js";
 import { createSession, createUser, generateActivationCodes, redeemActivationCode, signInWithActivationCode } from "../repositories/auth-repository.js";
-import { createScoreDocumentFromDerivedScoreJson, createScoreExportJob } from "../repositories/score-repository.js";
+import { createCandidateScoreRevisionFromScoreJson, createScoreDocumentFromDerivedScoreJson, createScoreExportJob } from "../repositories/score-repository.js";
 
 function fixture(plan: "free" | "credits-50" | "single-score" = "free") {
   initDb();
@@ -45,7 +50,13 @@ test("export quotes are read-only and match the existing monthly, prepaid and de
     assert.equal(quote.downloadCreditCost, 0);
     for (const option of quote.options.filter(o => !["jianpu", "score-json"].includes(o.format))) {
       assert.equal(option.creditCost, processingJobCreditCost({ job_type: "render_export", params_json: null }));
-      assert.equal(option.canSubmit, true);
+      assert.equal(option.canSubmit, plan !== "free");
+      assert.equal(option.reason, plan === "free" ? "SCORE_PASS_REQUIRED" : undefined);
+    }
+    if (plan === "free") {
+      assert.equal(quote.balance.available, 0);
+      assert.throws(() => createScoreExportJob({ ...f, params: { format: "pdf" } }), error => error instanceof ScorePassError && error.code === "SCORE_PASS_REQUIRED");
+      continue;
     }
     const job = createScoreExportJob({ ...f, params: { format: "pdf" } });
     assert.ok(job);
@@ -61,7 +72,7 @@ test("a bound pass preserves priority and exhaustion rules; an unbound pass cann
   assert.equal(quote.balance.creditSource, "score_pass");
   assert.equal(quote.balance.available, 0);
   assert.equal(quote.options.find(o => o.format === "pdf")!.canSubmit, false);
-  assert.ok(getPlanQuotaUsage(f.userId).monthly.remaining > 0);
+  assert.equal(getPlanQuotaUsage(f.userId).monthly.limit, 0);
   assert.throws(() => createScoreExportJob({ ...f, params: {} }), /10 processing credits/);
   for (const format of ["jianpu", "score-json"]) {
     const option = quote.options.find(o => o.format === format)!;
@@ -177,6 +188,16 @@ test("an existing free project can quote, export TXT/JSON and download with no m
     const quote = response.json() as ReturnType<typeof getScoreExportOptions>;
     assert.equal(quote.balance.available, 0);
     assert.equal(quote.options.find(option => option.format === "pdf")!.canSubmit, false);
+    for (const format of ["pdf", "musicxml", "midi", "svg", "png", "audio/wav", "audio/mp3"]) {
+      const direct = await app.inject({ method: "POST", url: `/api/scores/${f.documentId}/export/${format}`, headers });
+      assert.equal(direct.statusCode, 403, direct.body);
+      assert.equal(direct.json().code, "SCORE_PASS_REQUIRED");
+    }
+    for (const format of ["pdf", "musicxml", "midi", "svg", "png", "wav", "mp3"]) {
+      const queued = await app.inject({ method: "POST", url: `/api/scores/${f.documentId}/exports`, headers, payload: { format, options: {} } });
+      assert.equal(queued.statusCode, 403, queued.body);
+      assert.equal(queued.json().code, "SCORE_PASS_REQUIRED");
+    }
     for (const format of ["jianpu", "score-json"]) {
       assert.equal(quote.options.find(option => option.format === format)!.creditCost, 0);
       assert.equal(quote.options.find(option => option.format === format)!.canSubmit, true);
@@ -190,5 +211,57 @@ test("an existing free project can quote, export TXT/JSON and download with no m
     assert.deepEqual(getPlanQuotaUsage(f.userId).prepaid, before.prepaid);
     assert.deepEqual(getFreeTrialAccess(f.userId), trialBefore);
     assert.deepEqual(db.prepare("SELECT COUNT(*) AS n FROM score_jobs WHERE user_id = ?").get(f.userId), jobsBefore);
+  } finally { await app.close(); }
+});
+
+test("free file downloads cannot bypass paid formats, while source images, score data and structured previews remain free", async () => {
+  const f = fixture(), now = new Date().toISOString();
+  db.prepare("INSERT INTO score_jobs (id,user_id,document_id,job_type,status,params_json,created_at,updated_at) VALUES (?,?,?,'omr_import','completed',?,?,?)")
+    .run(randomUUID(), f.userId, f.documentId, JSON.stringify({ freeTrial: true }), now, now);
+  const token = createToken(); createSession(f.userId, token, 1);
+  const app = Fastify({ logger: false });
+  await app.register(authPlugin); await app.register(scoreRoutes, { prefix: "/api" }); await app.register(fileRoutes, { prefix: "/api" });
+  const headers = { authorization: `Bearer ${token}` };
+  const paidKinds: StoredFileKind[] = ["score_musicxml", "output_pdf", "rendered_pdf", "rendered_svg", "rendered_png", "output_midi", "output_audio"];
+  const freeKinds: StoredFileKind[] = ["source_pdf", "source_image", "score_json_snapshot", "output_jianpu", "omr_page_image", "omr_bundle"];
+  const directory = path.join(config.storageDir, f.userId, "download-test"); fs.mkdirSync(directory, { recursive: true });
+  const files = [...paidKinds, ...freeKinds].map(kind => {
+    const id = randomUUID(), filename = `${id}.dat`, storagePath = path.join(directory, filename);
+    fs.writeFileSync(storagePath, kind);
+    db.prepare("INSERT INTO files (id,user_id,original_name,stored_name,storage_path,mime_type,size_bytes,file_kind,created_at) VALUES (?,?,?,?,?,'application/octet-stream',?,?,?)")
+      .run(id, f.userId, filename, filename, storagePath, kind.length, kind, now);
+    db.prepare("INSERT INTO score_assets (id,document_id,file_id,asset_kind,created_at) VALUES (?,?,?,?,?)").run(randomUUID(), f.documentId, id, kind, now);
+    return { id, kind };
+  });
+  const rawXmlFile = files.find(file => file.kind === "score_musicxml")!;
+  const rawRevision = db.prepare("SELECT id,score_json FROM score_revisions WHERE document_id = ?").get(f.documentId) as { id: string; score_json: string };
+  const rawXml = scoreJsonToMusicXml(JSON.parse(rawRevision.score_json)).replace("<score-partwise", "<!-- retained original engraving -->\n<score-partwise");
+  const rawXmlPath = path.join(directory, `${rawXmlFile.id}.dat`); fs.writeFileSync(rawXmlPath, rawXml);
+  db.prepare("UPDATE files SET size_bytes = ? WHERE id = ?").run(Buffer.byteLength(rawXml), rawXmlFile.id);
+  db.prepare("UPDATE score_revisions SET musicxml_file_id = ? WHERE id = ?").run(rawXmlFile.id, rawRevision.id);
+  try {
+    for (const { id, kind } of files) {
+      for (const query of ["", "?inline=1"]) {
+        const response = await app.inject({ method: "GET", url: `/api/files/${id}/download${query}`, headers });
+        assert.equal(response.statusCode, paidKinds.includes(kind) ? 403 : 200, `${kind}: ${response.body}`);
+        if (paidKinds.includes(kind)) assert.equal(response.json().code, "SCORE_PASS_REQUIRED");
+      }
+    }
+    const preview = await app.inject({ method: "GET", url: `/api/scores/${f.documentId}/musicxml-preview`, headers });
+    assert.equal(preview.statusCode, 200, preview.body);
+    assert.equal(preview.json().musicXml, rawXml);
+    const candidate = createCandidateScoreRevisionFromScoreJson({ documentId: f.documentId, scoreJson: JSON.parse(rawRevision.score_json),
+      createdFrom: "omr_import", musicxmlFileId: rawXmlFile.id })!;
+    const candidatePreview = await app.inject({ method: "GET", url: `/api/scores/${f.documentId}/candidate/musicxml-preview`, headers });
+    assert.equal(candidatePreview.statusCode, 200, candidatePreview.body);
+    assert.equal(candidatePreview.json().revisionId, candidate.id);
+    assert.equal(candidatePreview.json().musicXml, rawXml);
+    const pass = generateActivationCodes({ planCode: "single-score", quantity: 1, entitlementDays: 30 }).codes[0]!;
+    assert.ok(redeemActivationCode(f.userId, pass.code).ok); bindScorePass(db, f.userId, f.documentId, 1);
+    for (const { id, kind } of files.filter(file => paidKinds.includes(file.kind))) {
+      const response = await app.inject({ method: "GET", url: `/api/files/${id}/download`, headers });
+      assert.equal(response.statusCode, 200, `${kind}: ${response.body}`);
+    }
+    assert.equal(getPlanQuotaUsage(f.userId).monthly.used, 0);
   } finally { await app.close(); }
 });

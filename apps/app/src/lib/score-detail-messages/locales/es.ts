@@ -13,7 +13,8 @@ export const esScoreDetailMessages = {
   clef: { eyebrow: "Asistente de claves", title: "Sugerencias automáticas de clave", body: "Analiza la tesitura de cada parte y crea una revisión Score JSON con claves legibles en el primer compás.", load: "Analizar claves", loading: "Analizando claves…", apply: "Aplicar claves sugeridas", applying: "Aplicando claves…", success: "Se creó la revisión con las claves sugeridas.", failed: "No se pudieron actualizar las claves.", current: "Actual", recommended: "Recomendada", range: "Tesitura", noNotes: "Sin notas con altura", line: "línea", octave: "octava" },
   exports: {
     cost: {
-      passFormatUnavailable: "El pase para una partitura por sí solo no permite generar TXT ni Score JSON. Elige otro formato de exportación o un plan.",
+      freeFormat: "Gratis en esta partitura · sin créditos",
+      passFormatUnavailable: "Este formato requiere un pase o Starter. Jianpu y Score JSON son gratuitos.",
       generate: "Generar {format}",
       costSingle: "Esta vez: {count} crédito",
       costMultiple: "Esta vez: {count} créditos",

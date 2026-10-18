@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { SUPPORTED_LOCALES, formatMessage, formatNumber, getScorePreflightMessages, type SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
 import { getHomeRuntimeCopy } from "../lib/home-runtime-copy";
-import { HomeRecognitionPreflightResult, isHomeRecognitionRejected } from "./HomeRecognitionPreflightResult";
+import { HomeRecognitionPreflightResult, homeRecognitionNeedsPurchase, isHomeRecognitionRejected } from "./HomeRecognitionPreflightResult";
 
 const result: ScoreStructurePreflight = {
   schemaVersion: 1, recommendation: "uncertain", confidence: "low", sourcePageCount: 1, pagesAnalyzed: 1, complete: true,
@@ -49,6 +49,29 @@ test("an available free scan is labelled free while paid modes retain their actu
     const labels = $("fieldset label");
     assert.ok(labels.eq(0).text().includes(copy.freeProjectPrice), locale);
     assert.ok(labels.eq(1).text().includes(formatMessage(copy.price, { credits: formatNumber(5, locale) })), locale);
+  }
+});
+
+test("free scan restrictions explain checkout while exhausted paid balances retain credit guidance", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const copy = getScorePreflightMessages(locale);
+    const experience = getHomeRuntimeCopy(locale).recognitionExperience;
+    for (const reason of ["FREE_TRIAL_OMR_LIMIT_REACHED", "COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "BIG_RECOGNITION_ENTITLEMENT_REQUIRED", "SCORE_PASS_REQUIRED"]) {
+      const option: ScoreRecognitionOption = { mode: "complex", creditCost: 5, creditSource: null, canSubmit: false, reason };
+      assert.equal(homeRecognitionNeedsPurchase(option), true);
+      const $ = renderResult(locale, result, [option]);
+      const label = $("fieldset label").eq(1);
+      assert.ok(label.text().includes(experience.passPlan), `${locale}: ${reason} pass`);
+      assert.ok(label.text().includes(experience.starterPlan), `${locale}: ${reason} Starter`);
+      assert.equal(label.text().includes(copy.noCredit), false, `${locale}: ${reason} no credit warning`);
+      assert.equal(label.find("input").is(":disabled"), false, `${locale}: mode can still be selected`);
+    }
+    for (const reason of ["PLAN_JOB_QUOTA_EXCEEDED", "SCORE_PASS_CREDITS_EXHAUSTED"]) {
+      const option: ScoreRecognitionOption = { mode: "simple", creditCost: 1, creditSource: null, canSubmit: false, reason };
+      assert.equal(homeRecognitionNeedsPurchase(option), false);
+      const $ = renderResult(locale, result, [option]);
+      assert.ok($("fieldset label").eq(0).text().includes(copy.noCredit), `${locale}: ${reason}`);
+    }
   }
 });
 

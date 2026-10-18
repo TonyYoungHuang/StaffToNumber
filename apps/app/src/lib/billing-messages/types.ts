@@ -30,6 +30,7 @@ export type BillingPlanMessages = {
   freeCreditsTemplate: string;
   benefits: {
     freeProject: string;
+    freeTools: string;
     moreThanFreeProject: string;
     starterIncluded: string;
     starterMonthlyIncluded: string;
@@ -43,7 +44,7 @@ export type BillingPlanMessages = {
   resources: {
     monthlyCredits: string;
     monthlyCreditsReset: string;
-    /** Free plan: monthly credits are for exports/tools; new scans need a pass or plan. */
+    /** Free plan has no monthly balance; its lifetime trial uses no credits. */
     freeMonthlyCredits: string;
     storage: string;
     personalLibrary: string;

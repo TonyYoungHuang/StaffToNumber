@@ -84,13 +84,20 @@ export const authPlugin = fp(async (app) => {
     if (reply.sent || !request.authUserId) return;
 
     const profile = getUserProfile(request.authUserId);
+    const documentId = (request.params as { id?: unknown } | null)?.id;
+    const boundPass = typeof documentId === "string" ? scorePassForDocument(db, request.authUserId, documentId) : null;
+    const route = request.routeOptions.url ?? "";
+    const paidExport = (route.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(route)) || route.endsWith("/exports");
+    if (paidExport && profile?.entitlement.status !== "active" && !boundPass) {
+      reply.code(403).send({ error: "Choose a $2.99 One Score Pass or Starter to export this score.", code: "SCORE_PASS_REQUIRED" });
+      return;
+    }
     if (profile?.entitlement.source === "prepaid_credits" && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
       reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "PREPAID_QUEUED_EXPORT_REQUIRED" });
       return;
     }
     if (profile?.entitlement.status === "active") return;
 
-    const documentId = (request.params as { id?: unknown } | null)?.id;
     if (typeof documentId === "string" && scorePassForDocument(db, request.authUserId, documentId)
       && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
       // The current editor uses /exports, where reservations, failures and

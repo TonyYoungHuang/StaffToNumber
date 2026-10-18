@@ -75,7 +75,9 @@ test("app purchase, library and billing copy preserve the three offers and per-t
     for (const value of [upsell.passNote, billing.scorePass.passTarget]) assert.match(value, /10/u, locale);
     assert.match(billing.scorePass.starterBody, /50/u, locale);
     for (const value of [scan.freeBody, dashboard.freeRouteBody]) {
-      for (const amount of ["25", "10", "50"]) assert.ok(value.includes(amount), `${locale} ${amount}`);
+      for (const amount of ["1", "10", "50"]) assert.ok(value.includes(amount), `${locale} ${amount}`);
+      assert.doesNotMatch(value, /25/u, locale);
+      assert.match(value, /Score JSON/u, locale);
       assert.match(value, /2[.,]99/u, locale);
       assert.match(value, /7[.,]99/u, locale);
     }

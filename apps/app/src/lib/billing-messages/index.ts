@@ -44,7 +44,7 @@ function requireCapture(value: string, pattern: RegExp, label: string) {
 function sharedPlanFacts(plan: PricingPlanDisplay) {
   const resources = plan.resources.join(" ");
   return {
-    monthlyCredits: requireCapture(plan.credits, /(\d+)\s+credits/iu, `${plan.code} monthly credits`),
+    monthlyCredits: plan.code === "free" ? "0" : requireCapture(plan.credits, /(\d+)\s+credits/iu, `${plan.code} monthly credits`),
     storage: requireCapture(resources, /(\d+(?:\.\d+)?)\s+MB/iu, `${plan.code} storage`),
     unitPrice: plan.code === "free" ? null : requireCapture(plan.unitPrice, /(\$\d+(?:\.\d+)?)/u, `${plan.code} unit price`),
     annualSavings: plan.code.endsWith("-annual")
@@ -87,7 +87,7 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
     const message = (template: string) => formatMessage(template, values);
     const commonBenefits = [copy.benefits.editor, copy.benefits.practice, copy.benefits.conversion];
     const benefits = plan.code === "free"
-      ? [message(copy.benefits.freeProject), ...commonBenefits, copy.benefits.freeExports]
+      ? [message(copy.benefits.freeProject), copy.benefits.freeTools, copy.benefits.freeExports, copy.resources.freeMonthlyCredits, copy.resources.noCard]
       : [
           message(plan.code === "starter-monthly"
             ? copy.benefits.moreThanFreeProject

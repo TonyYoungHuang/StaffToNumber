@@ -311,7 +311,12 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
         </div>)}
       </section> : null}
 
-      {quota ? (
+      {quota?.tier === "free" && quota.creditMode !== "prepaid" ? (
+        <section className="surface-panel stack-lg">
+          <h2 className="card-title">{copy.quotaTiers.free}</h2>
+          <QuotaMeter label={copy.storage} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBillingBytes(quota.storage.usedBytes, locale)} / ${formatBillingBytes(quota.storage.limitBytes, locale)}`} />
+        </section>
+      ) : quota ? (
         <section className="surface-panel credit-balance-panel stack-lg">
           <div className="stack-xs">
             <p className="eyebrow">{copy.creditEyebrow}</p>

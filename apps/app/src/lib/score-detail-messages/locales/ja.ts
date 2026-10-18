@@ -47,7 +47,8 @@ export const jaScoreDetailMessages = {
   },
   exports: {
     cost: {
-      passFormatUnavailable: "1曲パスのみでは TXT と Score JSON を生成できません。他の書き出し形式またはプランを選択してください。",
+      freeFormat: "この楽譜では無料 · クレジット不要",
+      passFormatUnavailable: "この形式には1曲パスかStarterが必要です。数字譜とScore JSONの書き出しは無料です。",
       generate: "{format} を生成",
       costSingle: "今回：{count} クレジット",
       costMultiple: "今回：{count} クレジット",

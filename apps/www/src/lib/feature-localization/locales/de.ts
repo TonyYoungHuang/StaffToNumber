@@ -55,7 +55,7 @@ export const deFeaturePages = {
     "Notenscanner für PDF und Bilder", "OMR-Import mit Korrektur", "Scanne eine PDF- oder Bildpartitur, erzeuge einen bearbeitbaren MusicXML-Kandidaten, prüfe Diagnosen und korrigieren Sie OMR-Fehler online.",
     ["Notenscanner", "Noten PDF scannen", "OMR online", "Scan zu MusicXML"], ["OMR-Upload", "Audiveris-Worker", "MusicXML-Ausgabe", "Diagnosepanel"],
     [["PDF oder Bild hochladen", "Die Quelle wird gespeichert und ein OMR-Auftrag mit dem Projekt verknüpft."], ["Audiveris ausführen", "Wenn konfiguriert, erzeugt der Dienst MusicXML und eine bearbeitbare Kandidatenrevision."], ["Kandidaten korrigieren", "Prüfen Sie Diagnose und Vorschau, korrigiere Fehler und exportiere oder erstelle Übungsmaterial."]],
-    [["Kandidat statt Endergebnis", "OMR-Ergebnisse behalten Konfidenz und Diagnosen für menschliche Korrekturen."], [getRecognitionPricingCopy("de").freeScope, "Ein Gratis-Konto scannt eine vollständige mehrseitige PDF oder ein Bild und kann dieses Projekt weiter korrigieren, abspielen, transponieren, in Jianpu umwandeln, teilen und exportieren."]],
+    [["Kandidat statt Endergebnis", "OMR-Ergebnisse behalten Konfidenz und Diagnosen für menschliche Korrekturen."], [getRecognitionPricingCopy("de").freeScope, getRecognitionPricingCopy("de").freeScope]],
     "Scannen bedeutet Import plus Korrektur; perfekte automatische Erkennung aller PDFs und Fotos wird nicht garantiert.",
   ),
   "pdf-to-musicxml": defineFeatureTranslation(

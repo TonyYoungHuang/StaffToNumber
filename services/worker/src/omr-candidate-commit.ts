@@ -82,7 +82,12 @@ export function commitOmrCandidate(db: RuntimeDatabaseLike, input: CommitOmrCand
         .run(JSON.stringify({ ...params, ...input.paramsPatch, ...(input.resultManifest ? { resultManifest: input.resultManifest } : {}) }), input.jobId);
     }
 
-    if (input.creditSettlement) settleRecognitionCredits(db, { jobId: input.jobId, ...input.creditSettlement });
+    if (input.creditSettlement) {
+      const stored = db.prepare("SELECT params_json FROM score_jobs WHERE id = ?").get(input.jobId) as { params_json?: string | null };
+      const params = stored.params_json ? JSON.parse(stored.params_json) as Record<string, unknown> : {};
+      // A lifetime trial uses an allowance, with no processing-credit charge or return.
+      if (params.freeTrial !== true) settleRecognitionCredits(db, { jobId: input.jobId, ...input.creditSettlement });
+    }
 
     const completed = db.prepare(
       `

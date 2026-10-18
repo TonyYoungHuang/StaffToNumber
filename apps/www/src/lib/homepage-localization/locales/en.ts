@@ -173,8 +173,8 @@ export const enHomepage = {
   },
   plans: {
     free: {
-      badge: getRecognitionPricingCopy("en").freeShort, name: "Free", cycle: "Lifetime", unitPrice: getRecognitionPricingCopy("en").freeUnit, credits: "1 lifetime free scan project · 25 credits / month for exports & tools", audience: getRecognitionPricingCopy("en").freeLead,
-      benefits: [getRecognitionPricingCopy("en").freeUnit, "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta", "Playback, Browser Recording & Practice Feedback Beta, and smart transposition", "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion", "Use currently released exports and project-level tools on that free score"],
+      badge: getRecognitionPricingCopy("en").freeShort, name: "Free", cycle: "Lifetime", unitPrice: getRecognitionPricingCopy("en").freeUnit, credits: "1 lifetime free simple scan · standard lane · no monthly credits", audience: getRecognitionPricingCopy("en").freeLead,
+      benefits: [getRecognitionPricingCopy("en").freeUnit, "On that score, edit, transpose, play, choose recognition results, rename the title and share for free. Jianpu and Score JSON exports are free.", "Free Jianpu and Score JSON exports; other formats require a One Score Pass or Starter", "No monthly credits; the lifetime free simple scan uses no credits.", "PDF, MusicXML, MIDI, SVG, PNG, WAV and MP3 exports, another score, complex recognition, large-file processing and part extraction require a US$2.99 One Score Pass or Starter from US$7.99/month."],
       resources: [getRecognitionPricingCopy("en").freeScope, "50 MB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"], cta: "Create a free score",
     },
     "starter-monthly": {

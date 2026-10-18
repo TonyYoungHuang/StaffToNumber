@@ -27,7 +27,7 @@ export const enStaticMarketing = {
       steps: [
         ["01", "One clear entry point, one score workspace", "The platform leads with staff PDF to Jianpu and also provides structured imports, Jianpu round trips, transposition, correction, practice playback, and exports."],
         ["02", "Understand the scope first", getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").laneGuide],
-        ["03", "Continue in the app", "Sign in to upload and review candidates. The free project includes currently available editing, playback, transposition, Jianpu, version, sharing, and export tools; paid plans add processing and storage capacity."],
+        ["03", "Continue in the app", "On that score, edit, transpose, play, choose recognition results, rename the title and share for free. Jianpu and Score JSON exports are free. PDF, MusicXML, MIDI, SVG, PNG, WAV and MP3 exports, another score, complex recognition, large-file processing and part extraction require a US$2.99 One Score Pass or Starter from US$7.99/month."],
       ],
     },
     audience: {

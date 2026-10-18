@@ -42,7 +42,7 @@ export function resolveRecognitionAccess(userId: string, mode: ScoreRecognitionM
   const passes = listScorePasses(db, userId).filter(pass => !pass.documentId);
   if (passes.some(pass => pass.remaining >= creditCost)) return { mode, creditCost, creditSource: "score_pass" };
   if (passes.length) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "This score pass does not have enough processing credits.");
-  if (mode === "simple" && getFreeTrialAccess(userId).available && quota.jobs.remaining >= creditCost) {
+  if (!paid && mode === "simple" && getFreeTrialAccess(userId).available) {
     return { mode, creditCost, creditSource: "free_trial" };
   }
   if (paid) throw new PlanQuotaExceededError("PLAN_JOB_QUOTA_EXCEEDED", quota);

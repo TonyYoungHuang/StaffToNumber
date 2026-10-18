@@ -90,6 +90,27 @@ test("ignores a duplicate completion after the first candidate commit", () => {
   db.close();
 });
 
+test("completes a free scan without recording a paid credit settlement", () => {
+  const db = candidateDatabase("processing");
+  db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = 'job-1'")
+    .run(JSON.stringify({ freeTrial: true, creditSource: "free_trial", creditCost: 1 }));
+  const revisionId = commitOmrCandidate(db, {
+    jobId: "job-1", documentId: "document-1", scoreJson: score, musicXmlFileId: "musicxml-1",
+    outputFileIds: ["musicxml-1"], assets: [],
+    creditSettlement: { quotedCredits: 1, sourcePageCount: 2, deliveredPages: [1] },
+  });
+  assert.ok(revisionId);
+  const job = db.prepare("SELECT status, params_json FROM score_jobs WHERE id = 'job-1'").get() as { status: string; params_json: string };
+  assert.equal(job.status, "completed");
+  const params = JSON.parse(job.params_json);
+  assert.equal(params.freeTrial, true);
+  assert.equal(params.creditSource, "free_trial");
+  assert.equal(params.creditSettlement, undefined);
+  assert.equal(params.settledCreditCost, undefined);
+  assert.equal(params.creditsReturned, undefined);
+  db.close();
+});
+
 test("can join a caller-managed transaction without committing it", () => {
   const db = candidateDatabase("processing");
   db.exec("BEGIN IMMEDIATE");

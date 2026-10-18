@@ -251,7 +251,15 @@ export async function fileRoutes(app: FastifyInstance) {
           OR id IN (SELECT document_id FROM score_assets WHERE file_id = ?)
           OR id IN (SELECT document_id FROM score_revisions WHERE musicxml_file_id = ?))`)
           .all(request.authUserId!, file.id, file.id, file.id) as Array<{ id: string }>;
-        if (!projects.some(p => isFreeTrialScoreDocumentForUser(p.id, request.authUserId!) || scorePassForDocument(db, request.authUserId!, p.id))) {
+        const hasScorePass = projects.some(p => Boolean(scorePassForDocument(db, request.authUserId!, p.id)));
+        // OMR also creates MusicXML assets. Downloading those generated files
+        // must use the same entitlement as an explicit export; editor previews
+        // use the owner-scoped structured musicxml-preview endpoints instead.
+        const paidOutput = ["score_musicxml", "output_pdf", "rendered_pdf", "rendered_svg", "rendered_png", "output_midi", "output_audio"].includes(file.file_kind);
+        if (paidOutput && !hasScorePass) {
+          return reply.code(403).send({ code: "SCORE_PASS_REQUIRED", error: "Choose a $2.99 One Score Pass or Starter to download this score format." });
+        }
+        if (!hasScorePass && !projects.some(p => isFreeTrialScoreDocumentForUser(p.id, request.authUserId!))) {
           return reply.code(403).send({ error: "Access to this score is required." });
         }
       }

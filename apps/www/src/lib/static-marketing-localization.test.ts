@@ -103,7 +103,7 @@ test("catalogs retain current product claims and stable external technical names
       /(?:one|single)[ -]page[^.]{0,80}(?:free|trial)|(?:free|trial)[^.]{0,80}(?:one|single)[ -]page|单页[^。]{0,50}免费|一页[^。]{0,50}免费|1ページ[^。]{0,50}無料/iu,
       `${locale} must not regress to the retired one-page-free claim`,
     );
-    for (const technicalName of ["MusicXML", "Score JSON", "Starter", "Converter Pro", "Paddle"]) {
+    for (const technicalName of ["MusicXML", "Score JSON", "Starter", "Paddle"]) {
       assert.match(serialized, new RegExp(technicalName, "u"), `${locale} must preserve ${technicalName}`);
     }
   }

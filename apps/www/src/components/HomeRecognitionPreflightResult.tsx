@@ -9,6 +9,11 @@ export function isHomeRecognitionRejected(preflight: ScoreStructurePreflight | n
   return preflight?.memoryAssessment?.lane === "unsupported" || preflight?.recognitionSupport?.supported === false;
 }
 
+export function homeRecognitionNeedsPurchase(option: ScoreRecognitionOption | undefined): boolean {
+  return Boolean(option && !option.canSubmit && (option.creditSource === "free_trial" ||
+    /^FREE_TRIAL_|^(?:COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED|BIG_RECOGNITION_ENTITLEMENT_REQUIRED|SCORE_PASS_REQUIRED)$/u.test(option.reason ?? "")));
+}
+
 /** Admission refusal replaces the entire support, recommendation and price view. */
 export function HomeRecognitionPreflightResult({ locale, copy, runtimeCopy, preflight, recognitionMode, options, busy, onSelectMode, modeClassName }: {
   locale: SupportedLocale; copy: ScorePreflightMessages; runtimeCopy: HomeRuntimeCopy; preflight: ScoreStructurePreflight;
@@ -30,7 +35,7 @@ export function HomeRecognitionPreflightResult({ locale, copy, runtimeCopy, pref
     {!preflight.complete || preflight.recommendation === "uncertain" ? <p>{copy.manualChoice}</p> : null}
     <fieldset className={modeClassName} disabled={busy}><legend>{copy.chooseMode}</legend>{(["simple", "complex"] as const).map(optionMode => {
       const option = options.find(item => item.mode === optionMode);
-      return <label key={optionMode}><input type="radio" name="home-recognition-mode" value={optionMode} checked={recognitionMode === optionMode} onChange={() => onSelectMode(optionMode)} /><span><strong>{optionMode === "simple" ? copy.simpleTitle : copy.complexTitle}</strong><small>{option ? option.creditSource === "free_trial" && !bigLane ? copy.freeProjectPrice : formatMessage(copy.price, { credits: formatNumber(option.creditCost, locale) }) : copy.notReady}</small>{option && !option.canSubmit ? <small>{copy.noCredit}</small> : null}</span></label>;
+      return <label key={optionMode}><input type="radio" name="home-recognition-mode" value={optionMode} checked={recognitionMode === optionMode} onChange={() => onSelectMode(optionMode)} /><span><strong>{optionMode === "simple" ? copy.simpleTitle : copy.complexTitle}</strong><small>{option ? option.creditSource === "free_trial" && !bigLane ? copy.freeProjectPrice : formatMessage(copy.price, { credits: formatNumber(option.creditCost, locale) }) : copy.notReady}</small>{option && !option.canSubmit ? <small>{homeRecognitionNeedsPurchase(option) ? `${experience.passPlan} · ${experience.starterPlan}` : copy.noCredit}</small> : null}</span></label>;
     })}</fieldset>
     <p>{copy.selectedFilePreserved}</p>
   </>;

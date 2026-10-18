@@ -13,7 +13,7 @@ export const zhTWStaticMarketing = {
       steps: [
         ["01", "從掃描檔建立可編輯樂譜", "上傳五線譜 PDF 或圖片，查看辨識候選結果，並在同一個樂譜專案中繼續處理。"],
         ["02", "先了解適用範圍", getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").laneGuide],
-        ["03", "在應用程式內完成處理", "登入後可上傳檔案並查看任務與候選結果。免費專案包含目前開放的編輯、播放、移調、簡譜、版本、分享與匯出工具；付費方案增加處理及儲存容量。"],
+        ["03", "在應用程式內完成處理", "在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。"],
       ],
     },
     audience: { eyebrow: "適用對象", title: "哪些使用者適合 ScoreTransposer", metrics: [["教學", "講義準備", "適合想從現有五線譜 PDF 更快整理簡譜教材的教師與工作室。"], ["排練", "跨文化協作", "適合需要用同一份樂譜服務五線譜與簡譜讀者的團隊。"], ["製作", "候選稿可控", "適合接受「自動辨識＋人工檢查」流程的編曲、製譜與出版協作者。"]] },

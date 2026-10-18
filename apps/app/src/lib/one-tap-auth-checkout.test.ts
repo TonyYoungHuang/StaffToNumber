@@ -6,11 +6,14 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
 import { getRecognitionExperienceMessages, SUPPORTED_LOCALES, type SupportedLocale } from "@score/i18n";
-import { APP_ROUTES, getGoogleAuthCopy, getPricingPlanCatalog, SINGLE_SCORE_PASS } from "@score/shared";
+import { APP_ROUTES, getGoogleAuthCopy, getPricingPlanCatalog, getPurchaseOptionsCopy, SINGLE_SCORE_PASS } from "@score/shared";
 import { getBillingMessages } from "./billing-messages";
 import { getScorePassCopy } from "./billing-messages/score-pass-copy";
 import { getAuthMessages } from "./auth-messages";
 import { getAppMessages } from "./app-messages";
+import { getFlowMessages } from "./flow-messages";
+import { getScoreEntryMessages } from "./score-entry-messages";
+import { getScoreDetailMessages } from "./score-detail-messages";
 import { preferredLoginPath, setPreferredLoginMethod } from "./auth-storage";
 import { readCheckoutReturn, saveCheckoutReturn, workReturnPath } from "./flow-return";
 
@@ -53,6 +56,7 @@ function componentHarness(relative: string, mocks: Record<string, unknown> = {},
     useRef(initial: unknown) { const index = cursor++; if (!(index in state)) state[index] = { current: initial }; return state[index]; },
     useId() { return `field-${cursor++}`; },
     useCallback(callback: unknown) { cursor++; return callback; },
+    useMemo(factory: () => unknown) { cursor++; return factory(); },
     useSyncExternalStore(_subscribe: unknown, snapshot: () => unknown) { cursor++; return snapshot(); },
     useEffect(callback: () => void | (() => void), deps?: unknown[]) {
       const index = cursor++, previous = effects.get(index);
@@ -199,6 +203,114 @@ test("the app shell omits activation navigation for every locale even when check
   }
   const release = componentHarness("./release.ts", {}, { NEXT_PUBLIC_CHECKOUT_AVAILABLE: "false" });
   assert.equal(release.exports.accountActivationRoute, APP_ROUTES.checkout);
+});
+
+test("the app shell hides the free monthly balance while retaining paid and prepaid balances", async () => {
+  for (const usage of [
+    { tier: "free", creditMode: "monthly", jobs: { remaining: 0 } },
+    { tier: "starter", creditMode: "monthly", jobs: { remaining: 49 } },
+    { tier: "free", creditMode: "prepaid", jobs: { remaining: 20 } },
+  ]) {
+    const harness = componentHarness("../components/AppChrome.tsx", {
+      "next/link": "a", "next/navigation": { usePathname: () => "/scores" },
+      "@score/ui": { SiteShellHeader: "header", SiteShellFooter: "footer", SparkIcon: "icon", ArrowNorthEastIcon: "icon" },
+      "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) }, "./AppLocaleSwitcher": { AppLocaleSwitcher: "locale" }, "./PendingOmrReviewBanner": { PendingOmrReviewBanner: "reviews" },
+      "../lib/auth-storage": { getStoredToken: () => "auth-token", getServerAuthToken: () => null, subscribeAuthChanges() {}, preferredLoginPath },
+      "../lib/api": { apiRequest: async () => ({ ok: true, data: { usage } }) },
+    });
+    Object.assign(harness.browser, { setInterval: () => 1, clearInterval() {} });
+    const props = { children: null, copy: getAppMessages("en").shell, reviewEntryCopy: {} };
+    harness.render("AppChrome", props); harness.flushEffects();
+    await new Promise(resolve => setImmediate(resolve));
+    const header = nodes(harness.render("AppChrome", props)).find(node => node.type === "header")!;
+    const balanceAction = header.props.actions.find((action: { href: string }) => action.href === APP_ROUTES.billing);
+    assert.equal(balanceAction.label, usage.tier === "free" && usage.creditMode === "monthly" ? getPurchaseOptionsCopy("en").manage : `${props.copy.credits}: ${usage.jobs.remaining}`);
+    harness.dispose();
+  }
+});
+
+test("the advanced recognition picker labels the lifetime scan as free in every locale", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const flow = getFlowMessages(locale);
+    const harness = componentHarness("../components/RecognitionModeCards.tsx", {
+      "./AppLocaleProvider": { useAppLocale: () => ({ locale }) },
+      "../lib/flow-messages/client": { useFlowMessages: () => flow },
+      "./ScoreEnsembleWorkspace.module.css": {}, "@score/ui": { ProcessingProgress: "progress" },
+    });
+    const tree = harness.render("RecognitionModeCards", { options: { options: [
+      { mode: "simple", creditCost: 1, canSubmit: true, reason: null, creditSource: "free_trial" },
+      { mode: "complex", creditCost: 5, canSubmit: false, reason: "COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", creditSource: null },
+    ] }, selected: "simple", loading: false, error: null, onRetry() {}, onSelect() {} });
+    const simple = nodes(tree).find(node => node.props["data-recognition-mode"] === "simple")!;
+    assert.ok(text(simple).includes(flow.preflight.freeProjectPrice), locale);
+    assert.equal(nodes(simple).some(node => node.props["data-credit-cost"] !== undefined), false, locale);
+  }
+});
+
+test("billing shows storage for free accounts and preserves monthly and prepaid credit meters", async () => {
+  for (const account of [{ tier: "free", creditMode: "monthly" }, { tier: "starter", creditMode: "monthly" }, { tier: "free", creditMode: "prepaid" }]) {
+    const copy = getBillingMessages("en").billing.manager;
+    const quota = { ...account, jobs: { remaining: 0, used: 0, limit: 0 }, storage: { usedBytes: 1000, limitBytes: 10_000, remainingBytes: 9000 } };
+    const harness = componentHarness("../components/BillingManager.tsx", {
+      "next/link": "a", "./OwnedCheckoutRecovery": { OwnedCheckoutRecovery: "recovery" },
+      "../lib/auth-storage": { getStoredToken: () => "auth-token", getServerAuthToken: () => null, subscribeAuthChanges() {} },
+      "../lib/api": { apiRequest: async (path: string) => ({ ok: true, data: path.endsWith("/usage") ? { usage: quota } : path.endsWith("/me") ? { user: { entitlement: { status: "inactive" }, scorePasses: [] } } : { subscriptions: [], invoices: [], seatAssignments: [] } }) },
+    });
+    const props = { locale: "en", copy, freePlanCredits: "0" };
+    harness.render("BillingManager", props); harness.flushEffects();
+    await new Promise(resolve => setImmediate(resolve));
+    const tree = harness.render("BillingManager", props);
+    const creditPanel = nodes(tree).find(node => node.props.className?.includes("credit-balance-panel"));
+    const freeAccount = account.tier === "free" && account.creditMode === "monthly";
+    assert.equal(Boolean(creditPanel), !freeAccount, `${account.tier}/${account.creditMode}`);
+    assert.ok(nodes(tree).some(node => node.props.label === copy.storage), "storage remains visible for every account");
+    harness.dispose();
+  }
+});
+
+test("candidate score rendering uses preview XML and never falls back to downloading the paid asset", () => {
+  const originalXml = "<score-partwise><work><work-title>Original layout</work-title></work></score-partwise>";
+  const score = { parts: [], measures: [] };
+  const harness = componentHarness("../components/ScoreCandidateReviewWorkspace.tsx", {
+    "next/link": "a", "./ScoreMusicXmlPreview": { ScoreMusicXmlPreview: "preview" },
+    "./ScoreOmrReviewPanel": { ScoreOmrReviewPanel: "source" }, "./ScoreCorrectionPanel": { ScoreCorrectionPanel: "correction" },
+    "./ScoreVisualEditorPanel": { ScoreVisualEditorPanel: "editor" }, "./ScoreRecognitionCandidates": { ScoreRecognitionCandidates: "candidates" },
+    "./OneScorePassUpsell": { OneScorePassUpsell: "upsell" }, "./ScoreOperationBoundary": { useScoreNavigationLocked: () => false },
+    "../lib/flow-messages/client": { useFlowMessages: () => getFlowMessages("en") },
+    "../lib/score-entry-messages/client": { useScoreReviewMessages: () => ({ candidate: getScoreEntryMessages("en").candidate }) },
+  });
+  for (const xml of [null, originalXml]) {
+    const tree = harness.render("ScoreCandidateReviewWorkspace", { title: "Score", scoreId: "score-1", revision: { id: "revision", revisionNumber: 1, scoreJson: score, musicxmlFileId: "paid-output-xml" },
+      sourceFile: null, pageFiles: [], token: "auth-token", locale: "en", generatedMusicXml: xml, freeEditing: true });
+    const preview = nodes(tree).find(node => node.type === "preview")!;
+    assert.equal(preview.props.fileId, null, "a missing preview must not trigger paid file download");
+    assert.equal(preview.props.musicXml, xml);
+  }
+});
+
+test("ensemble loads both candidate and accepted preview APIs and passes XML to OSMD without file downloads", async () => {
+  for (const candidate of [true, false]) {
+    const requests: Array<{ documentId: string; candidate: boolean }> = [];
+    const originalXml = "<score-partwise><defaults><scaling/></defaults></score-partwise>";
+    const harness = componentHarness("../components/ScoreEnsembleWorkspace.tsx", {
+      "next/link": "a", "./ScoreEnsembleWorkspace.module.css": {},
+      "./AppLocaleProvider": { useAppLocale: () => ({ locale: "en" }) },
+      "../lib/flow-messages/client": { useFlowMessages: () => getFlowMessages("en") },
+      "../lib/score-entry-messages/client": { useScoreReviewMessages: () => ({ detail: getScoreDetailMessages("en") }) },
+      "../lib/score-preview-request": { readScoreMusicXmlPreview: async (input: { documentId: string; candidate: boolean }) => { requests.push(input); return { ok: true, data: { musicXml: originalXml } }; } },
+      "./ScoreOperationBoundary": { useScoreNavigationLocked: () => false }, "./ScoreMusicXmlPreview": { ScoreMusicXmlPreview: "preview" },
+      "./ScoreAlphaTabPanel": { ScoreAlphaTabPanel: "alpha" }, "./ScoreNotationProperties": { ScoreNotationProperties: "properties" },
+      "./ScoreEnsemblePartCreator": { ScoreEnsemblePartCreator: "creator" },
+    });
+    const props = { scoreId: "score-1", scoreJson: { parts: [], measures: [] }, candidatePreview: candidate, token: "auth-token", generatedMusicXml: null, revisionId: "revision", selectedEventId: null, showFullPreview: true };
+    harness.render("ScoreEnsembleWorkspace", props); harness.flushEffects();
+    await new Promise(resolve => setImmediate(resolve));
+    const tree = harness.render("ScoreEnsembleWorkspace", props);
+    assert.equal(requests.length, 1); assert.equal(requests[0].documentId, "score-1"); assert.equal(requests[0].candidate, candidate);
+    const preview = nodes(tree).find(node => node.type === "preview")!;
+    assert.equal(preview.props.fileId, null); assert.equal(preview.props.musicXml, originalXml);
+    harness.dispose();
+  }
 });
 
 test("direct activation and the domestic shop entry still render their original forms", async () => {
@@ -400,8 +512,8 @@ test("checkout defaults to Starter monthly and carries a targeted explicit pass 
   targeted.dispose();
 });
 
-test("upgrade modal recommends Starter and one click sends the score and exact export options to hosted checkout", async () => {
-  for (const code of ["starter-monthly", "converter-pro-monthly", "single-score"] as const) {
+test("upgrade modal offers Starter and a score pass and sends exact export options to hosted checkout", async () => {
+  for (const code of ["starter-monthly", "single-score"] as const) {
     const calls: Array<{ path: string; init?: RequestInit }> = [];
     let release: (result: unknown) => void = () => {};
     const harness = componentHarness("../components/ScorePassUpgradeModal.tsx", {
@@ -413,10 +525,12 @@ test("upgrade modal recommends Starter and one click sends the score and exact e
     const action = { kind: "export", format: "png", options: { pageSize: "a4", imageResolutionDpi: 300, trimImage: true } };
     const tree = harness.render("ScorePassUpgradeModal", { documentId: "score-1", action, locale: "en", topUp: true, onClose() {} });
     const buttons = nodes(tree).filter(node => node.type === "button" && text(node) === getScorePassCopy("en").continuePayment);
-    assert.equal(buttons.length, 3);
+    assert.equal(buttons.length, 2);
     assert.ok(buttons[0].props.className.includes("button-primary"));
-    assert.ok(buttons[2].props.className.includes("button-secondary"));
-    const index = ["starter-monthly", "converter-pro-monthly", "single-score"].indexOf(code);
+    assert.ok(buttons[1].props.className.includes("button-secondary"));
+    assert.ok(text(tree).includes("7.99")); assert.ok(text(tree).includes("2.99"));
+    assert.doesNotMatch(text(tree), /Converter Pro/u);
+    const index = ["starter-monthly", "single-score"].indexOf(code);
     buttons[index].props.onClick(); buttons[index].props.onClick();
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(calls.length, 1, "rapid duplicate clicks create one checkout");

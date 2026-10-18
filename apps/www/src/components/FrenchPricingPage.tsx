@@ -19,10 +19,10 @@ export function FrenchPricingPage() {
   ];
   return <div className="public-container page-stack french-pricing-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }} />
-    <PricingOffers locale="fr" title="Abonnement ou achat unique : choisissez votre accès" description="Un projet gratuit pour commencer, puis Starter ou Converter Pro pour traiter davantage de partitions. Tous les prix ci-dessous sont en dollars américains ($US)." />
+    <PricingOffers locale="fr" title="Abonnement ou achat unique : choisissez votre accès" description="Une reconnaissance simple gratuite à vie, puis un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois. Tous les prix ci-dessous sont en dollars américains ($US)." />
     <Panel className="stack-md">
       <h2 className="section-title">Commencez gratuitement, sans carte bancaire</h2>
-      <p className="body-copy">Le compte gratuit inclut un seul projet de numérisation gratuit à vie, 25 crédits par mois pour les exports et les outils, ainsi que 50 Mo de stockage. Numérisez un PDF multipage complet ou une image de partition ; pour numériser une nouvelle partition, il vous faut un Pass une partition (One Score Pass) ou une offre.</p>
+      <p className="body-copy">1 reconnaissance simple gratuite à vie, en traitement standard : généralement une photo ou un PDF A4/Letter d’environ 1–5 pages, sous réserve de vérification. La formule gratuite ne fournit aucun crédit mensuel ; le scan gratuit ne demande aucun solde. Sur cette partition, la modification, la transposition, la lecture, le choix des résultats, le titre et le partage sont gratuits, ainsi que les exports Jianpu et Score JSON. Les exports PDF, MusicXML, MIDI, SVG, PNG, WAV et MP3, une autre partition, la reconnaissance complexe, les fichiers volumineux et l’extraction de parties nécessitent un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois.</p>
       <div className="button-row"><a className="public-button secondary" href={getAppStartConversionUrl("fr")}>Créer ma partition gratuite</a></div>
     </Panel>
     <PricingCreditGuide locale="fr" />

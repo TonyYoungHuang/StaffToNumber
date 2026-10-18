@@ -4,6 +4,9 @@ import { SUPPORTED_LOCALES } from "@score/i18n";
 import { hasUsableScoreOutputs, readScoreDownload } from "./download-score-file";
 import { boundedScoreTransfer, fetchScoreUpload, forgetUploadReceipt, getUploadReceipt, latestUploadReceipt } from "./score-transfer-request";
 import { scoreTransferCopy, scoreGenerationError } from "./score-transfer-messages/client";
+import { readScoreMusicXmlPreview } from "./score-preview-request";
+import { isCreditUpgradeError } from "./score-pass-checkout";
+import { ScoreTransferError } from "./score-transfer-request";
 
 test("an upload deadline covers a stalled response body and keeps the result unknown", async () => {
   await assert.rejects(fetchScoreUpload("https://upload.test", { method: "POST", body: "file" }, {
@@ -58,6 +61,31 @@ test("download requires nonempty usable content and rejects an HTML or JSON erro
   }
   const file = await readScoreDownload("https://download.test", {}, { fetch: async () => new Response("%PDF-1.7 content", { headers: { "content-type": "application/pdf", "content-length": "16" } }) });
   assert.equal(file.size, 16);
+});
+
+test("paid file download rejection retains the checkout error instead of yielding a file", async () => {
+  await assert.rejects(readScoreDownload("https://download.test/score.musicxml", {}, {
+    fetch: async () => Response.json({ code: "SCORE_PASS_REQUIRED", error: "Choose a score pass or Starter" }, { status: 403 }),
+  }), error => error instanceof ScoreTransferError && Boolean(error.server) && isCreditUpgradeError(error.server!));
+});
+
+test("candidate and accepted previews read original XML through preview APIs without downloading a paid file", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ path: string; init?: RequestInit }> = [];
+  const originalXml = '<score-partwise><defaults><scaling><millimeters>7</millimeters></scaling></defaults></score-partwise>';
+  globalThis.fetch = async (url, init) => {
+    requests.push({ path: new URL(String(url)).pathname, init });
+    return Response.json({ musicXml: originalXml });
+  };
+  try {
+    for (const candidate of [true, false]) {
+      const result = await readScoreMusicXmlPreview({ documentId: "score one", candidate, token: "fixture" });
+      assert.equal(result.ok && result.data.musicXml, originalXml, "preview content remains unchanged");
+      assert.equal(requests.at(-1)?.path, `/api/scores/score%20one/${candidate ? "candidate/" : ""}musicxml-preview`);
+      assert.equal(requests.at(-1)?.init?.credentials, "include");
+    }
+    assert.equal(requests.some(request => request.path.includes("/files/") || request.path.includes("/download")), false);
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test("completed export status requires every declared output file to be present and nonempty", () => {

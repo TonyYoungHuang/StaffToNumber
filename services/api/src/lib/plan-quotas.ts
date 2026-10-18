@@ -21,6 +21,8 @@ export function processingJobCreditCost(job: { job_type?: string; params_json: s
   if (job.job_type === "musicxml_import" && processingJobParams(job.params_json).catalogOnly === true) return 0;
   if (job.job_type !== "omr_import") return 1;
   const params = processingJobParams(job.params_json);
+  // The lifetime free scan is an allowance, never a monthly or prepaid charge.
+  if (params.freeTrial === true) return 0;
   const settled = settledRecognitionCreditCost(params);
   if (settled !== null) return settled;
   if (params.recognitionMode !== "simple" && params.recognitionMode !== "complex") return 1;
@@ -80,7 +82,8 @@ function limitsForTier(tier: PlanQuotaTier) {
   if (tier === "starter") {
     return { jobs: config.quotaStarterJobsPerMonth, storageBytes: config.quotaStarterStorageBytes };
   }
-  return { jobs: config.quotaFreeJobsPerMonth, storageBytes: config.quotaFreeStorageBytes };
+  // Ignore legacy QUOTA_FREE/LEGACY_JOBS_PER_MONTH values still present on hosts.
+  return { jobs: 0, storageBytes: config.quotaFreeStorageBytes };
 }
 
 export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUsage {
@@ -131,11 +134,13 @@ export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUs
   };
 }
 
-export function assertProcessingQuota(userId: string, dedicatedScorePass = false, creditCost = 1) {
+// A verified lifetime trial or dedicated score pass has its own allowance.
+// Disk capacity still applies, while only account-funded work needs this balance.
+export function assertProcessingQuota(userId: string, independentAllowance = false, creditCost = 1) {
   if (!Number.isSafeInteger(creditCost) || creditCost < 1) throw new Error("Processing credit cost must be a positive integer.");
   assertMinimumFreeSpace(config.storageDir, config.storageMinFreeBytes, config.uploadMaxBytes * 2);
   const quota = getPlanQuotaUsage(userId);
-  if (!dedicatedScorePass && creditCost > quota.monthly.remaining && creditCost > quota.prepaid.remaining) {
+  if (!independentAllowance && creditCost > quota.monthly.remaining && creditCost > quota.prepaid.remaining) {
     throw new PlanQuotaExceededError("PLAN_JOB_QUOTA_EXCEEDED", quota);
   }
   return quota;

@@ -41,7 +41,9 @@ test("displayed costs and worked examples use the same published credit budgets"
       for (const number of [budget, Math.floor(budget / pricingFacts.simpleScanCredits), Math.floor(budget / pricingFacts.complexScanCredits)]) assert.match(guide.examples[index], new RegExp(`\\b${number}\\b`));
     }
     for (const number of [pricingFacts.oneScorePassCredits, pricingFacts.oneScorePassCredits - pricingFacts.simpleScanCredits, pricingFacts.oneScorePassCredits - pricingFacts.complexScanCredits]) assert.match(guide.examples[3], new RegExp(`\\b${number}\\b`));
-    assert.match(guide.examples[4], new RegExp(`\\b${pricingFacts.freeMonthlyCredits}\\b`));
+    assert.equal(pricingFacts.freeMonthlyCredits, 0);
+    assert.match(guide.examples[4], /1/u);
+    assert.doesNotMatch(guide.examples[4], /25/u);
   }
 });
 
@@ -81,7 +83,10 @@ test("all nine languages keep the same free, pass, Starter and lane facts across
     assert.match(summary.passPlan, /10/);
     assert.match(summary.starterPlan, /7[.,]99/);
     assert.match(summary.starterPlan, /50/);
-    assert.match(facts.freeScope, /25/);
+    assert.doesNotMatch(facts.freeScope, /25/u);
+    assert.match(facts.freeScope, /Score JSON/u);
+    assert.match(facts.freeScope, /2[.,]99/u);
+    assert.match(facts.freeScope, /7[.,]99/u);
     assert.match(facts.freeScope, /1/);
     assert.match(facts.laneGuide, /6/);
     assert.doesNotMatch(JSON.stringify([facts, intro, guide]), /needs more memory|更多内存|Price ID/iu);

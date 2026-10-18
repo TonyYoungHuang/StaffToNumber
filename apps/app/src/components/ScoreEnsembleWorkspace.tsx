@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatDateTime, formatNumber } from "@score/i18n";
 import { readScoreTaskIntent, scoreTaskDocumentPath, type ScoreJson, type ScoreTaskIntent } from "@score/shared";
-import { API_BASE_URL } from "../lib/api";
+import { readScoreMusicXmlPreview } from "../lib/score-preview-request";
 import { collectEnsembleEvents, ensembleCoverage, neighboringEnsembleEvent, type EnsembleEvent } from "../lib/ensemble-score-selection";
 import { useScoreReviewMessages } from "../lib/score-entry-messages/client";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -18,10 +18,10 @@ import { ScoreEnsemblePartCreator, type MissingEnsembleStaff } from "./ScoreEnse
 import type { ScoreSourceRegion } from "./ScoreOmrReviewPanel";
 import styles from "./ScoreEnsembleWorkspace.module.css";
 
-export function ScoreEnsembleWorkspace({ scoreId, scoreJson, fileId, token, generatedMusicXml, revisionId, selectedEventId, onEventSelect, onUpdated, showFullPreview, onSourceRegionFocus }: {
+export function ScoreEnsembleWorkspace({ scoreId, scoreJson, candidatePreview = false, token, generatedMusicXml, revisionId, selectedEventId, onEventSelect, onUpdated, showFullPreview, onSourceRegionFocus }: {
   scoreId: string;
   scoreJson: ScoreJson;
-  fileId: string | null;
+  candidatePreview?: boolean;
   token: string | null;
   generatedMusicXml: string | null;
   revisionId: string;
@@ -71,14 +71,12 @@ export function ScoreEnsembleWorkspace({ scoreId, scoreJson, fileId, token, gene
     setXmlError(false);
     if (generatedMusicXml) { setMusicXml(generatedMusicXml); return; }
     setMusicXml(null);
-    if (!fileId) return;
-    void fetch(`${API_BASE_URL}/api/files/${encodeURIComponent(fileId)}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined, credentials: "include", cache: "no-store", signal: controller.signal }).then(async response => {
-      if (!response.ok) throw new Error("MusicXML download failed");
-      const xml = await response.text();
-      if (active) setMusicXml(xml);
+    void readScoreMusicXmlPreview({ documentId: scoreId, candidate: candidatePreview, token, signal: controller.signal }).then(result => {
+      if (!result.ok) throw new Error("MusicXML preview failed");
+      if (active) setMusicXml(result.data.musicXml);
     }).catch(() => { if (active && !controller.signal.aborted) setXmlError(true); });
     return () => { active = false; controller.abort(); };
-  }, [fileId, generatedMusicXml, revisionId, token, xmlAttempt]);
+  }, [scoreId, candidatePreview, generatedMusicXml, revisionId, token, xmlAttempt]);
   function choose(id: string) { if (!locked) onEventSelect(id); }
   function selectPart(id: string) {
     setPartId(id); setMeasureId("all"); setSourcePage("all");
@@ -157,7 +155,7 @@ export function ScoreEnsembleWorkspace({ scoreId, scoreJson, fileId, token, gene
     </section>
     {showFullPreview ? <section className="surface-panel stack-lg">
       <div className={styles.toolbar}><h2 className="card-title">{copy.fullPreview}</h2><label>{copy.zoom} <select aria-label={copy.zoom} value={zoom} onChange={event => setZoom(Number(event.target.value))}><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label></div>
-      <ScoreMusicXmlPreview fileId={fileId} token={token} musicXml={musicXml} scoreJson={scoreJson} selectedEventId={selectedEventId} onEventSelect={choose} emptyLabel={previewCopy.empty} loadingLabel={previewCopy.loading} errorLabel={previewCopy.error} retryLabel={previewCopy.retry} technicalDetailsLabel={previewCopy.technicalDetails} deferredLabel={previewCopy.deferred} renderLabel={previewCopy.render} eventLabelTemplate={previewCopy.eventLabel} noteLabel={previewCopy.note} restLabel={previewCopy.rest} zoom={zoom} />
+      <ScoreMusicXmlPreview fileId={null} token={token} musicXml={musicXml} scoreJson={scoreJson} selectedEventId={selectedEventId} onEventSelect={choose} emptyLabel={previewCopy.empty} loadingLabel={previewCopy.loading} errorLabel={previewCopy.error} retryLabel={previewCopy.retry} technicalDetailsLabel={previewCopy.technicalDetails} deferredLabel={previewCopy.deferred} renderLabel={previewCopy.render} eventLabelTemplate={previewCopy.eventLabel} noteLabel={previewCopy.note} restLabel={previewCopy.rest} zoom={zoom} />
     </section> : null}
     {xmlError ? <p role="alert" className="form-status error">{previewCopy.error} <button type="button" className="button button-secondary" onClick={() => setXmlAttempt(value => value + 1)}>{copy.retry}</button></p> : null}
     <ScoreNotationProperties scoreId={scoreId} scoreJson={scoreJson} revisionId={revisionId} selectedEventId={selectedEventId} token={token} onUpdated={onUpdated} />

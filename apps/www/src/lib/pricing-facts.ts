@@ -9,7 +9,7 @@ export const pricingFacts = {
   complexScanCredits: 5,
   queuedJobCredits: 1,
   unmeteredOperationCredits: 0,
-  freeMonthlyCredits: 25,
+  freeMonthlyCredits: 0,
   starterMonthlyCredits: 50,
   proMonthlyCredits: 200,
   freeScanJobs: 1,

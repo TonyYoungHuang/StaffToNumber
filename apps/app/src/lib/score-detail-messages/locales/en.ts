@@ -137,7 +137,8 @@ export const enScoreDetailMessages = {
   },
   exports: {
     cost: {
-      passFormatUnavailable: "TXT and Score JSON generation are unavailable for a One Score Pass alone. Choose another export format or a plan.",
+      freeFormat: "Free on this score · no credits needed",
+      passFormatUnavailable: "This format needs a One Score Pass or Starter. Jianpu and Score JSON exports are free.",
       generate: "Generate {format}",
       costSingle: "This time: {count} credit",
       costMultiple: "This time: {count} credits",

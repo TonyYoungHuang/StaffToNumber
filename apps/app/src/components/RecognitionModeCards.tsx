@@ -30,7 +30,7 @@ export function RecognitionModeCards({ options, selected, loading, error, onRetr
         return <article key={mode} className={`${styles.modeCard} ${selected === mode ? styles.active : ""}`} data-recognition-mode={mode}>
           <h3>{title}</h3>
           <p className="body-copy">{mode === "simple" ? copy.ordinaryStaves : copy.manyStaves}</p>
-          <p className={styles.price} data-credit-cost={quote?.creditCost}>{quote ? formatMessage(copy.price, { credits: formatNumber(quote.creditCost, locale) }) : error ? copy.priceFailed : copy.priceLoading}</p>
+          <p className={styles.price} data-credit-cost={quote?.creditSource === "free_trial" ? undefined : quote?.creditCost}>{quote?.creditSource === "free_trial" ? copy.freeProjectPrice : quote ? formatMessage(copy.price, { credits: formatNumber(quote.creditCost, locale) }) : error ? copy.priceFailed : copy.priceLoading}</p>
           <label className={`button button-secondary ${styles.modeSelect}`}>
             <input type="radio" name="score-recognition-mode" value={mode} checked={selected === mode} disabled={disabled} onChange={() => onSelect(mode)} />
             {title}

@@ -44,7 +44,8 @@ export const zhCNScoreDetailMessages = {
   },
   exports: {
     cost: {
-      passFormatUnavailable: "仅持有单首乐谱通行证时，暂不支持生成 TXT 和 Score JSON。请选择其他导出格式或套餐。",
+      freeFormat: "此乐谱免费导出，无需积分",
+      passFormatUnavailable: "此格式需单谱通行证或 Starter；简谱和 Score JSON 免费导出。",
       generate: "生成 {format}",
       costSingle: "本次：{count} 积分",
       costMultiple: "本次：{count} 积分",

@@ -11,9 +11,9 @@ const apiConfigSource = readFileSync(new URL("../../../../services/api/src/confi
 const quotaSource = readFileSync(new URL("../../../../services/api/src/lib/plan-quotas.ts", import.meta.url), "utf8");
 const deploymentSource = readFileSync(new URL("../../../../deploy/hetzner/score-workspaces.override.yaml", import.meta.url), "utf8");
 
-function positiveIntegerDefault(property: string): number {
-  const declaration = apiConfigSource.match(new RegExp(`^\\s*${property}:\\s*positiveInteger\\([^\\n]+,\\s*(\\d+)\\),?\\s*$`, "m"));
-  assert.ok(declaration, `Cannot find the positiveInteger default for API config ${property}; review the published pricing facts.`);
+function integerDefault(property: string): number {
+  const declaration = apiConfigSource.match(new RegExp(`^\\s*${property}:\\s*(?:positiveInteger|nonNegativeInteger)\\([^\\n]+,\\s*(\\d+)\\),?\\s*$`, "m"));
+  assert.ok(declaration, `Cannot find the integer default for API config ${property}; review the published pricing facts.`);
   return Number(declaration[1]);
 }
 
@@ -33,7 +33,7 @@ test("published scan costs, lifetime free eligibility and monthly budgets match 
     ["proMonthlyCredits", "quotaConverterProJobsPerMonth"],
   ] as const;
   for (const [published, api] of fields) {
-    assert.equal(pricingFacts[published], positiveIntegerDefault(api), `${published} must follow the default in services/api/src/config.ts (${api}).`);
+    assert.equal(pricingFacts[published], integerDefault(api), `${published} must follow the default in services/api/src/config.ts (${api}).`);
   }
 });
 
@@ -59,9 +59,12 @@ test("the two illustrated credit budgets also match the shared prepaid pack size
 test("pricing catalog monthly credit labels agree with the published credit guide in every locale", () => {
   for (const locale of SUPPORTED_LOCALES) {
     for (const plan of getPricingPlanCatalog(locale)) {
-      const expected = plan.code === "free" ? pricingFacts.freeMonthlyCredits
-        : plan.code.startsWith("starter-") ? pricingFacts.starterMonthlyCredits
-          : pricingFacts.proMonthlyCredits;
+      if (plan.code === "free") {
+        assert.equal(pricingFacts.freeMonthlyCredits, 0);
+        assert.doesNotMatch(plan.credits, /25|\d+\s+credits\s*\/\s*month/u);
+        continue;
+      }
+      const expected = plan.code.startsWith("starter-") ? pricingFacts.starterMonthlyCredits : pricingFacts.proMonthlyCredits;
       assert.equal(monthlyCredits(plan.credits), expected, `${locale}/${plan.code} pricing card and credit guide must describe the same budget.`);
     }
   }

@@ -220,7 +220,7 @@ export function ScoreCandidateReviewWorkspace({
             <p className="body-copy">{copy.notationBody}</p>
           </div>
           <ScoreMusicXmlPreview
-            fileId={revision.musicxmlFileId}
+            fileId={null}
             token={token}
             musicXml={generatedMusicXml}
             scoreJson={revision.scoreJson}

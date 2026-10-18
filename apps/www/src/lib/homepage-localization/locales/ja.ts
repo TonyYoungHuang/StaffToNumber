@@ -173,8 +173,8 @@ export const jaHomepage = {
   },
   plans: {
     free: {
-      badge: getRecognitionPricingCopy("ja").freeShort, name: "Free", cycle: "生涯", unitPrice: getRecognitionPricingCopy("ja").freeUnit, credits: "生涯1件の無料スキャン・毎月25クレジット（書き出し等）", audience: getRecognitionPricingCopy("ja").freeLead,
-      benefits: [getRecognitionPricingCopy("ja").freeUnit, "オンライン楽譜編集、パート譜コピー生成 Beta、リアルタイム共同編集 Beta", "再生、ブラウザー録音＆練習フィードバック Beta、スマート移調", "五線譜 ↔ Jianpu（数字譜）および MusicXML ↔ MIDI 変換", "その無料楽譜で、現在提供中の書き出し機能とプロジェクト機能を利用"],
+      badge: getRecognitionPricingCopy("ja").freeShort, name: "Free", cycle: "生涯", unitPrice: getRecognitionPricingCopy("ja").freeUnit, credits: "生涯1回の無料シンプル認識 · 標準処理 · 毎月のクレジットなし", audience: getRecognitionPricingCopy("ja").freeLead,
+      benefits: [getRecognitionPricingCopy("ja").freeUnit, "その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・Score JSONの書き出しは無料です。", "数字譜・Score JSONの書き出しは無料。他の形式には1曲パスかStarterが必要です", "毎月のクレジットなし。生涯1回の無料シンプル認識はクレジットを使いません。", "PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。"],
       resources: [getRecognitionPricingCopy("ja").freeScope, "50 MB のファイルストレージ", "オープン楽譜ライブラリと CC0 ダウンロード", "クレジットカード不要。無料プロジェクトは保持されます"], cta: "無料楽譜を作成",
     },
     "starter-monthly": {

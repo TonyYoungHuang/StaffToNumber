@@ -13,7 +13,8 @@ export const frScoreDetailMessages = {
   clef: { eyebrow: "Assistant de clés", title: "Suggestions automatiques de clés", body: "Analysez la tessiture de chaque partie et créez une révision Score JSON avec des clés lisibles dans la première mesure.", load: "Analyser les clés", loading: "Analyse des clés…", apply: "Appliquer les clés proposées", applying: "Application…", success: "Révision avec les clés proposées créée.", failed: "Impossible de mettre à jour les clés.", current: "Actuelle", recommended: "Recommandée", range: "Tessiture", noNotes: "Aucune note haute", line: "ligne", octave: "octave" },
   exports: {
     cost: {
-      passFormatUnavailable: "Le Pass une partition seul ne permet pas de générer des fichiers TXT ou Score JSON. Choisissez un autre format d’export ou une offre.",
+      freeFormat: "Gratuit pour cette partition · aucun crédit nécessaire",
+      passFormatUnavailable: "Ce format nécessite un pass une partition ou Starter. Jianpu et Score JSON sont gratuits.",
       generate: "Générer {format}",
       costSingle: "Cette fois : {count} crédit",
       costMultiple: "Cette fois : {count} crédits",

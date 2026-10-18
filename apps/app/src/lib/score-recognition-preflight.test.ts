@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { canConfirmScoreRecognition, defaultRecognitionMode, isFreeSimpleScanPath, isScoreRecognitionRejected, parseScoreRecognitionPreflight, PreflightRequestGuard, recommendedRecognitionMode, type ScoreRecognitionPreflight } from "./score-recognition-preflight";
+import { recognitionOption, type RecognitionOptions } from "./recognition-options";
 
 const result: ScoreRecognitionPreflight = {
   schemaVersion: 1, recommendation: "simple", confidence: "high", sourcePageCount: 1, pagesAnalyzed: 1, complete: true,
@@ -69,6 +70,17 @@ test("isFreeSimpleScanPath requires ready simple free-trial quote", () => {
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: "simple", simpleQuote: quote, preflight: ready }), true);
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: "complex", simpleQuote: quote, preflight: ready }), false);
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: false, selectedMode: "simple", simpleQuote: { ...quote, creditSource: "plan", canSubmit: false }, preflight: ready }), false);
+});
+
+test("the lifetime simple scan confirms with no monthly credit pool", () => {
+  const options: RecognitionOptions = { defaultMode: "simple", quota: { jobs: { used: 0, limit: 0, remaining: 0 } },
+    freeTrial: { available: true, omrJobsRemaining: 1 }, scorePasses: [],
+    options: [{ ...quote, creditSource: "free_trial" }, { ...quote, mode: "complex", creditCost: 5, canSubmit: false, creditSource: null, reason: "COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED" }] };
+  const preflight = { status: "ready" as const, file, result, ...staged };
+  const simple = recognitionOption(options, "simple");
+  assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: options.freeTrial.available, selectedMode: "simple", simpleQuote: simple, preflight }), true);
+  assert.equal(canConfirmScoreRecognition({ file, preflight, selectedMode: "simple", quote: simple, quoteLoading: false, quoteError: null }), true);
+  assert.equal(canConfirmScoreRecognition({ file, preflight, selectedMode: "complex", quote: recognitionOption(options, "complex"), quoteLoading: false, quoteError: null }), false);
 });
 
 import { selectRecognitionCandidate, recognitionSettlementNumbers } from './recognition-candidates';

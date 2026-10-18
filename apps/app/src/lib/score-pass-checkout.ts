@@ -26,7 +26,8 @@ export function readCheckoutAction(raw?: string): CheckoutIntendedAction | undef
 
 export function isCreditUpgradeError(result: { status: number; code?: string; data?: unknown }) {
   const code = result.code ?? (result.data as { code?: string } | undefined)?.code;
-  return (result.status === 403 && code === "SCORE_PASS_CREDITS_EXHAUSTED") || (result.status === 429 && code === "PLAN_JOB_QUOTA_EXCEEDED");
+  return (result.status === 403 && ["SCORE_PASS_REQUIRED", "SCORE_PASS_CREDITS_EXHAUSTED", "FREE_TRIAL_OMR_LIMIT_REACHED", "COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "BIG_RECOGNITION_ENTITLEMENT_REQUIRED"].includes(code ?? "")) ||
+    (result.status === 429 && code === "PLAN_JOB_QUOTA_EXCEEDED");
 }
 
 export type CheckoutContinuationResult = { documentId: string; job?: { id: string }; error?: string; code?: string; statusCode?: number; actionType?: string };

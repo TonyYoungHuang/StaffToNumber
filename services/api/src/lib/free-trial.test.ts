@@ -9,6 +9,7 @@ import { authPlugin } from "../plugins/auth.js";
 import { scoreRoutes } from "../routes/scores.js";
 import { createSession } from "../repositories/auth-repository.js";
 import { retryScoreJob } from "../repositories/score-repository.js";
+import { getPlanQuotaUsage } from "./plan-quotas.js";
 import {
   assertFreeTrialOmrAvailable,
   FreeTrialLimitError,
@@ -35,6 +36,9 @@ test("failed recognition releases the free allowance but retrying reserves it ag
   assert.equal(getFreeTrialAccess(userId).available,true);
   const retry = retryScoreJob({jobId,userId,documentId})!;
   assert.equal(retry.status,"queued");
+  assert.equal(getPlanQuotaUsage(userId).monthly.limit, 0);
+  assert.equal(getPlanQuotaUsage(userId).monthly.used, 0);
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM prepaid_credit_charges WHERE user_id = ?").get(userId) as { n: number }).n, 0);
   assert.notEqual(retry.id, jobId);
   assert.equal(JSON.parse(retry.params_json!).recoveryOfJobId, jobId);
   assert.equal(retryScoreJob({jobId,userId,documentId})?.id, retry.id, "duplicate retry must not reserve twice");
@@ -118,7 +122,7 @@ test("free editing access is scoped to the marked OMR project and its owner", ()
   assert.equal(isFreeTrialScoreDocumentForUser(paidDocumentId, userId), false);
 });
 
-test("the lifetime free project can use an endpoint that was previously paid-only", async () => {
+test("the lifetime free project edits, transposes, plays and shares without processing credits", async () => {
   initDb();
   const suffix = crypto.randomUUID();
   const userId = `free-project-owner-${suffix}`;
@@ -159,6 +163,20 @@ test("the lifetime free project can use an endpoint that was previously paid-onl
     assert.equal(playback.statusCode, 200, playback.body);
     assert.equal(playback.json<{ revisionId: string }>().revisionId, revisionId);
     assert.ok(playback.json<{ playback: { events: unknown[] } }>().playback.events.length > 0);
+    const headers = { authorization: `Bearer ${token}` };
+    const edited = await app.inject({ method: "POST", url: `/api/scores/${documentId}/edit/tempo`, headers,
+      payload: { measureId: scoreJson.measures[0]!.id, bpm: 100 } });
+    assert.equal(edited.statusCode, 201, edited.body);
+    const transpose = await app.inject({ method: "POST", url: `/api/scores/${documentId}/transpose`, headers,
+      payload: { semitones: 2, useMusic21: false } });
+    assert.equal(transpose.statusCode, 201, transpose.body);
+    const share = await app.inject({ method: "POST", url: `/api/scores/${documentId}/share-links`, headers, payload: { permission: "view" } });
+    assert.equal(share.statusCode, 201, share.body);
+    const parts = await app.inject({ method: "POST", url: `/api/scores/${documentId}/extract-parts`, headers, payload: {} });
+    assert.equal(parts.statusCode, 403, parts.body);
+    assert.equal(parts.json().code, "SCORE_PASS_REQUIRED");
+    assert.equal(getPlanQuotaUsage(userId).monthly.limit, 0);
+    assert.equal(getPlanQuotaUsage(userId).monthly.used, 0);
   } finally {
     await app.close();
   }

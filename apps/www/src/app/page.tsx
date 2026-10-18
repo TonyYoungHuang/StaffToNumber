@@ -272,7 +272,7 @@ export default async function HomePage() {
           </header>
           <CreditPlanGrid label={copy.creditPlanGridLabel}>
             <SingleScoreOffer locale={locale} labels={copy.creditPlanCardLabels} />
-            {plans.filter(plan => plan.code !== "free").map(plan => <PurchasePlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} />)}
+            {plans.filter(plan => plan.code.startsWith("starter-")).map(plan => <PurchasePlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} />)}
           </CreditPlanGrid>
           <div className={styles.oneTimeOffer}>
             <div><strong>{purchaseCopy.oneTime}</strong><p>{purchaseCopy.publicNote}</p></div>

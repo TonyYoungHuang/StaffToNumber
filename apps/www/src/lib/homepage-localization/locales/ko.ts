@@ -173,8 +173,8 @@ export const koHomepage = {
   },
   plans: {
     free: {
-      badge: getRecognitionPricingCopy("ko").freeShort, name: "Free", cycle: "평생", unitPrice: getRecognitionPricingCopy("ko").freeUnit, credits: "평생 무료 스캔 프로젝트 1개 · 월 25크레딧(내보내기 등)", audience: getRecognitionPricingCopy("ko").freeLead,
-      benefits: [getRecognitionPricingCopy("ko").freeUnit, "온라인 악보 편집기, 파트보 사본 생성기 Beta, 실시간 공동 작업 Beta", "재생, 브라우저 녹음 및 연습 피드백 Beta, 스마트 조옮김", "오선보 ↔ Jianpu(숫자보) 및 MusicXML ↔ MIDI 변환", "해당 무료 악보에서 현재 출시된 내보내기 및 프로젝트 단위 도구 사용"],
+      badge: getRecognitionPricingCopy("ko").freeShort, name: "Free", cycle: "평생", unitPrice: getRecognitionPricingCopy("ko").freeUnit, credits: "평생 1회 무료 간단 인식 · 표준 처리 · 월간 크레딧 없음", audience: getRecognitionPricingCopy("ko").freeLead,
+      benefits: [getRecognitionPricingCopy("ko").freeUnit, "해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 Score JSON 내보내기는 무료입니다.", "숫자악보 및 Score JSON 내보내기는 무료. 다른 형식은 한 곡 이용권 또는 Starter가 필요합니다", "월간 크레딧 없음. 평생 1회 무료 간단 인식은 크레딧을 사용하지 않습니다.", "PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다."],
       resources: [getRecognitionPricingCopy("ko").freeScope, "50 MB 파일 저장 공간", "오픈 악보 라이브러리 및 CC0 다운로드", "신용카드 불필요, 무료 프로젝트 계속 보관"], cta: "무료 악보 만들기",
     },
     "starter-monthly": {

@@ -208,8 +208,8 @@ export function TrialScorePreview({
       }).then(result => {
         if (result.ok) setJob(result.data.job);
         else {
-          setError(result.error);
           if (isCreditUpgradeError(result)) setUpgradeRetry({ jobId: job.id, topUp: result.code === "SCORE_PASS_CREDITS_EXHAUSTED" });
+          else setError(result.error);
         }
       }).finally(() => setRetrying(false));
     }} />{upgradeRetry && scoreId ? <ScorePassUpgradeModal documentId={scoreId} action={{ kind: "retry", jobId: upgradeRetry.jobId }} topUp={upgradeRetry.topUp} locale={locale} onClose={() => setUpgradeRetry(null)} /> : null}</>;

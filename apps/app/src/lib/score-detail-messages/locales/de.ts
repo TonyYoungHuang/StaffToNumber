@@ -13,7 +13,8 @@ export const deScoreDetailMessages = {
   clef: { eyebrow: "Notenschlüssel-Assistent", title: "Automatische Notenschlüssel-Empfehlungen", body: "Analysiert den Tonumfang jeder Stimme und erstellt eine Score-JSON-Revision mit gut lesbaren Schlüsseln im ersten Takt.", load: "Notenschlüssel analysieren", loading: "Analyse läuft…", apply: "Empfohlene Schlüssel anwenden", applying: "Schlüssel werden angewendet…", success: "Revision mit Schlüssel-Empfehlungen erstellt.", failed: "Notenschlüssel konnten nicht aktualisiert werden.", current: "Aktuell", recommended: "Empfohlen", range: "Tonumfang", noNotes: "Keine Töne", line: "Linie", octave: "Oktave" },
   exports: {
     cost: {
-      passFormatUnavailable: "Mit einem einzelnen Notenpass können TXT und Score JSON nicht erstellt werden. Wählen Sie ein anderes Exportformat oder einen Tarif.",
+      freeFormat: "Für diese Partitur kostenlos · keine Credits nötig",
+      passFormatUnavailable: "Dieses Format benötigt einen Einzelpartitur-Pass oder Starter. Jianpu und Score JSON sind kostenlos.",
       generate: "{format} erzeugen",
       costSingle: "Diesmal: {count} Credit",
       costMultiple: "Diesmal: {count} Credits",

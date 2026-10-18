@@ -4,7 +4,7 @@ import { localizeApiError, SUPPORTED_LOCALES } from "@score/i18n";
 import { isCreditUpgradeError, scoreCheckoutPath, readCheckoutAction, saveContinuationNotice, takeContinuationNotice } from "./score-pass-checkout";
 import { getScorePassCopy } from "./billing-messages/client";
 import { getScoreDetailMessages } from "./score-detail-messages";
-import { checkExportQuote, type ScoreExportQuote } from "./score-export-cost";
+import { canRequestScoreExport, checkExportQuote, type ScoreExportQuote } from "./score-export-cost";
 
 const shown: ScoreExportQuote = {
   balance: { available: 9, creditSource: "score_pass" }, downloadCreditCost: 0,
@@ -27,6 +27,22 @@ test("zero-credit direct exports remain free and report an existing access restr
   assert.equal(checkExportQuote(shown, shown, "jianpu"), "ready");
   const restricted: ScoreExportQuote = { ...shown, options: [{ format: "jianpu", creditCost: 0, canSubmit: false, reason: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" }] };
   assert.equal(checkExportQuote(shown, restricted, "jianpu"), "restricted");
+});
+
+test("free paid formats request checkout while TXT and Score JSON need no credit balance", () => {
+  const free: ScoreExportQuote = { balance: { available: 0, creditSource: "monthly" }, downloadCreditCost: 0,
+    options: [
+      ...["pdf", "musicxml", "midi", "svg", "png", "wav", "mp3"].map(format => ({ format, creditCost: 1, canSubmit: false, reason: "SCORE_PASS_REQUIRED" as const })),
+      { format: "jianpu", creditCost: 0, canSubmit: true }, { format: "score-json", creditCost: 0, canSubmit: true },
+    ] };
+  for (const format of ["pdf", "musicxml", "midi", "svg", "png", "wav", "mp3"]) {
+    assert.equal(checkExportQuote(free, free, format), "paywall");
+    assert.equal(checkExportQuote(null, free, format), "paywall", "newly blocked access takes precedence over price confirmation");
+    assert.equal(canRequestScoreExport(free, format), true, "a free user's paid action must open checkout");
+  }
+  for (const format of ["jianpu", "score-json"]) assert.equal(checkExportQuote(free, free, format), "ready");
+  assert.equal(canRequestScoreExport(null, "pdf"), false);
+  assert.equal(canRequestScoreExport({ ...free, options: [{ format: "pdf", creditCost: 1, canSubmit: false }] }, "pdf"), false, "paid users with insufficient credits still need an upgrade");
 });
 
 test("all nine locales explain generation, downloads, balances and changed-price confirmation", () => {
@@ -63,7 +79,7 @@ test("credit quota errors have native text in all nine locales", () => {
 });
 
 
-test("checkout transport preserves export choices and validates the two exhausted-credit modal triggers", () => {
+test("checkout transport preserves export choices and recognizes purchase and exhausted-credit errors", () => {
   const action = { kind: "export" as const, format: "wav" as const, options: { sampleRate: 96000 as const, audioChannels: 2 as const, mutedPartIds: ["part-2"], tempoBpm: 80 } };
   const params = new URL(scoreCheckoutPath("part 1", action, true), "https://app.example").searchParams;
   assert.equal(params.get("targetDocumentId"), "part 1");
@@ -73,7 +89,11 @@ test("checkout transport preserves export choices and validates the two exhauste
   assert.equal(readCheckoutAction("x".repeat(16_385)), undefined);
   assert.ok(isCreditUpgradeError({ status: 403, code: "SCORE_PASS_CREDITS_EXHAUSTED" }));
   assert.ok(isCreditUpgradeError({ status: 429, data: { code: "PLAN_JOB_QUOTA_EXCEEDED" } }));
-  assert.equal(isCreditUpgradeError({ status: 403, code: "SCORE_PASS_REQUIRED" }), false);
+  for (const code of ["SCORE_PASS_REQUIRED", "FREE_TRIAL_OMR_LIMIT_REACHED", "COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "BIG_RECOGNITION_ENTITLEMENT_REQUIRED"]) {
+    assert.ok(isCreditUpgradeError({ status: 403, code }), code);
+    assert.ok(isCreditUpgradeError({ status: 403, data: { code } }), code);
+    assert.equal(isCreditUpgradeError({ status: 500, code }), false, code);
+  }
   assert.equal(isCreditUpgradeError({ status: 429, code: "RATE_LIMITED" }), false);
 });
 

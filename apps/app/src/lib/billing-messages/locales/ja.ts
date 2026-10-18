@@ -24,7 +24,7 @@ export const jaBillingMessages = {
     },
     selector: {
       plansAria: "クレジットプランを選択", selectedPlan: "選択中のプラン", continueTemplate: "{name} {cycle}で続ける", freeEyebrow: "無料",
-      freeTitle: "最初の完全な楽譜を無料で作成", freeBody: "標準処理での簡単な楽譜認識が生涯1回無料です。通常は写真1枚か約5ページ以内のA4/Letter PDFが対象で、ファイル確認の結果によります。毎月25クレジットは既存のプロジェクトに使えますが、新しい楽譜の認識権にはなりません。", freeCta: "無料で楽譜を作成", creditUsage: "タスク作成時にクレジットを予約", includedCapabilities: "含まれる機能", benefitsAndResources: "特典とリソース",
+      freeTitle: "最初の完全な楽譜を無料で作成", freeBody: "標準処理で簡単な楽譜認識を生涯1回無料で利用できます。通常は写真1枚か約1–5ページのA4/Letter PDFが対象で、ファイル確認の結果によります。無料プランに毎月のクレジットはなく、無料認識に残高は必要ありません。 その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・Score JSONの書き出しは無料です。 PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。", freeCta: "無料で楽譜を作成", creditUsage: "タスク作成時にクレジットを予約", includedCapabilities: "含まれる機能", benefitsAndResources: "特典とリソース",
     },
     client: {
       checkoutEyebrow: "決済", title: "オンラインで支払い、アクセス権を自動有効化", body: "支払いが完了すると、登録アカウントのアクセス権が自動で有効になります。",
@@ -57,7 +57,7 @@ export const jaBillingMessages = {
       prepaidNote: "簡単な認識は1タスク1クレジット、複雑な認識は5クレジットです。ページ数は処理経路に影響しますが、ページ数倍の料金にはなりません。一部のみ完成した場合は未完成部分の見積クレジットを比例して返し、失敗やキャンセルでは処理クレジットを返します。これはクレジットの返却で、現金返金ではありません。",
       additionalPrepaidTemplate: "追加の前払いクレジット：{remaining} / {total}。月間クレジットが不足する場合に使用し、未使用分は保持されます。",
       quotaNote: "簡単な認識は1タスク1クレジット、複雑な認識は5クレジットです。ページ数は処理経路に影響しますが、ページ数倍の料金にはなりません。一部のみ完成した場合は未完成部分の見積クレジットを比例して返し、失敗やキャンセルでは処理クレジットを返します。これはクレジットの返却で、現金返金ではありません。 月間クレジットはUTCの各暦月の初めにリセットされ、繰り越されません。閲覧、再生、サーバーにタスクを送らない基本編集ではクレジットを使いません。",
-      freeEyebrow: "無料利用状況", noPaidTitle: "有効な有料プランはありません", freeBody: "ファイル確認の範囲内で、標準処理の簡単な認識が生涯1回無料です。さらに{credits}が含まれます。月間クレジットは新しい楽譜の認識権にはなりません。 1曲パスはUS$2.99の1回払い。元の楽譜と抽出パートで10クレジットを共有し、有効期限はありません。Starterは月額US$7.99、複数の楽譜に使える毎月50クレジットです。どちらもファイル確認の範囲内で標準処理と大容量ファイル処理を利用でき、処理経路の追加料金はありません。", unlock: "フルアクセスを有効化",
+      freeEyebrow: "無料利用状況", noPaidTitle: "有効な有料プランはありません", freeBody: "標準処理で簡単な楽譜認識を生涯1回無料で利用できます。通常は写真1枚か約1–5ページのA4/Letter PDFが対象で、ファイル確認の結果によります。無料プランに毎月のクレジットはなく、無料認識に残高は必要ありません。 その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・Score JSONの書き出しは無料です。 PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。", unlock: "フルアクセスを有効化",
       subscriptionsEyebrow: "サブスクリプション", subscriptionsTitle: "アクセス権と更新状況", manageStripe: "Stripe の支払い方法を管理", managingStripe: "Stripe を開いています...", noSubscriptions: "このアカウントに紐付くサブスクリプションはありません。",
       currentPeriodEndsTemplate: "現在の期間は {date} まで", noFixedEnd: "期間終了日は設定されていません", renewalFailed: "直近の更新に失敗しました。支払い方法を更新してください。", cancellationScheduled: "現在の期間終了時に解約されます。",
       seatsTemplate: "{count} 席", cancel: "期間終了時に解約", canceling: "解約処理中...", cancelSuccess: "現在の請求期間の終了時にサブスクリプションを解約します。",
@@ -72,18 +72,18 @@ export const jaBillingMessages = {
     names: { free: "無料", starter: "Starter", "converter-pro": "Converter Pro" }, cycles: { lifetime: "無期限", monthly: "月払い", annual: "年払い" },
     badges: { free: "ずっと無料", "starter-monthly": "柔軟な月払い", "starter-annual": "Starter 年払い", "converter-pro-monthly": "大容量", "converter-pro-annual": "大容量の年払い" },
     audiences: {
-      free: "完全な楽譜1件で現在の全プロジェクト機能を試す", "starter-monthly": "個人の楽譜を継続的に処理する方向け", "starter-annual": "クレジット単価を抑えて長期間使う個人向け",
+      free: "標準処理で簡単な楽譜認識を生涯1回無料で利用できます。通常は写真1枚か約1–5ページのA4/Letter PDFが対象で、ファイル確認の結果によります。無料プランに毎月のクレジットはなく、無料認識に残高は必要ありません。", "starter-monthly": "個人の楽譜を継続的に処理する方向け", "starter-annual": "クレジット単価を抑えて長期間使う個人向け",
       "converter-pro-monthly": "毎月より多くの楽譜を処理する個人向け", "converter-pro-annual": "長期かつ高頻度で個人の楽譜を処理する方向け",
     },
     ctas: { free: "無料で楽譜を作成", "starter-monthly": "Starter 月払いを選択", "starter-annual": "Starter 年払いを選択", "converter-pro-monthly": "Converter Pro 月払いを選択", "converter-pro-annual": "Converter Pro 年払いを選択" },
-    unitPriceTemplate: "1クレジットあたり {unitPrice}", freeUnitPriceTemplate: "完全な楽譜プロジェクト {projectCount} 件", creditsTemplate: "月 {monthlyCredits} クレジット", freeCreditsTemplate: "生涯{projectCount}回の無料簡単認識 · 標準処理 · 毎月{monthlyCredits}クレジット",
+    unitPriceTemplate: "1クレジットあたり {unitPrice}", freeUnitPriceTemplate: "完全な楽譜プロジェクト {projectCount} 件", creditsTemplate: "月 {monthlyCredits} クレジット", freeCreditsTemplate: "生涯{projectCount}回の無料シンプル認識 · 標準処理 · 毎月のクレジットなし",
     benefits: {
-      freeProject: "標準処理での簡単な認識が生涯{projectCount}回無料。通常は写真1枚か約5ページ以内のA4/Letter PDFで、ファイル確認の結果によります", moreThanFreeProject: "無料の楽譜プロジェクト {projectCount} 件という制限を解除", starterIncluded: "現在の Starter の全機能", starterMonthlyIncluded: "現在の Starter 月払いの全機能", converterMonthlyIncluded: "現在の Converter Pro 月払いの全機能",
+      freeProject: "標準処理での簡単な認識が生涯{projectCount}回無料。通常は写真1枚か約5ページ以内のA4/Letter PDFで、ファイル確認の結果によります", freeTools: "その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・Score JSONの書き出しは無料です。 PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。", moreThanFreeProject: "無料の楽譜プロジェクト {projectCount} 件という制限を解除", starterIncluded: "現在の Starter の全機能", starterMonthlyIncluded: "現在の Starter 月払いの全機能", converterMonthlyIncluded: "現在の Converter Pro 月払いの全機能",
       editor: "オンラインエディター、パート譜コピー作成 Beta、リアルタイム共同編集 Beta", practice: "再生、ブラウザー録音・練習フィードバック Beta、スマート移調", conversion: "五線譜 ↔ 数字譜、MusicXML ↔ MIDI 変換",
-      exports: "対応するレンダラーが利用可能な場合の PDF／SVG／PNG と WAV／MP3 書き出し", freeExports: "無料楽譜で公開済みの書き出し機能とプロジェクト機能を利用",
+      exports: "対応するレンダラーが利用可能な場合の PDF／SVG／PNG と WAV／MP3 書き出し", freeExports: "数字譜・Score JSONの書き出しは無料。他の形式には1曲パスかStarterが必要です",
     },
     resources: {
-      monthlyCredits: "毎月{monthlyCredits}クレジット。簡単な認識は1タスク1、複雑な認識は5クレジット。標準処理と大容量ファイル処理はファイル確認の結果によります", monthlyCreditsReset: "UTCの各暦月に{monthlyCredits}クレジット、繰り越しなし。簡単な認識は1タスク1、複雑な認識は5クレジット。両方の処理経路はファイル確認の結果によります", freeMonthlyCredits: "既存プロジェクトに毎月{monthlyCredits}クレジット。新しい楽譜の認識には未使用の無料枠、1曲パスまたは有効なプランが必要です", storage: "ファイル保存容量 {storage} MB", personalLibrary: "個人ライブラリ、改訂履歴、公開楽譜カタログ",
+      monthlyCredits: "毎月{monthlyCredits}クレジット。簡単な認識は1タスク1、複雑な認識は5クレジット。標準処理と大容量ファイル処理はファイル確認の結果によります", monthlyCreditsReset: "UTCの各暦月に{monthlyCredits}クレジット、繰り越しなし。簡単な認識は1タスク1、複雑な認識は5クレジット。両方の処理経路はファイル確認の結果によります", freeMonthlyCredits: "毎月のクレジットなし。生涯1回の無料シンプル認識はクレジットを使いません。", storage: "ファイル保存容量 {storage} MB", personalLibrary: "個人ライブラリ、改訂履歴、公開楽譜カタログ",
       monthlyRenewal: "長期契約なしの月次更新", annualSavings: "12回の月払いと比べて {annualSavings} お得", freeLibrary: "公開楽譜ライブラリと CC0 ダウンロード", noCard: "カード不要。無料プロジェクトを保持できます",
     },
   },

@@ -36,7 +36,8 @@ export const koScoreDetailMessages = {
   clef: { eyebrow: "음자리표 도우미", title: "자동 음자리표 제안", body: "각 파트의 음역을 분석하고 첫 마디에 읽기 쉬운 음자리표를 적용한 새 Score JSON 리비전을 만듭니다.", load: "음자리표 분석", loading: "분석 중...", apply: "추천 음자리표 적용", applying: "적용 중...", success: "음자리표 추천 리비전을 만들었습니다.", failed: "음자리표를 업데이트하지 못했습니다.", current: "현재", recommended: "추천", range: "음역", noNotes: "음높이 음표 없음", line: "선", octave: "옥타브" },
   exports: {
     cost: {
-      passFormatUnavailable: "단일 악보 패스만으로는 TXT와 Score JSON을 생성할 수 없습니다. 다른 내보내기 형식이나 요금제를 선택하세요.",
+      freeFormat: "이 악보에서 무료 · 크레딧 불필요",
+      passFormatUnavailable: "이 형식은 한 곡 이용권 또는 Starter가 필요합니다. 숫자악보와 Score JSON 내보내기는 무료입니다.",
       generate: "{format} 생성",
       costSingle: "이번 비용: {count} 크레딧",
       costMultiple: "이번 비용: {count} 크레딧",

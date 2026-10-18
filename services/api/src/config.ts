@@ -171,7 +171,8 @@ export const config = {
   freeTrialOmrJobs: positiveInteger(process.env.FREE_TRIAL_OMR_JOBS, 1),
   omrSimpleCreditCost: positiveInteger(process.env.OMR_SIMPLE_CREDIT_COST, 1),
   omrComplexCreditCost: positiveInteger(process.env.OMR_COMPLEX_CREDIT_COST, 5),
-  quotaFreeJobsPerMonth: positiveInteger(process.env.QUOTA_FREE_JOBS_PER_MONTH ?? process.env.QUOTA_LEGACY_JOBS_PER_MONTH, 25),
+  // Retained for configuration compatibility; free accounts have no monthly credit pool.
+  quotaFreeJobsPerMonth: nonNegativeInteger(process.env.QUOTA_FREE_JOBS_PER_MONTH, 0),
   quotaStarterJobsPerMonth: positiveInteger(process.env.QUOTA_STARTER_JOBS_PER_MONTH ?? process.env.QUOTA_PRO_JOBS_PER_MONTH, 50),
   quotaConverterProJobsPerMonth: positiveInteger(process.env.QUOTA_CONVERTER_PRO_JOBS_PER_MONTH ?? process.env.QUOTA_EDUCATION_JOBS_PER_MONTH, 200),
   quotaFreeStorageBytes: positiveInteger(process.env.QUOTA_FREE_STORAGE_BYTES ?? process.env.QUOTA_LEGACY_STORAGE_BYTES, 50 * 1024 * 1024),

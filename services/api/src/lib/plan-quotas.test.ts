@@ -50,7 +50,7 @@ test("generated outputs and uploads share the free account storage boundary", ()
   assert.throws(() => assertAccountStorageQuota(db, id, Number.NaN), /storage quota/);
 });
 
-test("free processing and storage quotas reject excess usage", () => {
+test("free accounts have no monthly credit pool even with a legacy 25-credit configuration", () => {
   initDb();
   const suffix = crypto.randomUUID();
   const userId = `quota-legacy-${suffix}`;
@@ -63,8 +63,13 @@ test("free processing and storage quotas reject excess usage", () => {
     `).run(`quota-job-${suffix}-${index}`, userId, now, now);
   }
 
-  const usage = getPlanQuotaUsage(userId);
+  const previous = config.quotaFreeJobsPerMonth;
+  config.quotaFreeJobsPerMonth = 25;
+  let usage;
+  try { usage = getPlanQuotaUsage(userId); }
+  finally { config.quotaFreeJobsPerMonth = previous; }
   assert.equal(usage.tier, "free");
+  assert.equal(usage.jobs.limit, 0);
   assert.equal(usage.jobs.used, 25);
   assert.equal(usage.jobs.remaining, 0);
   assert.throws(

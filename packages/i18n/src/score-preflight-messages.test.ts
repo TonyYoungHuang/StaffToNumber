@@ -103,7 +103,9 @@ test('pricing and lane copy keeps all nine languages complete with explicit page
     assert.match(copy.bigBody, /20 MiB/u);
     assert.match(copy.bigBody, /32 MP/u);
     assert.match(copy.passPlan, /2[.,]99/u);
-    assert.match(copy.freePlan, /25/u);
+    assert.doesNotMatch(copy.freePlan, /25/u);
+    assert.match(copy.freePlan, /Score JSON/u);
+    assert.match(copy.freePlan, /2[.,]99/u);
     assert.match(copy.passPlan, /10/u);
     assert.match(copy.starterPlan, /7[.,]99/u);
     assert.match(copy.starterPlan, /50/u);

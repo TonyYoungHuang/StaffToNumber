@@ -164,8 +164,8 @@ export const zhCNHomepage = {
   },
   plans: {
     free: {
-      badge: getRecognitionPricingCopy("zh-CN").freeShort, name: "Free", cycle: "终身", unitPrice: getRecognitionPricingCopy("zh-CN").freeUnit, credits: "终身 1 个免费识谱项目 · 每月 25 积分（导出等功能）", audience: getRecognitionPricingCopy("zh-CN").freeLead,
-      benefits: [getRecognitionPricingCopy("zh-CN").freeUnit, "在线乐谱编辑、声部分谱副本与多人协作 Beta", "练习播放、浏览器录音反馈 Beta 与智能移调", "五线谱／简谱及 MusicXML／MIDI 转换", "该免费项目内使用已开放的导出与项目级功能"],
+      badge: getRecognitionPricingCopy("zh-CN").freeShort, name: "Free", cycle: "终身", unitPrice: getRecognitionPricingCopy("zh-CN").freeUnit, credits: "终身 1 次免费简单识谱 · 普通通道 · 没有月积分", audience: getRecognitionPricingCopy("zh-CN").freeLead,
+      benefits: [getRecognitionPricingCopy("zh-CN").freeUnit, "在该乐谱内可免费编辑、移调、播放、选择识别结果、修改标题和分享，简谱及 Score JSON 导出免费。", "简谱和 Score JSON 免费导出；其他格式需单谱通行证或 Starter", "没有月积分；终身免费简单识谱不扣积分。", "PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 导出、新乐谱、复杂识谱、大文件通道和提取分谱需 US$2.99 单谱通行证，或 US$7.99/月起的 Starter。"],
       resources: [getRecognitionPricingCopy("zh-CN").freeScope, "50 MB 文件存储", "开放曲库浏览与 CC0 文件下载", "无需信用卡，免费项目长期保留"], cta: "免费创建乐谱",
     },
     "starter-monthly": {

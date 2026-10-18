@@ -13,7 +13,8 @@ export const ruScoreDetailMessages = {
   clef: { eyebrow: "Помощник по ключам", title: "Автоматические рекомендации ключей", body: "Анализирует диапазон каждой партии и создаёт редакцию Score JSON с удобными ключами в первом такте.", load: "Анализировать ключи", loading: "Анализ ключей…", apply: "Применить рекомендованные ключи", applying: "Применение ключей…", success: "Редакция с рекомендованными ключами создана.", failed: "Не удалось обновить ключи.", current: "Текущий", recommended: "Рекомендованный", range: "Диапазон", noNotes: "Нет нот с высотой", line: "линия", octave: "октава" },
   exports: {
     cost: {
-      passFormatUnavailable: "Только с пропуском на одну партитуру нельзя создать TXT или Score JSON. Выберите другой формат экспорта или тариф.",
+      freeFormat: "Бесплатно для этой партитуры · кредиты не нужны",
+      passFormatUnavailable: "Для этого формата нужен пакет одной партитуры или Starter. Jianpu и Score JSON бесплатны.",
       generate: "Создать {format}",
       costSingle: "В этот раз: {count} кредит",
       costMultiple: "В этот раз: {count} кредитов",
