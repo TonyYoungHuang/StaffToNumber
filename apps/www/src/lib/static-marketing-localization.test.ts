@@ -42,6 +42,13 @@ function stringLeafPaths(value: unknown, currentPath = "$", paths: string[] = []
   return paths;
 }
 
+test("FA-10 every customer FAQ omits internal API and test-preview terminology", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const faq = JSON.stringify(getStaticMarketingLocalization(locale).faq.groups);
+    assert.doesNotMatch(faq, /\bAPI\b|test(?:ing)? preview|测试预览|測試預覽/iu, locale);
+  }
+});
+
 test("static marketing catalogs are complete and nonempty for all supported locales", () => {
   assert.deepEqual(Object.keys(STATIC_MARKETING_LOCALIZATIONS), [...SUPPORTED_LOCALES]);
   const englishPaths = stringLeafPaths(STATIC_MARKETING_LOCALIZATIONS.en).sort();
