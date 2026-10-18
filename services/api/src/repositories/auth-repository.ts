@@ -1,6 +1,6 @@
 import { listScorePasses } from "../lib/score-passes.js";
 import { randomBytes } from "node:crypto";
-import { isShopCreditPackCode, type ActivationCodeStatus, type EntitlementStatus, type ShopActivationPlanCode } from "@score/shared";
+import { isShopCreditPackCode, SINGLE_SCORE_PASS, type ActivationCodeStatus, type EntitlementStatus, type ShopActivationPlanCode } from "@score/shared";
 import { grantPrepaidCredits, prepaidCreditBalance } from "../lib/prepaid-credits.js";
 import { db } from "../db.js";
 import { createId, createSalt, createToken, hashPassword } from "../lib/auth.js";
@@ -320,7 +320,7 @@ function redeemInTransaction(userId: string, codeRow: ActivationCodeRow | undefi
         .run(purchaseId, userId, timestamp, timestamp, timestamp, timestamp);
       // max_pages is a legacy schema column; its default is no longer enforced.
       db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, created_at)
-        VALUES (?, NULL, 10, ?)`).run(purchaseId, timestamp);
+        VALUES (?, NULL, ?, ?)`).run(purchaseId, SINGLE_SCORE_PASS.credits, timestamp);
     }
     return { ok: true as const, entitlement: shopCreditEntitlement(userId, { ...codeRow, redeemed_at: timestamp }), alreadyRedeemed: false };
   }

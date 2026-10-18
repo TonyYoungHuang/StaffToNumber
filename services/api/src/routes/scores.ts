@@ -1439,25 +1439,14 @@ function sendCanonicalScoreCommandResult(reply: FastifyReply, documentId: string
   return reply.code(result.status === "duplicate" ? 200 : 201).send(payload);
 }
 
-function mapOwnedScoreForAccess(document: Parameters<typeof mapScoreDocumentForApi>[0], paidAccess: boolean) {
-  const mapped = mapScoreDocumentForApi(document);
-  if (paidAccess) return mapped;
-  const redactRevision = (revision: typeof mapped.currentRevision) => revision
-    ? { ...revision, scoreJson: undefined, musicxmlFileId: null }
-    : null;
-  return {
-    ...mapped,
-    sourceFileId: null,
-    currentRevision: redactRevision(mapped.currentRevision),
-    pendingRevision: redactRevision(mapped.pendingRevision),
-  };
+function mapOwnedScoreForAccess(document: Parameters<typeof mapScoreDocumentForApi>[0], _editingAccess: boolean) {
+  // Ownership and an active account allow viewing existing results after a
+  // membership expires. Editing and paid downloads have separate guards.
+  return mapScoreDocumentForApi(document);
 }
 
-function mapOwnedScoreSummaryForAccess(document: Parameters<typeof mapScoreDocumentForApi>[0], paidAccess: boolean) {
-  const mapped = mapScoreDocumentSummaryForApi(document);
-  if (paidAccess) return mapped;
-  const redactRevision = (revision: typeof mapped.currentRevision) => revision ? { ...revision, musicxmlFileId: null } : null;
-  return { ...mapped, sourceFileId: null, currentRevision: redactRevision(mapped.currentRevision), pendingRevision: redactRevision(mapped.pendingRevision) };
+function mapOwnedScoreSummaryForAccess(document: Parameters<typeof mapScoreDocumentForApi>[0], _editingAccess: boolean) {
+  return mapScoreDocumentSummaryForApi(document);
 }
 
 function prepareQueuedScoreExport(document: NonNullable<ReturnType<typeof findScoreDocumentById>>, exportRequest: ReturnType<typeof normalizeScoreExportRequest>) {
@@ -1688,7 +1677,7 @@ export async function scoreRoutes(app: FastifyInstance) {
 
       return reply.send({
         score: mapOwnedScoreForAccess(document, editingAccess),
-        revisions: editingAccess ? listScoreRevisionSummariesByDocumentId(document.id) : [],
+        revisions: listScoreRevisionSummariesByDocumentId(document.id),
       });
     },
   );
@@ -2034,7 +2023,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/assets/:fileId/preview",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string; fileId: string };
@@ -3212,7 +3201,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/exports",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "queued" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4326,7 +4316,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/jianpu",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4356,7 +4346,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/playback",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4405,7 +4395,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/midi",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4478,7 +4469,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/audio/wav",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4554,7 +4546,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/audio/mp3",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4656,7 +4649,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/musicxml",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4731,7 +4725,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/score-json",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4793,7 +4787,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/jianpu",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4862,7 +4856,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/pdf",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4903,7 +4898,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/svg",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4944,7 +4940,8 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/export/png",
     {
-      preHandler: app.requireScoreEditingAccess,
+      config: { paidScoreExport: "legacy-sync" },
+      preHandler: app.requireScoreExportAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };

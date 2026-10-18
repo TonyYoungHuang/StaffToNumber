@@ -2,6 +2,7 @@ import { db } from "../db.js";
 import { getUserProfile } from "../repositories/auth-repository.js";
 import { getPlanQuotaUsage, processingJobCreditCost } from "./plan-quotas.js";
 import { scorePassForDocument } from "./score-passes.js";
+import { processingChargeDecision } from "./processing-charge-decision.js";
 
 const QUEUED_EXPORT_FORMATS = ["musicxml", "midi", "pdf", "svg", "png", "wav", "mp3"] as const;
 
@@ -20,12 +21,10 @@ export function getScoreExportOptions(userId: string, documentId: string): Score
   const paid = getUserProfile(userId)?.entitlement.status === "active";
   // Match createScoreExportJob: monthly/prepaid credits precede a bound pass.
   // Unbound passes cannot pay for this score.
-  const usePass = Boolean(pass) && (!paid ||
-    (quota.monthly.remaining < creditCost && quota.prepaid.remaining < creditCost));
-  const creditSource = usePass ? "score_pass" as const : quota.monthly.remaining >= creditCost || !paid ? "monthly" as const : "prepaid" as const;
-  const available = usePass ? pass!.remaining : creditSource === "monthly" ? quota.monthly.remaining : quota.prepaid.remaining;
-  const paidAccess = paid || Boolean(pass);
-  const canSubmit = paidAccess && available >= creditCost;
+  const decision = processingChargeDecision({ paid, monthlyRemaining: quota.monthly.remaining, prepaidRemaining: quota.prepaid.remaining,
+    passRemaining: pass?.remaining ?? null, creditCost });
+  const creditSource = decision.source as "monthly" | "prepaid" | "score_pass";
+  const { available, paidAccess, canSubmit } = decision;
   return {
     balance: { available, creditSource },
     downloadCreditCost: 0,

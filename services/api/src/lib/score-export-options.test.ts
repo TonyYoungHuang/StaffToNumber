@@ -18,9 +18,9 @@ import { getPlanQuotaUsage, processingJobCreditCost } from "./plan-quotas.js";
 import { bindScorePass, ScorePassError } from "./score-passes.js";
 import { getScoreExportOptions, scoreExportPriceMatches } from "./score-export-options.js";
 import { createSession, createUser, generateActivationCodes, redeemActivationCode, signInWithActivationCode } from "../repositories/auth-repository.js";
-import { createCandidateScoreRevisionFromScoreJson, createScoreDocumentFromDerivedScoreJson, createScoreExportJob } from "../repositories/score-repository.js";
+import { createCandidateScoreRevisionFromScoreJson, createScoreDocumentFromDerivedScoreJson, createScoreExportJob, createScoreShare } from "../repositories/score-repository.js";
 
-function fixture(plan: "free" | "credits-50" | "single-score" = "free") {
+function fixture(plan: "free" | "credits-50" | "single-score" | "starter-monthly" = "free") {
   initDb();
   let userId: string;
   if (plan === "free") userId = createUser(`${randomUUID()}@export-quote.test`, "hash", "salt")!.id;
@@ -35,6 +35,47 @@ function fixture(plan: "free" | "credits-50" | "single-score" = "free") {
   if (plan === "single-score") bindScorePass(db, userId, document.id, 11);
   return { userId, documentId: document.id };
 }
+
+test("expired members retain existing results and issued shares while all paid export routes and downloads refuse access", async () => {
+  const f = fixture("starter-monthly");
+  const token = createToken(); createSession(f.userId, token, 1);
+  const share = createScoreShare({ userId: f.userId, documentId: f.documentId, permission: "view" })!;
+  const app = Fastify({ logger: false });
+  await app.register(authPlugin); await app.register(scoreRoutes, { prefix: "/api" }); await app.register(fileRoutes, { prefix: "/api" });
+  const headers = { authorization: `Bearer ${token}` }, base = `/api/scores/${f.documentId}`;
+  try {
+    const before = getPlanQuotaUsage(f.userId);
+    const synchronous = await app.inject({ method: "POST", url: `${base}/export/musicxml`, headers, payload: {} });
+    assert.equal(synchronous.statusCode, 201, synchronous.body);
+    assert.equal(getPlanQuotaUsage(f.userId).monthly.used, before.monthly.used, "legacy membership synchronous export remains available without a new charge");
+    const paidFile = synchronous.json().file.id;
+    db.prepare("UPDATE user_entitlements SET ends_at = '2000-01-01T00:00:00.000Z' WHERE user_id = ?").run(f.userId);
+    for (const route of ["exports", "export/musicxml", "export/midi", "export/audio/wav", "export/audio/mp3", "export/pdf", "export/svg", "export/png"]) {
+      const response = await app.inject({ method: "POST", url: `${base}/${route}`, headers, payload: { format: "pdf" } });
+      assert.equal(response.statusCode, 403, `${route}: ${response.body}`);
+      assert.equal(response.json().code, "SCORE_PASS_REQUIRED");
+    }
+    const download = await app.inject({ method: "GET", url: `/api/files/${paidFile}/download`, headers });
+    assert.equal(download.statusCode, 403, download.body);
+    assert.equal(download.json().code, "SCORE_PASS_REQUIRED");
+    const detail = await app.inject({ method: "GET", url: base, headers });
+    assert.equal(detail.statusCode, 200, detail.body);
+    assert.ok(detail.json().score.currentRevision.scoreJson.measures.length);
+    assert.ok(detail.json().revisions.length);
+    for (const route of ["musicxml-preview", "jianpu", "playback"]) {
+      const response = await app.inject({ method: "GET", url: `${base}/${route}`, headers });
+      assert.equal(response.statusCode, 200, `${route}: ${response.body}`);
+    }
+    for (const format of ["score-json", "jianpu"]) {
+      const response = await app.inject({ method: "POST", url: `${base}/export/${format}`, headers, payload: {} });
+      assert.equal(response.statusCode, 201, response.body);
+    }
+    const shared = await app.inject({ method: "GET", url: `/api/scores/shared/${share.share_token}` });
+    assert.equal(shared.statusCode, 200, shared.body);
+    assert.ok(shared.json().score.currentRevision.scoreJson.measures.length);
+    assert.equal(getScoreExportOptions(f.userId, f.documentId).options.find(o => o.format === "pdf")!.canSubmit, false);
+  } finally { await app.close(); }
+});
 
 test("export quotes are read-only and match the existing monthly, prepaid and dedicated-pass charges", () => {
   for (const [plan, source] of [["free", "monthly"], ["credits-50", "prepaid"], ["single-score", "score_pass"]] as const) {

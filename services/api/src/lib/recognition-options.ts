@@ -4,6 +4,7 @@ import { getUserProfile } from "../repositories/auth-repository.js";
 import { assertFreeTrialOmrAvailable, FreeTrialLimitError, getFreeTrialAccess } from "./free-trial.js";
 import { getPlanQuotaUsage, PlanQuotaExceededError, recognitionCreditCost } from "./plan-quotas.js";
 import { listScorePasses, ScorePassError } from "./score-passes.js";
+import { processingChargeDecision } from "./processing-charge-decision.js";
 
 export class RecognitionAccessError extends Error {
   readonly statusCode: number;
@@ -36,15 +37,12 @@ export function resolveRecognitionAccess(userId: string, mode: ScoreRecognitionM
   const creditCost = recognitionCreditCost(mode);
   const quota = getPlanQuotaUsage(userId);
   const paid = getUserProfile(userId)?.entitlement.status === "active";
-  if (paid && (quota.monthly.remaining >= creditCost || quota.prepaid.remaining >= creditCost)) {
-    return { mode, creditCost, creditSource: "plan" };
-  }
   const passes = listScorePasses(db, userId).filter(pass => !pass.documentId);
-  if (passes.some(pass => pass.remaining >= creditCost)) return { mode, creditCost, creditSource: "score_pass" };
+  const pass = passes.find(pass => pass.remaining >= creditCost) ?? passes[0];
+  const decision = processingChargeDecision({ paid, monthlyRemaining: quota.monthly.remaining, prepaidRemaining: quota.prepaid.remaining,
+    passRemaining: pass?.remaining ?? null, creditCost, allowFreeTrial: mode === "simple" && getFreeTrialAccess(userId).available });
+  if (decision.canSubmit) return { mode, creditCost, creditSource: decision.source === "monthly" || decision.source === "prepaid" ? "plan" : decision.source };
   if (passes.length) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "This score pass does not have enough processing credits.");
-  if (!paid && mode === "simple" && getFreeTrialAccess(userId).available) {
-    return { mode, creditCost, creditSource: "free_trial" };
-  }
   if (paid) throw new PlanQuotaExceededError("PLAN_JOB_QUOTA_EXCEEDED", quota);
   if (mode === "complex") throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
   assertFreeTrialOmrAvailable(userId);

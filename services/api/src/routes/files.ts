@@ -1,5 +1,4 @@
 import { getUserProfile } from "../repositories/auth-repository.js";
-import { isFreeTrialScoreDocumentForUser } from "../lib/free-trial.js";
 import { scorePassForDocument } from "../lib/score-passes.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -259,7 +258,7 @@ export async function fileRoutes(app: FastifyInstance) {
         if (paidOutput && !hasScorePass) {
           return reply.code(403).send({ code: "SCORE_PASS_REQUIRED", error: "Choose a $2.99 One Score Pass or Starter to download this score format." });
         }
-        if (!hasScorePass && !projects.some(p => isFreeTrialScoreDocumentForUser(p.id, request.authUserId!))) {
+        if (!hasScorePass && projects.length === 0) {
           return reply.code(403).send({ error: "Access to this score is required." });
         }
       }

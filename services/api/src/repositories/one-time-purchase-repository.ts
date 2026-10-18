@@ -1,5 +1,5 @@
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
-import { isPurchasePlanCode, type PurchasePlanCode } from "@score/shared";
+import { isPurchasePlanCode, SINGLE_SCORE_PASS, type PurchasePlanCode } from "@score/shared";
 import { assertScorePassDocumentOwnership, assertScorePassPurchaseTarget, bindPurchasedScorePass } from "../lib/score-passes.js";
 
 export type OneTimePurchase = {
@@ -92,7 +92,7 @@ export function fulfillOneTimePurchase(db: RuntimeDatabaseLike, session: PaidSes
     if (planCode === "single-score") {
       // max_pages is a legacy schema column; its default is no longer enforced.
       db.prepare(`INSERT INTO score_passes (purchase_id, document_id, credit_limit, created_at)
-        VALUES (?, NULL, 10, ?) ON CONFLICT(purchase_id) DO NOTHING`).run(orderId, now);
+        VALUES (?, NULL, ?, ?) ON CONFLICT(purchase_id) DO NOTHING`).run(orderId, SINGLE_SCORE_PASS.credits, now);
       // The immutable target comes from the order created before payment, never
       // from webhook metadata or an uploaded/exported score file.
       if (locked.target_document_id && locked.status !== "refunded") bindPurchasedScorePass(db, userId, orderId, locked.target_document_id);

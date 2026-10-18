@@ -9,6 +9,9 @@ import { readSessionCookie } from "../lib/session-cookie.js";
 import { isFreeTrialScoreDocumentForUser } from "../lib/free-trial.js";
 
 declare module "fastify" {
+  interface FastifyContextConfig {
+    paidScoreExport?: "queued" | "legacy-sync";
+  }
   interface FastifyRequest {
     authUserId?: string;
     sessionToken?: string;
@@ -20,6 +23,7 @@ declare module "fastify" {
     requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
     requireScorePreviewAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
     requireScoreEditingAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
+    requireScoreExportAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
     requireActiveEntitlement: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
   }
@@ -91,28 +95,36 @@ export const authPlugin = fp(async (app) => {
     const profile = getUserProfile(request.authUserId);
     const documentId = (request.params as { id?: unknown } | null)?.id;
     const boundPass = typeof documentId === "string" ? scorePassForDocument(db, request.authUserId, documentId) : null;
-    const route = request.routeOptions.url ?? "";
-    const paidExport = (route.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(route)) || route.endsWith("/exports");
-    if (paidExport && profile?.entitlement.status !== "active" && !boundPass) {
+    if (profile?.entitlement.status === "active") return;
+    if (typeof documentId !== "string" || (!isFreeTrialScoreDocumentForUser(documentId, request.authUserId) && !boundPass)) {
+      request.authDenied = true;
+      return reply.code(403).send({ error: "An active entitlement or this account's free editing project is required." });
+    }
+  });
+
+  app.decorate("requireScoreExportAccess", async (request: FastifyRequest, reply: FastifyReply) => {
+    await app.requireScorePreviewAccess(request, reply);
+    if (request.authDenied || !request.authUserId) return reply;
+    const operation = request.routeOptions.config.paidScoreExport;
+    if (!operation) throw new Error("Paid export routes must declare paidScoreExport.");
+    const profile = getUserProfile(request.authUserId);
+    const documentId = (request.params as { id?: unknown } | null)?.id;
+    const boundPass = typeof documentId === "string" ? scorePassForDocument(db, request.authUserId, documentId) : null;
+    if (profile?.entitlement.status !== "active" && !boundPass) {
       request.authDenied = true;
       return reply.code(403).send({ error: "Choose a $2.99 One Score Pass or Starter to export this score.", code: "SCORE_PASS_REQUIRED" });
     }
-    if (profile?.entitlement.source === "prepaid_credits" && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
+    if (profile?.entitlement.source === "prepaid_credits" && operation === "legacy-sync") {
       request.authDenied = true;
       return reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "PREPAID_QUEUED_EXPORT_REQUIRED" });
     }
     if (profile?.entitlement.status === "active") return;
 
-    if (typeof documentId === "string" && scorePassForDocument(db, request.authUserId, documentId)
-      && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
+    if (boundPass && operation === "legacy-sync") {
       // The current editor uses /exports, where reservations, failures and
       // retries are metered. Do not allow the legacy synchronous API to bypass it.
       request.authDenied = true;
       return reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" });
-    }
-    if (typeof documentId !== "string" || (!isFreeTrialScoreDocumentForUser(documentId, request.authUserId) && !scorePassForDocument(db, request.authUserId, documentId))) {
-      request.authDenied = true;
-      return reply.code(403).send({ error: "An active entitlement or this account's free editing project is required." });
     }
   });
 

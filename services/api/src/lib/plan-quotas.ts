@@ -4,6 +4,7 @@ import { resolveStorageQuotaTier, settledRecognitionCreditCost } from "@score/ru
 import { assertMinimumFreeSpace } from "@score/storage";
 import type { ScoreRecognitionMode } from "@score/shared";
 import { prepaidCreditBalance, reservePrepaidCredits } from "./prepaid-credits.js";
+import { processingChargeDecision } from "./processing-charge-decision.js";
 
 export function recognitionCreditCost(mode: ScoreRecognitionMode) {
   return mode === "complex" ? config.omrComplexCreditCost : config.omrSimpleCreditCost;
@@ -150,7 +151,9 @@ export function assertProcessingQuota(userId: string, independentAllowance = fal
 // A job is charged to exactly one pool. Caller keeps the account locked.
 export function recordProcessingCredit(userId: string, family: "score" | "legacy", jobId: string, quota: PlanQuotaUsage, cost = 1) {
   const previous = db.prepare("SELECT job_id FROM prepaid_credit_charges WHERE job_family = ? AND job_id = ?").get(family, jobId);
-  if (previous || quota.monthly.remaining < cost) reservePrepaidCredits(userId, family, jobId, cost);
+  const decision = processingChargeDecision({ paid: true, monthlyRemaining: quota.monthly.remaining,
+    prepaidRemaining: quota.prepaid.remaining, passRemaining: null, creditCost: cost });
+  if (previous || decision.source === "prepaid") reservePrepaidCredits(userId, family, jobId, cost);
 }
 
 export function assertStorageQuota(userId: string, incomingBytes: number) {

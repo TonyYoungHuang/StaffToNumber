@@ -1,4 +1,5 @@
 import { assertScorePassCredit, bindScorePass, lockScorePassAccount, mapExtractedScorePassDocument, recordScorePassJob, scorePassForDocument, ScorePassError } from "../lib/score-passes.js";
+import { processingChargeDecision } from "../lib/processing-charge-decision.js";
 import type {
   AssignmentPracticeSettings,
   JobStatus,
@@ -668,7 +669,8 @@ export function createOmrImportScoreDocument(input: {
     // account: a purchase or another upload may have changed access meanwhile.
     const existingPass = input.existingDraft ? scorePassForDocument(db, input.userId, documentId) : null;
     const requestedPass = input.scorePass ?? (Boolean(existingPass) || (input.freeTrial === undefined && resolveRecognitionAccess(input.userId, recognitionMode).creditSource === "score_pass"));
-    const usePass = requestedPass && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
+    const usePass = processingChargeDecision({ paid: isPaid, monthlyRemaining: allowance.monthly.remaining, prepaidRemaining: allowance.prepaid.remaining,
+      passRemaining: requestedPass ? existingPass?.remaining ?? Number.POSITIVE_INFINITY : null, creditCost, allowFreeTrial: true }).source === "score_pass";
     if (recognitionMode === "complex" && !isPaid && (!usePass || input.freeTrial)) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
@@ -2469,9 +2471,11 @@ export function createScoreExportJob(input: {
     throw new ScorePassError("SCORE_PASS_REQUIRED", "Choose a $2.99 One Score Pass or Starter to export this score.");
   }
   const allowance = getPlanQuotaUsage(input.userId);
-  const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (getUserProfile(input.userId)?.entitlement.status !== "active" || (allowance.monthly.remaining < 1 && allowance.prepaid.remaining < 1));
-  const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId) : null;
-  const quota = assertProcessingQuota(input.userId, Boolean(passId));
+  const creditCost = processingJobCreditCost({ job_type: "render_export", params_json: null });
+  const usePass = processingChargeDecision({ paid: getUserProfile(input.userId)?.entitlement.status === "active", monthlyRemaining: allowance.monthly.remaining,
+    prepaidRemaining: allowance.prepaid.remaining, passRemaining: scorePassForDocument(db, input.userId, input.documentId)?.remaining ?? null, creditCost }).source === "score_pass";
+  const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
+  const quota = assertProcessingQuota(input.userId, Boolean(passId), creditCost);
   const timestamp = nowIso();
   const jobId = createId();
   const context = currentRequestContext();
@@ -2486,7 +2490,7 @@ export function createScoreExportJob(input: {
     `,
   ).run(jobId, input.userId, input.documentId, JSON.stringify({ ...input.params, creditReservedAt: timestamp }), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
   if (passId) recordScorePassJob(db, passId, jobId);
-  else recordProcessingCredit(input.userId, "score", jobId, quota);
+  else recordProcessingCredit(input.userId, "score", jobId, quota, creditCost);
   if (!input.inTransaction) db.exec("COMMIT");
   return findScoreJobById(jobId);
   } catch (error) { if (!input.inTransaction) db.exec("ROLLBACK"); throw error; }
@@ -2540,7 +2544,8 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
       : processingJobCreditCost(existing);
     const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
     const allowance = getPlanQuotaUsage(input.userId);
-    const usePass = Boolean(scorePassForDocument(db, input.userId, input.documentId)) && (!isPaid || (allowance.monthly.remaining < creditCost && allowance.prepaid.remaining < creditCost));
+    const usePass = processingChargeDecision({ paid: isPaid, monthlyRemaining: allowance.monthly.remaining, prepaidRemaining: allowance.prepaid.remaining,
+      passRemaining: scorePassForDocument(db, input.userId, input.documentId)?.remaining ?? null, creditCost }).source === "score_pass";
     const freeTrial = newOmrAttempt && params.freeTrial === true && !isPaid && !usePass;
     if (freeTrial) {
       // A failed attempt releases the allowance. Retrying it must reserve that
