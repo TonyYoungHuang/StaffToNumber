@@ -1,10 +1,30 @@
 import { creditQuotaError } from "./quota-errors.ts";
 import { scorePassError } from "./score-pass-errors.ts";
-import { normalizeLocale } from "./locales.ts";
+import { normalizeLocale, type SupportedLocale } from "./locales.ts";
 import { localizeDeRuError } from "./de-ru-errors.ts";
 import { localizeEnEsError } from "./en-es-errors.ts";
 import { getRecognitionExperienceMessages, resolveRecognitionRequestFailure } from "./recognition-experience-messages.ts";
 import { getScorePreflightMessages, getScoreRecognitionSupportMessage } from "./score-preflight-messages.ts";
+
+const localizedLegacyErrors: Record<string, Partial<Record<SupportedLocale, string>>> = {
+  "Shared score not found.": {
+    en: "The shared score was not found or is no longer available.",
+    "zh-CN": "分享的乐谱不存在或已失效。",
+    "zh-TW": "分享的樂譜不存在或已失效。",
+    ja: "共有された楽譜が見つからないか、利用できなくなっています。",
+    ko: "공유된 악보를 찾을 수 없거나 더 이상 사용할 수 없습니다.",
+    fr: "La partition partagée est introuvable ou n’est plus disponible.",
+    es: "La partitura compartida no se ha encontrado o ya no está disponible.",
+    de: "Die geteilte Partitur wurde nicht gefunden oder ist nicht mehr verfügbar.",
+    ru: "Общая партитура не найдена или больше недоступна.",
+  },
+  "Invalid email or password.": {
+    "zh-CN": "邮箱或密码不正确，请重新输入，或点击“忘记密码”。",
+    "zh-TW": "電子郵件或密碼不正確，請重新輸入，或點選「忘記密碼」。",
+    ja: "メールアドレスまたはパスワードが正しくありません。再入力するか、パスワードを再設定してください。",
+    ko: "이메일 또는 비밀번호가 올바르지 않습니다. 다시 입력하거나 비밀번호를 재설정해 주세요.",
+  },
+};
 
 const frenchErrorCodes: Record<string, string> = {
   ACTIVE_RECURRING_SUBSCRIPTION: "Arrêtez les prochains renouvellements dans Facturation avant d’acheter un accès sans renouvellement automatique.",
@@ -55,6 +75,8 @@ const frenchLegacyErrors: Record<string, string> = {
 
 export function localizeApiError(input: { error?: string | null; code?: string | null; status?: number }, locale?: string | null): string {
   const selectedLocale = normalizeLocale(locale);
+  const legacyMessage = input.error && localizedLegacyErrors[input.error]?.[selectedLocale ?? "en"];
+  if (legacyMessage) return legacyMessage;
   const experience = getRecognitionExperienceMessages(selectedLocale ?? "en");
   const recognitionMessage = resolveRecognitionRequestFailure(experience, input.code);
   if (recognitionMessage) return recognitionMessage;

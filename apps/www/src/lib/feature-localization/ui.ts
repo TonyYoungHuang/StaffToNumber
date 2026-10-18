@@ -17,6 +17,7 @@ const featurePageUiCatalogs = {
   en: {
     home: "Home",
     unavailable: "Pending production verification",
+    audioUnavailable: "Audio and video import is not currently open to the public. Playback and audio export from structured scores remain available.",
     actions: { upload: "Edit for free", checkout: "View access options", scores: "Open score projects", unavailable: "Check release availability" },
     pricing: "Pricing",
     moduleEyebrow: "Platform modules",
@@ -57,6 +58,7 @@ const featurePageUiCatalogs = {
   "zh-CN": {
     home: "首页",
     unavailable: "等待生产环境验证",
+    audioUnavailable: "音频和视频导入目前尚未向公众开放。结构化乐谱的播放和音频导出仍可使用。",
     actions: { upload: "免费编辑", checkout: "查看积分套餐", scores: "打开我的乐谱", unavailable: "查看功能开放状态" },
     pricing: "价格",
     moduleEyebrow: "平台模块",
@@ -97,6 +99,7 @@ const featurePageUiCatalogs = {
   "zh-TW": {
     home: "首頁",
     unavailable: "等待正式環境驗證",
+    audioUnavailable: "音訊和影片匯入目前尚未向公眾開放。結構化樂譜的播放和音訊匯出仍可使用。",
     actions: { upload: "免費編輯", checkout: "查看使用方案", scores: "開啟樂譜專案", unavailable: "查看功能開放狀態" },
     pricing: "價格",
     moduleEyebrow: "平台模組",
@@ -137,6 +140,7 @@ const featurePageUiCatalogs = {
   ja: {
     home: "ホーム",
     unavailable: "本番環境での確認待ち",
+    audioUnavailable: "音声・動画のインポートは現在一般公開されていません。構造化された楽譜の再生と音声のエクスポートは引き続き利用できます。",
     actions: { upload: "無料で編集", checkout: "利用プランを見る", scores: "楽譜プロジェクトを開く", unavailable: "公開状況を確認" },
     pricing: "料金",
     moduleEyebrow: "プラットフォーム機能",
@@ -177,6 +181,7 @@ const featurePageUiCatalogs = {
   ko: {
     home: "홈",
     unavailable: "프로덕션 검증 대기 중",
+    audioUnavailable: "오디오 및 동영상 가져오기는 아직 공개되지 않았습니다. 구조화된 악보의 재생과 오디오 내보내기는 계속 사용할 수 있습니다.",
     actions: { upload: "무료로 편집", checkout: "이용 플랜 보기", scores: "악보 프로젝트 열기", unavailable: "출시 상태 확인" },
     pricing: "요금",
     moduleEyebrow: "플랫폼 모듈",
@@ -217,6 +222,7 @@ const featurePageUiCatalogs = {
   fr: {
     home: "Accueil",
     unavailable: "En attente de validation en production",
+    audioUnavailable: "L’importation audio et vidéo n’est pas encore ouverte au public. La lecture et l’export audio à partir de partitions structurées restent disponibles.",
     actions: { upload: "Modifier gratuitement", checkout: "Voir les offres", scores: "Ouvrir mes projets", unavailable: "Vérifier la disponibilité" },
     pricing: "Tarifs",
     moduleEyebrow: "Modules de la plateforme",
@@ -257,6 +263,7 @@ const featurePageUiCatalogs = {
   es: {
     home: "Inicio",
     unavailable: "Pendiente de verificación en producción",
+    audioUnavailable: "La importación de audio y vídeo aún no está abierta al público. La reproducción y la exportación de audio desde partituras estructuradas siguen disponibles.",
     actions: { upload: "Editar gratis", checkout: "Ver planes", scores: "Abrir proyectos de partituras", unavailable: "Comprobar disponibilidad" },
     pricing: "Precios",
     moduleEyebrow: "Módulos de la plataforma",
@@ -297,6 +304,7 @@ const featurePageUiCatalogs = {
   de: {
     home: "Startseite",
     unavailable: "Produktionsprüfung steht aus",
+    audioUnavailable: "Der Audio- und Videoimport ist derzeit noch nicht öffentlich verfügbar. Wiedergabe und Audioexport aus strukturierten Partituren bleiben verfügbar.",
     actions: { upload: "Kostenlos bearbeiten", checkout: "Tarife ansehen", scores: "Notenprojekte öffnen", unavailable: "Verfügbarkeit prüfen" },
     pricing: "Preise",
     moduleEyebrow: "Plattformmodule",
@@ -337,6 +345,7 @@ const featurePageUiCatalogs = {
   ru: {
     home: "Главная",
     unavailable: "Ожидает проверки в рабочей среде",
+    audioUnavailable: "Импорт аудио и видео пока не открыт для всех пользователей. Воспроизведение и экспорт аудио из структурированных партитур по-прежнему доступны.",
     actions: { upload: "Редактировать бесплатно", checkout: "Посмотреть тарифы", scores: "Открыть проекты", unavailable: "Проверить доступность" },
     pricing: "Тарифы",
     moduleEyebrow: "Модули платформы",

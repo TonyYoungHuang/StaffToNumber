@@ -53,11 +53,11 @@ export function localizeFeaturePage(page: PlatformFeaturePage, locale: Supported
   const localized = { ...page, ...translation, ...getFeatureOnPageContent(page.slug, locale)?.page };
   if (locale === "en" || locale === "es") {
     if (page.slug === "pricing") return { ...localized, title: enEsPricingCopy[locale].title, description: enEsPricingCopy[locale].description };
-    if (!siteConfig.release.audioTranscriptionAvailable) {
-      const unavailable = locale === "en" ? "Audio and video import is not currently open to the public. Playback and audio export from structured scores remain available." : "La importación de audio y vídeo aún no está abierta al público. La reproducción y la exportación de audio desde partituras estructuradas siguen disponibles.";
-      if (page.slug === "audio-to-score") return { ...localized, description: unavailable, guardrail: unavailable };
-      if (page.slug === "score-to-audio") return { ...localized, guardrail: unavailable };
-    }
+  }
+  if (!siteConfig.release.audioTranscriptionAvailable) {
+    const unavailable = getFeaturePageUi(locale).audioUnavailable;
+    if (page.slug === "audio-to-score") return { ...localized, description: unavailable, guardrail: unavailable };
+    if (page.slug === "score-to-audio") return { ...localized, guardrail: unavailable };
   }
   return localized;
 }

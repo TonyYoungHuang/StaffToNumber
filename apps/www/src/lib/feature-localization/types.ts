@@ -48,6 +48,7 @@ export function defineFeatureTranslation(
 export type FeaturePageUi = {
   home: string;
   unavailable: string;
+  audioUnavailable: string;
   actions: { upload: string; checkout: string; scores: string; unavailable: string };
   pricing: string;
   moduleEyebrow: string;

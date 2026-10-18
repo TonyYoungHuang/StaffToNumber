@@ -9,7 +9,6 @@ import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { clearStoredToken, getStoredToken, getServerAuthToken, subscribeAuthChanges, restoreSessionFromCookie, setStoredToken, setPreferredLoginMethod } from "../lib/auth-storage";
 import type { AuthMessageCatalog } from "../lib/auth-messages";
-import { shopError } from "../lib/shop-activation";
 import { useAppLocale } from "./AppLocaleProvider";
 
 type AuthPayload = {
@@ -281,7 +280,7 @@ export function AuthForm({
     setSubmitting(false);
 
     if (!result.ok) {
-      setStatus(emailOnly ? shopError(result.error, result.status) : result.error);
+      setStatus(result.error);
       setStatusKind("error");
       return;
     }

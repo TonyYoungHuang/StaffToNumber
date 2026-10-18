@@ -18,7 +18,8 @@ import { BETA_FEATURE_IDS, FEATURE_TRANSLATION_SLUGS, FORMAL_FEATURE_IDS } from 
 import { localizePublicHref } from "./locale-routing.js";
 import { getFeatureProductMedia, type FeatureProductMediaSlug } from "./product-media/index.js";
 import { auditFeatureSeo, buildFeatureSeoManifest, buildSeoSuggestions, featureSeoRecords } from "./feature-seo.js";
-import { platformFeaturePages } from "./platform-feature-pages.js";
+import { isFeatureAvailable, isFeatureIndexable, platformFeaturePages } from "./platform-feature-pages.js";
+import { siteConfig } from "./site.js";
 
 test("current feature inventory is product-owner approved and has no blocking SEO errors", () => {
   const report = auditFeatureSeo(platformFeaturePages, featureSeoRecords, "2026-07-15T00:00:00.000Z");
@@ -231,6 +232,34 @@ test("every feature page has complete nine-locale content without changing route
       assert.ok(localized.details.every((detail) => detail.title.trim() && detail.body.trim()));
       assert.ok(localized.guardrail.trim());
     }
+  }
+});
+
+test("closed audio import uses translated availability copy in every locale while retaining score playback and SEO gates", t => {
+  const previous = siteConfig.release.audioTranscriptionAvailable;
+  t.after(() => Object.assign(siteConfig.release, { audioTranscriptionAvailable: previous }));
+  const audioImport = platformFeaturePages.find(page => page.slug === "audio-to-score");
+  const audioExport = platformFeaturePages.find(page => page.slug === "score-to-audio");
+  assert.ok(audioImport && audioExport);
+  for (const locale of SUPPORTED_LOCALES) {
+    Object.assign(siteConfig.release, { audioTranscriptionAvailable: true });
+    const openImport = localizeFeaturePage(audioImport, locale);
+    const openExport = localizeFeaturePage(audioExport, locale);
+    Object.assign(siteConfig.release, { audioTranscriptionAvailable: false });
+    const closedImport = localizeFeaturePage(audioImport, locale);
+    const closedExport = localizeFeaturePage(audioExport, locale);
+    const unavailable = getFeaturePageUi(locale).audioUnavailable;
+    assert.equal(closedImport.description, unavailable, `${locale} import description`);
+    assert.equal(closedImport.guardrail, unavailable, `${locale} import guardrail`);
+    assert.equal(closedExport.guardrail, unavailable, `${locale} export guardrail`);
+    assert.notEqual(closedImport.description, openImport.description, `${locale} must stop inviting audio uploads`);
+    assert.equal(closedImport.title, openImport.title, `${locale} SEO heading remains unchanged`);
+    assert.equal(closedImport.canonical, openImport.canonical);
+    assert.equal(closedExport.description, openExport.description, `${locale} score playback remains available`);
+    assert.equal(isFeatureAvailable(closedImport), false);
+    assert.equal(isFeatureIndexable(closedImport), false);
+    assert.equal(isFeatureAvailable(closedExport), isFeatureAvailable(openExport));
+    if (locale !== "en") assert.notEqual(unavailable, getFeaturePageUi("en").audioUnavailable);
   }
 });
 
