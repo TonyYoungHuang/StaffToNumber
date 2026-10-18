@@ -174,7 +174,9 @@ test("prepaid export access keeps free Jianpu/JSON downloads and requires metere
   const [{default:Fastify},{authPlugin}]=await Promise.all([import("fastify"),import("../plugins/auth.js")]);
   const f=fixture(),token=randomUUID();createSession(f.userId,token,1);
   const app=Fastify();await app.register(authPlugin);
-  for(const format of ["jianpu","score-json","pdf","wav"])app.post(`/api/scores/:id/export/${format}`,{preHandler:app.requireScoreEditingAccess},async()=>({ok:true}));
+  for(const format of ["jianpu","score-json","pdf","wav"])app.post(`/api/scores/:id/export/${format}`,
+    format === "jianpu" || format === "score-json" ? {preHandler:app.requireScorePreviewAccess}
+      : {config:{paidScoreExport:"legacy-sync"},preHandler:app.requireScoreExportAccess},async()=>({ok:true}));
   try{
     for(const format of ["jianpu","score-json","pdf","wav"]){
       const response=await app.inject({method:"POST",url:`/api/scores/qa/export/${format}`,headers:{authorization:`Bearer ${token}`}});
@@ -233,7 +235,7 @@ test("adding a prepaid pack preserves the legacy member's synchronous export acc
   const membership=generateActivationCodes({quantity:1,entitlementDays:30,planCode:"starter-monthly"}).codes[0]!;
   assert.ok(redeemActivationCode(f.userId,membership.code).ok);
   const app=Fastify(); await app.register(authPlugin);
-  app.post("/api/scores/:id/export/pdf",{preHandler:app.requireScoreEditingAccess},async()=>({ok:true}));
+  app.post("/api/scores/:id/export/pdf",{config:{paidScoreExport:"legacy-sync"},preHandler:app.requireScoreExportAccess},async()=>({ok:true}));
   try {
     const response=await app.inject({method:"POST",url:"/api/scores/qa/export/pdf",headers:{authorization:`Bearer ${token}`}});
     assert.equal(response.statusCode,200);
