@@ -13,14 +13,15 @@ declare module "fastify" {
     authUserId?: string;
     sessionToken?: string;
     adminId?: string;
+    authDenied?: boolean;
   }
 
   interface FastifyInstance {
-    requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireScorePreviewAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireScoreEditingAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireActiveEntitlement: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
+    requireScorePreviewAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
+    requireScoreEditingAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
+    requireActiveEntitlement: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
+    requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
   }
 }
 
@@ -38,19 +39,19 @@ export const authPlugin = fp(async (app) => {
     const token = readBearerToken(request) ?? readSessionCookie(request, config.publicApiUrl);
 
     if (!token) {
-      reply.code(401).send({ error: "Unauthorized" });
-      return;
+      request.authDenied = true;
+      return reply.code(401).send({ error: "Unauthorized" });
     }
 
     const session = findActiveSessionByToken(token);
     if (!session) {
-      reply.code(401).send({ error: "Session not found" });
-      return;
+      request.authDenied = true;
+      return reply.code(401).send({ error: "Session not found" });
     }
 
     if (new Date(session.expires_at) <= new Date()) {
-      reply.code(401).send({ error: "Session expired" });
-      return;
+      request.authDenied = true;
+      return reply.code(401).send({ error: "Session expired" });
     }
 
     request.authUserId = session.user_id;
@@ -59,29 +60,33 @@ export const authPlugin = fp(async (app) => {
 
   app.decorate("requireActiveEntitlement", async (request: FastifyRequest, reply: FastifyReply) => {
     await app.requireAuth(request, reply);
-    if (reply.sent || !request.authUserId) {
-      return;
+    if (request.authDenied || !request.authUserId) {
+      return reply;
     }
 
     const profile = getUserProfile(request.authUserId);
     if (!profile || profile.accountStatus !== "active" || profile.entitlement.status !== "active") {
-      reply.code(403).send({ error: "An active entitlement is required." });
+      request.authDenied = true;
+      return reply.code(403).send({ error: "An active entitlement is required." });
     }
   });
 
   app.decorate("requireScorePreviewAccess", async (request: FastifyRequest, reply: FastifyReply) => {
     await app.requireAuth(request, reply);
-    if (reply.sent || !request.authUserId) return;
+    if (request.authDenied || !request.authUserId) return reply;
 
     const profile = getUserProfile(request.authUserId);
     if (!profile || profile.accountStatus !== "active") {
-      reply.code(403).send({ error: "An active account is required." });
+      request.authDenied = true;
+      return reply.code(403).send({ error: "An active account is required." });
     }
   });
 
   app.decorate("requireScoreEditingAccess", async (request: FastifyRequest, reply: FastifyReply) => {
     await app.requireScorePreviewAccess(request, reply);
-    if (reply.sent || !request.authUserId) return;
+    // A reply is thenable, so awaiting a child hook does not preserve its return
+    // value. Carry denial explicitly instead of depending on reply.sent timing.
+    if (request.authDenied || !request.authUserId) return reply;
 
     const profile = getUserProfile(request.authUserId);
     const documentId = (request.params as { id?: unknown } | null)?.id;
@@ -89,12 +94,12 @@ export const authPlugin = fp(async (app) => {
     const route = request.routeOptions.url ?? "";
     const paidExport = (route.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(route)) || route.endsWith("/exports");
     if (paidExport && profile?.entitlement.status !== "active" && !boundPass) {
-      reply.code(403).send({ error: "Choose a $2.99 One Score Pass or Starter to export this score.", code: "SCORE_PASS_REQUIRED" });
-      return;
+      request.authDenied = true;
+      return reply.code(403).send({ error: "Choose a $2.99 One Score Pass or Starter to export this score.", code: "SCORE_PASS_REQUIRED" });
     }
     if (profile?.entitlement.source === "prepaid_credits" && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
-      reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "PREPAID_QUEUED_EXPORT_REQUIRED" });
-      return;
+      request.authDenied = true;
+      return reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "PREPAID_QUEUED_EXPORT_REQUIRED" });
     }
     if (profile?.entitlement.status === "active") return;
 
@@ -102,26 +107,27 @@ export const authPlugin = fp(async (app) => {
       && request.routeOptions.url?.includes("/export/") && !/\/export\/(?:jianpu|score-json)$/.test(request.routeOptions.url)) {
       // The current editor uses /exports, where reservations, failures and
       // retries are metered. Do not allow the legacy synchronous API to bypass it.
-      reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" });
-      return;
+      request.authDenied = true;
+      return reply.code(409).send({ error: "Use the export menu to queue this score export.", code: "SCORE_PASS_QUEUED_EXPORT_REQUIRED" });
     }
     if (typeof documentId !== "string" || (!isFreeTrialScoreDocumentForUser(documentId, request.authUserId) && !scorePassForDocument(db, request.authUserId, documentId))) {
-      reply.code(403).send({ error: "An active entitlement or this account's free editing project is required." });
+      request.authDenied = true;
+      return reply.code(403).send({ error: "An active entitlement or this account's free editing project is required." });
     }
   });
 
   app.decorate("requireAdmin", async (request: FastifyRequest, reply: FastifyReply) => {
     if (!config.adminApiKey) {
-      reply.code(503).send({ error: "Admin routes are disabled." });
-      return;
+      request.authDenied = true;
+      return reply.code(503).send({ error: "Admin routes are disabled." });
     }
 
     const adminKey = request.headers["x-admin-api-key"];
     const providedKey = Array.isArray(adminKey) ? adminKey[0] : adminKey;
 
     if (providedKey !== config.adminApiKey) {
-      reply.code(401).send({ error: "Invalid admin API key." });
-      return;
+      request.authDenied = true;
+      return reply.code(401).send({ error: "Invalid admin API key." });
     }
 
     request.adminId = "admin-api";

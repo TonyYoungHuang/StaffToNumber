@@ -20,7 +20,7 @@ test("OMR logging captures sanitized 4xx/5xx reasons including pre-handler denia
   registerOmrErrorLogging(app);
   let status = 422, body: Record<string, unknown> = { code: "SCORE_PREFLIGHT_INVALID_SOURCE", error: "private filename", token: "secret" };
   app.post("/api/scores/import/omr/preflight", async (_request, reply) => reply.code(status).send(body));
-  app.post("/api/scores/import/omr", { preHandler: async (_request, reply) => { reply.code(status).send(body); } }, async () => ({}));
+  app.post("/api/scores/import/omr", { preHandler: async (_request, reply) => reply.code(status).send(body) }, async () => ({}));
   app.post("/other", async (_request, reply) => reply.code(503).send(body));
   try {
     for (const route of ["/api/scores/import/omr/preflight", "/api/scores/import/omr"]) {

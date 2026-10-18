@@ -876,7 +876,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
     reply.header("Cache-Control", "no-store");
     if (request.headers.authorization || readSessionCookie(request, config.publicApiUrl)) {
       await app.requireAuth(request, reply);
-      if (reply.sent) return;
+      if (request.authDenied) return reply;
     }
     const params = request.params as { id: string };
     const query = (request.query ?? {}) as {

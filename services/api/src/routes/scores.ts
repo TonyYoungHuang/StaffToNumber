@@ -1555,9 +1555,9 @@ export async function scoreRoutes(app: FastifyInstance) {
   };
   const importAccess = (access: typeof app.requireAuth) => async (request: FastifyRequest, reply: FastifyReply) => {
     await app.requireScorePreviewAccess(request, reply);
-    if (reply.sent) return;
+    if (request.authDenied) return reply;
     const key = request.headers["idempotency-key"];
-    if (key === undefined) { await access(request, reply); return; }
+    if (key === undefined) return access(request, reply);
     if (typeof key !== "string") return reply.code(400).send({ code: "INVALID_IDEMPOTENCY_KEY", error: "Supply one UUID upload request key." });
     try {
       const state = receipts.status(request.authUserId!, key);
@@ -1571,7 +1571,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         ? JSON.stringify([stagedBody.stagedUploadId, stagedBody.recognitionMode, stagedBody.mode, stagedBody.expectedCreditCost]) : "");
       if (state?.state !== "completed") {
         await access(request, reply);
-        if (reply.sent) return;
+        if (request.authDenied) return reply;
       }
       const receipt = receipts.begin(request.authUserId!, key, signature);
       if (receipt.replay) return reply.code(200).send(replayUpload(receipt.scoreId, request.authUserId!));
