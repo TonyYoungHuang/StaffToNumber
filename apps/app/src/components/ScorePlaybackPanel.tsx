@@ -815,9 +815,9 @@ export function ScorePlaybackPanel({
             <p className="item-title">{revisionId ?? "-"}</p>
           </div>
         </div>
-      ) : (
+      ) : statusKind !== "error" ? (
         <div className="empty-state" role="status">{copy.empty}</div>
-      )}
+      ) : null}
     </section>
   );
 }
