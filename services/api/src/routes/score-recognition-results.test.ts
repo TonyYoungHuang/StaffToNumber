@@ -115,6 +115,75 @@ test("removing a page from a multi-page result deletes only its musical measures
     assert.equal(stale.statusCode, 409);
   } finally { await app.close(); }
 });
+test("direct page deletion persists the same candidate, preserves active edits and still allows merging without charging", async () => {
+  initDb(); const user = createUser(`${randomUUID()}@direct-page-delete.test`, "hash", "salt")!;
+  const fileId = randomUUID(), now = new Date().toISOString();
+  db.prepare("INSERT INTO files(id,user_id,original_name,stored_name,storage_path,mime_type,size_bytes,file_kind,created_at) VALUES(?,?,'pages.xml','pages.xml','/unused','text/xml',100,'source_musicxml',?)").run(fileId, user.id, now);
+  const musicXml = assembleRecognitionMusicXml([xml("C"), xml("D"), xml("E")]);
+  const document = createScoreDocumentFromMusicXml({ userId: user.id, title: "Pages", sourceFileId: fileId, sourceOriginalName: "pages.xml", musicXml })!;
+  const candidates = [
+    { id: "multi", title: "Pages", musicxmlFileId: fileId, sourcePages: [1, 2, 3], relationship: "original" },
+    { id: "last", title: "Last page", musicxmlFileId: fileId, sourcePages: [4], relationship: "original" },
+  ];
+  const jobId = randomUUID();
+  db.prepare("INSERT INTO score_jobs(id,user_id,document_id,job_type,status,params_json,created_at,updated_at) VALUES(?,?,?,'omr_import','completed',?,?,?)")
+    .run(jobId, user.id, document.id, JSON.stringify({ resultManifest: { version: 1, jobId, documentId: document.id, sourcePageCount: 4, deliveredPages: [1, 2, 3, 4], selectedCandidateId: "multi", candidates } }), now, now);
+  for (const candidate of candidates) {
+    const scoreJson = parseMusicXmlToScoreJson({ musicXml: candidate.id === "multi" ? musicXml : xml("G"), title: candidate.title, sourceFileId: fileId, sourceOriginalName: "pages.xml", importedAt: now });
+    db.prepare("INSERT INTO score_assets(id,document_id,file_id,asset_kind,params_json,created_at) VALUES(?,?,?,'score_musicxml',?,?)")
+      .run(randomUUID(), document.id, fileId, JSON.stringify({ candidateId: candidate.id, scoreJson }), now);
+  }
+  const current = db.prepare("SELECT score_json FROM score_revisions WHERE id = ?").get(document.current_revision_id) as { score_json: string };
+  const edited = JSON.parse(current.score_json); edited.metadata.composer = "Customer composer";
+  db.prepare("UPDATE score_revisions SET score_json = ? WHERE id = ?").run(JSON.stringify(edited), document.current_revision_id);
+  const app = Fastify(); await app.register(authPlugin); registerScoreRecognitionResultRoutes(app);
+  const token = randomUUID(); createSession(user.id, token, 1); const headers = { authorization: `Bearer ${token}` };
+  const endpoint = `/scores/${document.id}/candidates`;
+  const list = async () => (await app.inject({ method: "GET", url: endpoint, headers })).json();
+  const steps = (score: any) => score.measures.flatMap((measure: any) => measure.events.filter((event: any) => event.type === "note").map((event: any) => event.pitch.step));
+  try {
+    const before = getPlanQuotaUsage(user.id).jobs.used;
+    const payload = { expectedEditableRevisionId: document.current_revision_id };
+    assert.equal((await app.inject({ method: "DELETE", url: `${endpoint}/multi/pages/2`, payload })).statusCode, 401);
+    const other = createUser(`${randomUUID()}@direct-page-delete.test`, "hash", "salt")!;
+    const otherToken = randomUUID(); createSession(other.id, otherToken, 1);
+    assert.equal((await app.inject({ method: "DELETE", url: `${endpoint}/multi/pages/2`, headers: { authorization: `Bearer ${otherToken}` }, payload })).statusCode, 404);
+    const removed = await app.inject({ method: "DELETE", url: `${endpoint}/multi/pages/2`, headers, payload });
+    assert.equal(removed.statusCode, 200, removed.body);
+    assert.equal(removed.json().candidateId, "multi", "deletion replaces the candidate rather than leaving an original alternative");
+    assert.equal(removed.json().creditsCharged, 0);
+    assert.deepEqual(steps(removed.json().scoreJson), ["C", "E"]);
+    assert.equal(removed.json().scoreJson.metadata.composer, "Customer composer");
+    const refreshed = await list();
+    assert.equal(refreshed.candidates.length, 2);
+    assert.deepEqual(refreshed.candidates.find((candidate: any) => candidate.id === "multi").sourcePages, [1, 3]);
+    assert.deepEqual(steps(refreshed.candidates.find((candidate: any) => candidate.id === "multi").scoreJson), ["C", "E"]);
+    const preview = await app.inject({ method: "GET", url: `${endpoint}/multi/musicxml-preview`, headers });
+    assert.deepEqual([...preview.json().musicXml.matchAll(/<step>([A-G])<\/step>/gu)].map(match => match[1]), ["C", "E"]);
+    const replay = await app.inject({ method: "DELETE", url: `${endpoint}/multi/pages/2`, headers, payload });
+    assert.equal(replay.json().revisionId, removed.json().revisionId); assert.equal(replay.json().replayed, true);
+    assert.equal((await app.inject({ method: "DELETE", url: `${endpoint}/multi/pages/1`, headers, payload })).statusCode, 409);
+    assert.equal((await app.inject({ method: "DELETE", url: `${endpoint}/multi/pages/99`, headers, payload: { expectedEditableRevisionId: removed.json().revisionId } })).statusCode, 400);
+    const merged = await app.inject({ method: "POST", url: `${endpoint}/combine`, headers, payload: { candidateIds: ["multi", "last"], pageOrder: [1, 3, 4], expectedEditableRevisionId: removed.json().revisionId } });
+    assert.equal(merged.statusCode, 200, merged.body); assert.deepEqual(steps(merged.json().scoreJson), ["C", "E", "G"]);
+    let revisionId = merged.json().revisionId;
+    const deletePage = async (id: string, page: number) => {
+      const response = await app.inject({ method: "DELETE", url: `${endpoint}/${id}/pages/${page}`, headers, payload: { expectedEditableRevisionId: revisionId } });
+      assert.equal(response.statusCode, 200, response.body); revisionId = response.json().revisionId; return response.json();
+    };
+    await deletePage("last", 4);
+    assert.equal(revisionId, merged.json().revisionId, "deleting an unselected result preserves the active revision");
+    assert.equal((await app.inject({ method: "GET", url: `${endpoint}/last/musicxml-preview`, headers })).statusCode, 404);
+    assert.equal((db.prepare("SELECT COUNT(*) AS n FROM files WHERE id = ?").get(fileId) as { n: number }).n, 1, "shared original file remains intact");
+    await deletePage("multi", 1); await deletePage("multi", 3);
+    assert.equal((await list()).candidates.length, 1, "the last page removes its candidate from saved results");
+    await deletePage(merged.json().candidateId, 1); await deletePage(merged.json().candidateId, 3);
+    const lastPage = await app.inject({ method: "DELETE", url: `${endpoint}/${merged.json().candidateId}/pages/4`, headers, payload: { expectedEditableRevisionId: revisionId } });
+    assert.equal(lastPage.statusCode, 400, "a project must retain one usable recognized page");
+    assert.deepEqual((await list()).candidates[0].sourcePages, [4]);
+    assert.equal(getPlanQuotaUsage(user.id).jobs.used, before);
+  } finally { await app.close(); }
+});
 test("a free project compares, reorders, combines, renames and selects saved results without credits, with conflict and ownership guards",async()=>{
   initDb();const user=createUser(`${randomUUID()}@results.test`,"hash","salt")!;
   const fileId=randomUUID(),now=new Date().toISOString();

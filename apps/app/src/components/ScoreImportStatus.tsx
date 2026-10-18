@@ -34,6 +34,7 @@ export function ScoreImportStatus({ title, locale, job, busy, error, onRetry, on
     {failed && job?.errorMessage && <details><summary>{flow.more}</summary><p className="helper-copy">{job.errorMessage}</p></details>}
     {error && <p className="form-status error" role="alert">{error}</p>}
     <div className="button-row">
+      {failed && <button type="button" className="button button-primary" disabled={busy} onClick={onRetry}>{flow.retry}</button>}
       <button type="button" className="button button-secondary" disabled={busy} onClick={onRefresh}>{flow.resume}</button>
       {terminal && <Link className="button button-secondary" href="/scores/new">{copy.newFile}</Link>}
       <Link className="button button-secondary" href="/scores">{flow.back}</Link>

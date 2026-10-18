@@ -120,6 +120,39 @@ test("a failed free scan retries without credits and cannot switch to complex or
   assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, 1);
 });
 
+for (const paid of [false, true]) {
+  test(`the ${paid ? "paid" : "free"} retry API re-reserves a failed scan once across duplicate requests`, async () => {
+    const { user, input } = fixture(paid);
+    const created = createOmrImportScoreDocument({ ...input, recognitionMode: paid ? "complex" : "simple" });
+    const original = created.job!, documentId = created.document!.id;
+    db.prepare("UPDATE score_jobs SET status = 'failed' WHERE id = ?").run(original.id);
+    assert.equal(getPlanQuotaUsage(user.id).jobs.used, 0, "the failed attempt releases paid credits");
+    assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, 0, "the failed attempt releases the free allowance");
+    const token = randomUUID(); createSession(user.id, token, 1);
+    const app = Fastify({ logger: false });
+    await app.register(authPlugin); await app.register(scoreRoutes, { prefix: "/api" });
+    try {
+      const request = { method: "POST" as const, url: `/api/scores/${documentId}/jobs/${original.id}/retry`, headers: { authorization: `Bearer ${token}` } };
+      const first = await app.inject(request);
+      assert.equal(first.statusCode, 202, first.body);
+      const quota = getPlanQuotaUsage(user.id), trial = getFreeTrialAccess(user.id);
+      assert.equal(quota.jobs.used, paid ? 5 : 0);
+      assert.equal(trial.omrJobsUsed, paid ? 0 : 1);
+      const duplicates = await Promise.all([app.inject(request), app.inject(request)]);
+      for (const duplicate of duplicates) {
+        assert.equal(duplicate.statusCode, 202, duplicate.body);
+        assert.equal(duplicate.json().job.id, first.json().job.id);
+      }
+      assert.deepEqual(getPlanQuotaUsage(user.id), quota, "duplicate retry requests do not reserve again");
+      assert.deepEqual(getFreeTrialAccess(user.id), trial);
+      assert.equal((db.prepare("SELECT COUNT(*) AS n FROM score_jobs WHERE document_id = ?").get(documentId) as { n: number }).n, 2);
+      db.prepare("UPDATE score_jobs SET status = 'failed' WHERE id = ?").run(first.json().job.id);
+      assert.equal(getPlanQuotaUsage(user.id).jobs.used, 0);
+      assert.equal(getFreeTrialAccess(user.id).omrJobsUsed, 0);
+    } finally { await app.close(); }
+  });
+}
+
 test("a paid single-score pass spends five for complex, releases failure, and membership funds its retry first", () => {
   const { user, input } = fixture(); buyPass(user.id);
   assert.equal(getRecognitionOptions(user.id).options[1].creditSource, "score_pass");

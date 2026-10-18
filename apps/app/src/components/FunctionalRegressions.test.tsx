@@ -8,7 +8,6 @@ import { getFlowMessages } from "../lib/flow-messages";
 import { FlowMessagesProvider, getScoreUploadProcessingLabel } from "../lib/flow-messages/client";
 import { getAuthMessages } from "../lib/auth-messages";
 import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
-import { removeRecognitionPage } from "../lib/recognition-candidates";
 import { shareAvailability } from "../lib/share-availability";
 import { AppAuthModalProvider } from "./AppAuthModal";
 import { AppLocaleProvider } from "./AppLocaleProvider";
@@ -70,18 +69,21 @@ test("FA-08 explicit share expiry is independent of membership and agrees with c
   assert.equal(shareAvailability({ revokedAt: "2026-01-01", expiresAt: "2027-01-01" }, now), "revoked");
 });
 
+test("failed and cancelled imports offer a primary retry in every locale, disabled while the request is pending", () => {
+  for (const locale of SUPPORTED_LOCALES) for (const status of ["failed", "cancelled", "queued", "processing", "completed"] as const) for (const busy of [false, true]) {
+    const flow = getFlowMessages(locale);
+    const $ = load(renderToStaticMarkup(<FlowMessagesProvider messages={flow}><ScoreImportStatus title="Test score" locale={locale} job={{ status }} busy={busy} error={null} onRetry={() => undefined} onRefresh={() => undefined} /></FlowMessagesProvider>));
+    const retry = $("button.button-primary");
+    const canRetry = status === "failed" || status === "cancelled";
+    assert.equal(retry.length, canRetry ? 1 : 0, `${locale}: ${status}`);
+    if (canRetry) {
+      assert.equal(retry.text(), flow.retry, locale);
+      assert.equal(retry.is(":disabled"), busy, locale);
+    }
+  }
+});
+
 test("FA-09 missing-order return has a finished explanation in both customer languages", () => {
   assert.match(getCheckoutReturnCopy("en").missing, /no order reference.*return to your scores/);
   assert.match(getCheckoutReturnCopy("zh-CN").missing, /缺少订单编号.*返回乐谱列表/);
-});
-
-test("removing a source page retains the other pages and candidates until the last page is removed", () => {
-  const candidate = { id: "multi", sourcePages: [1, 3, 5] };
-  const selected = ["multi", "other"];
-  const first = removeRecognitionPage(selected, { multi: [1, 3, 5], other: [2] }, candidate, 3);
-  assert.deepEqual(first, { selected, retained: { multi: [1, 5], other: [2] } });
-  assert.deepEqual(candidate.sourcePages, [1, 3, 5], "the original recognition draft stays intact");
-  const second = removeRecognitionPage(first.selected, first.retained, candidate, 1);
-  const last = removeRecognitionPage(second.selected, second.retained, candidate, 5);
-  assert.deepEqual(last, { selected: ["other"], retained: { multi: [], other: [2] } });
 });

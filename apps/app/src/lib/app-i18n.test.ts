@@ -9,6 +9,7 @@ import {
 } from "@score/i18n";
 import { APP_MESSAGE_CATALOGS, getAppMessages } from "./app-messages.js";
 import { defaultAppLocale, localeLabel, resolveAppLocale } from "./locale.js";
+import { getFlowMessages } from "./flow-messages.js";
 
 function leafKeys(value: unknown, prefix = ""): string[] {
   if (Array.isArray(value)) return [prefix];
@@ -67,4 +68,14 @@ test("app locale resolution reads the shared cookie and safely defaults to Engli
   for (const locale of SUPPORTED_LOCALES) {
     assert.equal(localeLabel(locale), getLocaleConfig(locale).label);
   }
+});
+
+test("saved candidate page deletion has a localized confirmation in every locale", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const message = getFlowMessages(locale).dropPageConfirm;
+    assert.ok(message.includes("{title}") && message.includes("{page}"), locale);
+    assert.doesNotMatch(message, /\?{2,}/u, locale);
+    if (locale !== "en") assert.notEqual(message, getFlowMessages("en").dropPageConfirm, locale);
+  }
+  assert.match(getFlowMessages("zh-CN").dropPageConfirm, /立即保存.*无法撤销/u);
 });

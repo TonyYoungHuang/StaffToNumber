@@ -45,6 +45,19 @@ function selectedCandidateMusicXml(candidate: SavedCandidate & { scoreJson: Scor
     return assembleRecognitionMusicXml(retained.map(page => selectedCandidateMusicXml(available.find(member => member.sourcePages.includes(page))!, [page], candidates, nextAncestors)));
   }
 }
+function candidateWithPages(member: SavedCandidate & { scoreJson: ScoreJson }, pages: number[], candidates: SavedCandidate[]) {
+  try {
+    const scoreJson = parseMusicXmlToScoreJson({
+      musicXml: selectedCandidateMusicXml(member, pages, candidates), title: member.title,
+      sourceFileId: member.musicxmlFileId, sourceOriginalName: "selected-pages.musicxml", importedAt: new Date().toISOString(),
+    });
+    scoreJson.title = member.title;
+    scoreJson.metadata.workTitle = member.scoreJson.metadata.workTitle;
+    scoreJson.metadata.movementTitle = member.scoreJson.metadata.movementTitle;
+    scoreJson.metadata.composer = member.scoreJson.metadata.composer;
+    return { ...member, sourcePages: member.sourcePages.filter(page => pages.includes(page)), scoreJson };
+  } catch (error) { throw new ResultError("RESULT_PAGE_BOUNDARIES_UNAVAILABLE", error instanceof Error ? error.message : "These saved pages cannot be edited.", 409); }
+}
 function readResults(userId:string,documentId:string) {
   const document=findScoreDocumentById(documentId);
   if(!document || document.user_id!==userId || ["archived","deleted"].includes(document.status))throw new ResultError("SCORE_NOT_FOUND","This score is not available for your account.",404);
@@ -77,7 +90,7 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
         creditSettlement:data.params.creditSettlement};}
     catch(error){if(error instanceof ResultError)return reply.code(error.statusCode).send({code:error.code,error:error.message});throw error;}
   });
-  const mutate=async(request:any,reply:any,kind:"select"|"combine"|"rename")=>{
+  const mutate=async(request:any,reply:any,kind:"select"|"combine"|"rename"|"drop")=>{
     const documentId=(request.params as {id:string}).id,body=request.body??{};
     db.exec("BEGIN IMMEDIATE");
     try {
@@ -85,17 +98,51 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
       const data=readResults(request.authUserId,documentId);
       if(!data.job || !data.manifest)throw new ResultError("SCORE_RESULTS_UNAVAILABLE","No saved recognition alternatives are available.",404);
       if(body.expectedEditableRevisionId===undefined)throw new ResultError("SCORE_EDIT_REVISION_CONFLICT","Reload the current score before saving your selection.");
-      const operationKey=createHash("sha256").update(JSON.stringify([kind,body.candidateId,(request.params as {candidateId?:string}).candidateId,
-        body.candidateIds,body.candidatePages,body.pageOrder,body.title,body.mode,body.expectedEditableRevisionId])).digest("hex");
+      const operation=[kind,body.candidateId,(request.params as {candidateId?:string}).candidateId,
+        body.candidateIds,body.candidatePages,body.pageOrder,body.title,body.mode,body.expectedEditableRevisionId];
+      if(kind==="drop")operation.push((request.params as {page:string}).page);
+      const operationKey=createHash("sha256").update(JSON.stringify(operation)).digest("hex");
       const previousOperation=data.params.resultOperations?.[operationKey];
       if(previousOperation){db.exec("COMMIT");return {...previousOperation,creditsCharged:0,replayed:true};}
       const editable=data.document.pending_revision_id??data.document.current_revision_id;
       if(body.expectedEditableRevisionId!==undefined && body.expectedEditableRevisionId!==editable)throw new ResultError("SCORE_EDIT_REVISION_CONFLICT","This score changed. Reload it before saving your selection.");
-      const ids=kind==="combine"?body.candidateIds:[kind==="rename"?(request.params as {candidateId:string}).candidateId:body.candidateId];
+      const saveOperation=(result:{revisionId:string|null;candidateId:string})=>{
+        const resultOperations=Object.fromEntries([...Object.entries(data.params.resultOperations??{}).slice(-99),[operationKey,result]]);
+        db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ?").run(JSON.stringify({...data.params,resultManifest:data.manifest,resultOperations}),data.job!.id);
+        db.exec("COMMIT");
+        return {...result,creditsCharged:0};
+      };
+      const ids=kind==="combine"?body.candidateIds:[kind==="rename"||kind==="drop"?(request.params as {candidateId:string}).candidateId:body.candidateId];
       if(!Array.isArray(ids) || !ids.length || ids.some(id=>typeof id!=="string") || new Set(ids).size!==ids.length)throw new ResultError("INVALID_CANDIDATES","Choose recognized results to use.",400);
       let members=ids.map(id=>data.candidates.find(candidate=>candidate.id===id));
       if(members.some(member=>!member?.scoreJson))throw new ResultError("CANDIDATE_NOT_FOUND","One selected result is unavailable.",404);
       let selected=members as Array<RecognitionCandidate&{scoreJson:ScoreJson}>;
+      if(kind==="drop") {
+        const member=selected[0]!,page=Number((request.params as {page:string}).page);
+        if(!Number.isSafeInteger(page) || !member.sourcePages.includes(page))throw new ResultError("INVALID_CANDIDATE_PAGES","Choose a valid page from this result.",400);
+        const pages=member.sourcePages.filter(value=>value!==page);
+        const activeId=data.manifest.selectedCandidateId??data.candidates.find(candidate=>candidate.recommended)?.id??data.candidates[0]!.id;
+        let retained: typeof member | undefined;
+        if(pages.length) {
+          if(member.id===activeId && editable) {
+            const current=db.prepare("SELECT score_json FROM score_revisions WHERE id = ? AND document_id = ?").get(editable,documentId) as {score_json:string}|undefined;
+            if(current)member.scoreJson=JSON.parse(current.score_json) as ScoreJson;
+          }
+          retained=candidateWithPages(member,pages,data.candidates);
+          data.manifest.candidates=data.manifest.candidates.map(candidate=>candidate.id===member.id?{...candidate,sourcePages:retained!.sourcePages}:candidate);
+        } else {
+          if(!data.candidates.some(candidate=>candidate.id!==member.id && candidate.scoreJson))throw new ResultError("INVALID_CANDIDATE_PAGES","Keep at least one recognized page in this project.",400);
+          data.manifest.candidates=data.manifest.candidates.filter(candidate=>candidate.id!==member.id);
+        }
+        const assets=db.prepare("SELECT id, params_json FROM score_assets WHERE document_id = ? AND revision_id IS NULL AND asset_kind = 'score_musicxml'").all(documentId) as Array<{id:string;params_json:string|null}>;
+        for(const asset of assets)if(asset.params_json && JSON.parse(asset.params_json).candidateId===member.id) {
+          if(retained)db.prepare("UPDATE score_assets SET params_json = ? WHERE id = ?").run(JSON.stringify({...JSON.parse(asset.params_json),scoreJson:retained.scoreJson,sourcePages:retained.sourcePages}),asset.id);
+          else db.prepare("DELETE FROM score_assets WHERE id = ?").run(asset.id);
+        }
+        // An unselected alternative must not replace the customer's active edits.
+        if(member.id!==activeId)return saveOperation({revisionId:editable,candidateId:activeId});
+        selected=[retained??data.candidates.find(candidate=>candidate.id!==member.id && candidate.scoreJson)! as typeof member];
+      }
       if (kind === "combine" && body.candidatePages !== undefined) {
         if (!body.candidatePages || typeof body.candidatePages !== "object" || Array.isArray(body.candidatePages) ||
           Object.keys(body.candidatePages).some(id => !ids.includes(id))) throw new ResultError("INVALID_CANDIDATE_PAGES", "Choose valid pages from the selected results.", 400);
@@ -104,19 +151,7 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
           if (!Array.isArray(pages) || !pages.length || pages.some(page => !Number.isSafeInteger(page) || !member.sourcePages.includes(page)) || new Set(pages).size !== pages.length) {
             throw new ResultError("INVALID_CANDIDATE_PAGES", "Keep at least one valid page in each selected result.", 400);
           }
-          try {
-            const musicXml = selectedCandidateMusicXml(member, pages, data.candidates);
-            const scoreJson = parseMusicXmlToScoreJson({
-              musicXml, title: member.title, sourceFileId: member.musicxmlFileId, sourceOriginalName: "selected-pages.musicxml", importedAt: new Date().toISOString(),
-            });
-            // Keep customer-authored header metadata, while the parser owns the
-            // new counts and preservation baseline for the retained measures.
-            scoreJson.title = member.title;
-            scoreJson.metadata.workTitle = member.scoreJson.metadata.workTitle;
-            scoreJson.metadata.movementTitle = member.scoreJson.metadata.movementTitle;
-            scoreJson.metadata.composer = member.scoreJson.metadata.composer;
-            return { ...member, sourcePages: member.sourcePages.filter(page => pages.includes(page)), scoreJson };
-          } catch (error) { throw new ResultError("RESULT_PAGE_BOUNDARIES_UNAVAILABLE", error instanceof Error ? error.message : "These saved pages cannot be edited.", 409); }
+          return candidateWithPages(member, pages, data.candidates);
         });
       }
       if(kind==="combine" && body.pageOrder!==undefined) {
@@ -164,10 +199,7 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
           .run(randomUUID(),documentId,item.musicxmlFileId,JSON.stringify({candidateId,scoreJson:score,sourcePages:item.sourcePages}),timestamp);
       }
       data.manifest.selectedCandidateId=candidateId;
-      const resultOperations=Object.fromEntries([...Object.entries(data.params.resultOperations??{}).slice(-99),[operationKey,{revisionId,candidateId}]]);
-      db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ?").run(JSON.stringify({...data.params,resultManifest:data.manifest,resultOperations}),data.job.id);
-      db.exec("COMMIT");
-      return {revisionId,candidateId,scoreJson:score,creditsCharged:0};
+      return {...saveOperation({revisionId,candidateId}),scoreJson:score};
     } catch(error) {
       db.exec("ROLLBACK");
       if(error instanceof ResultError)return reply.code(error.statusCode).send({code:error.code,error:error.message});
@@ -179,4 +211,5 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
   app.post("/scores/:id/candidates/select",{preHandler:app.requireScorePreviewAccess},(request,reply)=>mutate(request,reply,"select"));
   app.post("/scores/:id/candidates/combine",{preHandler:app.requireScorePreviewAccess},(request,reply)=>mutate(request,reply,"combine"));
   app.patch("/scores/:id/candidates/:candidateId",{preHandler:app.requireScorePreviewAccess},(request,reply)=>mutate(request,reply,"rename"));
+  app.delete("/scores/:id/candidates/:candidateId/pages/:page",{preHandler:app.requireScorePreviewAccess},(request,reply)=>mutate(request,reply,"drop"));
 }
