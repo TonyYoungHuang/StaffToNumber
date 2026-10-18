@@ -1,14 +1,50 @@
 import type { FastifyInstance } from "fastify";
 import { createHash, randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import type { RecognitionCandidate, RecognitionResultManifest, ScoreJson } from "@score/shared";
 import { db } from "../db.js";
 import { findScoreDocumentById } from "../repositories/score-repository.js";
 import { scoreJsonToMusicXml } from "../lib/score-musicxml-export.js";
 import { parseMusicXmlToScoreJson } from "../lib/musicxml-score-parser.js";
-import { assembleRecognitionMusicXml } from "../lib/recognition-result-assembly.js";
+import { assembleRecognitionMusicXml, RecognitionPageBoundaryError, selectRecognitionMusicXmlPages } from "../lib/recognition-result-assembly.js";
 
 class ResultError extends Error { constructor(readonly code:string,message:string,readonly statusCode=409){super(message);} }
 const titleKey=(title:string)=>title.normalize("NFKC").toLocaleLowerCase("und").replace(/(?:\s*[-–—]\s*\d+|\s*\(\s*\d+\s*\))\s*$/u,"").replace(/[\p{P}\p{Z}\s]/gu,"");
+type SavedCandidate = RecognitionCandidate & { scoreJson?: ScoreJson };
+
+function candidateContentWithoutTitle(score: ScoreJson) {
+  const content = structuredClone(score) as Partial<ScoreJson>;
+  delete content.title;
+  delete content.interchange; // A re-import regenerates the XML baseline.
+  if (content.source) content.source.originalName = "";
+  if (content.metadata) {
+    content.metadata.importedAt = ""; // Re-import time is provenance, not an edit.
+    delete content.metadata.workTitle;
+    delete content.metadata.movementTitle;
+  }
+  return content;
+}
+
+function selectedCandidateMusicXml(candidate: SavedCandidate & { scoreJson: ScoreJson }, keptPages: number[], candidates: SavedCandidate[], ancestors = new Set<string>()): string {
+  if (ancestors.has(candidate.id) || ancestors.size >= 100) throw new Error("The saved page provenance is cyclic or too deeply nested. Select individual page results instead.");
+  try { return selectRecognitionMusicXmlPages(scoreJsonToMusicXml(candidate.scoreJson), candidate.sourcePages, keptPages); }
+  catch (error) {
+    if (!(error instanceof RecognitionPageBoundaryError) || !candidate.memberIds?.length) throw error;
+    if (new Set(candidate.memberIds).size !== candidate.memberIds.length) throw new Error("The saved page provenance is ambiguous. Select individual page results instead.");
+    const members = candidate.memberIds.map(id => candidates.find(member => member.id === id));
+    if (members.some(member => !member?.scoreJson)) throw new Error("The saved page provenance is incomplete. Select individual page results instead.");
+    const available = members as Array<SavedCandidate & { scoreJson: ScoreJson }>;
+    if (available.length === 1 && !isDeepStrictEqual(candidateContentWithoutTitle(candidate.scoreJson), candidateContentWithoutTitle(available[0]!.scoreJson))) {
+      throw new Error("This saved result includes edits that cannot be safely mapped back to its original pages. Select individual page results instead.");
+    }
+    if (keptPages.some(page => available.filter(member => member.sourcePages.includes(page)).length !== 1)) throw new Error("The saved page provenance does not identify one result per retained page. Select individual page results instead.");
+    const nextAncestors = new Set([...ancestors, candidate.id]);
+    // Rebuild one source page at a time. Grouping whole children could reorder
+    // interleaved provenance such as member A=[1,3], member B=[2,4].
+    const retained = candidate.sourcePages.filter(page => keptPages.includes(page));
+    return assembleRecognitionMusicXml(retained.map(page => selectedCandidateMusicXml(available.find(member => member.sourcePages.includes(page))!, [page], candidates, nextAncestors)));
+  }
+}
 function readResults(userId:string,documentId:string) {
   const document=findScoreDocumentById(documentId);
   if(!document || document.user_id!==userId || ["archived","deleted"].includes(document.status))throw new ResultError("SCORE_NOT_FOUND","This score is not available for your account.",404);
@@ -50,7 +86,7 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
       if(!data.job || !data.manifest)throw new ResultError("SCORE_RESULTS_UNAVAILABLE","No saved recognition alternatives are available.",404);
       if(body.expectedEditableRevisionId===undefined)throw new ResultError("SCORE_EDIT_REVISION_CONFLICT","Reload the current score before saving your selection.");
       const operationKey=createHash("sha256").update(JSON.stringify([kind,body.candidateId,(request.params as {candidateId?:string}).candidateId,
-        body.candidateIds,body.pageOrder,body.title,body.mode,body.expectedEditableRevisionId])).digest("hex");
+        body.candidateIds,body.candidatePages,body.pageOrder,body.title,body.mode,body.expectedEditableRevisionId])).digest("hex");
       const previousOperation=data.params.resultOperations?.[operationKey];
       if(previousOperation){db.exec("COMMIT");return {...previousOperation,creditsCharged:0,replayed:true};}
       const editable=data.document.pending_revision_id??data.document.current_revision_id;
@@ -59,11 +95,34 @@ export function registerScoreRecognitionResultRoutes(app:FastifyInstance) {
       if(!Array.isArray(ids) || !ids.length || ids.some(id=>typeof id!=="string") || new Set(ids).size!==ids.length)throw new ResultError("INVALID_CANDIDATES","Choose recognized results to use.",400);
       let members=ids.map(id=>data.candidates.find(candidate=>candidate.id===id));
       if(members.some(member=>!member?.scoreJson))throw new ResultError("CANDIDATE_NOT_FOUND","One selected result is unavailable.",404);
-      const selected=members as Array<RecognitionCandidate&{scoreJson:ScoreJson}>;
+      let selected=members as Array<RecognitionCandidate&{scoreJson:ScoreJson}>;
+      if (kind === "combine" && body.candidatePages !== undefined) {
+        if (!body.candidatePages || typeof body.candidatePages !== "object" || Array.isArray(body.candidatePages) ||
+          Object.keys(body.candidatePages).some(id => !ids.includes(id))) throw new ResultError("INVALID_CANDIDATE_PAGES", "Choose valid pages from the selected results.", 400);
+        selected = selected.map(member => {
+          const pages = body.candidatePages[member.id] ?? member.sourcePages;
+          if (!Array.isArray(pages) || !pages.length || pages.some(page => !Number.isSafeInteger(page) || !member.sourcePages.includes(page)) || new Set(pages).size !== pages.length) {
+            throw new ResultError("INVALID_CANDIDATE_PAGES", "Keep at least one valid page in each selected result.", 400);
+          }
+          try {
+            const musicXml = selectedCandidateMusicXml(member, pages, data.candidates);
+            const scoreJson = parseMusicXmlToScoreJson({
+              musicXml, title: member.title, sourceFileId: member.musicxmlFileId, sourceOriginalName: "selected-pages.musicxml", importedAt: new Date().toISOString(),
+            });
+            // Keep customer-authored header metadata, while the parser owns the
+            // new counts and preservation baseline for the retained measures.
+            scoreJson.title = member.title;
+            scoreJson.metadata.workTitle = member.scoreJson.metadata.workTitle;
+            scoreJson.metadata.movementTitle = member.scoreJson.metadata.movementTitle;
+            scoreJson.metadata.composer = member.scoreJson.metadata.composer;
+            return { ...member, sourcePages: member.sourcePages.filter(page => pages.includes(page)), scoreJson };
+          } catch (error) { throw new ResultError("RESULT_PAGE_BOUNDARIES_UNAVAILABLE", error instanceof Error ? error.message : "These saved pages cannot be edited.", 409); }
+        });
+      }
       if(kind==="combine" && body.pageOrder!==undefined) {
         const pages=[...new Set(selected.flatMap(member=>member.sourcePages))];
         if(!Array.isArray(body.pageOrder) || body.pageOrder.some((page:unknown)=>!Number.isSafeInteger(page)||Number(page)<1) ||
-          new Set(body.pageOrder).size!==body.pageOrder.length || body.pageOrder.length!==pages.length || pages.some(page=>!body.pageOrder.includes(page)))throw new ResultError("INVALID_PAGE_ORDER","Choose a valid source page order. Remove a page by excluding its saved segment.",400);
+          new Set(body.pageOrder).size!==body.pageOrder.length || body.pageOrder.length!==pages.length || pages.some(page=>!body.pageOrder.includes(page)))throw new ResultError("INVALID_PAGE_ORDER","Choose a valid order for the retained source pages.",400);
         selected.sort((a,b)=>body.pageOrder.indexOf(a.sourcePages[0])-body.pageOrder.indexOf(b.sourcePages[0]));
       }
       if(kind==="combine" && body.mode!=="parallel") {

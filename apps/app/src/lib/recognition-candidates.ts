@@ -20,3 +20,8 @@ export function recognitionSettlementNumbers(settlement: RecognitionCreditSettle
   const options = { maximumFractionDigits: 4 };
   return { charged: formatNumber(settlement.settledCreditCost, locale, options), returned: formatNumber(settlement.creditsReturned, locale, options), quoted: formatNumber(settlement.quotedCredits, locale, options) };
 }
+
+export function removeRecognitionPage(selected: string[], retained: Record<string, number[]>, candidate: RecognitionCandidate, page: number) {
+  const remaining = (retained[candidate.id] ?? candidate.sourcePages).filter(value => value !== page);
+  return { selected: remaining.length ? selected : selected.filter(id => id !== candidate.id), retained: { ...retained, [candidate.id]: remaining } };
+}
