@@ -6,13 +6,41 @@ import path from "node:path";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import { PDFDocument } from "pdf-lib";
-import { initDb } from "../db.js";
+import { db, initDb } from "../db.js";
 import { config } from "../config.js";
 import { authPlugin } from "../plugins/auth.js";
 import { createUser, createSession, generateActivationCodes, redeemActivationCode } from "../repositories/auth-repository.js";
 import { listScoreJobsByDocumentId } from "../repositories/score-repository.js";
 import { stageOmrUpload } from "../lib/staged-omr-uploads.js";
 import { scoreRoutes } from "./scores.js";
+
+test("fresh admission rejection leaves no source object, database file or credit reservation", async () => {
+  initDb();
+  const keys = ["RECOGNITION_LANES_ENABLED", "RECOGNITION_NORMAL_MAX_MB", "RECOGNITION_BIG_MAX_MB"] as const;
+  const previous = keys.map(key => process.env[key]);
+  process.env.RECOGNITION_LANES_ENABLED = "true";
+  process.env.RECOGNITION_NORMAL_MAX_MB = "1";
+  process.env.RECOGNITION_BIG_MAX_MB = "2";
+  const user = createUser(`${randomUUID()}@rejected-admission.test`, "hash", "salt")!;
+  const token = randomUUID(); createSession(user.id, token, 1);
+  const app = Fastify(); await app.register(multipart); await app.register(authPlugin); await app.register(scoreRoutes, { prefix: "/api" });
+  try {
+    const pdf = await PDFDocument.create(); pdf.addPage([100, 100]);
+    const boundary = `score-${randomUUID()}`;
+    const response = await app.inject({ method: "POST", url: "/api/scores/import/omr?recognitionMode=simple", headers: {
+      authorization: `Bearer ${token}`, "idempotency-key": randomUUID(), "content-type": `multipart/form-data; boundary=${boundary}`,
+    }, payload: Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="rejected.pdf"\r\nContent-Type: application/pdf\r\n\r\n`), Buffer.from(await pdf.save()), Buffer.from(`\r\n--${boundary}--\r\n`)]) });
+    assert.equal(response.statusCode, 422, response.body);
+    assert.equal(response.json().code, "RECOGNITION_UNSUPPORTED");
+    assert.deepEqual(await fs.readdir(path.join(config.storageDir, user.id, "scores", "omr-sources")), []);
+    for (const table of ["files", "score_jobs", "prepaid_credit_charges"]) {
+      assert.equal((db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`).get(user.id) as { n: number }).n, 0);
+    }
+  } finally {
+    keys.forEach((key, index) => { if (previous[index] === undefined) delete process.env[key]; else process.env[key] = previous[index]; });
+    await app.close();
+  }
+});
 
 test("direct, staged confirmation and checkout preparation share fresh admission for lanes on/off and free/paid accounts", async () => {
   initDb();

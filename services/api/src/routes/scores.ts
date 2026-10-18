@@ -5403,7 +5403,14 @@ export async function scoreRoutes(app: FastifyInstance) {
         await fs.promises.rm(targetPath, { force: true });
         throw error;
       }
-      const memoryAssessment = await prepareRecognitionAdmission({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
+      let memoryAssessment: Awaited<ReturnType<typeof prepareRecognitionAdmission>>;
+      try {
+        memoryAssessment = await prepareRecognitionAdmission({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
+      } catch (error) {
+        // Admission runs before any file row or credit reservation exists.
+        await fs.promises.rm(targetPath, { force: true });
+        throw error;
+      }
 
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
       try {
