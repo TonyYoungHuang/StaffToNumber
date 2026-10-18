@@ -4,13 +4,13 @@ import Link from "next/link";
 import { ScoreProcessingPanel, type ScoreProgressJob } from "@score/ui";
 import type { SupportedLocale } from "@score/i18n";
 import { selectImportRecovery } from "../lib/score-readiness-messages/client";
-import { getScoreRecognitionSupportMessage, resolveRecognitionFailure } from "@score/i18n";
+import { getScoreRecognitionSupportMessage, resolveRecognitionFailure, recognitionUsedPaidCredits } from "@score/i18n";
 import { useFlowMessages } from "../lib/flow-messages/client";
 
 export function ScoreImportStatus({ title, locale, job, busy, error, onRetry, onRefresh }: {
   title: string;
   locale: SupportedLocale;
-  job?: ScoreProgressJob & { progressPercent?: number; errorMessage?: string | null };
+  job?: ScoreProgressJob & { progressPercent?: number; errorMessage?: string | null; params?: Record<string, unknown> | null };
   busy: boolean;
   error: string | null;
   onRetry: () => void;
@@ -28,7 +28,7 @@ export function ScoreImportStatus({ title, locale, job, busy, error, onRetry, on
     <h1 className="page-title">{title}</h1>
     <h2 className="card-title" role={terminal ? "alert" : "status"} style={terminal ? { color: "var(--color-error, #b42318)" } : undefined}>{terminal ? copy.failed : copy.processing}</h2>
     <p className="body-copy">{finishedWithoutScore ? copy.newFile : failed ? resolveRecognitionFailure(experience, job?.errorMessage) : copy.wait}</p>
-    {failed ? <p>{experience.creditsOnly}</p> : null}
+    {failed && recognitionUsedPaidCredits(job?.params) ? <p>{experience.creditsOnly}</p> : null}
     {failed && <div role="alert" className="form-status error" style={{ color: "#8f1d14", background: "#fff0ee", border: "2px solid #b42318" }}><strong>{pdfFailure ? getScoreRecognitionSupportMessage(locale, "PDF_PAGE_PIXEL_LIMIT") : recovery.reason}</strong></div>}
     {!terminal && <ScoreProcessingPanel job={job} copy={flow.processing} locale={locale} connectionError={Boolean(error)} />}
     {failed && job?.errorMessage && <details><summary>{flow.more}</summary><p className="helper-copy">{job.errorMessage}</p></details>}

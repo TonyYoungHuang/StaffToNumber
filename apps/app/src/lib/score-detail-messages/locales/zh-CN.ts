@@ -113,7 +113,7 @@ export const zhCNScoreDetailMessages = {
     eyebrow: "分享", title: "乐谱协作分享链接", body: "为学生、同事或排练成员创建可撤销链接，并明确选择查看、评论或编辑权限。",
     create: "创建分享链接", creating: "正在创建...", copy: "复制链接", revoke: "撤销", revoking: "正在撤销...", copied: "分享链接已复制。",
     created: "分享链接已创建。", failed: "分享链接操作失败。", loading: "正在加载分享链接...", empty: "还没有分享链接。", active: "可用",
-    revoked: "已撤销", expires: "过期", never: "永不过期", permission: "权限", label: "链接身份名称", labelPlaceholder: "例如：李老师、合唱团女高音负责人",
+    revoked: "已撤销", expired: "已过期", expires: "过期", never: "永不过期", permission: "权限", label: "链接身份名称", labelPlaceholder: "例如：李老师、合唱团女高音负责人",
     view: "仅查看", comment: "可评论", edit: "可编辑",
   },
   assignments: {

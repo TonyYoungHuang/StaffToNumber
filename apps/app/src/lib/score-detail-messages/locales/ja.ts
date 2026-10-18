@@ -114,7 +114,7 @@ export const jaScoreDetailMessages = {
     eyebrow: "共有", title: "楽譜共同作業リンク", body: "学生、共同編集者、アンサンブルメンバー向けに、閲覧・コメント・編集権限を指定した取り消し可能なリンクを作成します。",
     create: "共有リンクを作成", creating: "作成しています...", copy: "リンクをコピー", revoke: "取り消す", revoking: "取り消しています...", copied: "共有リンクをコピーしました。",
     created: "共有リンクを作成しました。", failed: "共有リンクを操作できませんでした。", loading: "共有リンクを読み込んでいます...", empty: "共有リンクはまだありません。",
-    active: "有効", revoked: "取り消し済み", expires: "有効期限", never: "無期限", permission: "権限", label: "リンク利用者名",
+    active: "有効", revoked: "取り消し済み", expired: "期限切れ", expires: "有効期限", never: "無期限", permission: "権限", label: "リンク利用者名",
     labelPlaceholder: "例：バイオリン講師、ソプラノ責任者", view: "閲覧のみ", comment: "コメント可", edit: "編集可",
   },
   assignments: {

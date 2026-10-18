@@ -260,3 +260,6 @@
   .omr-review-panel .score-review-toolbar .button-row { width: 100%; flex-wrap: wrap; }
   .omr-review-panel .score-review-toolbar .button { flex: 1; white-space: normal; min-height: 44px; }
 }
+
+.recognition-purchase-dialog { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; border: 1px solid #d9dce8; border-radius: 20px; padding: 24px; color: var(--text-primary, #202431); background: var(--surface, #fff); }
+.recognition-purchase-dialog::backdrop { background: rgba(20, 24, 40, .55); }

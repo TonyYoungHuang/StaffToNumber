@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatMessage, type SupportedLocale } from "@score/i18n";
 import { getSingleScorePassCopy, SINGLE_SCORE_PASS, isPurchasePlanCode, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
+import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
 import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { saveCheckoutReturn } from "../lib/flow-return";
@@ -26,6 +27,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
   const intent = useRef<{ signature: string; key: string } | null>(null);
   const [loading, setLoading] = useState<PurchasePlanCode | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recoveryOrders, setRecoveryOrders] = useState<Array<{ id: string; provider: string; token?: string; checkoutUrl?: string }>>([]);
   const [restoredPlan] = useState(() => { const plan = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("checkoutPlan") : null; return isPurchasePlanCode(plan) ? plan : undefined; });
   const fallbackQuery = new URLSearchParams(scoreCheckoutPath(documentId, action, topUp).split("?")[1]);
   if (restoredPlan) { fallbackQuery.set("plan", restoredPlan); fallbackQuery.set("billing", restoredPlan === "single-score" ? "one_time" : "subscription"); }
@@ -66,7 +68,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
       } });
       return;
     }
-    lock.current = true; setLoading(planCode); setError(null);
+    lock.current = true; setLoading(planCode); setError(null); setRecoveryOrders([]);
     let navigating = false;
     try {
       if (!(await prepareCheckout())) { setError(copy.continueFailed); return; }
@@ -74,6 +76,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
       const result = await lookupAndStartCheckout({ provider: "stripe", billingKind, locale, planCode, passMode: topUp ? "top_up" : undefined, targetDocumentId: documentId, intendedAction: action, ...context }, token, undefined, undefined, true);
       if (!result.ok) {
         if (result.status === 401) { navigating = true; window.location.assign(selectedFallback); return; }
+        if (result.data?.code === "CHECKOUT_RECOVERY_REQUIRED") { setError(getCheckoutReturnCopy(locale).recover); setRecoveryOrders(result.data.recoveryOrders ?? []); return; }
         setError(result.error); return;
       }
       if (!/^(https?:\/\/|\/checkout\/success\?)/u.test(result.data?.url ?? "")) { setError(copy.continueFailed); return; }
@@ -98,6 +101,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
       })}
       <div className={styles.option}><strong>{formatMessage(topUp ? copy.topUp : copy.newPass, { price: passPrice })}</strong><p>{copy.passTarget}</p><p>{topUp ? formatMessage(copy.topUpBody, { credits: SINGLE_SCORE_PASS.credits }) : getSingleScorePassCopy(locale).benefits[1]}</p><button type="button" className="button button-secondary" disabled={Boolean(loading)} onClick={() => void checkout(SINGLE_SCORE_PASS.code)}>{loading === SINGLE_SCORE_PASS.code ? copy.preparing : copy.continuePayment}</button></div>
       {error ? <p className="form-status error" role="alert">{error}</p> : null}
+      {recoveryOrders.map(order => <a key={order.id} className="button button-secondary" href={order.checkoutUrl || `/checkout/success?${new URLSearchParams({ order_id: order.id, provider: order.provider, ...(order.token ? { token: order.token } : {}) })}`}>{getCheckoutReturnCopy(locale).recover} · {order.id.slice(-8)}</a>)}
       <Link href={fallback} className="micro-copy">{copy.fallback}</Link>
     </div>
   </dialog>;

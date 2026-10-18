@@ -44,6 +44,17 @@ function stringLeafPaths(value: unknown, currentPath = "$", paths: string[] = []
   return paths;
 }
 
+test("FA-01 Chinese and English terms retain fixed-term purchases and explicitly selected renewal", () => {
+  const zh = getSupportLegalLocalization("zh-CN").terms.sections[3]!.points.join(" ");
+  const en = getSupportLegalLocalization("en").terms.sections[3]!.points.join(" ");
+  assert.match(zh, /一次性购买 1 个月或 1 年/);
+  assert.match(zh, /一次性购买不会自动续费/);
+  assert.match(zh, /只有明确选择订阅才会自动续费/);
+  assert.match(en, /one-time purchases or subscriptions for one month or one year/);
+  assert.match(en, /one-time purchase ends without automatic renewal/);
+  assert.match(en, /Only an explicitly selected subscription renews automatically/);
+});
+
 test("support and legal catalogs are key-complete and nonempty for all nine locales", () => {
   assert.deepEqual(Object.keys(SUPPORT_LEGAL_LOCALIZATIONS), [...SUPPORTED_LOCALES]);
   const englishPaths = stringLeafPaths(SUPPORT_LEGAL_LOCALIZATIONS.en).sort();
@@ -166,6 +177,14 @@ test("form endpoints, payload fields, enum values, and validation limits remain 
   assert.match(copyright, /<option value="authorized_agent">/u);
   assert.match(copyright, /minLength=\{20\} maxLength=\{6000\}/u);
   assert.match(copyright, /minLength=\{10\} maxLength=\{2000\}/u);
+});
+
+test("traditional Chinese terms also distinguish one-time purchases from explicitly chosen subscriptions", () => {
+  const terms = getSupportLegalLocalization("zh-TW").terms.sections.flatMap(section => section.points).join(" ");
+  assert.match(terms, /一次性購買 1 個月或 1 年/u);
+  assert.match(terms, /一次性購買不會自動續訂/u);
+  assert.match(terms, /只有明確選擇訂閱才會自動續訂/u);
+  assert.doesNotMatch(terms, /Starter 與 Converter Pro 是按月或按年自動續訂的訂閱/u);
 });
 
 test("catalogs retain product, legal, and locale-scope invariants", () => {

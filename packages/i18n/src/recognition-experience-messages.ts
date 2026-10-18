@@ -40,3 +40,7 @@ export function resolveRecognitionRequestFailure(copy: RecognitionExperienceMess
   if (['SCORE_RESULTS_UNAVAILABLE', 'INVALID_CANDIDATES', 'INVALID_PAGE_ORDER', 'OVERLAPPING_RESULT_PAGES', 'INVALID_SCORE_TITLE', 'CANDIDATE_NOT_FOUND'].includes(code ?? '')) return copy.failed;
   return null;
 }
+
+export function recognitionUsedPaidCredits(params: Record<string, unknown> | null | undefined): boolean {
+  return params?.freeTrial !== true && params?.creditSource !== "free_trial" && (params?.creditSource === "plan" || params?.creditSource === "score_pass") && typeof params?.creditCost === "number" && params.creditCost > 0;
+}

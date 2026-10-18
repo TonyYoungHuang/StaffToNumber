@@ -10,17 +10,18 @@ import { apiRequest } from "../lib/api";
 import { clearStoredToken, getStoredToken } from "../lib/auth-storage";
 import { PUBLIC_SITE_URL } from "../lib/support";
 import { useAppAuthModal } from "./AppAuthModal";
+import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
 export function AppCheckoutCancelClient({ orderId, token = "", returnToken, provider = "stripe", title, body }: { orderId: string; token?: string; returnToken?: string; provider?: "stripe" | "paddle"; title: string; body: string }) {
  const { locale } = useAppLocale(); const copy = useFlowMessages();
  const [target, setTarget] = useState({ next: "/scores", retry: "/checkout", createdAt: 0 });
  const router = useRouter(); const signIn = useAppAuthModal(); const [attempt, setAttempt] = useState(0);
  const [error, setError] = useState<string | null>(null);
- const [checked, setChecked] = useState(false);
+ const [checked, setChecked] = useState(!orderId);
  useEffect(() => {
    let disposed = false;
    setChecked(false);
    const fallback = readCheckoutReturn(orderId); setTarget(fallback);
-   if (!orderId) return;
+   if (!orderId) { setChecked(true); return; }
    const authToken = getStoredToken();
    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
    void apiRequest<{ token?: string; verification?: PaymentVerification; order: { status: string; planCode?: string; billingKind?: string; passMode?: string; returnContext?: CheckoutReturnContext } }>(`/api/payments/orders/${encodeURIComponent(orderId)}/owned`, { headers }).then(async result => {
@@ -45,5 +46,5 @@ export function AppCheckoutCancelClient({ orderId, token = "", returnToken, prov
    });
    return () => { disposed = true; };
  }, [orderId, token, returnToken, provider, attempt, router, signIn]);
- return <div className="surface-panel stack-lg">{checked ? <><h1 className="page-title">{title}</h1><p>{body}</p><div className="button-row"><Link href={target.retry} className="button button-primary">{copy.retry}</Link><Link href={target.next} className="button button-secondary">{copy.resume}</Link></div></> : <p role="status">{copy.waitingAccess}</p>}{error ? <p role="alert">{error}</p> : null}</div>;
+ return <div className="surface-panel stack-lg">{checked ? <><h1 className="page-title">{title}</h1><p>{orderId ? body : getCheckoutReturnCopy(locale).missing}</p><div className="button-row">{orderId ? <Link href={target.retry} className="button button-primary">{copy.retry}</Link> : null}<Link href={target.next} className="button button-secondary">{copy.back}</Link></div></> : <p role="status">{copy.waitingAccess}</p>}{error ? <p role="alert">{error}</p> : null}</div>;
 }

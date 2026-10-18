@@ -49,7 +49,7 @@ test("only a new explicit purchase after completed handoff rotates a paid intent
 });
 test("lost local key with pending owned orders requires owner selection before a new POST", async()=>{
   const cleanup=fixture();try{ const paths:string[]=[];const request=(async(path:string)=>{paths.push(path);return path.includes("by-intent")?{ok:false,status:404,error:"missing"}:{ok:true,data:{orders:[{id:"pending",provider:"stripe",planCode:"single-score",billingKind:"one_time",targetDocumentId:"score-1"}]}};}) as typeof apiRequest;
-    const result=await lookupAndStartCheckout(payload,"auth",undefined,request);assert.equal(result.ok,false);assert.equal(result.data?.code,"CHECKOUT_RECOVERY_REQUIRED");assert.equal(paths.length,2);
+    const result=await lookupAndStartCheckout(payload,"auth",undefined,request);assert.equal(result.ok,false);assert.equal(result.data?.code,"CHECKOUT_RECOVERY_REQUIRED");assert.equal(result.data?.recoveryOrders?.[0]?.id,"pending");assert.equal(paths.length,2);
   }finally{cleanup();}
 });
 test("implicit recovery keeps the same paid, pending and terminal intent without a new charge", async () => {

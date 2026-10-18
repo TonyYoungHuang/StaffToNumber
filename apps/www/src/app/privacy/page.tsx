@@ -62,7 +62,7 @@ export default async function PrivacyPage() {
   ];
 
   return (
-    <section className="public-container public-page stack-xl">
+    <section className="public-container public-page privacy-page stack-xl">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }} />
 
       <Panel variant="surface" className="stack-lg">

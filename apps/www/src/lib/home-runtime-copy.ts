@@ -1,8 +1,15 @@
 import { getScoreProcessingMessages, getScoreProcessingFailureMessages, getScoreRecognitionSupportMessage, getStagedUploadMessages, getRecognitionExperienceMessages, type SupportedLocale } from "@score/i18n";
 
+const paymentOptions = {"en": "Payment options", "zh-CN": "付款选项", "zh-TW": "付款選項", "ja": "お支払いの選択", "ko": "결제 옵션", "fr": "Options de paiement", "es": "Opciones de pago", "de": "Zahlungsoptionen", "ru": "Варианты оплаты"};
+const close = {"en": "Close", "zh-CN": "关闭", "zh-TW": "關閉", "ja": "閉じる", "ko": "닫기", "fr": "Fermer", "es": "Cerrar", "de": "Schließen", "ru": "Закрыть"};
+const previewFailures = {"en": "The score preview could not be loaded. Try again or open the score in the app.", "zh-CN": "乐谱预览加载失败。请重试，或在应用中打开乐谱。", "zh-TW": "樂譜預覽載入失敗。請重試，或在應用程式中開啟樂譜。", "ja": "楽譜プレビューを読み込めません。再試行するか、アプリで楽譜を開いてください。", "ko": "악보 미리보기를 불러오지 못했습니다. 다시 시도하거나 앱에서 여세요.", "fr": "Impossible de charger l’aperçu. Réessayez ou ouvrez la partition dans l’application.", "es": "No se pudo cargar la vista previa. Reintenta o abre la partitura en la aplicación.", "de": "Die Vorschau konnte nicht geladen werden. Erneut versuchen oder in der App öffnen.", "ru": "Не удалось загрузить предпросмотр. Повторите попытку или откройте партитуру в приложении."};
+
 /** Selected by the server: the browser receives only its current language. */
 export function getHomeRuntimeCopy(locale: SupportedLocale) {
   return {
+    paymentOptions: paymentOptions[locale],
+    close: close[locale],
+    previewFailure: previewFailures[locale],
     recognitionExperience: getRecognitionExperienceMessages(locale),
     processing: getScoreProcessingMessages(locale),
     staged: getStagedUploadMessages(locale),

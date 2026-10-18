@@ -152,7 +152,7 @@ export const enStaticMarketing = {
         title: "Support and accounts",
         items: [
           ["How should I handle payment or activation-code issues?", "Use the on-site support form first. Payment issues route to the payment category, activation issues route to the activation category, and the support team can follow the request by reference code."],
-          ["What happens after I submit the support form?", "The form posts to the API, creates a stored support request, and automatically sends a confirmation email to the contact inbox. If transactional email is not configured yet, the API still logs a preview for testing."],
+          ["What happens after I submit the support form?", "After a successful submission, save the request reference shown on the page. A confirmation is sent to your contact email. If it does not arrive, check your spam folder, then contact support with the request reference and your contact email."],
           ["Where can I compare staff and Jianpu conversion paths?", "Open the numbered notation converter, then choose staff to Jianpu or Jianpu to staff notation. Both paths keep the result in an editable structured score project."],
         ],
       },

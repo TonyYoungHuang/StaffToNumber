@@ -1,12 +1,12 @@
 "use client";
 
-import { formatMessage, formatNumber, localizeApiError, resolveRecognitionRequestFailure, resolveRecognitionFailure, type ScorePreflightMessages } from "@score/i18n";
+import { recognitionUsedPaidCredits, formatMessage, formatNumber, localizeApiError, resolveRecognitionRequestFailure, resolveRecognitionFailure, type ScorePreflightMessages } from "@score/i18n";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getGoogleAuthCopy, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
-import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
+import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
 import { localizePublicHref } from "../lib/locale-routing";
@@ -84,6 +84,11 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   const [scoreTitle, setScoreTitle] = useState<string | null>(null);
   const [job, setJob] = useState<JobPayload["jobs"][number] | null>(null);
   const [musicXml, setMusicXml] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
+  const [readyToOpen, setReadyToOpen] = useState(false);
+  const [purchasePrompt, setPurchasePrompt] = useState(false);
+  const purchaseDialog = useRef<HTMLDialogElement>(null);
   const [recognitionError, setRecognitionError] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState(false);
   const progressCopy = runtimeCopy.processing;
@@ -206,7 +211,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     setRecognitionOptions([]);
     setRecognitionMode(null);
     setRecognitionError(null);
-    setMusicXml(null);
+    setMusicXml(null); setPreviewError(false); setReadyToOpen(false);
     setConnectionError(false);
     setScoreId(null);
     setJob(null);
@@ -287,7 +292,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   const startRecognition = useCallback((file: File, chosenMode: ScoreRecognitionMode, creditCost: number) => {
     if (!stagedUpload || preflight?.recognitionSupport?.supported === false || preflight?.memoryAssessment?.lane === "unsupported") return;
     setRecognitionError(null);
-    setMusicXml(null);
+    setMusicXml(null); setPreviewError(false); setReadyToOpen(false);
     setScoreId(null);
     setScoreTitle(file.name.replace(/\.[^.]+$/u, ""));
     setJob(null);
@@ -377,7 +382,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   };
 
   useEffect(() => {
-    if (!scoreId || job?.status === "failed" || job?.status === "cancelled" || (job?.status === "completed" && musicXml)) return;
+    if (!scoreId || job?.status === "failed" || job?.status === "cancelled" || (job?.status === "completed" && (musicXml || previewError))) return;
     let active = true;
     let refreshing = false;
     const refresh = async () => {
@@ -398,8 +403,12 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       const hasCandidate = Boolean(scoreResult.data.score.pendingRevisionId);
       const hasCurrent = Boolean(scoreResult.data.score.currentRevisionId);
       if (latestJob?.status === "completed" && (hasCandidate || hasCurrent)) {
+        setReadyToOpen(true);
         const preview = await apiRequest<{ musicXml: string }>(hasCandidate ? `/api/scores/${scoreId}/candidate/musicxml-preview` : `/api/scores/${scoreId}/musicxml-preview`);
-        if (active && preview.ok) setMusicXml(preview.data.musicXml);
+        if (active) {
+          if (preview.ok && preview.data.musicXml?.trim()) { setMusicXml(preview.data.musicXml); setPreviewError(false); }
+          else setPreviewError(true);
+        }
       }
       if (latestJob?.status === "failed") setRecognitionError(apiErrorOrFallback(latestJob.errorMessage ?? undefined, copy.uploadFailed));
     };
@@ -407,7 +416,11 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     tick();
     const timer = window.setInterval(tick, 3_000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [copy.uploadFailed, job?.status, musicXml, scoreId]);
+  }, [copy.uploadFailed, job?.status, musicXml, previewError, previewAttempt, scoreId]);
+
+  useEffect(() => {
+    if (scoreId && job?.status === "completed" && readyToOpen) window.location.assign(getAppScoreUrl(scoreId, locale, submittedMode));
+  }, [scoreId, job?.status, readyToOpen, locale, submittedMode]);
 
   useEffect(() => {
     if (session === "authenticated" && waitingForLogin.current) {
@@ -469,6 +482,18 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
   const effectiveBigLane = needsBigRecognitionLane(memory, recognitionMode);
   const bigNeedsPayment = !preflightRejected && effectiveBigLane && chosenOption?.creditSource !== "plan" && chosenOption?.creditSource !== "score_pass";
 
+  const purchaseRequired = preflightState === "ready" && !preflightRejected && Boolean(chosenOption) && (bigNeedsPayment || homeRecognitionNeedsPurchase(chosenOption));
+  useEffect(() => { setPurchasePrompt(purchaseRequired); }, [purchaseRequired, recognitionMode, stagedUpload?.stagedUploadId]);
+  useEffect(() => {
+    if (!purchasePrompt) return;
+    const dialog = purchaseDialog.current;
+    const focus = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog?.showModal();
+    return () => { dialog?.close(); document.body.style.overflow = overflow; if (focus instanceof HTMLElement && focus.isConnected) focus.focus({ preventScroll: true }); };
+  }, [purchasePrompt]);
+
   return (
     <div id="home-workbench" className={styles.workbench} aria-label={copy.workbenchLabel}>
       <input ref={fileInputRef} className={styles.visuallyHidden} type="file" accept={acceptedScoreFiles} tabIndex={-1} aria-hidden="true" onChange={(event) => acceptFile(event.target.files?.[0])} />
@@ -501,21 +526,22 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
           {preflightState === "failed" ? <><p>{stagedUnavailable ? recognitionError : preflightCopy.failed}</p><button type="button" className={styles.preflightRetry} onClick={() => void startPreflight(pendingFile, true)}>{stagedUnavailable ? stagedCopy.retry : preflightCopy.retry}</button></> : null}
           {preflightState === "ready" && preflight ? <HomeRecognitionPreflightResult locale={locale} copy={preflightCopy} runtimeCopy={runtimeCopy} preflight={preflight} recognitionMode={recognitionMode} options={recognitionOptions} busy={busy} modeClassName={styles.preflightModes} onSelectMode={optionMode => { setRecognitionMode(optionMode); setRecognitionError(null); }} /> : null}
           {!preflightRejected && !bigNeedsPayment ? <button type="button" className={styles.workbenchAction} data-confirm-recognition disabled={busy || preflightState !== "ready" || !stagedUpload || !chosenOption?.canSubmit} onClick={() => void confirmRecognition()}>{chosenOption && recognitionMode ? chosenOption.creditSource === "free_trial" ? preflightCopy.freeProjectPrice : formatMessage(preflightCopy.confirmRecognition, { mode: recognitionMode === "simple" ? preflightCopy.simpleTitle : preflightCopy.complexTitle, credits: formatNumber(chosenOption.creditCost, locale) }) : preflightCopy.notReady}<ArrowNorthEastIcon width={16} height={16} /></button> : null}
-          {preflightState === "ready" && !preflightRejected && (bigNeedsPayment || !chosenOption?.canSubmit) ? <div data-upsell-primary="starter"><p>{experience.continueInApp}</p><RecognitionPurchaseActions messages={experience} disabled={busy || !recognitionMode} onStarter={() => { void continueBigUpload("starter-monthly"); }} onPass={() => { void continueBigUpload("single-score"); }} primaryClassName={styles.workbenchAction} secondaryClassName={styles.preflightRetry} /></div> : null}
+          {preflightState === "ready" && !preflightRejected && (bigNeedsPayment || !chosenOption?.canSubmit) ? <div data-upsell-primary="starter"><button type="button" className={styles.preflightRetry} onClick={() => setPurchasePrompt(true)}>{runtimeCopy.paymentOptions}</button></div> : null}
         </section> : null}
 
         {mode === "recognize" && (job || recognitionError) ? (
           <section className={styles.recognitionPanel} aria-live="polite">
             <div className={styles.recognitionHeading}><div><small>{copy.candidateTitle}</small><strong>{scoreTitle ?? activeMode.title}</strong></div><span className={recognitionError && !connectionError ? styles.statusError : job?.status === "completed" ? styles.statusDone : styles.statusWorking}>{recognitionError && !connectionError ? copy.failed : jobLabel}</span></div>
             {job && !["failed", "cancelled"].includes(job.status) ? <ScoreProcessingPanel job={job} copy={progressCopy} locale={locale} connectionError={connectionError} /> : null}
-            {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{resolveRecognitionFailure(experience, job.errorMessage)}</strong></p><p>{experience.creditsOnly}</p>{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
+            {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{resolveRecognitionFailure(experience, job.errorMessage)}</strong></p>{recognitionUsedPaidCredits(job.params) ? <p>{experience.creditsOnly}</p> : null}{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
             {job?.status === "completed" ? <p>{copy.candidateBody}</p> : null}
-            {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} locale={locale} /> : null}
+            {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} errorLabel={runtimeCopy.previewFailure} retryLabel={copy.retry} requestFailed={previewError} onRetry={() => { setPreviewError(false); setPreviewAttempt(value => value + 1); }} locale={locale} /> : null}
             <div className={styles.recognitionActions}>{scoreId ? <a href={getAppScoreUrl(scoreId, locale, submittedMode)}>{copy.openProject}<ArrowNorthEastIcon width={15} height={15} /></a> : null}{!busy && !job ? <button type="button" onClick={beginFileSelection}>{activeMode.action}</button> : null}</div>
           </section>
         ) : null}
       </div>
 
+      {purchasePrompt && purchaseRequired ? <dialog ref={purchaseDialog} data-recognition-purchase-dialog className={styles.purchaseDialog} aria-label={runtimeCopy.paymentOptions} onCancel={event => { event.preventDefault(); setPurchasePrompt(false); }} onClick={event => { if (event.target === event.currentTarget) setPurchasePrompt(false); }}><div className={styles.recognitionPanel}><h2>{runtimeCopy.paymentOptions}</h2><button type="button" className={styles.preflightRetry} disabled={busy} onClick={() => setPurchasePrompt(false)}>{runtimeCopy.close}</button>{bigNeedsPayment ? <p>{formatMessage(experience.bigReason, { pages: formatNumber(preflight?.sourcePageCount ?? 0, locale) })}</p> : null}<RecognitionPlanSummary messages={experience} /><p>{experience.continueInApp}</p><RecognitionPurchaseActions messages={experience} disabled={busy || !recognitionMode} onStarter={() => { void continueBigUpload("starter-monthly"); }} onPass={() => { void continueBigUpload("single-score"); }} primaryClassName={styles.workbenchAction} secondaryClassName={styles.preflightRetry} /></div></dialog> : null}
       <nav className={styles.toolRail} aria-label={copy.availableToolsLabel}>{toolDefinitions.map((tool, index) => {
         if (!audioAvailable && tool.href === "/audio-to-score") return null;
         const [title, body] = copy.tools[index];

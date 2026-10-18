@@ -96,6 +96,7 @@ export function OneScorePassUpsell({
       if (!result.ok) {
         const code = (result.data as { code?: string } | undefined)?.code;
         if (result.status === 401) { navigating = true; window.location.assign(passCheckoutHref(prepared)); return; }
+        if (code === "CHECKOUT_RECOVERY_REQUIRED") { navigating = true; window.location.assign(passCheckoutHref(prepared).replace("continue=1", "continue=0")); return; }
         setStatus({ text: code === "PAYMENT_PROVIDER_BUILDING" ? copy.building : result.error?.trim() || copy.failed, error: code !== "PAYMENT_PROVIDER_BUILDING" });
         return;
       }

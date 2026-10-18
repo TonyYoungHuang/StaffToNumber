@@ -221,7 +221,7 @@ export const enScoreDetailMessages = {
     body: "Create revocable links for students, collaborators, or ensemble members with an explicit view, comment, or edit role.",
     create: "Create share link", creating: "Creating...", copy: "Copy link", revoke: "Revoke", revoking: "Revoking...", copied: "Share link copied.",
     created: "Share link created.", failed: "Share link action failed.", loading: "Loading share links...", empty: "No share links yet.", active: "Active",
-    revoked: "Revoked", expires: "Expires", never: "Never", permission: "Permission", label: "Link identity name",
+    revoked: "Revoked", expired: "Expired", expires: "Expires", never: "Never", permission: "Permission", label: "Link identity name",
     labelPlaceholder: "For example: Violin coach or Soprano lead", view: "View only", comment: "Comment", edit: "Edit",
   },
   assignments: {

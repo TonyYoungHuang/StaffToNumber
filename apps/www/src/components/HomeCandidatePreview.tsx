@@ -6,10 +6,11 @@ import type { SupportedLocale } from "@score/i18n";
 import type { OpenSheetMusicDisplay as OpenSheetMusicDisplayInstance } from "opensheetmusicdisplay";
 import styles from "../app/home-page.module.css";
 
-export function HomeCandidatePreview({ musicXml, loadingLabel, locale }: { musicXml: string | null; loadingLabel: string; locale?: SupportedLocale }) {
+export function HomeCandidatePreview({ musicXml, loadingLabel, errorLabel, retryLabel, requestFailed = false, onRetry, locale }: { musicXml: string | null; loadingLabel: string; errorLabel: string; retryLabel: string; requestFailed?: boolean; onRetry: () => void; locale?: SupportedLocale }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!musicXml || !containerRef.current) { setLoading(false); return; }
@@ -40,11 +41,11 @@ export function HomeCandidatePreview({ musicXml, loadingLabel, locale }: { music
       cancelled = true;
       renderer?.clear();
     };
-  }, [musicXml]);
+  }, [musicXml, attempt]);
 
   return <div>
-    <ProcessingProgress active={loading} label={loadingLabel} error={error} locale={locale} />
-    {!musicXml || error ? <div className={styles.candidatePlaceholder}>{loadingLabel}</div> : null}
+    <ProcessingProgress active={loading} label={loadingLabel} error={error || requestFailed} locale={locale} />
+    {requestFailed || error ? <div className={styles.candidatePlaceholder} role="alert"><p>{errorLabel}</p><button type="button" className={styles.preflightRetry} onClick={() => { setAttempt(value => value + 1); onRetry(); }}>{retryLabel}</button></div> : !musicXml ? <div className={styles.candidatePlaceholder}>{loadingLabel}</div> : null}
     <div ref={containerRef} className={styles.candidateCanvas} aria-label={loadingLabel} hidden={!musicXml || error} />
   </div>;
 }

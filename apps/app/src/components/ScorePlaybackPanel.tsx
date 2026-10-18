@@ -322,7 +322,9 @@ export function ScorePlaybackPanel({
     const generation = playbackGenerationRef.current;
     const currentPlayback = playback ?? (await loadPlayback());
     if (generation !== playbackGenerationRef.current) return;
-    if (!currentPlayback || currentPlayback.events.length === 0) {
+    // loadPlayback already records its request failure; preserve that message.
+    if (!currentPlayback) return;
+    if (currentPlayback.events.length === 0) {
       setStatus(copy.empty);
       setStatusKind("error");
       return;

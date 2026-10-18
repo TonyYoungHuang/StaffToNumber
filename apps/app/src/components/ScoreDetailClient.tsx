@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ScoreOperationBoundary, useScoreActivity, useScoreNavigationLocked } from "./ScoreOperationBoundary";
 import { ScoreWorkspace, WorkspacePanel } from "./ScoreWorkspace";
+import { shareAvailability } from "../lib/share-availability";
 import { ScoreImportStatus } from "./ScoreImportStatus";
 import { ProcessingProgress } from "@score/ui";
 import { useFlowMessages } from "../lib/flow-messages/client";
@@ -631,6 +632,13 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   const [postingComment, setPostingComment] = useState(false);
   const [resolvingCommentId, setResolvingCommentId] = useState<string | null>(null);
   const [shares, setShares] = useState<ScoreShare[]>([]);
+  const [shareNow, setShareNow] = useState(Date.now);
+  useEffect(() => {
+    const expiry = Math.min(...shares.map(share => Date.parse(share.expiresAt ?? "")).filter(value => value > Date.now()));
+    if (!Number.isFinite(expiry)) return;
+    const timer = window.setTimeout(() => setShareNow(Date.now()), Math.min(2_147_483_647, Math.max(1, expiry - Date.now() + 1)));
+    return () => window.clearTimeout(timer);
+  }, [shares, shareNow]);
   const [sharesLoading, setSharesLoading] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [shareStatusKind, setShareStatusKind] = useState<"success" | "error" | null>(null);
@@ -1481,6 +1489,8 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   }
 
   async function handleCopyShareLink(share: ScoreShare) {
+    const availability = shareAvailability(share);
+    if (availability !== "active") { setShareStatus(shareCopy[availability]); setShareStatusKind("error"); return; }
     const link = shareUrl(share.token);
     try {
       await navigator.clipboard.writeText(link);
@@ -3495,14 +3505,16 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
         {shares.length > 0 ? (
           <div className="list-grid">
             {shares.map((share) => {
-              const isRevoked = Boolean(share.revokedAt);
+              const availability = shareAvailability(share, shareNow);
+              const isRevoked = availability === "revoked";
+              const isUsable = availability === "active";
               return (
                 <div key={share.id} className="list-item">
                   <div className="list-item-content">
                     <p className="item-title">
                       {shareUrl(share.token)}{" "}
-                      <span className={`status-chip ${isRevoked ? "tone-amber" : "tone-cyan"}`}>
-                        {isRevoked ? shareCopy.revoked : shareCopy.active}
+                      <span className={`status-chip ${isUsable ? "tone-cyan" : "tone-amber"}`}>
+                        {shareCopy[availability]}
                       </span>
                     </p>
                     <p className="item-meta">
@@ -3510,7 +3522,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
                     </p>
                   </div>
                   <div className="button-row">
-                    <button type="button" className="button button-secondary button-ghost" onClick={() => void handleCopyShareLink(share)} disabled={isRevoked}>
+                    <button type="button" className="button button-secondary button-ghost" onClick={() => void handleCopyShareLink(share)} disabled={!isUsable}>
                       {shareCopy.copy}
                     </button>
                     <button

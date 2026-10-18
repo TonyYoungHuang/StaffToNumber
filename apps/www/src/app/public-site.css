@@ -3765,3 +3765,9 @@ html[data-visual-effects="reduced"] .feature-practice-signal > i {
     transform: none;
   }
 }
+
+/* Legal copy must wrap inside mobile grid tracks, including long URLs. */
+.privacy-page, .privacy-page :is(.stack-lg, .stack-md, .stack-sm, .surface-panel, .glass-panel, .sunken-panel) { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.privacy-page :is(h1, h2, p, a, .status-pill) { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
+.privacy-page .access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 720px) { .privacy-page .access-grid { grid-template-columns: minmax(0, 1fr); } }

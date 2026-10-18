@@ -49,7 +49,7 @@ export function persistedCheckoutIntent(signature: string, supplied?: string) {
   }
 }
 export function forgetCheckoutIntent(signature: string) { try { localStorage.removeItem(INTENT_PREFIX + signature); } catch { /* no purchase is created */ } }
-type CheckoutResponse = { orderId: string; token: string; url: string; status?: string; order?: { status: string; purchaseStatus?: string }; code?: string };
+type CheckoutResponse = { orderId: string; token: string; url: string; status?: string; order?: { status: string; purchaseStatus?: string }; code?: string; recoveryOrders?: Array<{ id: string; provider: string; token?: string; checkoutUrl?: string }> };
 export function completeCheckoutIntent(orderId: string) {
   try {
     for (let index = 0; index < localStorage.length; index++) {
@@ -87,9 +87,10 @@ export async function lookupAndStartCheckout(payload: Record<string, unknown>, t
   }
   if (!previous.ok && previous.status !== 404) return previous;
   if (!previous.ok && previous.status === 404) {
-    const owned = await request<{ orders: Array<{ id: string; provider: string; planCode?: string; billingKind: string; targetDocumentId?: string }> }>("/api/payments/orders?pending=1", { headers });
+    const owned = await request<{ orders: Array<{ id: string; provider: string; planCode?: string; billingKind: string; targetDocumentId?: string; token?: string; checkoutUrl?: string }> }>("/api/payments/orders?pending=1", { headers });
     if (!owned.ok) return { ...owned, data: undefined };
-    if (owned.data.orders.some(order => order.provider === payload.provider && order.planCode === payload.planCode && order.billingKind === payload.billingKind && (order.targetDocumentId ?? null) === (payload.targetDocumentId ?? null))) return { ok: false as const, status: 409, error: "CHECKOUT_RECOVERY_REQUIRED", data: { code: "CHECKOUT_RECOVERY_REQUIRED" } as CheckoutResponse };
+    const recoveryOrders = owned.data.orders.filter(order => order.provider === payload.provider && order.planCode === payload.planCode && order.billingKind === payload.billingKind && (order.targetDocumentId ?? null) === (payload.targetDocumentId ?? null));
+    if (recoveryOrders.length) return { ok: false as const, status: 409, error: "CHECKOUT_RECOVERY_REQUIRED", data: { code: "CHECKOUT_RECOVERY_REQUIRED", recoveryOrders } };
   }
   const created = await request<CheckoutResponse>("/api/payments/checkout/authenticated", { method: "POST", headers, body: JSON.stringify(payload) });
   if (created.ok && created.data?.orderId) {
