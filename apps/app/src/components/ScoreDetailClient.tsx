@@ -2089,6 +2089,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
     const rangeProfilePayload =
       rangeAssignments.length > 0 ? { rangeAssignments } : rangeProfileId === "none" ? {} : { rangeProfile: { id: rangeProfileId }, rangePartIds };
     const commonTransposePayload = {
+      baseRevisionId: reviewRevision?.id,
       spellingPolicy: transposeSpellingPolicy,
       pitchMode: transposePitchMode,
       ...rangeProfilePayload,
@@ -2656,7 +2657,8 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
               scoreId={score.id}
               token={token}
               scoreJson={currentScoreJson}
-              baseRevisionId={score.pendingRevisionId ? null : score.currentRevisionId}
+              baseRevisionId={reviewRevision?.id}
+              canonicalCommands={!score.pendingRevisionId}
               selectedEventId={selectedScoreEventId}
               onSelectedEventChange={handleScoreEventSelect}
               onUpdated={async (nextPayload, mutation) => {
@@ -2672,6 +2674,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
           </div>
           <details id="correction-editor" className="flow-details"><summary>{flow.advanced}</summary>
             <ScoreCorrectionPanel
+              baseRevisionId={reviewRevision!.id}
               scoreId={score.id}
               token={token}
               scoreJson={currentScoreJson}

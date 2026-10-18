@@ -100,7 +100,7 @@ test("adding a missing part preserves the official revision and source, enforces
     assert.equal(findScoreDocumentById(document.id)!.current_revision_id, before.current_revision_id);
     const drumsBody = noCoveragePart.json();
     const note = next.measures[0].events.find(event => event.type === "note")!;
-    const corrected = await app.inject({ method: "POST", url: `/api/scores/${document.id}/edit/note`, headers: { authorization: `Bearer ${token}` }, payload: { eventId: note.id, step: "D" } });
+    const corrected = await app.inject({ method: "POST", url: `/api/scores/${document.id}/edit/note`, headers: { authorization: `Bearer ${token}` }, payload: { baseRevisionId: drumsBody.revision.id, eventId: note.id, step: "D" } });
     assert.equal(corrected.statusCode, 201, corrected.body);
     const editedRevisionId = corrected.json().revision.id;
     assert.ok(listScoreAssetsByDocumentId(document.id).some(item => item.asset_kind === "omr_page_image" && item.revision_id === editedRevisionId && item.stale_at === null), "source page survives the next ordinary note edit");

@@ -243,6 +243,8 @@ export function ScoreCandidateReviewWorkspace({
 
       <ScoreVisualEditorPanel
         scoreId={scoreId}
+        baseRevisionId={revision.id}
+        canonicalCommands={false}
         token={token}
         scoreJson={revision.scoreJson}
         selectedEventId={selectedEventId}
@@ -255,6 +257,7 @@ export function ScoreCandidateReviewWorkspace({
 
       <ScoreCorrectionPanel
         scoreId={scoreId}
+        baseRevisionId={revision.id}
         token={token}
         scoreJson={revision.scoreJson}
         onUpdated={async () => {

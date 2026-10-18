@@ -58,7 +58,7 @@ export function ScoreNotationProperties({ scoreId, scoreJson, revisionId, select
       const result = await apiRequest(`/api/scores/${encodeURIComponent(scoreId)}/edit/note`, {
         method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: JSON.stringify({
-          eventId: note.id, eventType: "note",
+          baseRevisionId: revisionId, eventId: note.id, eventType: "note",
           ...(JSON.stringify(technical) !== JSON.stringify(draftTechnical(note)) ? {
             technical: Object.keys(t).length ? t : null,
             clearTechnicalFields: (Object.keys(technical) as Array<keyof TechnicalDraft>).filter(field => note.technical?.[field] != null && technical[field] === ""),

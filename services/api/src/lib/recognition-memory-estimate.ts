@@ -30,7 +30,7 @@ export function parsePhotoCorners(value: unknown): PhotoCorner[] | undefined {
 export function estimateRecognitionMemory(input: { sizeBytes: number; pageCount: number; maxPagePixels: number; mode?: ScoreRecognitionMode;
   preflight?: ScoreStructurePreflight; supported?: boolean; heavyEnhancement?: boolean }, env = {
     enabled: recognitionLanesEnabled(), normalMb: positive("RECOGNITION_NORMAL_MAX_MB", RECOGNITION_MEMORY_BUDGET.normalMaxMb),
-    bigMb: positive("RECOGNITION_BIG_MAX_MB", RECOGNITION_MEMORY_BUDGET.bigMaxMb), capacityVersion: process.env.RECOGNITION_CAPACITY_VERSION || "cx33-raster-v2",
+    bigMb: positive("RECOGNITION_BIG_MAX_MB", RECOGNITION_MEMORY_BUDGET.bigMaxMb), capacityVersion: process.env.RECOGNITION_CAPACITY_VERSION || "cx33-conservative-v1",
   }): RecognitionMemoryAssessment {
   // The shipped complex path reuses Audiveris sequentially; HOMR is offline
   // evaluation only. Its confidence and mode are quality diagnostics, not RAM.
@@ -72,4 +72,14 @@ export async function assessRecognitionSource(input: { sourcePath: string; detec
   const maxPagePixels = pdf ? Math.max(...pdf.pages.map(p => p.pixelCount)) : image ? Math.max(12_000_000, image.maxPagePixels) : Number.MAX_SAFE_INTEGER;
   return estimateRecognitionMemory({ ...input, pageCount, maxPagePixels,
     supported: input.supported !== false && (Boolean(pdf) || Boolean(image && image.maxPagePixels <= 32_000_000)) });
+}
+
+/** Direct uploads and staged/draft preparation always assess the original
+ * server-owned source afresh. A missing or obsolete preflight snapshot must not
+ * veto that new assessment. Checkout reuses this persisted assessment and the
+ * same final validator before reserving credits. */
+export async function prepareRecognitionAdmission(input: Parameters<typeof assessRecognitionSource>[0]) {
+  const assessment = await assessRecognitionSource(input);
+  revalidateRecognitionAssessment(assessment);
+  return assessment;
 }

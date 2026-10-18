@@ -165,7 +165,7 @@ test("the lifetime free project edits, transposes, plays and shares without proc
     assert.ok(playback.json<{ playback: { events: unknown[] } }>().playback.events.length > 0);
     const headers = { authorization: `Bearer ${token}` };
     const edited = await app.inject({ method: "POST", url: `/api/scores/${documentId}/edit/tempo`, headers,
-      payload: { measureId: scoreJson.measures[0]!.id, bpm: 100 } });
+      payload: { baseRevisionId: revisionId, measureId: scoreJson.measures[0]!.id, bpm: 100 } });
     assert.equal(edited.statusCode, 201, edited.body);
     const transpose = await app.inject({ method: "POST", url: `/api/scores/${documentId}/transpose`, headers,
       payload: { semitones: 2, useMusic21: false } });

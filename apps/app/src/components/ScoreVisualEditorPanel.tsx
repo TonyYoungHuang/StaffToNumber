@@ -140,6 +140,7 @@ export function ScoreVisualEditorPanel({
   shareToken,
   scoreJson,
   baseRevisionId,
+  canonicalCommands = true,
   selectedEventId,
   onSelectedEventChange,
   onUpdated,
@@ -151,6 +152,7 @@ export function ScoreVisualEditorPanel({
   shareToken?: string | null;
   scoreJson: ScoreJson;
   baseRevisionId?: string | null;
+  canonicalCommands?: boolean;
   selectedEventId?: string | null;
   onSelectedEventChange?: (eventId: string) => void;
   onUpdated: (payload: ScorePayload, mutation: ScoreEditorCollaborationMutation) => void | Promise<void>;
@@ -516,7 +518,7 @@ export function ScoreVisualEditorPanel({
     setStatus(null);
     setStatusKind(null);
     const canonicalCommand = canonicalCommandForPath(path, body);
-    const operationId = baseRevisionId && canonicalCommand ? crypto.randomUUID() : null;
+    const operationId = canonicalCommands && baseRevisionId && canonicalCommand ? crypto.randomUUID() : null;
     const collaborationPath = shareToken
       ? `/api/scores/shared/${encodeURIComponent(shareToken)}/collaboration/commands`
       : `/api/scores/${scoreId}/collaboration/commands`;
@@ -528,7 +530,7 @@ export function ScoreVisualEditorPanel({
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(operationId ? { operationId, baseRevisionId, command: canonicalCommand } : body),
+      body: JSON.stringify(operationId ? { operationId, baseRevisionId, command: canonicalCommand } : { ...body, baseRevisionId }),
     });
     setMutating(null);
 
@@ -606,7 +608,7 @@ export function ScoreVisualEditorPanel({
     const canonicalCommand = canonicalCommandForPath("/edit/note", body);
     const intentKey = `${requestBaseRevisionId}:${draftKey}`;
     if (saveIntentRef.current?.key !== intentKey) saveIntentRef.current = { key: intentKey, operationId: crypto.randomUUID() };
-    const operationId = requestBaseRevisionId && canonicalCommand ? saveIntentRef.current.operationId : null;
+    const operationId = canonicalCommands && requestBaseRevisionId && canonicalCommand ? saveIntentRef.current.operationId : null;
     const collaborationPath = shareToken
       ? `/api/scores/shared/${encodeURIComponent(shareToken)}/collaboration/commands`
       : `/api/scores/${scoreId}/collaboration/commands`;
@@ -616,7 +618,7 @@ export function ScoreVisualEditorPanel({
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(operationId ? { operationId, baseRevisionId: requestBaseRevisionId, command: canonicalCommand } : body),
+      body: JSON.stringify(operationId ? { operationId, baseRevisionId: requestBaseRevisionId, command: canonicalCommand } : { ...body, baseRevisionId: requestBaseRevisionId }),
     });
 
     if (!result.ok) {

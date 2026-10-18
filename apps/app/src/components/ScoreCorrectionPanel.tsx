@@ -79,11 +79,13 @@ const NATIVE_SELECT_ITEM_LIMIT = 500;
 
 export function ScoreCorrectionPanel({
   scoreId,
+  baseRevisionId,
   token,
   scoreJson,
   onUpdated,
 }: {
   scoreId: string;
+  baseRevisionId: string;
   token: string | null;
   scoreJson: ScoreJson;
   onUpdated: (payload: ScorePayload) => void | Promise<void>;
@@ -366,6 +368,7 @@ export function ScoreCorrectionPanel({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        baseRevisionId,
         eventId: selectedEvent.id,
         eventType,
         step: eventType === "note" ? step : undefined,
@@ -429,6 +432,7 @@ export function ScoreCorrectionPanel({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        baseRevisionId,
         partId: selectedPart.id,
         name: partName,
         abbreviation: partAbbreviation,
@@ -467,6 +471,7 @@ export function ScoreCorrectionPanel({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        baseRevisionId,
         measureId: selectedMeasure.id,
         divisions,
         keyFifths,
@@ -514,10 +519,12 @@ export function ScoreCorrectionPanel({
       body: JSON.stringify(
         clear
           ? {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               clear: true,
             }
           : {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               rootStep: harmonyRootStep,
               rootAlter: harmonyRootAlter,
@@ -558,10 +565,12 @@ export function ScoreCorrectionPanel({
       body: JSON.stringify(
         clear
           ? {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               clear: true,
             }
           : {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               value: dynamicValue,
               placement: dynamicPlacement,
@@ -600,10 +609,12 @@ export function ScoreCorrectionPanel({
       body: JSON.stringify(
         clear
           ? {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               clear: true,
             }
           : {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               ...(selectedTempoId !== "__new__" ? { tempoId: selectedTempoId } : {}),
               bpm: tempoBpm,
@@ -645,10 +656,12 @@ export function ScoreCorrectionPanel({
       body: JSON.stringify(
         clear
           ? {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               clear: true,
             }
           : {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               type: wedgeType,
               placement: wedgePlacement,
@@ -688,10 +701,12 @@ export function ScoreCorrectionPanel({
       body: JSON.stringify(
         clear
           ? {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               clear: true,
             }
           : {
+              baseRevisionId,
               measureId: selectedMeasure.id,
               location: barlineLocation,
               barStyle: barlineStyle,

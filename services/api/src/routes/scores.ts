@@ -7,7 +7,7 @@ import { assertScoreSourcePageCount, ScorePassError, scorePassForDocument } from
 import { normalizeScoreTransposeTitle } from "@score/shared";
 import { registerScoreStructurePreflightRoute } from "./score-structure-preflight.js";
 import { registerScoreUploadDraftRoutes } from "./score-upload-drafts.js";
-import { assessRecognitionSource, revalidateRecognitionAssessment } from "../lib/recognition-memory-estimate.js";
+import { prepareRecognitionAdmission } from "../lib/recognition-memory-estimate.js";
 import { registerScoreRecognitionResultRoutes } from "./score-recognition-results.js";
 import { extractMusicXmlCandidatesFromCompressedMxl, normalizeMusicXmlScore } from "../lib/musicxml-container.js";
 import { parseMusicXmlToScoreJson } from "../lib/musicxml-score-parser.js";
@@ -1501,6 +1501,19 @@ async function scoreRevisionPreviewMusicXml(userId: string, revision: { musicxml
 }
 
 export async function scoreRoutes(app: FastifyInstance) {
+  // All legacy field patches share the same client-version contract. The
+  // repository also compares this revision under its document lock at commit.
+  const versionedScoreEditAccess = async (request: FastifyRequest, reply: FastifyReply) => {
+    await app.requireScoreEditingAccess(request, reply);
+    if (request.authDenied || !request.authUserId) return reply;
+    const document = findScoreDocumentById((request.params as { id: string }).id);
+    if (!document || document.user_id !== request.authUserId) return;
+    const editableRevisionId = document.pending_revision_id ?? document.current_revision_id;
+    if (!editableRevisionId) return; // The handler supplies the processing/review error.
+    const body = request.body as { baseRevisionId?: unknown } | null;
+    if (body?.baseRevisionId !== editableRevisionId) throw new ScoreEditRevisionConflictError();
+  };
+
   app.post("/payments/orders/:id/continue", { preHandler: app.requireScorePreviewAccess }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as { token?: unknown; confirmed?: unknown } | null;
@@ -3655,7 +3668,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/part",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3691,7 +3704,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3711,7 +3724,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/note",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3747,7 +3760,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3767,7 +3780,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/note/insert",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3803,7 +3816,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3823,7 +3836,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/event/delete",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3859,7 +3872,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3879,7 +3892,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/events/batch",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3906,7 +3919,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3924,7 +3937,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/event/reorder",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -3960,7 +3973,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -3980,7 +3993,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/measure-attributes",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4016,7 +4029,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4036,7 +4049,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/harmony",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4072,7 +4085,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4092,7 +4105,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/barline",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4128,7 +4141,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4148,7 +4161,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/dynamics",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4184,7 +4197,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4204,7 +4217,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/wedge",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4240,7 +4253,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -4260,7 +4273,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.post(
     "/scores/:id/edit/tempo",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: versionedScoreEditAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -4296,7 +4309,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const nextRevision = createScoreRevisionFromScoreJson({
         documentId: document.id,
         scoreJson: editedScoreJson,
-        expectedEditableRevisionId: revision.id,
+        expectedEditableRevisionId: (request.body as { baseRevisionId: string }).baseRevisionId,
         createdFrom: "manual_edit",
       });
       const updatedDocument = findScoreDocumentById(document.id);
@@ -5390,9 +5403,7 @@ export async function scoreRoutes(app: FastifyInstance) {
         await fs.promises.rm(targetPath, { force: true });
         throw error;
       }
-      const memoryAssessment = await assessRecognitionSource({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
-      revalidateRecognitionAssessment(staged?.metadata.memoryAssessment);
-      revalidateRecognitionAssessment(memoryAssessment);
+      const memoryAssessment = await prepareRecognitionAdmission({ sourcePath: targetPath, ...verified, mode: recognitionMode, preflight: staged?.metadata.preflight, photoCorners: staged?.metadata.photoCorners });
 
       let storedFile: Awaited<ReturnType<typeof createStoredFile>>;
       try {
