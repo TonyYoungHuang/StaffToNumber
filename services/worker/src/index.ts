@@ -2,7 +2,6 @@ import { runSimplePdfOmr, SimplePdfOmrFailure, type SimplePdfResult } from "./si
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawn } from "node:child_process";
 import { assertAccountStorageQuota, assertPostgresRuntimeTables, createRuntimeDatabase } from "@score/runtime-database";
 import AdmZip from "adm-zip";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
@@ -27,7 +26,8 @@ import { summarizeAudiverisConfidence } from "./omr-confidence.js";
 import { renderScoreExport } from "./score-export-renderer.js";
 import { AudiverisProcessError, runAudiverisWithRotationFallback } from "./audiveris-runner.js";
 import { runBasicPitch } from "./basic-pitch-runner.js";
-import { workerFailureMessage } from "./engine-resource-error.js";
+import { runYtDlp } from "./yt-dlp-runner.js";
+import { markJobFailed, finishJobFailure, bestEffortDiagnostic } from "./job-failure.js";
 import { engineResourceError } from "./engine-resource-error.js";
 import { withJobMemoryLease, jobMemoryLeaseLost } from "./job-memory-lease.js";
 import { recognitionLaneResourcePolicy } from "./recognition-lane.js";
@@ -356,18 +356,7 @@ recordWorkerHeartbeat("idle", "Worker started", {
 });
 
 function markFailed(jobId: string, message: string) {
-  message = workerFailureMessage(message);
-  const timestamp = nowIso();
-  db.prepare(
-    `
-      UPDATE jobs
-      SET status = 'failed',
-          error_message = ?,
-          updated_at = ?,
-          completed_at = ?
-      WHERE id = ?
-    `,
-  ).run(message, timestamp, timestamp, jobId);
+  markJobFailed({ db, family: "legacy", jobId, message, timestamp: nowIso() });
 }
 
 function markCompleted(input: {
@@ -490,18 +479,7 @@ async function materializeInputFile(file: FileRow, workDir: string) {
 }
 
 function markScoreJobFailed(jobId: string, message: string) {
-  message = workerFailureMessage(message);
-  const timestamp = nowIso();
-  db.prepare(
-    `
-      UPDATE score_jobs
-      SET status = 'failed',
-          error_message = ?,
-          updated_at = ?,
-          completed_at = ?
-      WHERE id = ? AND status = 'processing'
-    `,
-  ).run(message, timestamp, timestamp, jobId);
+  markJobFailed({ db, family: "score", jobId, message, timestamp: nowIso() });
 }
 
 function markScoreJobCompleted(input: {
@@ -532,6 +510,11 @@ function insertOmrDiagnostic(input: {
   confidence?: number | null;
   sourcePageCount?: number | null;
 }) {
+  // Every local early-return failure uses the same terminal-first contract as
+  // the outer lifecycle. The status write atomically releases reservations.
+  if (input.diagnostics.status === "failed") {
+    markScoreJobFailed(input.jobId, typeof input.diagnostics.message === "string" ? input.diagnostics.message : "Recognition failed.");
+  }
   db.prepare(
     `
       INSERT INTO omr_diagnostics (
@@ -646,46 +629,6 @@ function createScoreRevisionFromAudioTranscribe(input: {
   }
 
   return revisionId;
-}
-
-function runYtDlp(inputUrl: string, outputTemplate: string) {
-  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    if (!workerConfig.ytDlpCommand) {
-      reject(new Error("YT_DLP_COMMAND is not configured for the worker."));
-      return;
-    }
-
-    const args = ["-x", "--audio-format", "wav", "-o", outputTemplate, inputUrl];
-    const child = spawn(workerConfig.ytDlpCommand, args, {
-      shell: true,
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error(`yt-dlp timed out after ${workerConfig.ytDlpTimeoutMs} ms.`));
-    }, workerConfig.ytDlpTimeoutMs);
-
-    child.stdout?.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-      reject(new Error(`yt-dlp exited with code ${code}. ${stderr || stdout}`.trim()));
-    });
-  });
 }
 
 function findAudioOutput(outputDir: string) {
@@ -3438,7 +3381,7 @@ async function processAudioTranscribeJob(job: ScoreJobRow) {
 
     let ytDlpResult: { stdout: string; stderr: string };
     try {
-      ytDlpResult = await runYtDlp(params.sourceUrl, path.join(downloadDir, "source.%(ext)s"));
+      ytDlpResult = await runYtDlp({ command: workerConfig.ytDlpCommand, timeoutMs: workerConfig.ytDlpTimeoutMs, inputUrl: params.sourceUrl, outputTemplate: path.join(downloadDir, "source.%(ext)s"), isCancelled: () => isScoreJobCancelled(job.id) });
     } catch (error) {
       const message = error instanceof Error ? error.message : "yt-dlp audio download failed.";
       insertOmrDiagnostic({
@@ -3803,44 +3746,34 @@ async function tick() {
 }
 
 async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
-  recordWorkerHeartbeat("processing", `Processing score job ${scoreJob.id}`, {
-    jobId: scoreJob.id,
-    jobType: scoreJob.job_type,
-    documentId: scoreJob.document_id,
-    requestId: scoreJob.request_id,
-    traceId: scoreJob.trace_id,
-  });
-  workerLog("score_job.processing", { jobId: scoreJob.id, jobType: scoreJob.job_type, requestId: scoreJob.request_id, traceId: scoreJob.trace_id });
-
   try {
+    recordWorkerHeartbeat("processing", `Processing score job ${scoreJob.id}`, {
+      jobId: scoreJob.id,
+      jobType: scoreJob.job_type,
+      documentId: scoreJob.document_id,
+      requestId: scoreJob.request_id,
+      traceId: scoreJob.trace_id,
+    });
+    workerLog("score_job.processing", { jobId: scoreJob.id, jobType: scoreJob.job_type, requestId: scoreJob.request_id, traceId: scoreJob.trace_id });
+
     await new Promise((resolve) => setTimeout(resolve, workerConfig.processingDelayMs));
     assertMinimumFreeSpace(workerConfig.storageDir, workerConfig.storageMinFreeBytes, 100 * 1024 * 1024);
     await processScoreJob(scoreJob);
   } catch (error) {
-    recordWorkerHeartbeat("error", error instanceof Error ? error.message : "Worker failed to process the score job.", {
-      jobId: scoreJob.id,
-      requestId: scoreJob.request_id,
-      traceId: scoreJob.trace_id,
-    });
-    workerLog("score_job.failed", {
-      jobId: scoreJob.id,
-      jobType: scoreJob.job_type,
-      requestId: scoreJob.request_id,
-      traceId: scoreJob.trace_id,
-      error: error instanceof Error ? error.message : "Worker failed to process the score job.",
-    });
-    if (scoreJob.document_id && scoreJob.job_type === "omr_import") {
-      insertOmrDiagnostic({
-        jobId: scoreJob.id,
-        documentId: scoreJob.document_id,
-        diagnostics: {
-          status: "failed",
-          engine: "audiveris",
-          message: error instanceof Error ? error.message : "Worker failed to process the score job.",
+    const message = error instanceof Error ? error.message : "Worker failed to process the score job.";
+    finishJobFailure({
+      terminal: () => markScoreJobFailed(scoreJob.id, message),
+      diagnostics: [
+        () => recordWorkerHeartbeat("error", message, { jobId: scoreJob.id, requestId: scoreJob.request_id, traceId: scoreJob.trace_id }),
+        () => workerLog("score_job.failed", { jobId: scoreJob.id, jobType: scoreJob.job_type, requestId: scoreJob.request_id, traceId: scoreJob.trace_id, error: message }),
+        () => {
+          if (scoreJob.document_id && scoreJob.job_type === "omr_import") {
+            insertOmrDiagnostic({ jobId: scoreJob.id, documentId: scoreJob.document_id, diagnostics: { status: "failed", engine: "audiveris", message } });
+          }
         },
-      });
-    }
-    markScoreJobFailed(scoreJob.id, error instanceof Error ? error.message : "Worker failed to process the score job.");
+      ],
+      onDiagnosticError: diagnosticError => console.error("[worker] failure diagnostic could not be recorded", diagnosticError),
+    });
   } finally {
     if (workerConfig.storageBackend === "s3") {
       const folder = scoreJob.job_type === "omr_import" ? "omr-jobs" : scoreJob.job_type === "audio_transcribe" ? "audio-transcribe" : scoreJob.job_type === "render_export" ? "exports" : null;
@@ -3850,20 +3783,20 @@ async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
         if (scratch.startsWith(root + path.sep)) await fs.promises.rm(scratch, { recursive: true, force: true }).catch(error => console.error("[worker] scratch cleanup failed", error));
       }
     }
-    recordWorkerHeartbeat("idle", "Waiting for queued jobs");
+    bestEffortDiagnostic(() => recordWorkerHeartbeat("idle", "Waiting for queued jobs"));
   }
 }
 
 async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
-  recordWorkerHeartbeat("processing", `Processing job ${job.id}`, {
-    jobId: job.id,
-    direction: job.direction,
-    requestId: job.request_id,
-    traceId: job.trace_id,
-  });
-  workerLog("legacy_job.processing", { jobId: job.id, direction: job.direction, requestId: job.request_id, traceId: job.trace_id });
-
   try {
+    recordWorkerHeartbeat("processing", `Processing job ${job.id}`, {
+      jobId: job.id,
+      direction: job.direction,
+      requestId: job.request_id,
+      traceId: job.trace_id,
+    });
+    workerLog("legacy_job.processing", { jobId: job.id, direction: job.direction, requestId: job.request_id, traceId: job.trace_id });
+
     await new Promise((resolve) => setTimeout(resolve, workerConfig.processingDelayMs));
 
     if (job.direction !== "staff_pdf_to_numbered") {
@@ -3890,21 +3823,17 @@ async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
 
     await processStaffPdfJob(job, inputFile);
   } catch (error) {
-    recordWorkerHeartbeat("error", error instanceof Error ? error.message : "Worker failed to process the job.", {
-      jobId: job.id,
-      requestId: job.request_id,
-      traceId: job.trace_id,
+    const message = error instanceof Error ? error.message : "Worker failed to process the job.";
+    finishJobFailure({
+      terminal: () => markFailed(job.id, message),
+      diagnostics: [
+        () => recordWorkerHeartbeat("error", message, { jobId: job.id, requestId: job.request_id, traceId: job.trace_id }),
+        () => workerLog("legacy_job.failed", { jobId: job.id, direction: job.direction, requestId: job.request_id, traceId: job.trace_id, error: message }),
+      ],
+      onDiagnosticError: diagnosticError => console.error("[worker] failure diagnostic could not be recorded", diagnosticError),
     });
-    workerLog("legacy_job.failed", {
-      jobId: job.id,
-      direction: job.direction,
-      requestId: job.request_id,
-      traceId: job.trace_id,
-      error: error instanceof Error ? error.message : "Worker failed to process the job.",
-    });
-    markFailed(job.id, error instanceof Error ? error.message : "Worker failed to process the job.");
   } finally {
-    recordWorkerHeartbeat("idle", "Waiting for queued jobs");
+    bestEffortDiagnostic(() => recordWorkerHeartbeat("idle", "Waiting for queued jobs"));
   }
 }
 
@@ -3986,6 +3915,7 @@ if (workerConfig.jobBrokerBackend === "bullmq") {
       }
     });
     candidate.on("failed", (brokerJob, error) => {
+      try {
       const brokerJobId = brokerJob?.id === undefined ? "" : String(brokerJob.id);
       if (!brokerJob || !brokerJobId || brokerJob.data.dispatchId !== brokerJobId) return;
       const recovered = markInterruptedBrokerJobFailed({
@@ -3997,6 +3927,9 @@ if (workerConfig.jobBrokerBackend === "bullmq") {
       });
       if (recovered) recordBrokerRecovery(recovered, "failed");
       console.error(`[worker] BullMQ job ${brokerJobId} failed: ${error.message}`);
+      } catch (recoveryError) {
+        console.error("[worker] BullMQ failed-event recovery could not finish; periodic reconciliation will retry", recoveryError);
+      }
     });
     try {
       await Promise.all([candidate.waitUntilReady(), inspectionCandidate.waitUntilReady()]);

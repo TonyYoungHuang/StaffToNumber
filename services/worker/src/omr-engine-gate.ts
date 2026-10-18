@@ -15,7 +15,7 @@ function positiveSetting(value: string | undefined, fallback: number) {
 }
 
 export function omrEngineCapacity() {
-  return positiveSetting(process.env.MUSIC_ENGINE_MAX_CONCURRENCY, 3);
+  return positiveSetting(process.env.MUSIC_ENGINE_MAX_CONCURRENCY, 1);
 }
 
 export function homrEngineSlotWeight() {

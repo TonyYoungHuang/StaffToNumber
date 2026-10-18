@@ -13,6 +13,7 @@ import { createRuntimeDatabase, settleRecognitionCredits } from "@score/runtime-
 import { prepaidPostgresTriggers } from "./prepaid-schema.js";
 
 const connectionString = process.env.POSTGRES_TEST_URL?.trim();
+if (process.env.CI && !connectionString) throw new Error("POSTGRES_TEST_URL is required in CI; real integration coverage must not be skipped.");
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 type ChildResult = { ok: boolean; value?: any; code?: string; error?: string };
 
@@ -22,8 +23,8 @@ test("real PostgreSQL schema 28 settles fractional delivery and releases zero/fa
   let runtime: ReturnType<typeof createRuntimeDatabase> | undefined;
   try {
     await client.query(`CREATE SCHEMA ${quote(schema)};
-      CREATE TABLE ${qualified("score_jobs")} (id TEXT PRIMARY KEY,job_type TEXT,status TEXT,params_json TEXT);
-      CREATE TABLE ${qualified("jobs")} (id TEXT PRIMARY KEY,status TEXT);
+      CREATE TABLE ${qualified("score_jobs")} (id TEXT PRIMARY KEY,job_type TEXT,status TEXT,params_json TEXT,error_message TEXT,updated_at TEXT,completed_at TEXT,progress_percent INTEGER);
+      CREATE TABLE ${qualified("jobs")} (id TEXT PRIMARY KEY,status TEXT,error_message TEXT,updated_at TEXT,completed_at TEXT);
       CREATE TABLE ${qualified("prepaid_credit_charges")} (job_family TEXT,job_id TEXT,user_id TEXT,credit_cost INTEGER NOT NULL CHECK(credit_cost>0),status TEXT,PRIMARY KEY(job_family,job_id));`);
     const sql = readFileSync(new URL("../../../../deploy/hetzner/recognition-partial-credits-schema28.sql", import.meta.url), "utf8").replaceAll(':"runtime_schema"', quote(schema));
     await client.query(sql); await client.query(sql);
@@ -35,7 +36,7 @@ test("real PostgreSQL schema 28 settles fractional delivery and releases zero/fa
     assert.equal(firstResponse.count, 7, "Reusing the transport buffer never mutates previously decoded responses");
     assert.ok(process.memoryUsage().arrayBuffers - buffersBefore < 8 * 1024 * 1024, "Repeated synchronous SQL must not allocate one large response buffer per query");
     const insert = async (id: string) => {
-      await client.query(`INSERT INTO ${qualified("score_jobs")} VALUES($1,'omr_import','processing',$2)`, [id, JSON.stringify({ recognitionMode: "complex", creditCost: 5 })]);
+      await client.query(`INSERT INTO ${qualified("score_jobs")} (id,job_type,status,params_json) VALUES($1,'omr_import','processing',$2)`, [id, JSON.stringify({ recognitionMode: "complex", creditCost: 5 })]);
       await client.query(`INSERT INTO ${qualified("prepaid_credit_charges")} VALUES('score',$1,'synthetic-user',5,'reserved')`, [id]);
     };
     await insert("partial");
@@ -57,6 +58,20 @@ test("real PostgreSQL schema 28 settles fractional delivery and releases zero/fa
     await insert("failed");
     await client.query(`UPDATE ${qualified("score_jobs")} SET status='failed' WHERE id='failed'`);
     assert.equal((await client.query(`SELECT status FROM ${qualified("prepaid_credit_charges")} WHERE job_id='failed'`)).rows[0].status, "released");
+    const failureModuleUrl = new URL("../../../worker/src/job-failure.ts", import.meta.url).href;
+    const { finishJobFailure, markJobFailed } = await import(failureModuleUrl);
+    for (const family of ["score", "legacy"] as const) {
+      const id = `diagnostic-failed-${family}`;
+      if (family === "score") await insert(id);
+      else {
+        await client.query(`INSERT INTO ${qualified("jobs")} (id,status) VALUES($1,'processing')`, [id]);
+        await client.query(`INSERT INTO ${qualified("prepaid_credit_charges")} VALUES('legacy',$1,'synthetic-user',5,'reserved')`, [id]);
+      }
+      finishJobFailure({ terminal: () => markJobFailed({ db: runtime, family, jobId: id, message: "engine failed", timestamp: new Date().toISOString() }),
+        diagnostics: [() => { throw new Error("diagnostic storage unavailable"); }, () => { throw new Error("heartbeat unavailable"); }] });
+      assert.equal((await client.query(`SELECT status FROM ${qualified(family === "score" ? "score_jobs" : "jobs")} WHERE id=$1`, [id])).rows[0].status, "failed");
+      assert.equal((await client.query(`SELECT status FROM ${qualified("prepaid_credit_charges")} WHERE job_id=$1`, [id])).rows[0].status, "released");
+    }
     assert.equal(Number((await client.query(`SELECT SUM(credit_cost) AS used FROM ${qualified("prepaid_credit_charges")} WHERE status<>'released'`)).rows[0].used), 2.6666);
   } finally {
     runtime?.close();

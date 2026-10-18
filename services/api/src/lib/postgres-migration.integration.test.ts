@@ -6,6 +6,7 @@ import { Pool } from "pg";
 import { migrateSqliteToPostgres, rollbackPostgresMigration, verifySqlitePostgresParity } from "./postgres-migration.js";
 
 const connectionString = process.env.POSTGRES_TEST_URL?.trim();
+if (process.env.CI && !connectionString) throw new Error("POSTGRES_TEST_URL is required in CI; real integration coverage must not be skipped.");
 
 test("real PostgreSQL migration preserves rows, bytes, partial uniqueness, and foreign keys", { skip: !connectionString }, async () => {
   const source = new DatabaseSync(":memory:");

@@ -41,7 +41,8 @@ export const workerConfig = {
   jobBrokerBackend: process.env.JOB_BROKER_BACKEND?.trim().toLowerCase() === "bullmq" ? "bullmq" as const : "database" as const,
   jobBrokerRedisUrl: process.env.JOB_BROKER_REDIS_URL ?? process.env.REDIS_URL ?? "",
   jobBrokerPrefix: (process.env.JOB_BROKER_PREFIX ?? "score-jobs").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "score-jobs",
-  jobBrokerConcurrency: Math.min(32, positiveInteger(process.env.JOB_BROKER_CONCURRENCY, 3)),
+  // cx33-conservative: recognition is serial unless deliberately overridden.
+  jobBrokerConcurrency: Math.min(32, positiveInteger(process.env.JOB_BROKER_CONCURRENCY, 1)),
   audiverisCommand: process.env.AUDIVERIS_COMMAND ?? "",
   audiverisTimeoutMs: positiveInteger(process.env.AUDIVERIS_TIMEOUT_MS, 900000),
   audiverisMaxHeapMb: Math.max(256, Math.min(32_768, positiveInteger(process.env.AUDIVERIS_MAX_HEAP_MB, 768))),

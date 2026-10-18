@@ -107,7 +107,7 @@ export const config = {
   scorePreflightTimeoutMs: positiveInteger(process.env.SCORE_PREFLIGHT_TIMEOUT_MS, 60_000),
   scorePreflightMaxPages: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_PAGES, 60),
   scorePreflightRequestsPerMinute: nonNegativeInteger(process.env.SCORE_PREFLIGHT_REQUESTS_PER_MINUTE, 0),
-  scorePreflightMaxConcurrency: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_CONCURRENCY, 3),
+  scorePreflightMaxConcurrency: positiveInteger(process.env.SCORE_PREFLIGHT_MAX_CONCURRENCY, 1),
   scorePreflightQueueWaitMs: positiveInteger(process.env.SCORE_PREFLIGHT_QUEUE_WAIT_MS, 120_000),
   uploadMalwareScan: (process.env.UPLOAD_MALWARE_SCAN?.trim().toLowerCase() || "off") as "on" | "off",
   clamAvCommand: process.env.CLAMAV_COMMAND ?? "",

@@ -8,6 +8,7 @@ import { SCORE_PROCESSING_QUEUE, type JobBrokerPayload } from "@score/shared";
 import { dispatchJobOutboxBatch } from "./job-broker-dispatch.js";
 
 const redisUrl = process.env.JOB_BROKER_TEST_URL?.trim();
+if (process.env.CI && !redisUrl) throw new Error("JOB_BROKER_TEST_URL is required in CI; real integration coverage must not be skipped.");
 
 test("dispatcher sends the trusted memory lane and permits one recognition delivery", async () => {
   const db = new DatabaseSync(":memory:");

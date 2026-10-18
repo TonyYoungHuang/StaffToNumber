@@ -7,10 +7,11 @@
     "dev": "node --env-file=.env --watch --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node --env-file=.env dist/index.js",
-    "test": "node --import tsx --test src/audio-transcription-cleanup.test.ts src/omr-confidence.test.ts src/audiveris-omr-diagnostics.test.ts src/audiveris-output.test.ts src/audiveris-runner.test.ts src/basic-pitch-runner.test.ts src/complex-omr.test.ts src/engine-execution-clock.test.ts src/engine-resources.test.ts src/omr-engine-gate.test.ts src/omr-pdf-safety.test.ts src/pdf-recovery.test.ts src/score-job-claim.test.ts src/legacy-job-claim.test.ts src/job-broker-connection.test.ts src/job-broker-consumer.test.ts src/job-broker-consumer.integration.test.ts src/broker-job-recovery.test.ts src/omr-candidate-commit.test.ts src/musicxml-professional-symbols.test.ts src/score-export-renderer.test.ts src/notification-delivery.test.ts src/raster-enhancement.test.ts src/job-memory-lease.test.ts",
+    "test": "node --import tsx --test src/audio-transcription-cleanup.test.ts src/omr-confidence.test.ts src/audiveris-omr-diagnostics.test.ts src/audiveris-output.test.ts src/audiveris-runner.test.ts src/basic-pitch-runner.test.ts src/complex-omr.test.ts src/engine-execution-clock.test.ts src/engine-resources.test.ts src/omr-engine-gate.test.ts src/omr-pdf-safety.test.ts src/pdf-recovery.test.ts src/score-job-claim.test.ts src/legacy-job-claim.test.ts src/job-broker-connection.test.ts src/job-broker-consumer.test.ts src/broker-job-recovery.test.ts src/omr-candidate-commit.test.ts src/musicxml-professional-symbols.test.ts src/score-export-renderer.test.ts src/notification-delivery.test.ts src/raster-enhancement.test.ts src/job-memory-lease.test.ts src/job-failure.test.ts src/recognition-defaults.test.ts src/bounded-process-runner.test.ts",
     "test:music-engines": "node --import tsx --test src/audiveris-real.integration.test.ts src/score-renderer-real.integration.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "evaluate:samples": "tsx src/evaluate-samples.ts"
+    "evaluate:samples": "tsx src/evaluate-samples.ts",
+    "test:broker": "node ../../scripts/require-integration-services.mjs JOB_BROKER_TEST_URL && node --import tsx --test src/job-broker-consumer.integration.test.ts"
   },
   "dependencies": {
     "@score/shared": "0.1.0",

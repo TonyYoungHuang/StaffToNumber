@@ -9,6 +9,7 @@ import { processBillingWebhookEvent } from "../repositories/billing-repository.j
 import { migrateSqliteToPostgres } from "./postgres-migration.js";
 
 const connectionString = process.env.POSTGRES_TEST_URL?.trim();
+if (process.env.CI && !connectionString) throw new Error("POSTGRES_TEST_URL is required in CI; real integration coverage must not be skipped.");
 
 test("real PostgreSQL user-row locking prevents two processes overspending five complex credits", { skip: !connectionString, timeout: 120_000 }, async () => {
   initDb();

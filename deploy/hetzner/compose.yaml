@@ -1,5 +1,6 @@
 name: scoretransposer-prod
 
+# cx33-conservative defaults: one recognition/preflight/engine at a time.
 x-engines: &engines
   AUDIVERIS_COMMAND: /usr/local/bin/score-audiveris
   BASIC_PITCH_COMMAND: /usr/local/bin/score-basic-pitch
@@ -7,7 +8,7 @@ x-engines: &engines
   FLUIDSYNTH_COMMAND: /usr/local/bin/score-fluidsynth
   MUSIC21_COMMAND: /usr/local/bin/score-music21
   HOMR_PYTHON_COMMAND: /usr/local/bin/score-homr
-  MUSIC_ENGINE_MAX_CONCURRENCY: ${MUSIC_ENGINE_MAX_CONCURRENCY:-3}
+  MUSIC_ENGINE_MAX_CONCURRENCY: ${MUSIC_ENGINE_MAX_CONCURRENCY:-1}
   MUSIC_ENGINE_HOMR_SLOT_WEIGHT: ${MUSIC_ENGINE_HOMR_SLOT_WEIGHT:-3}
   MUSIC_ENGINE_AUDIO_SLOT_WEIGHT: ${MUSIC_ENGINE_AUDIO_SLOT_WEIGHT:-3}
   OMP_NUM_THREADS: "1"
@@ -107,7 +108,7 @@ services:
       <<: *engines
       CLAMAV_COMMAND: /usr/local/bin/score-clamscan
       UPLOAD_MALWARE_SCAN: ${UPLOAD_MALWARE_SCAN:-off}
-      SCORE_PREFLIGHT_MAX_CONCURRENCY: ${SCORE_PREFLIGHT_MAX_CONCURRENCY:-3}
+      SCORE_PREFLIGHT_MAX_CONCURRENCY: ${SCORE_PREFLIGHT_MAX_CONCURRENCY:-1}
       SCORE_PREFLIGHT_QUEUE_WAIT_MS: ${SCORE_PREFLIGHT_QUEUE_WAIT_MS:-120000}
       SCORE_PREFLIGHT_TIMEOUT_MS: ${SCORE_PREFLIGHT_TIMEOUT_MS:-60000}
       SCORE_PREFLIGHT_REQUESTS_PER_MINUTE: ${SCORE_PREFLIGHT_REQUESTS_PER_MINUTE:-0}
@@ -160,7 +161,7 @@ services:
     env_file: ${SCORE_SHARED_DIR:-/srv/sites/scoretransposer/shared}/runtime.env
     environment:
       <<: *engines
-      JOB_BROKER_CONCURRENCY: ${JOB_BROKER_CONCURRENCY:-3}
+      JOB_BROKER_CONCURRENCY: ${JOB_BROKER_CONCURRENCY:-1}
       WORKER_PROCESSING_DELAY_MS: ${WORKER_PROCESSING_DELAY_MS:-0}
       AUDIVERIS_MAX_HEAP_MB: "768"
       NODE_OPTIONS: --max-old-space-size=192

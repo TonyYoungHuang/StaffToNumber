@@ -10,6 +10,7 @@ import { workerConfig } from "./config.js";
 import { recoverTerminalBrokerJobs } from "./broker-job-recovery.js";
 
 const redisUrl = process.env.JOB_BROKER_TEST_URL?.trim();
+if (process.env.CI && !redisUrl) throw new Error("JOB_BROKER_TEST_URL is required in CI; real integration coverage must not be skipped.");
 
 test("real BullMQ redelivery never reruns a crashed processing score", { skip: !redisUrl }, async () => {
   const db = new DatabaseSync(":memory:");
@@ -96,7 +97,7 @@ test("real BullMQ redelivery never reruns a crashed processing score", { skip: !
 });
 
 test("real BullMQ processes three independent dispatches concurrently through the production consumer", { skip: !redisUrl }, async () => {
-  assert.equal(workerConfig.jobBrokerConcurrency, 3, "the production worker configuration must admit three jobs");
+  // Deliberately stress the consumer at three even though the safe production default is one.
   const db = new DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE score_jobs (
@@ -151,7 +152,7 @@ test("real BullMQ processes three independent dispatches concurrently through th
       }
     },
     processLegacyJob: async () => { throw new Error("a score dispatch must not enter the legacy processor"); },
-  }), { connection: consumerConnection, prefix, concurrency: workerConfig.jobBrokerConcurrency });
+  }), { connection: consumerConnection, prefix, concurrency: 3 });
   worker.on("completed", job => {
     completedDispatches.add(String(job.id));
     if (completedDispatches.size === 3) resolveCompleted();
