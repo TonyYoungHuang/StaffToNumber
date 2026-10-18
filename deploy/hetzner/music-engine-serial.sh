@@ -11,7 +11,7 @@ case "$(basename "$0")" in
 esac
 # API exports and worker recognition share a bounded pool on the scratch volume.
 # The dispatcher reserves all slots atomically. Large HOMR models take the full
-# pool by default; three lighter Audiveris/export processes can run together.
+# pool by default; cx33-conservative admits one native engine at a time.
 # A shared memory reservation protects process launch and model/renderer growth.
 # Queueing is bounded and cancellable; execution clocks still start at admission.
 # Exec preserves descriptors, so exit/SIGKILL releases slots without stale locks.
@@ -80,7 +80,7 @@ def memory_admissible(snapshot, active, reservation, margin, group):
 
 
 wrapper, engine, *args = sys.argv[1:]
-capacity = positive_setting("MUSIC_ENGINE_MAX_CONCURRENCY", 3)
+capacity = positive_setting("MUSIC_ENGINE_MAX_CONCURRENCY", 1)
 weight = 1
 heavy = False
 # Adapter arguments end in action, request, response; Python flags may precede
