@@ -46,14 +46,17 @@ test("a lost OMR upload response can be recovered/replayed without duplicate tri
     const mismatch = await app.inject({ method: "POST", url: "/api/scores/import/omr?recognitionMode=complex", headers, payload });
     assert.equal(mismatch.statusCode, 409, mismatch.body);
     assert.equal(mismatch.json().code, "IDEMPOTENCY_KEY_REUSED");
-    // Recovery must preserve the detail endpoint's entitlement redaction.
+    // Recovery follows the approved owner-view policy after paid access ends;
+    // replaying an upload never restores paid-export eligibility.
     db.prepare("UPDATE score_jobs SET params_json = ? WHERE id = ?").run(JSON.stringify({ freeTrial: false }), jobId);
     const model = parseJianpuToScoreJson({ text: "1=C\n4/4\n| 1 2 3 4 |", importedAt: new Date().toISOString(), sourceOriginalName: "test.jianpu.txt" });
     createScoreRevisionFromScoreJson({ documentId: scoreId, scoreJson: model, createdFrom: "manual_edit" });
-    const restrictedReplay = await app.inject({ method: "POST", url, headers, payload });
-    assert.equal(restrictedReplay.statusCode, 200, restrictedReplay.body);
-    assert.equal(restrictedReplay.json().score.sourceFileId, null);
-    assert.equal(restrictedReplay.json().score.currentRevision.scoreJson, undefined);
-    assert.equal(restrictedReplay.json().score.currentRevision.musicxmlFileId, null);
+    const viewReplay = await app.inject({ method: "POST", url, headers, payload });
+    assert.equal(viewReplay.statusCode, 200, viewReplay.body);
+    assert.equal(viewReplay.json().score.sourceFileId, initial.json().score.sourceFileId);
+    assert.ok(viewReplay.json().score.currentRevision.scoreJson.measures.length > 0);
+    const paidExport = await app.inject({ method: "POST", url: `/api/scores/${scoreId}/exports`, headers: { authorization: `Bearer ${token}` }, payload: { format: "pdf" } });
+    assert.equal(paidExport.statusCode, 403, paidExport.body);
+    assert.equal(paidExport.json().code, "SCORE_PASS_REQUIRED");
   } finally { await app.close(); }
 });
