@@ -187,6 +187,8 @@ test("async onSend: inactive accounts stop nested editing even with an active me
     const response = await f.check({ method: "GET", url, headers: f.headers }, 403);
     assert.equal(response.json().error, "An active account is required.");
   }
+  await f.check({ method: "GET", url: `/api/scores/${f.documentId}/share-links`, headers: f.headers }, 403);
+  await f.check({ method: "DELETE", url: `/api/scores/${f.documentId}/share-links/${randomUUID()}`, headers: f.headers }, 403);
   await f.check({ method: "GET", url: `/api/scores/${f.documentId}/assignment-analytics`, headers: f.headers }, 403);
   const exported = await f.check({ method: "POST", url: `/api/scores/${f.documentId}/exports`, headers: f.headers, payload: { format: "pdf" } }, 403);
   assert.equal(exported.json().error, "An active account is required.");

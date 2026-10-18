@@ -1200,7 +1200,8 @@ export function revokeScoreShare(input: { shareId: string; documentId: string })
     `,
   ).run(timestamp, timestamp, input.shareId, input.documentId);
 
-  return findScoreShareById(input.shareId);
+  const share = findScoreShareById(input.shareId);
+  return share?.document_id === input.documentId ? share : undefined;
 }
 
 export function createScoreRubricTemplate(input: {

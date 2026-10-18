@@ -36,7 +36,7 @@ function fixture(plan: "free" | "credits-50" | "single-score" | "starter-monthly
   return { userId, documentId: document.id };
 }
 
-test("expired members retain existing results and issued shares while all paid export routes and downloads refuse access", async () => {
+test("expired owners can list and revoke issued shares while new shares and paid exports stay gated", async () => {
   const f = fixture("starter-monthly");
   const token = createToken(); createSession(f.userId, token, 1);
   const share = createScoreShare({ userId: f.userId, documentId: f.documentId, permission: "view" })!;
@@ -73,6 +73,28 @@ test("expired members retain existing results and issued shares while all paid e
     const shared = await app.inject({ method: "GET", url: `/api/scores/shared/${share.share_token}` });
     assert.equal(shared.statusCode, 200, shared.body);
     assert.ok(shared.json().score.currentRevision.scoreJson.measures.length);
+    const listed = await app.inject({ method: "GET", url: `${base}/share-links`, headers });
+    assert.equal(listed.statusCode, 200, listed.body);
+    assert.equal(listed.json().shares[0].id, share.id);
+    const createDenied = await app.inject({ method: "POST", url: `${base}/share-links`, headers, payload: { permission: "view" } });
+    assert.equal(createDenied.statusCode, 403, createDenied.body);
+    const revokeUrl = `${base}/share-links/${share.id}`;
+    const anonymous = await app.inject({ method: "DELETE", url: revokeUrl });
+    assert.equal(anonymous.statusCode, 401, anonymous.body);
+    const other = fixture();
+    const otherToken = createToken(); createSession(other.userId, otherToken, 1);
+    const nonOwnerList = await app.inject({ method: "GET", url: `${base}/share-links`, headers: { authorization: `Bearer ${otherToken}` } });
+    assert.equal(nonOwnerList.statusCode, 404, nonOwnerList.body);
+    const nonOwner = await app.inject({ method: "DELETE", url: revokeUrl, headers: { authorization: `Bearer ${otherToken}` } });
+    assert.equal(nonOwner.statusCode, 404, nonOwner.body);
+    const wrongDocument = await app.inject({ method: "DELETE", url: `/api/scores/${other.documentId}/share-links/${share.id}`, headers: { authorization: `Bearer ${otherToken}` } });
+    assert.equal(wrongDocument.statusCode, 404, wrongDocument.body);
+    assert.equal(wrongDocument.json().share, undefined);
+    assert.equal((await app.inject({ method: "GET", url: `/api/scores/shared/${share.share_token}` })).statusCode, 200);
+    const revoked = await app.inject({ method: "DELETE", url: revokeUrl, headers });
+    assert.equal(revoked.statusCode, 200, revoked.body);
+    assert.ok(revoked.json().share.revokedAt);
+    assert.equal((await app.inject({ method: "GET", url: `/api/scores/shared/${share.share_token}` })).statusCode, 404);
     assert.equal(getScoreExportOptions(f.userId, f.documentId).options.find(o => o.format === "pdf")!.canSubmit, false);
   } finally { await app.close(); }
 });

@@ -2104,7 +2104,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.get(
     "/scores/:id/share-links",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string };
@@ -2163,7 +2163,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   app.delete(
     "/scores/:id/share-links/:shareId",
     {
-      preHandler: app.requireScoreEditingAccess,
+      preHandler: app.requireScorePreviewAccess,
     },
     async (request, reply) => {
       const params = request.params as { id: string; shareId: string };
