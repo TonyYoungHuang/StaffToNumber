@@ -42,6 +42,7 @@ import {
   markBillingSubscriptionCancellation,
   revokeBillingSeat,
   processBillingWebhookEvent,
+  billingSubscriptionVersion,
 } from "../repositories/billing-repository.js";
 import {
   attachPaddleTransaction,
@@ -312,6 +313,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
               // Read the current subscription, never replay an old "paid" event
               // that could restore cancelled/refunded access. Original webhook
               // event IDs and their processed records remain untouched.
+              const expectedSubscriptionVersion = billingSubscriptionVersion(db, "stripe", subscriptionId);
               const subscription = await services.retrieveStripeSubscription(subscriptionId);
               const sessionCustomer = typeof session.customer === "string" ? session.customer : session.customer?.id;
               const subscriptionCustomer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
@@ -326,7 +328,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
                 data: { object: snapshot },
               }, rawPayload);
               if (!event?.subscription) throw new Error("Subscription cannot be fulfilled safely.");
-              processBillingWebhookEvent(db, event);
+              processBillingWebhookEvent(db, { ...event, authoritativeSubscription: true, expectedSubscriptionVersion });
               if (!["active", "trialing"].includes(subscription.status)) throw new Error("The current subscription is not active. Contact support.");
               const fulfilled = db.prepare(`SELECT status, current_period_end AS endsAt FROM billing_subscriptions
                 WHERE provider = 'stripe' AND provider_subscription_id = ? AND user_id = ?`)

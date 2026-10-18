@@ -21,6 +21,30 @@ function fixture(provider: "stripe" | "paddle") {
 }
 
 for (const provider of ["stripe", "paddle"] as const) {
+  test(`${provider}: authoritative snapshots may shorten a period and cancel without allowing late active restoration`, async () => {
+    const f = fixture(provider);
+    processBillingWebhookEvent(db, f.event(1));
+    const readPeriod = () => (db.prepare("SELECT current_period_end AS end FROM billing_subscriptions WHERE provider = ? AND provider_subscription_id = ?")
+      .get(provider, f.sub) as { end: string }).end;
+    const ordinaryOldCycle = f.event(2);
+    ordinaryOldCycle.subscription!.currentPeriodEnd = "2099-10-01T00:00:00.000Z";
+    processBillingWebhookEvent(db, ordinaryOldCycle);
+    assert.equal(readPeriod(), "2099-11-01T00:00:00.000Z", "ordinary old-cycle payloads cannot shorten a current period");
+    const shorterEnd = at(3), startsAt = "2026-10-01T00:00:00.000Z";
+    const services = {
+      stripe: async () => ({ id: f.sub, customer: `cus_${f.sub}`, status: "canceled", current_period_start: Date.parse(startsAt) / 1000,
+        current_period_end: Date.parse(shorterEnd) / 1000, canceled_at: Date.parse(shorterEnd) / 1000, ended_at: Date.parse(shorterEnd) / 1000 }),
+      paddle: async () => ({ id: f.sub, customer_id: `ctm_${f.sub}`, status: "canceled",
+        current_billing_period: { starts_at: startsAt, ends_at: shorterEnd }, canceled_at: shorterEnd }),
+    } as unknown as Parameters<typeof reconcileBillingSubscription>[1];
+    await processReconciledBillingWebhook(db, f.event(3), services);
+    assert.equal(f.status(), "cancelled", "the provider's current cancellation must replace the older local projection");
+    assert.equal(readPeriod(), shorterEnd, "a verified current resource can legitimately shorten its period");
+    processBillingWebhookEvent(db, f.event(2));
+    assert.equal(f.status(), "cancelled", "a late active payload with a longer period cannot undo the current cancellation");
+    assert.equal(readPeriod(), shorterEnd);
+  });
+
   test(`${provider}: cancellation, full refund and current service period survive late notifications`, () => {
     const f = fixture(provider);
     processBillingWebhookEvent(db, f.event(1));

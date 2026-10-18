@@ -114,7 +114,9 @@ test("paid subscription retry repairs from current Stripe state while retaining 
   const order = createPaymentOrder({ userId: account.id, provider: "stripe", billingKind: "subscription", entitlementDays: 0 })!;
   attachStripeCheckoutSession(order.id, "cs_local_sub_recovery", null);
   let status = "incomplete";
-  const subscription = () => ({ id: `sub_${order.id}`, customer: `cus_${account.id}`, status, metadata: { orderId: order.id, userId: account.id, priceId: "price_local_starter" }, items: { data: [{ price: { id: "price_local_starter" }, quantity: 1, current_period_start: Math.floor(Date.now() / 1000) - 60, current_period_end: Math.floor(Date.now() / 1000) + 3600 }] } });
+  let periodEnd = Math.floor(Date.now() / 1000) + 3600;
+  let cancelDuringRead = false;
+  const subscription = () => ({ id: `sub_${order.id}`, customer: `cus_${account.id}`, status, metadata: { orderId: order.id, userId: account.id, priceId: "price_local_starter" }, items: { data: [{ price: { id: "price_local_starter" }, quantity: 1, current_period_start: Math.floor(Date.now() / 1000) - 60, current_period_end: periodEnd }] } });
   const original = { id: `evt_original_${order.id}`, type: "customer.subscription.updated", data: { object: subscription() } };
   processBillingWebhookEvent(db, normalizeStripeBillingEvent(original, Buffer.from(JSON.stringify(original)))!);
   const originalRow = () => db.prepare("SELECT status, payload_sha256, attempts FROM billing_webhook_events WHERE provider_event_id = ?").get(original.id);
@@ -123,7 +125,17 @@ test("paid subscription retry repairs from current Stripe state while retaining 
   await app.register(authPlugin);
   await app.register(paymentRoutes, { prefix: "/api", paymentServices: {
     retrieveStripeCheckoutSession: async () => session({ id: "cs_local_sub_recovery", customer: `cus_${account.id}`, subscription: `sub_${order.id}`, mode: "subscription", status: "complete", payment_status: "paid", amount_total: 1499, currency: "usd", metadata: { orderId: order.id, userId: account.id, orderTokenHash: hashPaymentOrderToken(order.public_token) } }),
-    retrieveStripeSubscription: async () => subscription() as unknown as Stripe.Subscription,
+    retrieveStripeSubscription: async () => {
+      const snapshot = subscription();
+      if (cancelDuringRead) {
+        cancelDuringRead = false;
+        processBillingWebhookEvent(db, { provider: "stripe", eventId: `concurrent-cancel-${order.id}`, eventType: "customer.subscription.deleted",
+          rawPayload: "local cancellation while order recovery reads provider", authoritativeSubscription: true,
+          subscription: { providerSubscriptionId: `sub_${order.id}`, userId: account.id, status: "cancelled",
+            currentPeriodEnd: new Date((periodEnd - 7200) * 1000).toISOString() } });
+      }
+      return snapshot as unknown as Stripe.Subscription;
+    },
   } });
   const url = `/api/payments/orders/${order.id}?token=${order.public_token}&provider=stripe`;
   try {
@@ -136,10 +148,18 @@ test("paid subscription retry repairs from current Stripe state while retaining 
     assert.deepEqual(originalRow(), before);
     assert.equal((await app.inject({ method: "GET", url })).json().verification.status, "ready");
     assert.deepEqual(originalRow(), before);
+    periodEnd += 60; // A different provider payload must pass the version fence too.
+    cancelDuringRead = true;
+    const raced = (await app.inject({ method: "GET", url })).json();
+    assert.equal(raced.verification.status, "fulfillment_failed", "a provider read crossing another committed cancellation must be retried");
+    assert.equal(getUserProfile(account.id)?.entitlement.status, "inactive", "an in-flight older snapshot cannot restore cancelled access");
     status = "canceled";
+    periodEnd = Math.floor(Date.now() / 1000) - 1;
     const cancelled = (await app.inject({ method: "GET", url })).json();
     assert.equal(cancelled.verification.status, "fulfillment_failed");
     assert.equal(getUserProfile(account.id)?.entitlement.status, "inactive");
+    assert.equal((db.prepare("SELECT current_period_end AS periodEnd FROM billing_subscriptions WHERE provider_subscription_id = ?").get(`sub_${order.id}`) as { periodEnd: string }).periodEnd,
+      new Date(periodEnd * 1000).toISOString(), "order recovery persists the current provider's legitimately shortened period");
     assert.deepEqual(originalRow(), before);
     assert.equal((await app.inject({ method: "GET", url })).json().verification.status, "fulfillment_failed");
     assert.equal(getUserProfile(account.id)?.entitlement.status, "inactive");

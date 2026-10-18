@@ -158,7 +158,10 @@ function upsertSubscription(database: RuntimeDatabaseLike, event: NormalizedBill
     .get(event.provider, event.invoice.providerInvoiceId);
   if (refunded) return existing?.id ?? null;
   const period = existing && database.prepare("SELECT current_period_end AS periodEnd FROM billing_subscriptions WHERE id = ?").get(existing.id) as { periodEnd: string | null } | undefined;
-  if (period?.periodEnd && input.currentPeriodEnd && input.currentPeriodEnd < period.periodEnd) return id;
+  // Historical cycle notifications cannot shorten a current period. A current
+  // provider snapshot may legitimately shorten/cancel it; the version fence and
+  // snapshot comparison below still reject stale or racing observations.
+  if (!event.authoritativeSubscription && period?.periodEnd && input.currentPeriodEnd && input.currentPeriodEnd < period.periodEnd) return id;
   if (!applyResourceVersion(database, event, "subscription", input.providerSubscriptionId)) return existing?.id ?? null;
   const customer = customerId ? database.prepare("SELECT user_id AS userId, organization_id AS organizationId FROM billing_customers WHERE id = ?")
     .get(customerId) as { userId: string | null; organizationId: string | null } | undefined : undefined;
