@@ -325,6 +325,18 @@ export async function retrieveStripeSubscription(subscriptionId: string) {
   return stripeClient.subscriptions.retrieve(subscriptionId);
 }
 
+export async function retrievePaddleSubscription(subscriptionId: string) {
+  if (!config.paddleApiKey) throw new Error("Paddle is not configured.");
+  if (!/^sub_[A-Za-z0-9]+$/u.test(subscriptionId)) throw new Error("Invalid Paddle subscription id.");
+  const response = await fetch(`${paddleApiBase}/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    signal: AbortSignal.timeout(20_000),
+    headers: { Authorization: `Bearer ${config.paddleApiKey}`, "Content-Type": "application/json" },
+  });
+  const payload = await response.json().catch(() => null) as { data?: Record<string, unknown> } | null;
+  if (!response.ok || !payload?.data) throw new Error("Unable to retrieve Paddle subscription.");
+  return payload.data;
+}
+
 export function verifyStripeWebhook(rawBody: Buffer, signature: string) {
   const webhookSecret = normalizeWebhookSigningSecret(config.stripeWebhookSecret);
   if (!stripeClient || !webhookSecret) {

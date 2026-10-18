@@ -108,11 +108,12 @@ function stripeSeatQuantity(object: JsonRecord) {
 export function normalizeStripeBillingEvent(event: {
   id: string;
   type: string;
+  created?: number;
   data: { object: unknown };
 }, rawPayload: Buffer): NormalizedBillingEvent | null {
   const object = record(event.data.object);
   const identity = billingIdentity(object);
-  const base = { provider: "stripe" as const, eventId: event.id, eventType: event.type, rawPayload };
+  const base = { provider: "stripe" as const, eventId: event.id, eventType: event.type, rawPayload, eventAt: unixIso(event.created) ?? undefined };
 
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     // Completion can precede settlement for delayed payment methods. Trials and
@@ -243,7 +244,7 @@ export function normalizePaddleBillingEvent(payload: unknown, rawPayload: Buffer
   if (!eventId || !eventType) return null;
   const object = record(root.data);
   const identity = billingIdentity(object);
-  const base = { provider: "paddle" as const, eventId, eventType, rawPayload };
+  const base = { provider: "paddle" as const, eventId, eventType, rawPayload, eventAt: iso(root.occurred_at) ?? undefined };
 
   if (eventType.startsWith("subscription.")) {
     const providerSubscriptionId = identifier(object.id);

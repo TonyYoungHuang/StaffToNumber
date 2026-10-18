@@ -18,6 +18,9 @@ export type NormalizedBillingEvent = {
   eventId: string;
   eventType: string;
   rawPayload: Buffer | string;
+  eventAt?: string;
+  authoritativeSubscription?: boolean;
+  expectedSubscriptionVersion?: string | null;
   customer?: {
     providerCustomerId: string;
     userId?: string | null;
@@ -60,6 +63,49 @@ export type NormalizedBillingEvent = {
 };
 
 class WebhookReplayMismatchError extends Error {}
+export class BillingSnapshotRequiredError extends Error {}
+
+export function billingSubscriptionVersion(database: RuntimeDatabaseLike, provider: PaymentProvider, id: string) {
+  const version = database.prepare(`SELECT event_at AS eventAt, event_id AS eventId FROM billing_resource_versions
+    WHERE provider = ? AND resource_kind = 'subscription' AND resource_id = ?`).get(provider, id) as { eventAt: string; eventId: string } | undefined;
+  return version ? `${version.eventAt}:${version.eventId}` : null;
+}
+
+export function billingRefundCanCancelSubscription(database: RuntimeDatabaseLike, event: NormalizedBillingEvent, subscriptionId: string) {
+  if (!event.eventAt) return true;
+  const version = database.prepare(`SELECT event_at AS eventAt FROM billing_resource_versions
+    WHERE provider = ? AND resource_kind = 'subscription' AND resource_id = ?`)
+    .get(event.provider, subscriptionId) as { eventAt: string } | undefined;
+  return !version || event.eventAt >= version.eventAt;
+}
+
+// All provider projections share this lock, including resources not inserted
+// yet. PostgreSQL's conflict UPDATE locks the row until transaction commit;
+// SQLite's BEGIN IMMEDIATE supplies the same serialization across connections.
+function lockBillingProvider(database: RuntimeDatabaseLike, provider: PaymentProvider) {
+  database.prepare(`INSERT INTO billing_resource_versions (provider, resource_kind, resource_id, event_at, event_id)
+    VALUES (?, 'lock', 'provider', '', '') ON CONFLICT(provider, resource_kind, resource_id)
+    DO UPDATE SET event_id = billing_resource_versions.event_id`).run(provider);
+}
+
+function applyResourceVersion(database: RuntimeDatabaseLike, event: NormalizedBillingEvent, kind: string, id: string) {
+  const at = event.eventAt ?? new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
+  if (!Number.isFinite(Date.parse(at))) throw new Error("Billing event time is invalid.");
+  const version = database.prepare(`SELECT event_at AS eventAt, event_id AS eventId FROM billing_resource_versions
+    WHERE provider = ? AND resource_kind = ? AND resource_id = ?`).get(event.provider, kind, id) as { eventAt: string; eventId: string } | undefined;
+  if (version && at < version.eventAt) return false;
+  if (kind === "subscription" && event.authoritativeSubscription && event.expectedSubscriptionVersion !== undefined
+    && event.expectedSubscriptionVersion !== (version ? `${version.eventAt}:${version.eventId}` : null)) {
+    throw new BillingSnapshotRequiredError("The subscription changed while its provider snapshot was being retrieved.");
+  }
+  if (version && at === version.eventAt && event.eventAt && version.eventId !== event.eventId && kind === "subscription" && !event.authoritativeSubscription && !event.refund) {
+    throw new BillingSnapshotRequiredError("Conflicting subscription events require a current provider snapshot.");
+  }
+  database.prepare(`INSERT INTO billing_resource_versions (provider, resource_kind, resource_id, event_at, event_id)
+    VALUES (?, ?, ?, ?, ?) ON CONFLICT(provider, resource_kind, resource_id)
+    DO UPDATE SET event_at = excluded.event_at, event_id = excluded.event_id`).run(event.provider, kind, id, at, event.eventId);
+  return true;
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -107,6 +153,13 @@ function upsertSubscription(database: RuntimeDatabaseLike, event: NormalizedBill
   const existing = database.prepare("SELECT id, seat_quantity AS seatQuantity, cancel_at_period_end AS cancelAtPeriodEnd FROM billing_subscriptions WHERE provider = ? AND provider_subscription_id = ?")
     .get(event.provider, input.providerSubscriptionId) as { id: string; seatQuantity: number; cancelAtPeriodEnd: number } | undefined;
   const id = existing?.id ?? createId();
+  // A late invoice must not restore the entitlement revoked by its full refund.
+  const refunded = event.invoice && database.prepare("SELECT id FROM billing_invoices WHERE provider = ? AND provider_invoice_id = ? AND status = 'refunded'")
+    .get(event.provider, event.invoice.providerInvoiceId);
+  if (refunded) return existing?.id ?? null;
+  const period = existing && database.prepare("SELECT current_period_end AS periodEnd FROM billing_subscriptions WHERE id = ?").get(existing.id) as { periodEnd: string | null } | undefined;
+  if (period?.periodEnd && input.currentPeriodEnd && input.currentPeriodEnd < period.periodEnd) return id;
+  if (!applyResourceVersion(database, event, "subscription", input.providerSubscriptionId)) return existing?.id ?? null;
   const customer = customerId ? database.prepare("SELECT user_id AS userId, organization_id AS organizationId FROM billing_customers WHERE id = ?")
     .get(customerId) as { userId: string | null; organizationId: string | null } | undefined : undefined;
   database.prepare(`
@@ -154,6 +207,7 @@ function upsertSubscription(database: RuntimeDatabaseLike, event: NormalizedBill
 function upsertInvoice(database: RuntimeDatabaseLike, event: NormalizedBillingEvent, subscriptionId: string | null) {
   const input = event.invoice;
   if (!input) return;
+  if (!applyResourceVersion(database, event, "invoice", input.providerInvoiceId)) return;
   const now = nowIso();
   const resolvedSubscriptionId = subscriptionId ?? (input.providerSubscriptionId
     ? (database.prepare("SELECT id FROM billing_subscriptions WHERE provider = ? AND provider_subscription_id = ?")
@@ -168,7 +222,7 @@ function upsertInvoice(database: RuntimeDatabaseLike, event: NormalizedBillingEv
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(provider, provider_invoice_id) DO UPDATE SET
       subscription_id = COALESCE(excluded.subscription_id, billing_invoices.subscription_id),
-      status = excluded.status,
+      status = CASE WHEN billing_invoices.status = 'refunded' THEN 'refunded' ELSE excluded.status END,
       amount_due_minor = COALESCE(excluded.amount_due_minor, billing_invoices.amount_due_minor),
       amount_paid_minor = COALESCE(excluded.amount_paid_minor, billing_invoices.amount_paid_minor),
       amount_refunded_minor = CASE
@@ -192,11 +246,16 @@ function upsertInvoice(database: RuntimeDatabaseLike, event: NormalizedBillingEv
 
 function applyRefund(database: RuntimeDatabaseLike, event: NormalizedBillingEvent) {
   if (!event.refund) return;
+  if (!applyResourceVersion(database, event, "invoice", event.refund.providerInvoiceId)) return;
+  // Persist refunds even if the corresponding invoice notification is late.
+  database.prepare(`INSERT INTO billing_invoices (id, provider, provider_invoice_id, status, amount_refunded_minor, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(provider, provider_invoice_id) DO NOTHING`)
+    .run(createId(), event.provider, event.refund.providerInvoiceId, event.refund.fullyRefunded ? "refunded" : "paid", event.refund.amountRefundedMinor, nowIso(), nowIso());
   const status = event.refund.fullyRefunded ? "refunded" : "paid";
   database.prepare(`
     UPDATE billing_invoices
     SET amount_refunded_minor = CASE WHEN amount_refunded_minor > ? THEN amount_refunded_minor ELSE ? END,
-        status = ?, updated_at = ?
+        status = CASE WHEN status = 'refunded' THEN 'refunded' ELSE ? END, updated_at = ?
     WHERE provider = ? AND provider_invoice_id = ?
   `).run(
     Math.max(0, event.refund.amountRefundedMinor),
@@ -207,6 +266,10 @@ function applyRefund(database: RuntimeDatabaseLike, event: NormalizedBillingEven
     event.refund.providerInvoiceId,
   );
   if (event.refund.fullyRefunded) {
+    const subscription = database.prepare(`SELECT s.provider_subscription_id AS providerId FROM billing_subscriptions s
+      JOIN billing_invoices i ON i.subscription_id = s.id WHERE i.provider = ? AND i.provider_invoice_id = ?`)
+      .get(event.provider, event.refund.providerInvoiceId) as { providerId: string } | undefined;
+    if (subscription && !applyResourceVersion(database, event, "subscription", subscription.providerId)) return;
     database.prepare(`
       UPDATE billing_subscriptions
       SET status = 'cancelled', ended_at = COALESCE(ended_at, ?), updated_at = ?
@@ -222,6 +285,7 @@ export function processBillingWebhookEvent(database: RuntimeDatabaseLike, event:
   const now = nowIso();
   database.exec("BEGIN IMMEDIATE");
   try {
+    lockBillingProvider(database, event.provider);
     const existing = database.prepare(`
       SELECT id, status, payload_sha256 AS payloadSha256
       FROM billing_webhook_events WHERE provider = ? AND provider_event_id = ?
@@ -265,6 +329,7 @@ export function processBillingWebhookEvent(database: RuntimeDatabaseLike, event:
       ON CONFLICT(provider, provider_event_id) DO UPDATE SET
         status = 'failed', attempts = billing_webhook_events.attempts + 1,
         last_error = excluded.last_error, updated_at = excluded.updated_at
+      WHERE billing_webhook_events.status <> 'processed'
     `).run(createId(), event.provider, event.eventId, event.eventType, payloadSha256, message.slice(0, 1000), failedAt, failedAt);
     throw error;
   }

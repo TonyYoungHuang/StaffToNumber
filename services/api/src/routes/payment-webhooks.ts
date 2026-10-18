@@ -4,7 +4,8 @@ import type { PaymentOrderRow } from "../repositories/payment-repository.js";
 import { findPaymentOrderById, findPaymentOrderByCheckoutSessionId, findPaymentOrderByTransactionId, completePaymentOrder, attachPaddleTransaction } from "../repositories/payment-repository.js";
 import { buildLocalizedPublicCheckoutUrl, buildPaddleCheckoutRedirectUrl, localizePublicPaddleCheckoutPageUrl, cancelPaddleSubscription, cancelStripeSubscription, stripeCredentialMode, verifyPaddleWebhook, verifyStripeWebhook } from "../lib/payments.js";
 import { normalizePaddleBillingEvent, normalizeStripeBillingEvent } from "../lib/billing-events.js";
-import { findBillingSubscriptionForRefund, processBillingWebhookEvent } from "../repositories/billing-repository.js";
+import { processReconciledBillingWebhook } from "../lib/billing-reconciliation.js";
+import { billingRefundCanCancelSubscription, findBillingSubscriptionForRefund } from "../repositories/billing-repository.js";
 import { db } from "../db.js";
 import { applyOneTimeRefund, fulfillOneTimePurchase } from "../repositories/one-time-purchase-repository.js";
 import { buildPaymentNotificationEmail, sendTransactionalEmail } from "../lib/email.js";
@@ -76,11 +77,11 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
         const billingEvent = normalizeStripeBillingEvent(event, rawRequest.rawBody);
         if (billingEvent?.refund?.fullyRefunded) {
           const subscription = findBillingSubscriptionForRefund(db, "stripe", billingEvent.refund.providerInvoiceId);
-          if (subscription && subscription.status !== "cancelled") {
+          if (subscription && subscription.status !== "cancelled" && billingRefundCanCancelSubscription(db, billingEvent, subscription.providerSubscriptionId)) {
             await cancelStripeSubscription(subscription.providerSubscriptionId, false);
           }
         }
-        const billingProcessingResult = billingEvent ? processBillingWebhookEvent(db, billingEvent) : null;
+        const billingProcessingResult = billingEvent ? await processReconciledBillingWebhook(db, billingEvent) : null;
 
         if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
           const session = event.data.object;
@@ -191,11 +192,11 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
         const billingEvent = normalizePaddleBillingEvent(payload, rawRequest.rawBody);
         if (billingEvent?.refund?.fullyRefunded) {
           const subscription = findBillingSubscriptionForRefund(db, "paddle", billingEvent.refund.providerInvoiceId);
-          if (subscription && subscription.status !== "cancelled") {
+          if (subscription && subscription.status !== "cancelled" && billingRefundCanCancelSubscription(db, billingEvent, subscription.providerSubscriptionId)) {
             await cancelPaddleSubscription(subscription.providerSubscriptionId, false);
           }
         }
-        const billingProcessingResult = billingEvent ? processBillingWebhookEvent(db, billingEvent) : null;
+        const billingProcessingResult = billingEvent ? await processReconciledBillingWebhook(db, billingEvent) : null;
 
         if (payload.event_type === "transaction.completed" || payload.event_type === "transaction.paid") {
           const transactionId = payload.data?.id;
