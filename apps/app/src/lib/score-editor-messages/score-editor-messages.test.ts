@@ -102,7 +102,7 @@ test("editor endpoints, payloads, collaboration commands, queue, clipboard, and 
   for (const payloadKey of ["eventId", "eventType", "step", "alter", "octave", "duration", "durationType", "dots", "voice", "staff", "chord"]) {
     assert.match(editor, new RegExp(`\\b${payloadKey}(?:,|:)`, "u"), `missing unchanged note payload key ${payloadKey}`);
   }
-  assert.match(editor, /JSON\.stringify\(operationId \? \{ operationId, baseRevisionId, command: canonicalCommand \} : body\)/u);
+  assert.match(editor, /JSON\.stringify\(operationId \? \{ operationId, baseRevisionId, command: canonicalCommand \} : \{ \.\.\.body, baseRevisionId \}\)/u);
   assert.match(editor, /JSON\.stringify\(\{ operationId, baseRevisionId, action, targetOperationId: target\.id \}\)/u);
   assert.match(editor, /version: 1,[\s\S]*scope,[\s\S]*scoreId,[\s\S]*createdAt:/u);
   assert.match(editor, /serializeScoreEditorClipboard\(scoreId, next\)/u);

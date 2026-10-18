@@ -120,7 +120,7 @@ test("correction endpoints, payloads, revision callbacks, and structured-score c
   assert.match(source, /measureId: selectedMeasure\.id,[\s\S]*divisions,[\s\S]*keyFifths,[\s\S]*keyMode,[\s\S]*timeBeats,[\s\S]*timeBeatType,[\s\S]*clefSign,[\s\S]*newSystem:[\s\S]*staffDistance:/u);
   assert.match(source, /selectedTempoId !== "__new__" \? \{ tempoId: selectedTempoId \} : \{\}/u);
   assert.match(source, /repeatTimes: repeatDirection === "backward" \? repeatTimes : undefined/u);
-  assert.match(source, /\? \{\s*measureId: selectedMeasure\.id,\s*clear: true,/u);
+  assert.match(source, /\? \{\s*baseRevisionId,\s*measureId: selectedMeasure\.id,\s*clear: true,/u);
   assert.match(source, /event"\}-beam-\$\{number\}-manual/u);
   assert.match(source, /event"\}-tuplet-\$\{current\.length \+ 1\}-manual/u);
   assert.match(source, /event"\}-ornament-\$\{current\.length \+ 1\}-manual/u);
