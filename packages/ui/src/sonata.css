@@ -4348,6 +4348,13 @@ body .locked-field {
   line-height: 1.9;
 }
 
+/* Both copies are server-rendered; CSS selects the copy with the card layout. */
+.score-plan-card__audience--short,
+.score-plan-card__features--short,
+.score-plan-card__resource-list--short {
+  display: none;
+}
+
 @media (max-width: 1250px) {
   .score-plan-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4359,6 +4366,21 @@ body .locked-field {
 }
 
 @media (max-width: 620px) {
+  .score-plan-card__audience--full,
+  .score-plan-card__features--full,
+  .score-plan-card__resource-list--full {
+    display: none;
+  }
+
+  .score-plan-card__audience--short {
+    display: block;
+  }
+
+  .score-plan-card__features--short,
+  .score-plan-card__resource-list--short {
+    display: grid;
+  }
+
   .score-plan-grid {
     grid-template-columns: 1fr;
   }

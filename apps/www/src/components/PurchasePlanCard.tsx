@@ -7,17 +7,19 @@ import { purchaseSelectionKey } from "../lib/purchase-flow";
 import { useSiteLocale } from "./SiteLocaleProvider";
 import { usePurchaseFlow } from "./PurchaseFlowProvider";
 import { PlanCardFrame } from "./PlanCardFrame";
+import { withMobilePricingCopy } from "../lib/pricing-card-copy";
 
 export function PurchasePlanCard({ plan, labels, billingKind = "subscription", provider = "stripe" }: {
   plan: PricingPlanDisplay; labels: CreditPlanCardLabels; billingKind?: CheckoutBillingKind; provider?: PaymentProvider;
 }) {
   const { locale } = useSiteLocale();
   const flow = usePurchaseFlow();
+  const responsivePlan = withMobilePricingCopy(locale, plan);
   if (!isCheckoutPlanCode(plan.code)) return null;
-  if (!siteConfig.release.checkoutAvailable) return <PlanCardFrame code={plan.code}><CreditPlanCard plan={plan} labels={labels} headingLevel={3} actionHref={getSupportUrl("payment", "pricing", locale)} /></PlanCardFrame>;
+  if (!siteConfig.release.checkoutAvailable) return <PlanCardFrame code={plan.code}><CreditPlanCard plan={responsivePlan} labels={labels} headingLevel={3} actionHref={getSupportUrl("payment", "pricing", locale)} /></PlanCardFrame>;
   const selection = { planCode: plan.code, billingKind, provider };
   const selected = Boolean(flow.selected && purchaseSelectionKey(flow.selected) === purchaseSelectionKey(selection));
-  return <PlanCardFrame code={plan.code}><CreditPlanCard plan={plan} labels={labels} headingLevel={3}
+  return <PlanCardFrame code={plan.code}><CreditPlanCard plan={responsivePlan} labels={labels} headingLevel={3}
     actionHref={`${getCheckoutUrl(locale, plan.code, billingKind)}&provider=${provider}`}
     selected={selected} busy={flow.busy}
     actionLabel={flow.busy && selected ? flow.copy.loading : plan.cta}

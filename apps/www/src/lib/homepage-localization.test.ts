@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { SUPPORTED_LOCALES } from "@score/i18n";
 import { getPricingPlanCatalog } from "@score/shared";
+import { getPricingCardCopy, withMobilePricingCopy } from "./pricing-card-copy";
 import {
   HOMEPAGE_LOCALIZATIONS,
   HOMEPAGE_MEDIA_SOURCE_LOCALES,
@@ -121,6 +122,36 @@ test("homepage catalogs keep current product boundaries and stable tool routes",
       /(?:one|single)[ -]page[^.]{0,80}(?:free|trial)|(?:free|trial)[^.]{0,80}(?:one|single)[ -]page/iu,
       `${locale} must not regress to the retired one-page-free claim`,
     );
+  }
+});
+
+test("mobile paid cards add localized compact copy while preserving full and free plans", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const plans = localizeHomepagePlans(locale, getPricingPlanCatalog("en"));
+    assert.equal(withMobilePricingCopy(locale, plans[0]), plans[0], `${locale}: free stays unchanged`);
+    const copy = getPricingCardCopy(locale);
+    assert.equal(copy.benefits.length, 3);
+    for (const plan of plans.slice(1)) {
+      const mobile = withMobilePricingCopy(locale, plan);
+      assert.ok("benefitsShort" in mobile && "resourcesShort" in mobile && "audienceShort" in mobile);
+      const { benefitsShort, resourcesShort, audienceShort, ...full } = mobile;
+      assert.deepEqual(full, plan, `${locale} ${plan.code}: detailed data unchanged`);
+      assert.equal(benefitsShort.length, 3);
+      assert.equal(resourcesShort.length, 2);
+      assert.match(resourcesShort[0], plan.code.startsWith("starter-") ? /250/u : /500/u);
+      assert.equal(resourcesShort[1], copy.reset);
+      assert.match(resourcesShort[1], /UTC/u);
+      assert.ok(audienceShort.length > 0);
+      if (locale !== "en") {
+        assert.notEqual(audienceShort, getPricingCardCopy("en").starter);
+        assert.notEqual(audienceShort, getPricingCardCopy("en").pro);
+        assert.notEqual(copy.pass, getPricingCardCopy("en").pass);
+        assert.notEqual(copy.passTerms, getPricingCardCopy("en").passTerms);
+        for (const [index, benefit] of benefitsShort.entries()) {
+          assert.notEqual(benefit, getPricingCardCopy("en").benefits[index]);
+        }
+      }
+    }
   }
 });
 

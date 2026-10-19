@@ -18,6 +18,7 @@ export function SingleScoreOffer({ locale, labels }: { locale: SupportedLocale; 
   return <PlanCardFrame code="single-score"><CreditPlanCard headingLevel={3} labels={labels}
     plan={{ code: "single-score", name: copy.name, badge: copy.once, cycle: getPurchaseOptionsCopy(locale).oneTime,
       price: "$2.99", unitPrice: copy.once, audience: `${copy.body} ${copy.benefits[0]}`, credits: getHomePresentationCopy(locale).credits,
+      audienceShort: card.pass, benefitsShort: card.benefits, resourcesShort: [card.passTerms, card.limits],
       benefits: [copy.benefits[2]], resources: [copy.benefits[1], copy.benefits[3], copy.benefits[4], card.passTerms, card.limits], cta: action, featured: true }}
     selected={selected} busy={flow.busy} actionLabel={flow.busy && selected ? flow.copy.loading : action}
     actionHref={localizePublicHref("/pricing?plan=single-score&billing=one_time&provider=stripe", locale)}

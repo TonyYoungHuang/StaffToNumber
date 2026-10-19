@@ -10,6 +10,9 @@ export type CreditPlanCardData = {
   credits: string;
   audience: string;
   benefits: readonly string[];
+  benefitsShort?: readonly string[];
+  resourcesShort?: readonly string[];
+  audienceShort?: string;
   resources: readonly string[];
   cta: string;
   featured: boolean;
@@ -97,7 +100,8 @@ export function CreditPlanCard({
       </div>
       <div className="score-plan-card__identity">
         <Heading>{plan.name}</Heading>
-        <p>{plan.audience}</p>
+        <p className={plan.audienceShort ? "score-plan-card__audience--full" : undefined}>{plan.audience}</p>
+        {plan.audienceShort ? <p className="score-plan-card__audience--short">{plan.audienceShort}</p> : null}
       </div>
       <div className="score-plan-card__price">
         <p>{plan.price}</p>
@@ -113,15 +117,21 @@ export function CreditPlanCard({
       <span className={`score-plan-card__action ${selected ? "score-plan-card__action--selected" : ""}`}>{label}<span aria-hidden="true">↗</span></span>
       <div className="score-plan-card__section">
         <SectionHeading>{localizedLabels.includedCapabilities}</SectionHeading>
-        <ul className="score-plan-card__features">
+        <ul className={`score-plan-card__features${plan.benefitsShort ? " score-plan-card__features--full" : ""}`}>
           {plan.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}
         </ul>
+        {plan.benefitsShort ? <ul className="score-plan-card__features score-plan-card__features--short">
+          {plan.benefitsShort.map((benefit) => <li key={benefit}>{benefit}</li>)}
+        </ul> : null}
       </div>
       <div className="score-plan-card__section score-plan-card__resources">
         <SectionHeading>{localizedLabels.benefitsAndResources}</SectionHeading>
-        <ul className="score-plan-card__resource-list">
+        <ul className={`score-plan-card__resource-list${plan.resourcesShort ? " score-plan-card__resource-list--full" : ""}`}>
           {plan.resources.map((resource) => <li key={resource}>{resource}</li>)}
         </ul>
+        {plan.resourcesShort ? <ul className="score-plan-card__resource-list score-plan-card__resource-list--short">
+          {plan.resourcesShort.map((resource) => <li key={resource}>{resource}</li>)}
+        </ul> : null}
       </div>
     </>
   );
