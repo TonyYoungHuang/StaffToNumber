@@ -35,7 +35,7 @@ test("pricing displays the pass and four plans before optional billing controls"
   assert.match(offers, /<details className=\{styles\.morePlans\}/u);
   assert.match(pass, /provider: "stripe"/u);
   assert.match(pass, /const action = copy\.name/u);
-  assert.match(pass, /resources: \[card\.passTerms, card\.limits\]/u);
+  assert.match(pass, /resources: \[copy\.benefits\[1\], copy\.benefits\[3\], copy\.benefits\[4\], card\.passTerms, card\.limits\]/u);
   assert.doesNotMatch(auth, /activate|activationCode/u);
   assert.match(auth, /onError=\{message => \{ setAuthError\(message\); setEmailOpen\(true\); \}\}/u);
   assert.match(auth, /next: "\/forgot-password"/u);

@@ -2,7 +2,12 @@ import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = getPricingCardCopy("es").benefits;
+const paidBenefits = [
+  "Editor online, generador de partes individuales Beta y colaboración en tiempo real Beta",
+  "Reproducción, grabación en el navegador y comentarios de práctica Beta, con transposición inteligente",
+  "Conversión pentagrama ↔ Jianpu y MusicXML ↔ MIDI",
+  "Exportación a PDF/SVG/PNG y WAV/MP3 cuando el motor correspondiente esté disponible",
+] as const;
 
 export const esHomepage = {
   page: {
@@ -79,9 +84,9 @@ export const esHomepage = {
   },
   plans: {
     free: { badge: getRecognitionPricingCopy("es").freeShort, name: "Gratis", cycle: "De por vida", unitPrice: getRecognitionPricingCopy("es").freeUnit, credits: "1 escaneo simple gratis de por vida · vía estándar · sin créditos mensuales", audience: getRecognitionPricingCopy("es").freeLead, benefits: [getRecognitionPricingCopy("es").freeUnit, "En esa partitura puedes editar, transponer, reproducir, elegir resultados, cambiar el título y compartir gratis, además de exportar Jianpu y Score JSON.", "Exportaciones Jianpu y Score JSON gratis; otros formatos con un pase o Starter", "Sin créditos mensuales; el escaneo simple gratuito de por vida no consume créditos.", "Las exportaciones PDF, MusicXML, MIDI, SVG, PNG, WAV y MP3, otra partitura, el reconocimiento complejo, los archivos grandes y la extracción de partes requieren un pase de 2,99 USD o Starter desde 7,99 USD/mes."], resources: [getRecognitionPricingCopy("es").freeScope, "50 MB de almacenamiento", "Biblioteca abierta de partituras y descargas CC0", "Sin tarjeta de crédito; conserva el proyecto gratuito"], cta: "Crear una partitura gratis" },
-    "starter-monthly": { badge: "Mensual flexible", name: "Starter", cycle: "Mensual", unitPrice: "0,16 USD por crédito", credits: "50 créditos / mes", audience: getPricingCardCopy("es").starter, benefits: paidBenefits, resources: ["250 MB de almacenamiento", getPricingCardCopy("es").reset], cta: "Elegir Starter" },
-    "starter-annual": { badge: "Starter anual", name: "Starter", cycle: "Anual", unitPrice: "0,082 USD por crédito", credits: "50 créditos / mes", audience: getPricingCardCopy("es").starter, benefits: paidBenefits, resources: ["250 MB de almacenamiento", getPricingCardCopy("es").reset], cta: "Elegir Starter" },
-    "converter-pro-monthly": { badge: "Mayor capacidad", name: "Converter Pro", cycle: "Mensual", unitPrice: "0,075 USD por crédito", credits: "200 créditos / mes", audience: getPricingCardCopy("es").pro, benefits: paidBenefits, resources: ["500 MB de almacenamiento", getPricingCardCopy("es").reset], cta: "Elegir Converter Pro" },
-    "converter-pro-annual": { badge: "Alta capacidad anual", name: "Converter Pro", cycle: "Anual", unitPrice: "0,041 USD por crédito", credits: "200 créditos / mes", audience: getPricingCardCopy("es").pro, benefits: paidBenefits, resources: ["500 MB de almacenamiento", getPricingCardCopy("es").reset], cta: "Elegir Converter Pro" },
+    "starter-monthly": { badge: "Mensual flexible", name: "Starter", cycle: "Mensual", unitPrice: "0,16 USD por crédito", credits: "50 créditos / mes", audience: "Para editar partituras personales con regularidad, preparar clases y practicar", benefits: [getRecognitionPricingCopy("es").starterCredits, ...paidBenefits], resources: ["50 créditos / mes" + " · " + getPricingCardCopy("es").reset, "250 MB de almacenamiento", "Biblioteca personal, historial de revisiones y catálogo abierto", "Renovación mensual sin compromiso largo"], cta: "Elegir Starter mensual" },
+    "starter-annual": { badge: "Starter anual", name: "Starter", cycle: "Anual", unitPrice: "0,082 USD por crédito", credits: "50 créditos / mes", audience: "Para uso individual a largo plazo con menor coste por crédito", benefits: ["Todas las funciones actuales de Starter mensual", ...paidBenefits], resources: ["50 créditos / mes" + " · " + getPricingCardCopy("es").reset, "250 MB de almacenamiento", "Ahorra 46,88 USD frente a doce pagos mensuales", "Biblioteca personal, historial de revisiones y catálogo abierto"], cta: "Elegir Starter anual" },
+    "converter-pro-monthly": { badge: "Mayor capacidad", name: "Converter Pro", cycle: "Mensual", unitPrice: "0,075 USD por crédito", credits: "200 créditos / mes", audience: "Para quienes procesan más partituras cada mes", benefits: ["Todas las funciones actuales de Starter", ...paidBenefits], resources: ["200 créditos / mes" + " · " + getPricingCardCopy("es").reset, "500 MB de almacenamiento", "Biblioteca personal, historial de revisiones y catálogo abierto", "Renovación mensual sin compromiso largo"], cta: "Elegir Converter Pro mensual" },
+    "converter-pro-annual": { badge: "Alta capacidad anual", name: "Converter Pro", cycle: "Anual", unitPrice: "0,041 USD por crédito", credits: "200 créditos / mes", audience: "Para procesar partituras personales con frecuencia y a largo plazo", benefits: ["Todas las funciones actuales de Converter Pro mensual", ...paidBenefits], resources: ["200 créditos / mes" + " · " + getPricingCardCopy("es").reset, "500 MB de almacenamiento", "Ahorra 80,88 USD frente a doce pagos mensuales", "Biblioteca personal, historial de revisiones y catálogo abierto"], cta: "Elegir Converter Pro anual" },
   },
 } as const satisfies HomepageLocalization;

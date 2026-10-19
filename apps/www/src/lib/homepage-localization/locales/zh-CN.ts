@@ -2,7 +2,12 @@ import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = getPricingCardCopy("zh-CN").benefits;
+const paidBenefits = [
+  "在线乐谱编辑、声部分谱副本与多人协作 Beta",
+  "练习播放、浏览器录音反馈 Beta 与智能移调",
+  "五线谱／简谱及 MusicXML／MIDI 转换",
+  "PDF／SVG／PNG 与 WAV／MP3 导出（对应渲染服务可用时）",
+] as const;
 
 export const zhCNHomepage = {
   page: {
@@ -165,16 +170,16 @@ export const zhCNHomepage = {
       resources: [getRecognitionPricingCopy("zh-CN").freeScope, "50 MB 文件存储", "开放曲库浏览与 CC0 文件下载", "无需信用卡，免费项目长期保留"], cta: "免费创建乐谱",
     },
     "starter-monthly": {
-      badge: "灵活月付", name: "Starter", cycle: "月付", unitPrice: "$0.16 / 积分", credits: "50 积分 / 月", audience: getPricingCardCopy("zh-CN").starter, benefits: paidBenefits, resources: ["250 MB 文件存储", getPricingCardCopy("zh-CN").reset], cta: "选择 Starter",
+      badge: "灵活月付", name: "Starter", cycle: "月付", unitPrice: "$0.16 / 积分", credits: "50 积分 / 月", audience: "适合日常编辑个人乐谱、备课与练习，希望持续处理新谱的用户", benefits: [getRecognitionPricingCopy("zh-CN").starterCredits, ...paidBenefits], resources: ["50 积分 / 月" + " · " + getPricingCardCopy("zh-CN").reset, "250 MB 文件存储", "个人乐谱库、修订记录与开放曲库", "按月续费，可随时停止后续续费"], cta: "选择 Starter 月付",
     },
     "starter-annual": {
-      badge: "Starter 年付", name: "Starter", cycle: "年付", unitPrice: "$0.082 / 积分", credits: "50 积分 / 月", audience: getPricingCardCopy("zh-CN").starter, benefits: paidBenefits, resources: ["250 MB 文件存储", getPricingCardCopy("zh-CN").reset], cta: "选择 Starter",
+      badge: "Starter 年付", name: "Starter", cycle: "年付", unitPrice: "$0.082 / 积分", credits: "50 积分 / 月", audience: "适合长期使用并希望降低任务成本的个人用户", benefits: ["包含 Starter 月付全部现有能力", ...paidBenefits], resources: ["50 积分 / 月" + " · " + getPricingCardCopy("zh-CN").reset, "250 MB 文件存储", "相比连续月付一年节省 $46.88", "个人乐谱库、修订记录与开放曲库"], cta: "选择 Starter 年付",
     },
     "converter-pro-monthly": {
-      badge: "更高容量", name: "Converter Pro", cycle: "月付", unitPrice: "$0.075 / 积分", credits: "200 积分 / 月", audience: getPricingCardCopy("zh-CN").pro, benefits: paidBenefits, resources: ["500 MB 文件存储", getPricingCardCopy("zh-CN").reset], cta: "选择 Converter Pro",
+      badge: "更高容量", name: "Converter Pro", cycle: "月付", unitPrice: "$0.075 / 积分", credits: "200 积分 / 月", audience: "适合每月处理更多乐谱的高频个人用户", benefits: ["包含 Starter 的全部现有能力", ...paidBenefits], resources: ["200 积分 / 月" + " · " + getPricingCardCopy("zh-CN").reset, "500 MB 文件存储", "个人乐谱库、修订记录与开放曲库", "按月续费，可随时停止后续续费"], cta: "选择 Converter Pro 月付",
     },
     "converter-pro-annual": {
-      badge: "高容量年付", name: "Converter Pro", cycle: "年付", unitPrice: "$0.041 / 积分", credits: "200 积分 / 月", audience: getPricingCardCopy("zh-CN").pro, benefits: paidBenefits, resources: ["500 MB 文件存储", getPricingCardCopy("zh-CN").reset], cta: "选择 Converter Pro",
+      badge: "高容量年付", name: "Converter Pro", cycle: "年付", unitPrice: "$0.041 / 积分", credits: "200 积分 / 月", audience: "适合长期、高频处理个人乐谱的用户", benefits: ["包含 Converter Pro 月付全部现有能力", ...paidBenefits], resources: ["200 积分 / 月" + " · " + getPricingCardCopy("zh-CN").reset, "500 MB 文件存储", "相比连续月付一年节省 $80.88", "个人乐谱库、修订记录与开放曲库"], cta: "选择 Converter Pro 年付",
     },
   },
 } as const satisfies HomepageLocalization;

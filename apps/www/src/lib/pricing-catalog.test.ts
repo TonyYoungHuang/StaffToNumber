@@ -21,8 +21,7 @@ test("homepage exposes every paid plan next to the pass and primary Pricing link
   assert.doesNotMatch(chrome, /href: checkoutUrl, label: copy\.pricing/u);
   for (const locale of SUPPORTED_LOCALES) {
     const card = getPricingCardCopy(locale);
-    assert.equal(card.benefits.length, 3);
-    assert.ok([...card.benefits, card.reset, card.passTerms, card.limits].every(text => text.length < 80), locale);
+    assert.ok([card.reset, card.passTerms, card.limits].every(text => text.length < 80), locale);
     assert.match(card.reset, /UTC/);
   }
 });

@@ -2,7 +2,12 @@ import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = getPricingCardCopy("zh-TW").benefits;
+const paidBenefits = [
+  "線上樂譜編輯、聲部分譜副本產生器 Beta 與即時協作 Beta",
+  "練習播放、瀏覽器錄音與練習回饋 Beta，以及智慧移調",
+  "五線譜 ↔ 簡譜與 MusicXML ↔ MIDI 轉換",
+  "PDF／SVG／PNG 與 WAV／MP3 匯出（對應的渲染服務可用時）",
+] as const;
 
 export const zhTWHomepage = {
   page: {
@@ -174,16 +179,16 @@ export const zhTWHomepage = {
       resources: [getRecognitionPricingCopy("zh-TW").freeScope, "50 MB 檔案儲存空間", "開放樂譜庫與 CC0 下載", "無須信用卡；免費專案持續保留"], cta: "建立免費樂譜",
     },
     "starter-monthly": {
-      badge: "彈性月繳", name: "Starter", cycle: "月繳", unitPrice: "每點 $0.16", credits: "每月 50 點", audience: getPricingCardCopy("zh-TW").starter, benefits: paidBenefits, resources: ["250 MB 檔案儲存空間", getPricingCardCopy("zh-TW").reset], cta: "選擇 Starter",
+      badge: "彈性月繳", name: "Starter", cycle: "月繳", unitPrice: "每點 $0.16", credits: "每月 50 點", audience: "適合日常編輯個人樂譜、備課與練習，希望持續處理新譜的使用者", benefits: [getRecognitionPricingCopy("zh-TW").starterCredits, ...paidBenefits], resources: ["每月 50 點" + " · " + getPricingCardCopy("zh-TW").reset, "250 MB 檔案儲存空間", "個人樂譜庫、修訂記錄與開放樂譜目錄", "按月續訂，無須長期綁約"], cta: "選擇 Starter 月繳",
     },
     "starter-annual": {
-      badge: "Starter 年繳", name: "Starter", cycle: "年繳", unitPrice: "每點 $0.082", credits: "每月 50 點", audience: getPricingCardCopy("zh-TW").starter, benefits: paidBenefits, resources: ["250 MB 檔案儲存空間", getPricingCardCopy("zh-TW").reset], cta: "選擇 Starter",
+      badge: "Starter 年繳", name: "Starter", cycle: "年繳", unitPrice: "每點 $0.082", credits: "每月 50 點", audience: "適合希望以較低單點成本長期使用的個人使用者", benefits: ["包含 Starter 月繳目前的所有功能", ...paidBenefits], resources: ["每月 50 點" + " · " + getPricingCardCopy("zh-TW").reset, "250 MB 檔案儲存空間", "相較於連續月繳十二個月，可省 $46.88", "個人樂譜庫、修訂記錄與開放樂譜目錄"], cta: "選擇 Starter 年繳",
     },
     "converter-pro-monthly": {
-      badge: "更高容量", name: "Converter Pro", cycle: "月繳", unitPrice: "每點 $0.075", credits: "每月 200 點", audience: getPricingCardCopy("zh-TW").pro, benefits: paidBenefits, resources: ["500 MB 檔案儲存空間", getPricingCardCopy("zh-TW").reset], cta: "選擇 Converter Pro",
+      badge: "更高容量", name: "Converter Pro", cycle: "月繳", unitPrice: "每點 $0.075", credits: "每月 200 點", audience: "適合每月處理較多樂譜的個人使用者", benefits: ["包含 Starter 目前的所有功能", ...paidBenefits], resources: ["每月 200 點" + " · " + getPricingCardCopy("zh-TW").reset, "500 MB 檔案儲存空間", "個人樂譜庫、修訂記錄與開放樂譜目錄", "按月續訂，無須長期綁約"], cta: "選擇 Converter Pro 月繳",
     },
     "converter-pro-annual": {
-      badge: "高容量年繳", name: "Converter Pro", cycle: "年繳", unitPrice: "每點 $0.041", credits: "每月 200 點", audience: getPricingCardCopy("zh-TW").pro, benefits: paidBenefits, resources: ["500 MB 檔案儲存空間", getPricingCardCopy("zh-TW").reset], cta: "選擇 Converter Pro",
+      badge: "高容量年繳", name: "Converter Pro", cycle: "年繳", unitPrice: "每點 $0.041", credits: "每月 200 點", audience: "適合長期且高頻率處理個人樂譜的使用者", benefits: ["包含 Converter Pro 月繳目前的所有功能", ...paidBenefits], resources: ["每月 200 點" + " · " + getPricingCardCopy("zh-TW").reset, "500 MB 檔案儲存空間", "相較於連續月繳十二個月，可省 $80.88", "個人樂譜庫、修訂記錄與開放樂譜目錄"], cta: "選擇 Converter Pro 年繳",
     },
   },
 } as const satisfies HomepageLocalization;

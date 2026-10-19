@@ -10,7 +10,7 @@ test.beforeEach(async ({ page, baseURL }) => {
 });
 
 for (const [locale, prefix] of [["en", ""], ["zh-CN", "/zh-cn"], ["zh-TW", "/zh-tw"], ["ja", "/ja"], ["ko", "/ko"], ["fr", "/fr"], ["es", "/es"], ["de", "/de"], ["ru", "/ru"]]) {
-  test(`${locale}: home and pricing show the same five concise offers; nav returns to home pricing`, async ({ page }) => {
+  test(`${locale}: home and pricing show the same five detailed offers; nav returns to home pricing`, async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await page.goto(`${prefix || "/"}#pricing`);
     const homeCards = page.locator("#pricing .score-plan-grid > [data-plan]");
@@ -21,8 +21,7 @@ for (const [locale, prefix] of [["en", ""], ["zh-CN", "/zh-cn"], ["zh-TW", "/zh-
     expect(new Set(tops).size).toBe(1);
     for (let index = 0; index < 5; index++) {
       await expect(homeCards.nth(index)).toBeVisible();
-      expect(await homeCards.nth(index).locator("li").count()).toBeGreaterThanOrEqual(3);
-      expect(await homeCards.nth(index).locator("li").count()).toBeLessThanOrEqual(6);
+      expect(await homeCards.nth(index).locator("li").count()).toBe(index === 0 ? 6 : 9);
       await expect(homeCards.nth(index).locator("a")).toHaveCount(1);
       if (locale === "en" || locale === "zh-CN") {
         await expect(homeCards.nth(index).locator(".score-plan-card__price > p")).toHaveText(prices[index]);

@@ -2,7 +2,12 @@ import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = getPricingCardCopy("ru").benefits;
+const paidBenefits = [
+  "Онлайн-редактор, генератор отдельных партий Beta и совместная работа в реальном времени Beta",
+  "Воспроизведение, запись в браузере и обратная связь по занятиям Beta, а также умное транспонирование",
+  "Преобразование нотный стан ↔ Jianpu и MusicXML ↔ MIDI",
+  "Экспорт PDF/SVG/PNG и WAV/MP3 при наличии соответствующего модуля",
+] as const;
 
 export const ruHomepage = {
   page: {
@@ -79,9 +84,9 @@ export const ruHomepage = {
   },
   plans: {
     free: { badge: getRecognitionPricingCopy("ru").freeShort, name: "Бесплатный", cycle: "Пожизненно", unitPrice: getRecognitionPricingCopy("ru").freeUnit, credits: "1 бесплатное простое сканирование за всё время · стандартная очередь · без месячных кредитов", audience: getRecognitionPricingCopy("ru").freeLead, benefits: [getRecognitionPricingCopy("ru").freeUnit, "На этой партитуре бесплатно доступны редактирование, транспонирование, воспроизведение, выбор результатов, смена названия, публикация и экспорт Jianpu и Score JSON.", "Экспорт Jianpu и Score JSON бесплатно; другие форматы с пакетом для одной партитуры или Starter", "Без месячных кредитов; одно бесплатное простое сканирование не тратит кредиты.", "Экспорт PDF, MusicXML, MIDI, SVG, PNG, WAV и MP3, другая партитура, сложное распознавание, большие файлы и извлечение партий требуют пакета за 2,99 USD или Starter от 7,99 USD/месяц."], resources: [getRecognitionPricingCopy("ru").freeScope, "50 МБ для файлов", "Открытая библиотека партитур и загрузки CC0", "Банковская карта не требуется; бесплатный проект сохраняется"], cta: "Создать бесплатную партитуру" },
-    "starter-monthly": { badge: "Гибкая помесячная оплата", name: "Starter", cycle: "Ежемесячно", unitPrice: "0,16 $ за кредит", credits: "50 кредитов / месяц", audience: getPricingCardCopy("ru").starter, benefits: paidBenefits, resources: ["250 МБ для файлов", getPricingCardCopy("ru").reset], cta: "Выбрать Starter" },
-    "starter-annual": { badge: "Starter на год", name: "Starter", cycle: "Ежегодно", unitPrice: "0,082 $ за кредит", credits: "50 кредитов / месяц", audience: getPricingCardCopy("ru").starter, benefits: paidBenefits, resources: ["250 МБ для файлов", getPricingCardCopy("ru").reset], cta: "Выбрать Starter" },
-    "converter-pro-monthly": { badge: "Больше возможностей", name: "Converter Pro", cycle: "Ежемесячно", unitPrice: "0,075 $ за кредит", credits: "200 кредитов / месяц", audience: getPricingCardCopy("ru").pro, benefits: paidBenefits, resources: ["500 МБ для файлов", getPricingCardCopy("ru").reset], cta: "Выбрать Converter Pro" },
-    "converter-pro-annual": { badge: "Большой годовой объём", name: "Converter Pro", cycle: "Ежегодно", unitPrice: "0,041 $ за кредит", credits: "200 кредитов / месяц", audience: getPricingCardCopy("ru").pro, benefits: paidBenefits, resources: ["500 МБ для файлов", getPricingCardCopy("ru").reset], cta: "Выбрать Converter Pro" },
+    "starter-monthly": { badge: "Гибкая помесячная оплата", name: "Starter", cycle: "Ежемесячно", unitPrice: "0,16 $ за кредит", credits: "50 кредитов / месяц", audience: "Для регулярного редактирования личных партитур, подготовки занятий и практики", benefits: [getRecognitionPricingCopy("ru").starterCredits, ...paidBenefits], resources: ["50 кредитов / месяц" + " · " + getPricingCardCopy("ru").reset, "250 МБ для файлов", "Личная библиотека, история редакций и открытый каталог", "Ежемесячное продление без долгих обязательств"], cta: "Выбрать Starter на месяц" },
+    "starter-annual": { badge: "Starter на год", name: "Starter", cycle: "Ежегодно", unitPrice: "0,082 $ за кредит", credits: "50 кредитов / месяц", audience: "Для долгосрочного личного использования по меньшей цене за кредит", benefits: ["Все текущие возможности Starter с помесячной оплатой", ...paidBenefits], resources: ["50 кредитов / месяц" + " · " + getPricingCardCopy("ru").reset, "250 МБ для файлов", "Экономия 46,88 $ по сравнению с двенадцатью месячными платежами", "Личная библиотека, история редакций и открытый каталог"], cta: "Выбрать Starter на год" },
+    "converter-pro-monthly": { badge: "Больше возможностей", name: "Converter Pro", cycle: "Ежемесячно", unitPrice: "0,075 $ за кредит", credits: "200 кредитов / месяц", audience: "Для тех, кто каждый месяц обрабатывает больше партитур", benefits: ["Все текущие возможности Starter", ...paidBenefits], resources: ["200 кредитов / месяц" + " · " + getPricingCardCopy("ru").reset, "500 МБ для файлов", "Личная библиотека, история редакций и открытый каталог", "Ежемесячное продление без долгих обязательств"], cta: "Выбрать Converter Pro на месяц" },
+    "converter-pro-annual": { badge: "Большой годовой объём", name: "Converter Pro", cycle: "Ежегодно", unitPrice: "0,041 $ за кредит", credits: "200 кредитов / месяц", audience: "Для постоянной интенсивной обработки личных партитур", benefits: ["Все текущие возможности Converter Pro с помесячной оплатой", ...paidBenefits], resources: ["200 кредитов / месяц" + " · " + getPricingCardCopy("ru").reset, "500 МБ для файлов", "Экономия 80,88 $ по сравнению с двенадцатью месячными платежами", "Личная библиотека, история редакций и открытый каталог"], cta: "Выбрать Converter Pro на год" },
   },
 } as const satisfies HomepageLocalization;

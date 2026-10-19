@@ -2,7 +2,12 @@ import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = getPricingCardCopy("ko").benefits;
+const paidBenefits = [
+  "온라인 악보 편집기, 파트보 사본 생성기 Beta, 실시간 공동 작업 Beta",
+  "재생, 브라우저 녹음 및 연습 피드백 Beta, 스마트 조옮김",
+  "오선보 ↔ Jianpu(숫자보) 및 MusicXML ↔ MIDI 변환",
+  "해당 렌더러를 사용할 수 있을 때 PDF／SVG／PNG 및 WAV／MP3 내보내기",
+] as const;
 
 export const koHomepage = {
   page: {
@@ -174,16 +179,16 @@ export const koHomepage = {
       resources: [getRecognitionPricingCopy("ko").freeScope, "50 MB 파일 저장 공간", "오픈 악보 라이브러리 및 CC0 다운로드", "신용카드 불필요, 무료 프로젝트 계속 보관"], cta: "무료 악보 만들기",
     },
     "starter-monthly": {
-      badge: "유연한 월간 결제", name: "Starter", cycle: "월간", unitPrice: "크레딧당 $0.16", credits: "월 50크레딧", audience: getPricingCardCopy("ko").starter, benefits: paidBenefits, resources: ["250 MB 파일 저장 공간", getPricingCardCopy("ko").reset], cta: "Starter",
+      badge: "유연한 월간 결제", name: "Starter", cycle: "월간", unitPrice: "크레딧당 $0.16", credits: "월 50크레딧", audience: "일상적인 개인 악보 편집, 수업 준비와 연습을 위해 새 악보를 꾸준히 처리하는 분께", benefits: [getRecognitionPricingCopy("ko").starterCredits, ...paidBenefits], resources: ["월 50크레딧" + " · " + getPricingCardCopy("ko").reset, "250 MB 파일 저장 공간", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그", "장기 약정 없는 월간 갱신"], cta: "Starter 월간 선택",
     },
     "starter-annual": {
-      badge: "Starter 연간", name: "Starter", cycle: "연간", unitPrice: "크레딧당 $0.082", credits: "월 50크레딧", audience: getPricingCardCopy("ko").starter, benefits: paidBenefits, resources: ["250 MB 파일 저장 공간", getPricingCardCopy("ko").reset], cta: "Starter",
+      badge: "Starter 연간", name: "Starter", cycle: "연간", unitPrice: "크레딧당 $0.082", credits: "월 50크레딧", audience: "크레딧당 비용을 낮춰 장기간 이용하려는 개인에게 적합", benefits: ["현재 Starter 월간의 모든 기능", ...paidBenefits], resources: ["월 50크레딧" + " · " + getPricingCardCopy("ko").reset, "250 MB 파일 저장 공간", "12개월 월간 결제 대비 $46.88 절약", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그"], cta: "Starter 연간 선택",
     },
     "converter-pro-monthly": {
-      badge: "더 높은 용량", name: "Converter Pro", cycle: "월간", unitPrice: "크레딧당 $0.075", credits: "월 200크레딧", audience: getPricingCardCopy("ko").pro, benefits: paidBenefits, resources: ["500 MB 파일 저장 공간", getPricingCardCopy("ko").reset], cta: "Converter Pro",
+      badge: "더 높은 용량", name: "Converter Pro", cycle: "월간", unitPrice: "크레딧당 $0.075", credits: "월 200크레딧", audience: "매월 더 많은 악보를 처리하는 개인에게 적합", benefits: ["현재 Starter의 모든 기능", ...paidBenefits], resources: ["월 200크레딧" + " · " + getPricingCardCopy("ko").reset, "500 MB 파일 저장 공간", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그", "장기 약정 없는 월간 갱신"], cta: "Converter Pro 월간 선택",
     },
     "converter-pro-annual": {
-      badge: "고용량 연간", name: "Converter Pro", cycle: "연간", unitPrice: "크레딧당 $0.041", credits: "월 200크레딧", audience: getPricingCardCopy("ko").pro, benefits: paidBenefits, resources: ["500 MB 파일 저장 공간", getPricingCardCopy("ko").reset], cta: "Converter Pro",
+      badge: "고용량 연간", name: "Converter Pro", cycle: "연간", unitPrice: "크레딧당 $0.041", credits: "월 200크레딧", audience: "개인 악보를 장기간 자주 처리하는 분에게 적합", benefits: ["현재 Converter Pro 월간의 모든 기능", ...paidBenefits], resources: ["월 200크레딧" + " · " + getPricingCardCopy("ko").reset, "500 MB 파일 저장 공간", "12개월 월간 결제 대비 $80.88 절약", "개인 라이브러리, 리비전 기록, 오픈 악보 카탈로그"], cta: "Converter Pro 연간 선택",
     },
   },
 } as const satisfies HomepageLocalization;

@@ -2,7 +2,12 @@ import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = getPricingCardCopy("en").benefits;
+const paidBenefits = [
+  "Online editor, Part Copy Generator Beta, and Real-time Collaboration Beta",
+  "Playback, Browser Recording & Practice Feedback Beta, and smart transposition",
+  "Staff ↔ Jianpu and MusicXML ↔ MIDI conversion",
+  "PDF/SVG/PNG and WAV/MP3 export when the corresponding renderer is available",
+] as const;
 
 export const enHomepage = {
   page: {
@@ -174,16 +179,16 @@ export const enHomepage = {
       resources: [getRecognitionPricingCopy("en").freeScope, "50 MB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"], cta: "Create a free score",
     },
     "starter-monthly": {
-      badge: "Flexible monthly", name: "Starter", cycle: "Monthly", unitPrice: "$0.16 per credit", credits: "50 credits / month", audience: getPricingCardCopy("en").starter, benefits: paidBenefits, resources: ["250 MB file storage", getPricingCardCopy("en").reset], cta: "Choose Starter",
+      badge: "Flexible monthly", name: "Starter", cycle: "Monthly", unitPrice: "$0.16 per credit", credits: "50 credits / month", audience: "For regular personal score editing, lesson preparation and practice", benefits: [getRecognitionPricingCopy("en").starterCredits, ...paidBenefits], resources: ["50 credits / month" + " · " + getPricingCardCopy("en").reset, "250 MB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"], cta: "Choose Starter monthly",
     },
     "starter-annual": {
-      badge: "Starter annual", name: "Starter", cycle: "Annual", unitPrice: "$0.082 per credit", credits: "50 credits / month", audience: getPricingCardCopy("en").starter, benefits: paidBenefits, resources: ["250 MB file storage", getPricingCardCopy("en").reset], cta: "Choose Starter",
+      badge: "Starter annual", name: "Starter", cycle: "Annual", unitPrice: "$0.082 per credit", credits: "50 credits / month", audience: "For long-term individual use at a lower cost per credit", benefits: ["All current Starter monthly capabilities", ...paidBenefits], resources: ["50 credits / month" + " · " + getPricingCardCopy("en").reset, "250 MB file storage", "Save $46.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"], cta: "Choose Starter annual",
     },
     "converter-pro-monthly": {
-      badge: "Higher capacity", name: "Converter Pro", cycle: "Monthly", unitPrice: "$0.075 per credit", credits: "200 credits / month", audience: getPricingCardCopy("en").pro, benefits: paidBenefits, resources: ["500 MB file storage", getPricingCardCopy("en").reset], cta: "Choose Converter Pro",
+      badge: "Higher capacity", name: "Converter Pro", cycle: "Monthly", unitPrice: "$0.075 per credit", credits: "200 credits / month", audience: "For individuals who process more scores each month", benefits: ["All current Starter capabilities", ...paidBenefits], resources: ["200 credits / month" + " · " + getPricingCardCopy("en").reset, "500 MB file storage", "Personal library, revision history, and open score catalog", "Monthly renewal with no long commitment"], cta: "Choose Converter Pro monthly",
     },
     "converter-pro-annual": {
-      badge: "High-capacity annual", name: "Converter Pro", cycle: "Annual", unitPrice: "$0.041 per credit", credits: "200 credits / month", audience: getPricingCardCopy("en").pro, benefits: paidBenefits, resources: ["500 MB file storage", getPricingCardCopy("en").reset], cta: "Choose Converter Pro",
+      badge: "High-capacity annual", name: "Converter Pro", cycle: "Annual", unitPrice: "$0.041 per credit", credits: "200 credits / month", audience: "For sustained, high-frequency personal score processing", benefits: ["All current Converter Pro monthly capabilities", ...paidBenefits], resources: ["200 credits / month" + " · " + getPricingCardCopy("en").reset, "500 MB file storage", "Save $80.88 versus twelve monthly payments", "Personal library, revision history, and open score catalog"], cta: "Choose Converter Pro annual",
     },
   },
 } as const satisfies HomepageLocalization;
