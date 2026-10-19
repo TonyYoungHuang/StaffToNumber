@@ -1,6 +1,7 @@
 import { Panel } from "@score/ui";
 import { PricingCreditGuide } from "./PricingCreditGuide";
 import { PricingOffers } from "./PricingOffers";
+import { PricingDetails } from "./PricingDetails";
 import { pricingCopy } from "../lib/localized-pricing";
 import { getAppStartConversionUrl, siteConfig } from "../lib/site";
 import { getLocalizedAbsoluteUrl, localizePublicHref } from "../lib/locale-routing";
@@ -18,12 +19,14 @@ export function LocalizedPricingPage({ locale }: { locale: keyof typeof pricingC
   ];
   return <div className="public-container page-stack french-pricing-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }} />
-    <PricingOffers locale={locale} title={copy.title} description={copy.description} />
+    <PricingOffers locale={locale} title={copy.title} />
+    <PricingDetails locale={locale}>
     <Panel className="stack-md"><h2 className="section-title">{copy.freeTitle}</h2><p className="body-copy">{copy.freeBody}</p><a className="public-button secondary" href={getAppStartConversionUrl(locale)}>{copy.freeAction}</a></Panel>
     <PricingCreditGuide locale={locale} />
     <section className="surface-panel stack-lg"><h2 className="section-title">{copy.faqTitle}</h2>
       {copy.faqs.map(item => <details key={item.question} className="list-item"><summary className="item-title">{item.question}</summary><p className="body-copy">{item.answer}</p></details>)}
       <div className="button-row"><a className="public-button secondary" href={localizePublicHref("/terms", locale)}>{copy.terms}</a><a className="public-button tertiary" href={localizePublicHref("/support?category=payment", locale)}>{copy.support}</a></div>
     </section>
+    </PricingDetails>
   </div>;
 }

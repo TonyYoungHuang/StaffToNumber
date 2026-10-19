@@ -26,15 +26,16 @@ test("default purchase selection is a one-time One Score Pass through Stripe", (
   assert.deepEqual(defaultPurchaseSelection("?provider=paddle"), { planCode: "single-score", billingKind: "one_time", provider: "stripe" });
 });
 
-test("pricing starts with the pass while subscription choices are collapsed", () => {
+test("pricing displays the pass and four plans before optional billing controls", () => {
   const offers = readFileSync(new URL("../components/PricingOffersClient.tsx", import.meta.url), "utf8");
   const pass = readFileSync(new URL("../components/SingleScoreOffer.tsx", import.meta.url), "utf8");
   const auth = readFileSync(new URL("../components/PurchaseFlowProvider.tsx", import.meta.url), "utf8");
-  assert.match(offers, /data-primary-plan="single-score"/u);
-  assert.match(offers, /useState\(false\)/u);
+  assert.match(offers, /<CreditPlanGrid[\s\S]*<SingleScoreOffer[\s\S]*plans\[kind\]\.map[\s\S]*<\/CreditPlanGrid>/u);
+  assert.ok(offers.indexOf("</CreditPlanGrid>") < offers.indexOf("<details"));
   assert.match(offers, /<details className=\{styles\.morePlans\}/u);
   assert.match(pass, /provider: "stripe"/u);
-  assert.match(pass, /const action = `\$\{copy\.name\} · US\$2\.99`/u);
+  assert.match(pass, /const action = copy\.name/u);
+  assert.match(pass, /resources: \[card\.passTerms, card\.limits\]/u);
   assert.doesNotMatch(auth, /activate|activationCode/u);
   assert.match(auth, /onError=\{message => \{ setAuthError\(message\); setEmailOpen\(true\); \}\}/u);
   assert.match(auth, /next: "\/forgot-password"/u);

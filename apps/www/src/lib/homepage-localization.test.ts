@@ -97,14 +97,17 @@ test("localized plan displays preserve checkout and entitlement invariants", () 
       : locale === "de" || locale === "ru" || locale === "es" ? ["0,00 USD", "7,99 USD", "49,00 USD", "14,99 USD", "99,00 USD"]
       : ["$0", "$7.99", "$49", "$14.99", "$99"]);
     assert.deepEqual(localizedPlans.map((plan) => plan.featured), [false, false, true, false, false]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.benefits.length), [5, 5, 5, 5, 5]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.resources.length), [4, 4, 4, 4, 4]);
+    assert.deepEqual(localizedPlans.map((plan) => plan.benefits.length), [5, 3, 3, 3, 3]);
+    assert.deepEqual(localizedPlans.map((plan) => plan.resources.length), [4, 2, 2, 2, 2]);
     assert.match(localizedPlans[0]?.credits ?? "", /1/u);
     assert.doesNotMatch(localizedPlans[0]?.credits ?? "", /25/u);
     assert.ok(localizedPlans.slice(1, 3).every((plan) => /50/u.test(plan.credits)));
     assert.ok(localizedPlans.slice(3).every((plan) => /200/u.test(plan.credits)));
-    assert.match(localizedPlans[2]?.resources.join(" ") ?? "", /46[.,]88/u);
-    assert.match(localizedPlans[4]?.resources.join(" ") ?? "", /80[.,]88/u);
+    for (const plan of localizedPlans.slice(1)) {
+      assert.match(plan.resources.join(" "), /UTC/u);
+      assert.ok(plan.benefits.length + plan.resources.length <= 6, `${locale}: ${plan.code}`);
+      assert.ok(plan.audience.length < 80, `${locale}: concise audience`);
+    }
   }
 });
 

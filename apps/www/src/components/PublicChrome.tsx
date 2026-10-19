@@ -49,7 +49,7 @@ export function PublicChrome({
   const homeSections = {
     workflow: localizePublicHref("/#workflow", locale),
     useCases: localizePublicHref("/#cases", locale),
-    pricing: localizePublicHref("/pricing", locale),
+    pricing: localizePublicHref("/#pricing", locale),
   } as const;
   const primaryActionLabel = siteConfig.release.productAppAvailable ? copy.editForFree : copy.launchStatus;
 
@@ -123,7 +123,7 @@ export function PublicChrome({
     ...(siteConfig.discordInviteUrl ? [{ href: siteConfig.discordInviteUrl, label: copy.discord, external: true, desktopOnly: true }] : []),
     { href: purchaseFlow.user ? getAppScoreProjectsUrl(locale) : loginUrl, label: purchaseFlow.user?.email.split("@")[0] ?? copy.login, tone: "secondary", desktopOnly: true,
       onClick: purchaseFlow.user ? undefined : event => { event.preventDefault(); purchaseFlow.signIn("login", { destination: loginUrl }); } },
-    ...(siteConfig.release.checkoutAvailable ? [{ href: checkoutUrl, label: copy.pricing, tone: "tertiary" as const }] : []),
+    ...(siteConfig.release.checkoutAvailable ? [{ href: homeSections.pricing, label: copy.pricing, tone: "tertiary" as const }] : []),
     {
       href: homepageScanUrl,
       label: primaryActionLabel,

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { CHECKOUT_PLAN_CODES, getCheckoutPlanCatalog, getPricingPlanCatalog } from "@score/shared";
 import { frenchPricingFaqs, getFrenchPricingPlans } from "./french-pricing";
 import sitemap from "../app/sitemap";
@@ -8,6 +9,23 @@ import { getLocalizedPaidPlans } from "./localized-pricing";
 import { getHomepageLocalization } from "./homepage-localization";
 import { getEnEsFeatureFaq } from "./feature-localization/en-es-faq";
 import { findPlatformFeaturePage } from "./platform-feature-pages";
+import { getPricingCardCopy } from "./pricing-card-copy";
+import { SUPPORTED_LOCALES } from "@score/i18n";
+
+test("homepage exposes every paid plan next to the pass and primary Pricing links use the localized home anchor", () => {
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const chrome = readFileSync(new URL("../components/PublicChrome.tsx", import.meta.url), "utf8");
+  assert.match(home, /<SingleScoreOffer[\s\S]*plans\.filter\(plan => plan\.code !== "free"\)\.map/u);
+  assert.doesNotMatch(home, /plan\.code\.startsWith\("starter-/u);
+  assert.match(chrome, /pricing: localizePublicHref\("\/#pricing", locale\)/u);
+  assert.doesNotMatch(chrome, /href: checkoutUrl, label: copy\.pricing/u);
+  for (const locale of SUPPORTED_LOCALES) {
+    const card = getPricingCardCopy(locale);
+    assert.equal(card.benefits.length, 3);
+    assert.ok([...card.benefits, card.reset, card.passTerms, card.limits].every(text => text.length < 80), locale);
+    assert.match(card.reset, /UTC/);
+  }
+});
 
 test("English and Spanish purchase types preserve amounts and quotas without recurring labels on prepaid access", () => {
   for (const locale of ["en", "es"] as const) {

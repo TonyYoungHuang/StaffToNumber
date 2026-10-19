@@ -1,12 +1,8 @@
+import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = [
-  "Éditeur en ligne, générateur de parties séparées bêta et collaboration en temps réel bêta",
-  "Lecture, enregistrement dans le navigateur et retour sur la pratique bêta, avec transposition intelligente",
-  "Conversion portée ↔ Jianpu et MusicXML ↔ MIDI",
-  "Export PDF/SVG/PNG et WAV/MP3 selon les formats disponibles dans l’application",
-] as const;
+const paidBenefits = getPricingCardCopy("fr").benefits;
 
 export const frHomepage = {
   page: {
@@ -70,7 +66,7 @@ export const frHomepage = {
     ],
     pricingKicker: "Tarifs par crédits",
     pricingTitle: "Choisissez votre formule de crédits",
-    pricingBody: "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation. Comparez prix, fonctions et ressources avant de vous connecter.",
+    pricingBody: getPricingCardCopy("fr").intro,
     pricingPromoLabel: "Économisez avec l’abonnement annuel",
     pricingPromoValue: "Environ 45 % à 49 % d’économie par an",
     creditPlanGridLabel: "Formules de crédits",
@@ -127,9 +123,9 @@ export const frHomepage = {
   },
   plans: {
     free: { badge: getRecognitionPricingCopy("fr").freeShort, name: "Gratuit", cycle: "À vie", unitPrice: getRecognitionPricingCopy("fr").freeUnit, credits: "1 scan simple gratuit à vie · traitement standard · aucun crédit mensuel", audience: getRecognitionPricingCopy("fr").freeLead, benefits: [getRecognitionPricingCopy("fr").freeUnit, "Sur cette partition, la modification, la transposition, la lecture, le choix des résultats, le titre et le partage sont gratuits, ainsi que les exports Jianpu et Score JSON.", "Exports Jianpu et Score JSON gratuits ; autres formats avec un pass une partition ou Starter", "Aucun crédit mensuel ; le scan simple gratuit à vie ne consomme aucun crédit.", "Les exports PDF, MusicXML, MIDI, SVG, PNG, WAV et MP3, une autre partition, la reconnaissance complexe, les fichiers volumineux et l’extraction de parties nécessitent un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois."], resources: [getRecognitionPricingCopy("fr").freeScope, "50 Mo de stockage", "Bibliothèque de partitions ouvertes et téléchargements CC0", "Aucune carte bancaire requise ; conservez le projet gratuit"], cta: "Créer une partition gratuite" },
-    "starter-monthly": { badge: "Mensuel flexible", name: "Starter", cycle: "Mensuel", unitPrice: "0,16 $US par crédit", credits: "50 crédits / mois", audience: getRecognitionPricingCopy("fr").starterScope, benefits: ["Traitez plus que le seul projet gratuit", ...paidBenefits], resources: [getRecognitionPricingCopy("fr").starterCredits, "250 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Starter mensuel" },
-    "starter-annual": { badge: "Starter annuel", name: "Starter", cycle: "Annuel", unitPrice: "0,082 $US par crédit", credits: "50 crédits / mois", audience: "Pour un usage individuel durable à moindre coût par crédit", benefits: ["Toutes les fonctions actuelles de Starter mensuel", ...paidBenefits], resources: ["50 crédits par mois, réinitialisés chaque mois", "250 Mo de stockage", "Économisez 46,88 $US par rapport à douze mensualités", "Bibliothèque personnelle, historique des révisions et catalogue ouvert"], cta: "Choisir Starter annuel" },
-    "converter-pro-monthly": { badge: "Capacité supérieure", name: "Converter Pro", cycle: "Mensuel", unitPrice: "0,075 $US par crédit", credits: "200 crédits / mois", audience: "Pour les personnes qui traitent davantage de partitions chaque mois", benefits: ["Toutes les fonctions actuelles de Starter", ...paidBenefits], resources: ["200 crédits par mois", "500 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Converter Pro mensuel" },
-    "converter-pro-annual": { badge: "Capacité élevée annuelle", name: "Converter Pro", cycle: "Annuel", unitPrice: "0,041 $US par crédit", credits: "200 crédits / mois", audience: "Pour un traitement personnel régulier et intensif", benefits: ["Toutes les fonctions actuelles de Converter Pro mensuel", ...paidBenefits], resources: ["200 crédits par mois, réinitialisés chaque mois", "500 Mo de stockage", "Économisez 80,88 $US par rapport à douze mensualités", "Bibliothèque personnelle, historique des révisions et catalogue ouvert"], cta: "Choisir Converter Pro annuel" },
+    "starter-monthly": { badge: "Mensuel flexible", name: "Starter", cycle: "Mensuel", unitPrice: "0,16 $US par crédit", credits: "50 crédits / mois", audience: getPricingCardCopy("fr").starter, benefits: paidBenefits, resources: ["250 Mo de stockage", getPricingCardCopy("fr").reset], cta: "Choisir Starter" },
+    "starter-annual": { badge: "Starter annuel", name: "Starter", cycle: "Annuel", unitPrice: "0,082 $US par crédit", credits: "50 crédits / mois", audience: getPricingCardCopy("fr").starter, benefits: paidBenefits, resources: ["250 Mo de stockage", getPricingCardCopy("fr").reset], cta: "Choisir Starter" },
+    "converter-pro-monthly": { badge: "Capacité supérieure", name: "Converter Pro", cycle: "Mensuel", unitPrice: "0,075 $US par crédit", credits: "200 crédits / mois", audience: getPricingCardCopy("fr").pro, benefits: paidBenefits, resources: ["500 Mo de stockage", getPricingCardCopy("fr").reset], cta: "Choisir Converter Pro" },
+    "converter-pro-annual": { badge: "Capacité élevée annuelle", name: "Converter Pro", cycle: "Annuel", unitPrice: "0,041 $US par crédit", credits: "200 crédits / mois", audience: getPricingCardCopy("fr").pro, benefits: paidBenefits, resources: ["500 Mo de stockage", getPricingCardCopy("fr").reset], cta: "Choisir Converter Pro" },
   },
 } as const satisfies HomepageLocalization;

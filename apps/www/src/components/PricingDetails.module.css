@@ -1,0 +1,3 @@
+.details { margin-top: 20px; }
+.details > summary { width: fit-content; margin: 0 auto; color: var(--public-copy); cursor: pointer; font-size: 14px; line-height: 1.6; }
+.details[open] > summary { margin-bottom: 24px; }

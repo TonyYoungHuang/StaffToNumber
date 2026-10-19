@@ -1,4 +1,5 @@
 import { SingleScoreOffer } from "../components/SingleScoreOffer";
+import { PricingDetails } from "../components/PricingDetails";
 import Image from "next/image";
 import Link from "next/link";
 import { getLocaleConfig, getScorePreflightMessages, getScoreRequestWaitingMessages } from "@score/i18n";
@@ -272,8 +273,9 @@ export default async function HomePage() {
           </header>
           <CreditPlanGrid label={copy.creditPlanGridLabel}>
             <SingleScoreOffer locale={locale} labels={copy.creditPlanCardLabels} />
-            {plans.filter(plan => plan.code.startsWith("starter-")).map(plan => <PurchasePlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} />)}
+            {plans.filter(plan => plan.code !== "free").map(plan => <PurchasePlanCard key={plan.code} plan={plan} labels={copy.creditPlanCardLabels} />)}
           </CreditPlanGrid>
+          <PricingDetails locale={locale}>
           <div className={styles.oneTimeOffer}>
             <div><strong>{purchaseCopy.oneTime}</strong><p>{purchaseCopy.publicNote}</p></div>
             <a href={getCheckoutUrl(locale, "starter-annual", "one_time")}>{purchaseCopy.oneTime} →</a>
@@ -283,6 +285,7 @@ export default async function HomePage() {
             <div>{copy.creditRules.map(([amount, title, body]) => <article key={title}><strong>{amount}</strong><span>{title}</span><p>{body}</p></article>)}</div>
           </div>
           <p className={styles.priceNote}>{copy.priceNote}</p>
+          </PricingDetails>
         </div>
       </section>
 

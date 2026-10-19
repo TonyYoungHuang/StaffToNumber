@@ -14,7 +14,7 @@ export function PurchasePlanCard({ plan, labels, billingKind = "subscription", p
   const { locale } = useSiteLocale();
   const flow = usePurchaseFlow();
   if (!isCheckoutPlanCode(plan.code)) return null;
-  if (!siteConfig.release.checkoutAvailable) return <CreditPlanCard plan={plan} labels={labels} headingLevel={3} actionHref={getSupportUrl("payment", "pricing", locale)} />;
+  if (!siteConfig.release.checkoutAvailable) return <PlanCardFrame code={plan.code}><CreditPlanCard plan={plan} labels={labels} headingLevel={3} actionHref={getSupportUrl("payment", "pricing", locale)} /></PlanCardFrame>;
   const selection = { planCode: plan.code, billingKind, provider };
   const selected = Boolean(flow.selected && purchaseSelectionKey(flow.selected) === purchaseSelectionKey(selection));
   return <PlanCardFrame code={plan.code}><CreditPlanCard plan={plan} labels={labels} headingLevel={3}

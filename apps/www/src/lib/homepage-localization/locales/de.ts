@@ -1,12 +1,8 @@
+import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = [
-  "Online-Editor, Stimmenauszug-Generator Beta und Echtzeit-Zusammenarbeit Beta",
-  "Wiedergabe, Browser-Aufnahme und Übungsfeedback Beta sowie intelligente Transposition",
-  "Konvertierung Notensystem ↔ Jianpu und MusicXML ↔ MIDI",
-  "Export als PDF/SVG/PNG und WAV/MP3, sofern der jeweilige Renderer verfügbar ist",
-] as const;
+const paidBenefits = getPricingCardCopy("de").benefits;
 
 export const deHomepage = {
   page: {
@@ -42,7 +38,7 @@ export const deHomepage = {
     trust: [["Kein Versprechen perfekter Erkennung", "Schwache Scans, dichter Notensatz und Mehrstimmigkeit erfordern häufig Korrekturen."], ["Kandidaten bleiben korrigierbar", "Noten, Dauern, Tonarten, Liedtexte und Takte werden in strukturierten Revisionen erfasst."], ["Private Dateien bleiben privat", "Projekte bleiben von öffentlichen Beispielen und Nachweisen getrennt."], ["Formate und Projekte bleiben portabel", "MusicXML, MIDI, Jianpu-Text und Score JSON verringern die Anbieterbindung."]],
     pricingKicker: "Preise nach Credits",
     pricingTitle: "Wählen Sie Ihren Credit-Tarif",
-    pricingBody: "Credits werden beim Erstellen eines Auftrags reserviert und bei einem Fehlschlag oder einer Stornierung automatisch zurückgegeben. Vergleichen Sie Preis, Funktionen und Ressourcen vor der Anmeldung.",
+    pricingBody: getPricingCardCopy("de").intro,
     pricingPromoLabel: "Mit Jahreszahlung sparen",
     pricingPromoValue: "Jährlich etwa 45 %–49 % sparen",
     creditPlanGridLabel: "Credit-Tarife",
@@ -83,9 +79,9 @@ export const deHomepage = {
   },
   plans: {
     free: { badge: getRecognitionPricingCopy("de").freeShort, name: "Kostenlos", cycle: "Lebenslang", unitPrice: getRecognitionPricingCopy("de").freeUnit, credits: "1 kostenloser einfacher Scan auf Lebenszeit · Standardverarbeitung · keine monatlichen Credits", audience: getRecognitionPricingCopy("de").freeLead, benefits: [getRecognitionPricingCopy("de").freeUnit, "Diese Partitur kostenlos bearbeiten, transponieren, abspielen, Erkennungsergebnisse auswählen, umbenennen und teilen sowie als Jianpu und Score JSON exportieren.", "Jianpu- und Score-JSON-Exporte kostenlos; andere Formate mit Einzelpartitur-Pass oder Starter", "Keine monatlichen Credits; der kostenlose einfache Scan auf Lebenszeit verbraucht keine Credits.", "PDF-, MusicXML-, MIDI-, SVG-, PNG-, WAV- und MP3-Exporte, eine weitere Partitur, komplexe Erkennung, große Dateien und Stimmenauszüge benötigen einen Einzelpartitur-Pass für 2,99 USD oder Starter ab 7,99 USD/Monat."], resources: [getRecognitionPricingCopy("de").freeScope, "50 MB Dateispeicher", "Offene Partiturbibliothek und CC0-Downloads", "Keine Kreditkarte erforderlich; das kostenlose Projekt bleibt erhalten"], cta: "Kostenlose Partitur erstellen" },
-    "starter-monthly": { badge: "Flexibel monatlich", name: "Starter", cycle: "Monatlich", unitPrice: "0,16 $ pro Credit", credits: "50 Credits / Monat", audience: getRecognitionPricingCopy("de").starterScope, benefits: ["Mehr als nur das eine kostenlose Projekt verarbeiten", ...paidBenefits], resources: [getRecognitionPricingCopy("de").starterCredits, "250 MB Dateispeicher", "Persönliche Bibliothek, Revisionsverlauf und offener Katalog", "Monatliche Verlängerung ohne lange Bindung"], cta: "Starter monatlich wählen" },
-    "starter-annual": { badge: "Starter jährlich", name: "Starter", cycle: "Jährlich", unitPrice: "0,082 $ pro Credit", credits: "50 Credits / Monat", audience: "Für langfristige Einzelnutzung zu niedrigeren Kosten pro Credit", benefits: ["Alle aktuellen Funktionen von Starter monatlich", ...paidBenefits], resources: ["50 Credits monatlich, jeden Monat zurückgesetzt", "250 MB Dateispeicher", "46,88 $ gegenüber zwölf Monatszahlungen sparen", "Persönliche Bibliothek, Revisionsverlauf und offener Katalog"], cta: "Starter jährlich wählen" },
-    "converter-pro-monthly": { badge: "Höhere Kapazität", name: "Converter Pro", cycle: "Monatlich", unitPrice: "0,075 $ pro Credit", credits: "200 Credits / Monat", audience: "Für Personen, die monatlich mehr Partituren verarbeiten", benefits: ["Alle aktuellen Starter-Funktionen", ...paidBenefits], resources: ["200 Credits pro Monat", "500 MB Dateispeicher", "Persönliche Bibliothek, Revisionsverlauf und offener Katalog", "Monatliche Verlängerung ohne lange Bindung"], cta: "Converter Pro monatlich wählen" },
-    "converter-pro-annual": { badge: "Hohe Jahreskapazität", name: "Converter Pro", cycle: "Jährlich", unitPrice: "0,041 $ pro Credit", credits: "200 Credits / Monat", audience: "Für dauerhaft häufige Verarbeitung persönlicher Partituren", benefits: ["Alle aktuellen Funktionen von Converter Pro monatlich", ...paidBenefits], resources: ["200 Credits monatlich, jeden Monat zurückgesetzt", "500 MB Dateispeicher", "80,88 $ gegenüber zwölf Monatszahlungen sparen", "Persönliche Bibliothek, Revisionsverlauf und offener Katalog"], cta: "Converter Pro jährlich wählen" },
+    "starter-monthly": { badge: "Flexibel monatlich", name: "Starter", cycle: "Monatlich", unitPrice: "0,16 $ pro Credit", credits: "50 Credits / Monat", audience: getPricingCardCopy("de").starter, benefits: paidBenefits, resources: ["250 MB Dateispeicher", getPricingCardCopy("de").reset], cta: "Starter" },
+    "starter-annual": { badge: "Starter jährlich", name: "Starter", cycle: "Jährlich", unitPrice: "0,082 $ pro Credit", credits: "50 Credits / Monat", audience: getPricingCardCopy("de").starter, benefits: paidBenefits, resources: ["250 MB Dateispeicher", getPricingCardCopy("de").reset], cta: "Starter" },
+    "converter-pro-monthly": { badge: "Höhere Kapazität", name: "Converter Pro", cycle: "Monatlich", unitPrice: "0,075 $ pro Credit", credits: "200 Credits / Monat", audience: getPricingCardCopy("de").pro, benefits: paidBenefits, resources: ["500 MB Dateispeicher", getPricingCardCopy("de").reset], cta: "Converter Pro" },
+    "converter-pro-annual": { badge: "Hohe Jahreskapazität", name: "Converter Pro", cycle: "Jährlich", unitPrice: "0,041 $ pro Credit", credits: "200 Credits / Monat", audience: getPricingCardCopy("de").pro, benefits: paidBenefits, resources: ["500 MB Dateispeicher", getPricingCardCopy("de").reset], cta: "Converter Pro" },
   },
 } as const satisfies HomepageLocalization;

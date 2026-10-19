@@ -1,12 +1,8 @@
+import { getPricingCardCopy } from "../../pricing-card-copy";
 import { getRecognitionPricingCopy } from "../../recognition-pricing-copy";
 import type { HomepageLocalization } from "../types";
 
-const paidBenefits = [
-  "オンライン楽譜編集、パート譜コピー生成 Beta、リアルタイム共同編集 Beta",
-  "再生、ブラウザー録音＆練習フィードバック Beta、スマート移調",
-  "五線譜 ↔ Jianpu（数字譜）および MusicXML ↔ MIDI 変換",
-  "対応するレンダラーが利用できる場合の PDF／SVG／PNG および WAV／MP3 書き出し",
-] as const;
+const paidBenefits = getPricingCardCopy("ja").benefits;
 
 export const jaHomepage = {
   page: {
@@ -70,7 +66,7 @@ export const jaHomepage = {
     ],
     pricingKicker: "クレジット料金",
     pricingTitle: "クレジットプランを選択",
-    pricingBody: "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。サインイン前に料金、機能、リソースを比較できます。",
+    pricingBody: getPricingCardCopy("ja").intro,
     pricingPromoLabel: "年払いでお得",
     pricingPromoValue: "年払いなら約45%～49%お得",
     creditPlanGridLabel: "クレジットプラン",
@@ -178,16 +174,16 @@ export const jaHomepage = {
       resources: [getRecognitionPricingCopy("ja").freeScope, "50 MB のファイルストレージ", "オープン楽譜ライブラリと CC0 ダウンロード", "クレジットカード不要。無料プロジェクトは保持されます"], cta: "無料楽譜を作成",
     },
     "starter-monthly": {
-      badge: "柔軟な月払い", name: "Starter", cycle: "月払い", unitPrice: "1クレジットあたり $0.16", credits: "毎月50クレジット", audience: getRecognitionPricingCopy("ja").starterScope, benefits: ["無料の楽譜プロジェクト1件を超えて利用", ...paidBenefits], resources: [getRecognitionPricingCopy("ja").starterCredits, "250 MB のファイルストレージ", "個人ライブラリ、改訂履歴、オープン楽譜カタログ", "長期契約なしの月次更新"], cta: "Starter 月払いを選択",
+      badge: "柔軟な月払い", name: "Starter", cycle: "月払い", unitPrice: "1クレジットあたり $0.16", credits: "毎月50クレジット", audience: getPricingCardCopy("ja").starter, benefits: paidBenefits, resources: ["250 MB のファイルストレージ", getPricingCardCopy("ja").reset], cta: "Starter",
     },
     "starter-annual": {
-      badge: "Starter 年払い", name: "Starter", cycle: "年払い", unitPrice: "1クレジットあたり $0.082", credits: "毎月50クレジット", audience: "クレジット単価を抑えて長く使いたい個人の方に", benefits: ["Starter 月払いで現在提供中の全機能", ...paidBenefits], resources: ["毎月50クレジット、月ごとにリセット", "250 MB のファイルストレージ", "月払いを12回続ける場合と比べて $46.88 お得", "個人ライブラリ、改訂履歴、オープン楽譜カタログ"], cta: "Starter 年払いを選択",
+      badge: "Starter 年払い", name: "Starter", cycle: "年払い", unitPrice: "1クレジットあたり $0.082", credits: "毎月50クレジット", audience: getPricingCardCopy("ja").starter, benefits: paidBenefits, resources: ["250 MB のファイルストレージ", getPricingCardCopy("ja").reset], cta: "Starter",
     },
     "converter-pro-monthly": {
-      badge: "大容量", name: "Converter Pro", cycle: "月払い", unitPrice: "1クレジットあたり $0.075", credits: "毎月200クレジット", audience: "毎月より多くの楽譜を処理する個人の方に", benefits: ["Starter で現在提供中の全機能", ...paidBenefits], resources: ["毎月200クレジット", "500 MB のファイルストレージ", "個人ライブラリ、改訂履歴、オープン楽譜カタログ", "長期契約なしの月次更新"], cta: "Converter Pro 月払いを選択",
+      badge: "大容量", name: "Converter Pro", cycle: "月払い", unitPrice: "1クレジットあたり $0.075", credits: "毎月200クレジット", audience: getPricingCardCopy("ja").pro, benefits: paidBenefits, resources: ["500 MB のファイルストレージ", getPricingCardCopy("ja").reset], cta: "Converter Pro",
     },
     "converter-pro-annual": {
-      badge: "大容量の年払い", name: "Converter Pro", cycle: "年払い", unitPrice: "1クレジットあたり $0.041", credits: "毎月200クレジット", audience: "個人の楽譜を長期的かつ高頻度で処理する方に", benefits: ["Converter Pro 月払いで現在提供中の全機能", ...paidBenefits], resources: ["毎月200クレジット、月ごとにリセット", "500 MB のファイルストレージ", "月払いを12回続ける場合と比べて $80.88 お得", "個人ライブラリ、改訂履歴、オープン楽譜カタログ"], cta: "Converter Pro 年払いを選択",
+      badge: "大容量の年払い", name: "Converter Pro", cycle: "年払い", unitPrice: "1クレジットあたり $0.041", credits: "毎月200クレジット", audience: getPricingCardCopy("ja").pro, benefits: paidBenefits, resources: ["500 MB のファイルストレージ", getPricingCardCopy("ja").reset], cta: "Converter Pro",
     },
   },
 } as const satisfies HomepageLocalization;
