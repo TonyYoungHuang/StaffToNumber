@@ -1,10 +1,11 @@
 "use client";
+import { RecognitionTaskModal } from "./RecognitionTaskModal";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeBrowserApiError, resolveRecognitionRequestFailure, type SupportedLocale } from "@score/i18n";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getSingleScorePassCopy, readScoreTaskIntent, recognitionRejectionMessageKey, scorePreflightFileKey, scoreTaskDocumentPath, scoreTaskEntryPath, type ScoreTaskIntent } from "@score/shared";
-import { ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionRejection, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
+import { WorkbenchModal, workbenchCopy, ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionRejection, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { trackFunnelEvent } from "../lib/analytics";
 import { getStoredToken, subscribeAuthChanges } from "../lib/auth-storage";
@@ -60,6 +61,10 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const preflightCopy = flow.preflight;
   const stagedCopy = flow.stagedUpload;
   const router = useRouter();
+  const [recognitionTask, setRecognitionTask] = useState<{ id: string; href: string; title: string } | null>(null);
+  function watchRecognition(id: string, complex: boolean, taskTitle = title || file?.name || copy.list.open) {
+    setRecognitionTask({ id, href: scoreTaskDocumentPath(id, taskIntent, complex), title: taskTitle });
+  }
   const signIn = useAppAuthModal();
   const taskCopy = flow.scoreTasks;
   const transferCopy = scoreTransferCopy(locale);
@@ -99,6 +104,11 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const [selectedRecognitionMode, setSelectedRecognitionMode] = useState<RecognitionMode | null>(recognitionMode);
   const [preflight, setPreflight] = useState<ScoreRecognitionPreflightState>({ status: "idle", file: null });
   const [preflightAttempt, setPreflightAttempt] = useState<string | number>(0);
+  const [entryProgressOpen, setEntryProgressOpen] = useState(false);
+  useEffect(() => {
+    if (preflight.status === "checking" || busy) setEntryProgressOpen(true);
+    if ((preflight.status === "ready" && !busy) || recognitionTask) setEntryProgressOpen(false);
+  }, [preflight.status, busy, recognitionTask]);
   const [showAdvancedModes, setShowAdvancedModes] = useState(false);
   const preflightGuard = useRef(new PreflightRequestGuard());
   const preflightMessages = useRef({ locale, experience, failed: preflightCopy.failed, timeout: transferCopy.preflightTimeout, network: transferCopy.preflightNetwork });
@@ -345,7 +355,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       saveContinuationNotice({ ...result.data, actionType: "recognition" });
       setStatus(serverDraftCopy.queued);
       await clearImportDraft(access!.id).catch(() => undefined);
-      router.push(scoreTaskDocumentPath(serverDraft.documentId, taskIntent, serverDraft.mode === "complex"));
+      watchRecognition(serverDraft.documentId, serverDraft.mode === "complex", serverDraft.filename);
     } catch (error) { setStatus(error instanceof Error ? error.message : serverDraftCopy.unavailable); setFailed(true); }
     finally { submitLock.current = false; setBusy(false); }
   }
@@ -364,7 +374,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       releaseUploadReceipt(receipt.key);
       await boundedScoreTransfer(() => clearImportDraft(access.id), { timeoutMs: 5_000, signal }).catch(() => undefined);
       if (signal?.aborted) return "stop";
-      router.push(scoreTaskDocumentPath(result.data.scoreId, taskIntent, receipt.identity.endsWith(":complex") || recognitionMode === "complex"));
+      watchRecognition(result.data.scoreId, receipt.identity.endsWith(":complex") || recognitionMode === "complex");
       return "stop";
     }
     if ((!result.ok && result.status === 404) || (result.ok && result.data.state === "failed")) {
@@ -473,7 +483,8 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
       releaseUploadReceipt(receipt.key);
       await boundedScoreTransfer(() => clearImportDraft(access.id), { timeoutMs: 5_000, signal: controller.signal }).catch(() => undefined);
       const targetMode = isRecognition ? selectedRecognitionMode : recognitionMode;
-      router.push(scoreTaskDocumentPath(imported.id, taskIntent, targetMode === "complex"));
+      if (isRecognition || kind === "audio") watchRecognition(imported.id, targetMode === "complex");
+      else router.push(scoreTaskDocumentPath(imported.id, taskIntent, targetMode === "complex"));
     } catch (error) {
       if (error instanceof ScoreTransferError) {
         const server = error.server;
@@ -501,6 +512,14 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
     }
   }
   return <div className="page-stack flow-library">
+    {entryProgressOpen && !recognitionTask ? <WorkbenchModal title={preflightCopy.title} closeLabel={workbenchCopy[locale].close} onClose={() => setEntryProgressOpen(false)}>
+      <p>{file?.name}</p>
+      <ProcessingProgress active={busy || preflight.status === "checking" || preflight.status === "waiting"} label={processingLabel} error={preflight.status === "failed" || failed} locale={locale} />
+      {preflight.status === "failed" ? <div role="alert"><p>{preflight.error}</p><button type="button" className="button button-primary" onClick={() => setPreflightAttempt(crypto.randomUUID())}>{flow.retry}</button></div> : null}
+      {failed && status ? <p role="alert">{status}</p> : null}
+      <p>{workbenchCopy[locale].background}</p>
+    </WorkbenchModal> : null}
+    {recognitionTask ? <RecognitionTaskModal key={recognitionTask.id} documentId={recognitionTask.id} title={recognitionTask.title} editorHref={recognitionTask.href} onChangeFile={() => { setRecognitionTask(null); inputRef.current?.click(); }} /> : null}
     <section id="free-scan" className="surface-panel stack-lg flow-import">
       <h2 className="card-title">{taskIntent ? taskCopy.tasks[taskIntent.task] : flow.importTitle}</h2>
       {serverDraft ? <div className="stack-sm" data-server-upload-draft={serverDraft.id}>

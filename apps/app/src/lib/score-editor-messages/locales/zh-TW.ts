@@ -8,7 +8,7 @@ export const zhTWScoreEditorMessages = {
     scoreViewportAria: "互動式樂譜畫布",
     eyebrow: "圖形修譜",
     title: "小節級圖形編輯器",
-    body: "選取音符後可編輯音高和時值。上下拖曳可改變音高，左右拖曳可調整音符在小節內的順序。每次操作都會寫回 Score JSON 並建立新修訂。",
+    body: "選取音符後可編輯音高和時值。上下拖曳可改變音高，左右拖曳可調整音符在小節內的順序。每次操作都會寫回 可編輯樂譜檔案 並建立新修訂。",
     empty: "此修訂中沒有可編輯的音符。",
     selected: "已選音符",
     selectedCount: "已選取 {count} 個音符",

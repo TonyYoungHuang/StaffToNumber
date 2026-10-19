@@ -968,25 +968,6 @@ export function ScoreVisualEditorPanel({
 
   return (
     <section data-score-draft-editor className="surface-panel stack-lg" aria-label={copy.panelAria} onKeyDown={handleKeyDown}>
-      <div className="stack-sm">
-        <p className="eyebrow">{copy.eyebrow}</p>
-        <h2 className="card-title">{copy.title}</h2>
-        <p className="body-copy">{copy.body}</p>
-      </div>
-
-      <p className="helper-copy">{flow.autoSave}</p>
-      <div className="visual-editor-toolbar" aria-label={copy.durationToolbarAria}>
-        {DURATION_TYPES.map((item) => (
-          <button key={item} type="button" className={`tool-chip${durationType === item ? " is-active" : ""}`} onClick={() => setDurationPreset(item)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
-            <span aria-hidden="true">{durationGlyph(item)}</span>
-            <span>{messages.durations[item]}</span>
-          </button>
-        ))}
-        <span className={`status-chip ${hasUnsavedChanges ? "tone-amber" : "tone-cyan"}`} role="status" aria-label={copy.statusAria}>
-          {saving ? copy.saving : offlineQueueCount > 0 ? copy.unsaved : hasUnsavedChanges ? copy.unsaved : copy.clean}
-        </span>
-      </div>
-
       <div className="visual-score-editor">
         <div className="visual-score-scroll" aria-label={copy.scoreViewportAria}>
           <details className="editor-help"><summary>{copy.dragHint}</summary><p className="item-meta">{copy.shortcutHint}</p></details>
@@ -998,7 +979,22 @@ export function ScoreVisualEditorPanel({
           />
         </div>
 
-        <div className="mini-card stack-sm">
+        <details className="mini-card stack-sm editor-properties-sheet" open>
+          <summary className="editor-sheet-handle">{copy.selected}</summary>
+          <details className="editor-help"><summary>{copy.title}</summary><p className="body-copy">{copy.body}</p></details>
+          <p className="helper-copy">{flow.autoSave}</p>
+          <div className="visual-editor-toolbar" aria-label={copy.durationToolbarAria}>
+            {DURATION_TYPES.map((item) => (
+              <button key={item} type="button" className={`tool-chip${durationType === item ? " is-active" : ""}`} onClick={() => setDurationPreset(item)} disabled={busy || pendingConflict !== null || offlineQueueCount > 0}>
+                <span aria-hidden="true">{durationGlyph(item)}</span>
+                <span>{messages.durations[item]}</span>
+              </button>
+            ))}
+            <span className={`status-chip ${hasUnsavedChanges ? "tone-amber" : "tone-cyan"}`} role="status" aria-label={copy.statusAria}>
+              {saving ? copy.saving : offlineQueueCount > 0 ? copy.unsaved : hasUnsavedChanges ? copy.unsaved : copy.clean}
+            </span>
+          </div>
+
           <p className="metric-label">{copy.selected}</p>
           <p className="item-title">
             {selectedNote ? formatDraftLabel(selectedNote, { step, alter, octave, durationType }, messages) : "-"}
@@ -1151,7 +1147,7 @@ export function ScoreVisualEditorPanel({
           ) : null}
           <ProcessingProgress active={!hasOperationBoundary && busy} label={flow.scoreOperations.saving} error={statusKind === "error"} locale={locale} />
           {status && statusKind ? <p className={`form-status ${statusKind}`} role={statusKind === "error" ? "alert" : "status"} aria-label={copy.statusAria}>{status}</p> : null}
-        </div>
+        </details>
       </div>
     </section>
   );

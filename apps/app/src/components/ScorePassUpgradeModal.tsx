@@ -1,39 +1,39 @@
 "use client";
 
+import { PostRecognitionValue, workbenchCopy } from "@score/ui";
+import { RecognizedScorePreview } from "./RecognizedScorePreview";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { formatMessage, type SupportedLocale } from "@score/i18n";
-import { getSingleScorePassCopy, SINGLE_SCORE_PASS, isPurchasePlanCode, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
+import { type SupportedLocale } from "@score/i18n";
+import { SINGLE_SCORE_PASS, isPurchasePlanCode, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
 import { getCheckoutReturnCopy } from "../lib/checkout-return-copy";
-import { apiRequest } from "../lib/api";
 import { getStoredToken } from "../lib/auth-storage";
 import { saveCheckoutReturn } from "../lib/flow-return";
-import { getScoreUpgradePlans, scoreCheckoutPath } from "../lib/score-pass-checkout";
+import { scoreCheckoutPath } from "../lib/score-pass-checkout";
 import { getScorePassCopy } from "../lib/billing-messages/client";
 import styles from "./ScorePassUpgradeModal.module.css";
 import { checkoutReturnContext, lookupAndStartCheckout, prepareCheckout } from "../lib/checkout-flow";
 import { useAppAuthModal } from "./AppAuthModal";
 import { clearAuthIntent, consumeAuthIntent, saveAuthIntent } from "../lib/auth-intent";
 
-type CheckoutResult = { orderId: string; url: string };
 
-export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClose }: {
-  documentId: string; action?: CheckoutIntendedAction; locale: SupportedLocale; topUp: boolean; onClose: () => void;
+export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClose, returnTo }: {
+  documentId: string; action?: CheckoutIntendedAction; locale: SupportedLocale; topUp: boolean; onClose: () => void; returnTo?: string;
 }) {
+  const wb = workbenchCopy[locale];
+  const [scoreTitle, setScoreTitle] = useState("");
+  const [freeUsed, setFreeUsed] = useState(false);
   const signIn = useAppAuthModal();
   const copy = getScorePassCopy(locale);
   const dialog = useRef<HTMLDialogElement>(null);
   const lock = useRef(false);
-  const intent = useRef<{ signature: string; key: string } | null>(null);
   const [loading, setLoading] = useState<PurchasePlanCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recoveryOrders, setRecoveryOrders] = useState<Array<{ id: string; provider: string; token?: string; checkoutUrl?: string }>>([]);
   const [restoredPlan] = useState(() => { const plan = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("checkoutPlan") : null; return isPurchasePlanCode(plan) ? plan : undefined; });
-  const fallbackQuery = new URLSearchParams(scoreCheckoutPath(documentId, action, topUp).split("?")[1]);
+  const fallbackQuery = new URLSearchParams(scoreCheckoutPath(documentId, action, topUp, returnTo).split("?")[1]);
   if (restoredPlan) { fallbackQuery.set("plan", restoredPlan); fallbackQuery.set("billing", restoredPlan === "single-score" ? "one_time" : "subscription"); }
   const fallback = `/checkout?${fallbackQuery}`;
-  const plans = getScoreUpgradePlans(locale);
-  const passPrice = `US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`;
   useEffect(() => {
     if (!getStoredToken()) return;
     const pending = consumeAuthIntent<{ documentId: string; planCode: PurchasePlanCode }>("score-upgrade");
@@ -61,7 +61,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
       saveAuthIntent("score-upgrade", { documentId, planCode });
       signIn("login", () => { clearAuthIntent("score-upgrade"); void checkout(planCode); }, { beforeRedirect: async () => {
         if (!(await prepareCheckout())) throw new Error("Checkout preparation failed");
-        const context = checkoutReturnContext(undefined, action);
+        const context = checkoutReturnContext(returnTo, action);
         params.set("next", context.returnPath); params.set("returnState", JSON.stringify(context.returnState));
         saveAuthIntent("navigation", `/checkout?${params}`);
         clearAuthIntent("score-upgrade");
@@ -72,7 +72,7 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
     let navigating = false;
     try {
       if (!(await prepareCheckout())) { setError(copy.continueFailed); return; }
-      const context = checkoutReturnContext(undefined, action);
+      const context = checkoutReturnContext(returnTo, action);
       const result = await lookupAndStartCheckout({ provider: "stripe", billingKind, locale, planCode, passMode: topUp ? "top_up" : undefined, targetDocumentId: documentId, intendedAction: action, ...context }, token, undefined, undefined, true);
       if (!result.ok) {
         if (result.status === 401) { navigating = true; window.location.assign(selectedFallback); return; }
@@ -88,18 +88,8 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
 
   return <dialog data-checkout-control ref={dialog} className={styles.dialog} aria-labelledby="score-upgrade-title" aria-describedby="score-upgrade-body" onCancel={event => { event.preventDefault(); if (!loading) onClose(); }} onClick={event => { if (event.target === event.currentTarget && !loading) onClose(); }}>
     <div className="stack-lg">
-      <div className={styles.heading}><h2 id="score-upgrade-title" className="card-title">{copy.title}</h2><button type="button" className="button button-tertiary" disabled={Boolean(loading)} onClick={onClose}>{copy.close}</button></div>
-      <p id="score-upgrade-body">{copy.body}</p><p className="helper-copy">{copy.sharedCredits}</p>
-      {(["starter-monthly"] as const).map(code => {
-        const plan = plans.find(item => item.code === code)!;
-        return <div key={code} className={`${styles.option} ${code === "starter-monthly" ? styles.recommended : ""}`}>
-          {code === "starter-monthly" ? <strong className={styles.badge}>{copy.recommended}</strong> : null}
-          <strong>{plan.name} · US{plan.price}/{copy.monthly}</strong>
-          <p>{code === "starter-monthly" ? copy.starterBody : copy.converterBody}</p>
-          <button type="button" aria-pressed={restoredPlan === code} className={`button ${code === "starter-monthly" ? "button-primary" : "button-secondary"}`} disabled={Boolean(loading)} onClick={() => void checkout(code)}>{loading === code ? copy.preparing : copy.continuePayment}</button>
-        </div>;
-      })}
-      <div className={styles.option}><strong>{formatMessage(topUp ? copy.topUp : copy.newPass, { price: passPrice })}</strong><p>{copy.passTarget}</p><p>{topUp ? formatMessage(copy.topUpBody, { credits: SINGLE_SCORE_PASS.credits }) : getSingleScorePassCopy(locale).benefits[1]}</p><button type="button" className="button button-secondary" disabled={Boolean(loading)} onClick={() => void checkout(SINGLE_SCORE_PASS.code)}>{loading === SINGLE_SCORE_PASS.code ? copy.preparing : copy.continuePayment}</button></div>
+      <div className={styles.heading}><h2 id="score-upgrade-title" className="card-title">{scoreTitle ? `${wb.done} · ${scoreTitle}` : copy.title}</h2><button type="button" className="button button-tertiary" disabled={Boolean(loading)} onClick={onClose} aria-label={copy.close}>×</button></div>
+      <div id="score-upgrade-body"><PostRecognitionValue locale={locale} freeUsed={freeUsed} busy={Boolean(loading)} preview={<RecognizedScorePreview documentId={documentId} onLoaded={(title, used) => { setScoreTitle(title); setFreeUsed(used); }} />} onPurchase={plan => void checkout(plan)} onLater={onClose} /></div>
       {error ? <p className="form-status error" role="alert">{error}</p> : null}
       {recoveryOrders.map(order => <a key={order.id} className="button button-secondary" href={order.checkoutUrl || `/checkout/success?${new URLSearchParams({ order_id: order.id, provider: order.provider, ...(order.token ? { token: order.token } : {}) })}`}>{getCheckoutReturnCopy(locale).recover} · {order.id.slice(-8)}</a>)}
       <Link href={fallback} className="micro-copy">{copy.fallback}</Link>

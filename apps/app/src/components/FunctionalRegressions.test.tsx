@@ -1,3 +1,4 @@
+import { workbenchCopy } from "@score/ui";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -77,7 +78,7 @@ test("failed and cancelled imports offer a primary retry in every locale, disabl
     const canRetry = status === "failed" || status === "cancelled";
     assert.equal(retry.length, canRetry ? 1 : 0, `${locale}: ${status}`);
     if (canRetry) {
-      assert.equal(retry.text(), flow.retry, locale);
+      assert.equal(retry.text(), workbenchCopy[locale].retry, locale);
       assert.equal(retry.is(":disabled"), busy, locale);
     }
   }

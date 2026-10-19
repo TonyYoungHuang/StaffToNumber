@@ -9,19 +9,19 @@ export const jaScoreDetailMessages = {
     current: "現在のリビジョン", source: "ソース MusicXML", download: "MusicXML をダウンロード", downloadFailed: "ダウンロードに失敗しました。",
     restore: "このバージョンを復元", restoring: "復元しています...", restoreSuccess: "履歴から新しい現行リビジョンを作成しました。",
     restoreFailed: "リビジョンを復元できませんでした。", currentBadge: "現在", previewTitle: "OSMD 五線譜プレビュー",
-    previewBody: "OpenSheetMusicDisplay が読み込んだ MusicXML をブラウザー上の五線譜として表示します。", modelTitle: "Score JSON 構造",
+    previewBody: "OpenSheetMusicDisplay が読み込んだ MusicXML をブラウザー上の五線譜として表示します。", modelTitle: "編集可能な楽譜ファイル 構造",
     modelBody: "編集、移調、再生、書き出しは、この構造化された楽譜モデルから生成されます。", revisions: "リビジョン履歴",
   },
   summary: { parts: "パート", measures: "小節", notes: "音符", rests: "休符", parser: "パーサー", warnings: "読み込みメモ" },
   jianpu: {
-    eyebrow: "五線譜から数字譜へ", title: "数字譜プレビュー", body: "現在の Score JSON リビジョンから生成されるため、移調、編集、再生後も同じ構造から再生成できます。",
+    eyebrow: "五線譜から数字譜へ", title: "数字譜プレビュー", body: "現在の 編集可能な楽譜ファイル リビジョンから生成されるため、移調、編集、再生後も同じ構造から再生成できます。",
     loading: "数字譜を生成しています...", error: "数字譜を生成できませんでした。", key: "調", source: "ソース", warnings: "数字譜変換メモ",
     pitchSystem: "階名方式", movableDo: "移動ド", fixedDo: "固定ド", accidentals: "臨時記号", preserve: "元の表記を維持",
     preferSharps: "シャープを優先", preferFlats: "フラットを優先", apply: "再生成", sourceText: "数字譜ソーステキスト",
     empty: "このリビジョンには、まだ数字譜を生成できる構造化楽譜データがありません。",
   },
   transpose: {
-    eyebrow: "移調", title: "移調リビジョンを作成", body: "現在の Score JSON から新しいリビジョンを生成します。数字譜、再生、書き出しも新しい版から再生成されます。",
+    eyebrow: "移調", title: "移調リビジョンを作成", body: "現在の 編集可能な楽譜ファイル から新しいリビジョンを生成します。数字譜、再生、書き出しも新しい版から再生成されます。",
     semitones: "半音数", down: "-1", up: "+1", submit: "移調リビジョンを作成", working: "移調しています...", success: "新しい移調リビジョンを作成しました。", failed: "移調に失敗しました。",
   },
   transposeTarget: {
@@ -30,7 +30,7 @@ export const jaScoreDetailMessages = {
     spelling: "異名同音の表記", spellingAuto: "目標の調号に従う", spellingPreserve: "元の表記傾向を維持", spellingSharps: "シャープを優先",
     spellingFlats: "フラットを優先", pitchDirection: "音高の変換方向", concertToWritten: "実音から記譜音へ", writtenToConcert: "記譜音から実音へ",
     major: "長調", minor: "短調", dorian: "ドリア旋法", phrygian: "フリギア旋法", lydian: "リディア旋法", mixolydian: "ミクソリディア旋法",
-    locrian: "ロクリア旋法", engine: "移調エンジン", scoreJsonFallback: "Score JSON 代替エンジン",
+    locrian: "ロクリア旋法", engine: "移調エンジン", scoreJsonFallback: "編集可能な楽譜ファイル 代替エンジン",
   },
   transposeRange: {
     label: "音域チェック", part: "確認するパート", allParts: "すべてのパート", perPart: "パート別の音域", noPartProfile: "このパートは確認しない",
@@ -41,14 +41,14 @@ export const jaScoreDetailMessages = {
     suggestionTitle: "{value} 半音で {target} へ", from: "元の調", score: "楽譜", range: "音域",
   },
   clef: {
-    eyebrow: "音部記号アシスタント", title: "音部記号の自動提案", body: "各パートの音域を分析し、最初の小節に読みやすい音部記号を設定した Score JSON リビジョンを作成します。",
+    eyebrow: "音部記号アシスタント", title: "音部記号の自動提案", body: "各パートの音域を分析し、最初の小節に読みやすい音部記号を設定した 編集可能な楽譜ファイル リビジョンを作成します。",
     load: "音部記号を分析", loading: "分析しています...", apply: "推奨音部記号を適用", applying: "適用しています...", success: "音部記号を反映したリビジョンを作成しました。",
     failed: "音部記号を更新できませんでした。", current: "現在", recommended: "推奨", range: "音域", noNotes: "音高のある音符なし", line: "線", octave: "オクターブ",
   },
   exports: {
     cost: {
       freeFormat: "この楽譜では無料 · クレジット不要",
-      passFormatUnavailable: "この形式には1曲パスかStarterが必要です。数字譜とScore JSONの書き出しは無料です。",
+      passFormatUnavailable: "この形式には1曲パスかStarterが必要です。数字譜と編集可能な楽譜ファイルの書き出しは無料です。",
       generate: "{format} を生成",
       costSingle: "今回：{count} クレジット",
       costMultiple: "今回：{count} クレジット",
@@ -64,7 +64,7 @@ export const jaScoreDetailMessages = {
     },
     midi: { button: "MIDI を書き出す", exporting: "MIDI をキューに追加しています...", success: "MIDI を書き出しました。", failed: "MIDI の書き出しに失敗しました。" },
     jianpu: { button: "数字譜を書き出す", exporting: "数字譜を書き出しています...", success: "数字譜を書き出しました。", failed: "数字譜の書き出しに失敗しました。" },
-    scoreJson: { button: "Score JSON を書き出す", exporting: "Score JSON を書き出しています...", success: "Score JSON スナップショットを書き出しました。", failed: "Score JSON の書き出しに失敗しました。" },
+    scoreJson: { button: "編集可能な楽譜ファイル を書き出す", exporting: "編集可能な楽譜ファイル を書き出しています...", success: "編集可能な楽譜ファイル スナップショットを書き出しました。", failed: "編集可能な楽譜ファイル の書き出しに失敗しました。" },
     wav: { button: "WAV を書き出す", exporting: "WAV をキューに追加しています...", success: "WAV を書き出しました。", failed: "WAV の書き出しに失敗しました。" },
     mp3: { button: "MP3 を書き出す", exporting: "MP3 をキューに追加しています...", success: "MP3 を書き出しました。", failed: "MP3 の書き出しに失敗しました。FluidSynth、SoundFont、ffmpeg の設定を確認してください。" },
     musicXml: { button: "MusicXML を書き出す", exporting: "MusicXML をキューに追加しています...", success: "MusicXML を生成しました。", failed: "MusicXML の書き出しに失敗しました。" },
@@ -86,15 +86,15 @@ export const jaScoreDetailMessages = {
   },
   partExtract: {
     eyebrow: "パート譜コピー生成 Beta", title: "独立したパート練習用コピーを作成",
-    body: "選択したパートを新しい Score JSON プロジェクトとして抽出し、練習、指導リンク、移調、再生、書き出しに利用できます。コピーは元の総譜の後続編集には自動追従しません。",
+    body: "選択したパートを新しい 編集可能な楽譜ファイル プロジェクトとして抽出し、練習、指導リンク、移調、再生、書き出しに利用できます。コピーは元の総譜の後続編集には自動追従しません。",
     titleLabel: "新しいプロジェクト名", parts: "パート", applyClefs: "音部記号を自動最適化", submit: "パートコピーを作成", working: "作成しています...",
     success: "パートコピーを作成しました。", failed: "パートコピーを作成できませんでした。", open: "パートコピーを開く",
   },
   assets: {
     eyebrow: "書き出しセンター", title: "プロジェクトファイルと書き出し履歴", body: "ソースファイルと生成済みの各形式はここに保存され、いつでも再ダウンロードできます。",
-    loading: "書き出し履歴を読み込んでいます...", empty: "書き出しファイルはまだありません。まず MusicXML、Score JSON、数字譜、または MIDI を生成してください。",
+    loading: "書き出し履歴を読み込んでいます...", empty: "書き出しファイルはまだありません。まず MusicXML、編集可能な楽譜ファイル、数字譜、または MIDI を生成してください。",
     failed: "書き出し履歴を読み込めませんでした。", download: "ダウンロード", source: "ソース", export: "書き出し", stale: "旧リビジョン", sourceRevision: "元のリビジョン",
-    kinds: { sourceMusicXml: "MusicXML ソース", sourceJianpu: "数字譜ソース", sourcePdf: "PDF ソース", sourceImage: "画像ソース", sourceAudio: "音声ソース", scoreMusicXml: "MusicXML", scoreJsonSnapshot: "Score JSON", outputJianpu: "数字譜", outputMidi: "MIDI", renderedPdf: "PDF", renderedPng: "PNG", renderedSvg: "SVG", outputAudio: "音声/WAV" },
+    kinds: { sourceMusicXml: "MusicXML ソース", sourceJianpu: "数字譜ソース", sourcePdf: "PDF ソース", sourceImage: "画像ソース", sourceAudio: "音声ソース", scoreMusicXml: "MusicXML", scoreJsonSnapshot: "編集可能な楽譜ファイル", outputJianpu: "数字譜", outputMidi: "MIDI", renderedPdf: "PDF", renderedPng: "PNG", renderedSvg: "SVG", outputAudio: "音声/WAV" },
   },
   jobs: {
     eyebrow: "楽譜ジョブ", title: "認識・採譜・書き出しジョブ", body: "Audiveris スキャン、Basic Pitch 採譜、MuseScore レンダリング、FluidSynth 音声書き出しの進行状況と結果をまとめて表示します。",
@@ -145,11 +145,11 @@ export const jaScoreDetailMessages = {
     templateDeleted: "テンプレートを削除しました。", templateFailed: "テンプレートを操作できませんでした。",
   },
   emptyStates: {
-    correctionEyebrow: "修正", correctionTitle: "編集可能な楽譜を待っています", correctionBody: "MusicXML の読み込みまたは OMR で Score JSON リビジョンが作成されると、修正パネルが表示されます。",
-    playbackEyebrow: "再生練習", playbackTitle: "楽譜リビジョンを待っています", playbackBody: "OMR が MusicXML/Score JSON の候補リビジョンを作成すると再生できます。",
+    correctionEyebrow: "修正", correctionTitle: "編集可能な楽譜を待っています", correctionBody: "MusicXML の読み込みまたは OMR で 編集可能な楽譜ファイル リビジョンが作成されると、修正パネルが表示されます。",
+    playbackEyebrow: "再生練習", playbackTitle: "楽譜リビジョンを待っています", playbackBody: "OMR が MusicXML/編集可能な楽譜ファイル の候補リビジョンを作成すると再生できます。",
   },
   preview: { empty: "表示できる MusicXML はまだありません。", loading: "五線譜プレビューを描画しています...", error: "MusicXML プレビューを描画できませんでした。", retry: "もう一度描画", technicalDetails: "技術情報", deferred: "大規模な楽譜です。OSMD で比較するときに完全な MusicXML プレビューを読み込んでください。", render: "完全なプレビューを読み込む", eventLabel: "{part} · 第 {measure} 小節 · {number} 番目の{type}", note: "音符", rest: "休符" },
-  revision: { undoRedoAria: "リビジョンの取り消しとやり直し", undo: "元に戻す", redo: "やり直す", sources: { musicxml_import: "MusicXML 読み込み", score_json_import: "Score JSON 読み込み", midi_import: "MIDI 読み込み", omr_import: "OMR 読み込み", jianpu_import: "数字譜読み込み", audio_transcribe: "音声採譜", candidate_accept: "候補を承認", manual_edit: "手動編集", restore: "バージョン復元", part_extract: "パート抽出", transpose: "移調", system: "システム" } },
+  revision: { undoRedoAria: "リビジョンの取り消しとやり直し", undo: "元に戻す", redo: "やり直す", sources: { musicxml_import: "MusicXML 読み込み", score_json_import: "編集可能な楽譜ファイル 読み込み", midi_import: "MIDI 読み込み", omr_import: "OMR 読み込み", jianpu_import: "数字譜読み込み", audio_transcribe: "音声採譜", candidate_accept: "候補を承認", manual_edit: "手動編集", restore: "バージョン復元", part_extract: "パート抽出", transpose: "移調", system: "システム" } },
   diagnostics: { measures: "小節", notes: "音符", revision: "リビジョン", midi: "MIDI", warnings: "警告", statuses: { processing: "処理中", failed: "失敗", cancelled: "キャンセル済み", completed: "完了", diagnostic: "診断" } },
   practice: { solo: "ソロ", mute: "ミュート", allParts: "すべてのパート", loop: "ループ", fullScore: "全曲", metronome: "メトロノーム", countIn: "カウントイン" },
   profiles: {

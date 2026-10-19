@@ -4,7 +4,7 @@ export const enPlaybackPracticeMessages = {
   playback: {
     eyebrow: "Playback practice",
     title: "Tone.js part practice player",
-    body: "Generates practice-ready playback events from the current Score JSON with tempo, loop ranges, metronome, count-in, and part solo/mute.",
+    body: "Generates practice-ready playback events from the current Editable score file with tempo, loop ranges, metronome, count-in, and part solo/mute.",
     load: "Generate playback events",
     play: "Play",
     stop: "Stop",

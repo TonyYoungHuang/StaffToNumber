@@ -1183,3 +1183,20 @@
 
 .purchaseDialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; border: 1px solid #c9cedb; border-radius: 20px; padding: 24px; background: #fff; color: #202431; }
 .purchaseDialog::backdrop { background: rgba(20, 24, 40, .55); }
+
+.heroMediaPair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.heroVideoCard { min-width: 0; border: 1px solid var(--outline); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--surface-mid); }
+.heroVideoCard video { width: 100%; flex: 1; min-height: 0; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 12px; background: var(--text); }
+.heroVideoCard strong { font-size: 14px; }
+.hero .workbench { width: min(100%, 900px); justify-self: center; }
+.toolRail { display: grid; }
+@media (max-width: 760px) { .heroMediaPair { grid-template-columns: minmax(0, 1fr); } .heroVideoCard { min-height: 260px; } }
+
+.workbench .dropZone { min-height: 150px; padding: 14px; }
+.workbench .uploadIcon { width: 36px; height: 36px; }
+.workbench .toolRail { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.workbench .toolRail a { min-height: 76px; }
+.workbench .toolRail a span { width: 26px; height: 26px; }
+.workbench details.recognitionPanel { padding: 10px 14px; }
+.workbench details.recognitionPanel summary { cursor: pointer; font-size: 12px; }
+@media (max-width: 600px) { .workbench .toolRail { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

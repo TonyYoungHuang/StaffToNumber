@@ -6,7 +6,7 @@ export const enScoreEditorMessages = {
     scoreViewportAria: "Interactive score canvas",
     eyebrow: "Visual editor",
     title: "Measure-level graphical editor",
-    body: "Select a note to edit pitch and duration. Drag vertically to change pitch, or drag horizontally to reorder the note inside its measure. Every operation writes back to Score JSON as a new revision.",
+    body: "Select a note to edit pitch and duration. Drag vertically to change pitch, or drag horizontally to reorder the note inside its measure. Every operation writes back to Editable score file as a new revision.",
     empty: "This revision has no editable notes.",
     selected: "Selected note",
     selectedCount: "{count} notes selected",

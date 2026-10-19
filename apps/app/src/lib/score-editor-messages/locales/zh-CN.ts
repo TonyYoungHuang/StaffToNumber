@@ -8,7 +8,7 @@ export const zhCNScoreEditorMessages = {
     scoreViewportAria: "交互式乐谱画布",
     eyebrow: "图形修谱",
     title: "小节级图形编辑器",
-    body: "选择音符后可编辑音高和时值。上下拖动可改变音高，左右拖动可调整音符在小节内的顺序。每次操作都会写回 Score JSON 并生成新修订。",
+    body: "选择音符后可编辑音高和时值。上下拖动可改变音高，左右拖动可调整音符在小节内的顺序。每次操作都会写回 可编辑乐谱文件 并生成新修订。",
     empty: "此修订中没有可编辑的音符。",
     selected: "已选音符",
     selectedCount: "已选择 {count} 个音符",

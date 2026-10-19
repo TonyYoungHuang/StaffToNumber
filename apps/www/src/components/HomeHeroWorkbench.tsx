@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getGoogleAuthCopy, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
-import { ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
+import { WorkbenchModal, PostRecognitionValue, workbenchCopy, type WorkbenchPlan, ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
 import { localizePublicHref } from "../lib/locale-routing";
@@ -67,6 +67,10 @@ function apiErrorOrFallback(error: string | undefined, fallback: string) {
 }
 
 export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, preflightCopy, waitingCopy, runtimeCopy }: HomeHeroWorkbenchProps) {
+  const wb = workbenchCopy[locale];
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const retryLock = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -229,6 +233,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       setRecognitionError(preflightCopy.fileTooLarge);
       return;
     }
+    setStatusOpen(true);
     setPreflightState("checking");
     const waiting = window.setTimeout(() => {
       if (generation !== preflightGeneration.current) return;
@@ -272,6 +277,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       setRecognitionOptions(optionsResult.data.options);
       setRecognitionMode(result.complete && result.recommendation !== "uncertain" ? result.recommendation : null);
       setPreflightState("ready");
+      setStatusOpen(false);
     } catch {
       if (controller.signal.aborted || generation !== preflightGeneration.current) return;
       setPreflightState("failed");
@@ -291,6 +297,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
 
   const startRecognition = useCallback((file: File, chosenMode: ScoreRecognitionMode, creditCost: number) => {
     if (!stagedUpload || preflight?.recognitionSupport?.supported === false || preflight?.memoryAssessment?.lane === "unsupported") return;
+    setStatusOpen(true);
     setRecognitionError(null);
     setMusicXml(null); setPreviewError(false); setReadyToOpen(false);
     setScoreId(null);
@@ -418,9 +425,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     return () => { active = false; window.clearInterval(timer); };
   }, [copy.uploadFailed, job?.status, musicXml, previewError, previewAttempt, scoreId]);
 
-  useEffect(() => {
-    if (scoreId && job?.status === "completed" && readyToOpen) window.location.assign(getAppScoreUrl(scoreId, locale, submittedMode));
-  }, [scoreId, job?.status, readyToOpen, locale, submittedMode]);
+
 
   useEffect(() => {
     if (session === "authenticated" && waitingForLogin.current) {
@@ -472,6 +477,24 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     finally { submissionLock.current = false; setConfirming(false); }
   }
 
+  async function retryOriginal() {
+    if (!scoreId || !job || retryLock.current) return;
+    retryLock.current = true; setRetrying(true); setRecognitionError(null);
+    try {
+      const result = await apiRequest<{ job: JobPayload["jobs"][number] }>(`/api/scores/${scoreId}/jobs/${job.id}/retry`, { method: "POST" });
+      if (!result.ok) { setRecognitionError(localizeApiError(result, locale)); return; }
+      setJob(result.data.job); setConnectionError(false); setPreviewAttempt(value => value + 1);
+    } finally { retryLock.current = false; setRetrying(false); }
+  }
+  function buyRecognizedScore(plan: WorkbenchPlan) {
+    if (!scoreId) return;
+    const next = `/scores/${encodeURIComponent(scoreId)}`;
+    const params = new URLSearchParams({ targetDocumentId: scoreId, plan, billing: plan === "single-score" ? "one_time" : "subscription", next, continue: "1" });
+    const handoff = new URL("/api/locale", siteConfig.appUrl);
+    handoff.searchParams.set("locale", locale); handoff.searchParams.set("next", `/checkout?${params}`);
+    window.location.assign(handoff.toString());
+  }
+
   const jobLabel = job ? copy[job.status] : null;
   const uploading = uploadProgress !== null && uploadProgress < 100;
   const checking = preflightState === "checking" || preflightState === "waiting";
@@ -507,18 +530,16 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       <div id="home-workbench-panel" className={styles.workbenchPanel} role="tabpanel" aria-labelledby={`home-workbench-tab-${mode}`}>
         {mode === "recognize" ? (
           <button type="button" className={styles.dropZone} disabled={busy} onClick={beginFileSelection} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); acceptFile(event.dataTransfer.files?.[0]); }}>
-            <span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList} aria-label={copy.supportedFormatsLabel}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span>
+            <span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList} aria-label={copy.supportedFormatsLabel}>{activeMode.formats.map((format) => <i key={format}>{format === "Score JSON" ? wb.editable : format}</i>)}</span>
           </button>
         ) : (
-          <a className={styles.dropZone} href={localizePublicHref(activeMode.href, locale)}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList}>{activeMode.formats.map((format) => <i key={format}>{format}</i>)}</span></a>
+          <a className={styles.dropZone} href={localizePublicHref(activeMode.href, locale)}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList}>{activeMode.formats.map((format) => <i key={format}>{format === "Score JSON" ? wb.editable : format}</i>)}</span></a>
         )}
 
         {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
 
-        {mode === "recognize" ? <div className={styles.recognitionPanel}><button type="button" className={styles.preflightRetry} disabled={busy} onClick={() => cameraRef.current?.click()}>{experience.photoCapture}</button><p>{experience.photoGuide}</p>{photoFile ? <PhotoCornerEditor file={photoFile} messages={experience} onContinue={corners => acceptFile(photoFile, corners, true)} /> : null}</div> : null}
-        <ProcessingProgress active={mode === "recognize" && uploading} label={progressCopy.uploadTitle} progressPercent={uploadProgress} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
-        <ProcessingProgress active={mode === "recognize" && checking && !uploading} label={preflightState === "waiting" ? waitingCopy.preflight : preflightCopy.checking} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
-        <ProcessingProgress active={confirming} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
+        {mode === "recognize" ? <details className={styles.recognitionPanel} open={Boolean(photoFile)}><summary>{experience.photoCapture}</summary><button type="button" className={styles.preflightRetry} disabled={busy} onClick={() => cameraRef.current?.click()}>{experience.photoCapture}</button><p>{experience.photoGuide}</p>{photoFile ? <PhotoCornerEditor file={photoFile} messages={experience} onContinue={corners => acceptFile(photoFile, corners, true)} /> : null}</details> : null}
+
 
         {mode === "recognize" && pendingFile ? <section className={`${styles.recognitionPanel} ${styles.preflightPanel}`} aria-label={preflightCopy.title} data-score-preflight={preflightState} aria-busy={preflightState === "checking" || preflightState === "waiting"}>
           <strong>{preflightCopy.title}</strong><span className={styles.preflightFile}>{pendingFile.name}</span>{!preflightRejected ? <p>{preflightCopy.freeBody}</p> : null}
@@ -529,20 +550,31 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
           {preflightState === "ready" && !preflightRejected && (bigNeedsPayment || !chosenOption?.canSubmit) ? <div data-upsell-primary="starter"><button type="button" className={styles.preflightRetry} onClick={() => setPurchasePrompt(true)}>{runtimeCopy.paymentOptions}</button></div> : null}
         </section> : null}
 
-        {mode === "recognize" && (job || recognitionError) ? (
+        {(job || checking || recognitionError) && !statusOpen ? <button type="button" className="button button-secondary" onClick={() => setStatusOpen(true)}>{wb.refresh}</button> : null}
+        {statusOpen ? <WorkbenchModal wide={readyToOpen} title={readyToOpen ? `${wb.done} · ${scoreTitle ?? ""}` : job?.status === "failed" ? copy.failed : copy.workbenchLabel} closeLabel={wb.close} onClose={() => setStatusOpen(false)}>
+        <ProcessingProgress active={mode === "recognize" && uploading} label={progressCopy.uploadTitle} progressPercent={uploadProgress} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
+        <ProcessingProgress active={mode === "recognize" && checking && !uploading} label={preflightState === "waiting" ? waitingCopy.preflight : preflightCopy.checking} error={preflightState === "failed" || preflightState === "idle"} operationKey={`${pendingFile?.name}:${preflightRetryKey.current}`} locale={locale} />
+        <ProcessingProgress active={confirming} label={copy.queued} error={Boolean(recognitionError)} operationKey={stagedUpload?.stagedUploadId ?? job?.id} locale={locale} />
+          {readyToOpen && scoreId && (job?.params?.freeTrial === true || job?.params?.creditSource === "free_trial") ? <PostRecognitionValue locale={locale} freeUsed={job?.params?.freeTrial === true || job?.params?.creditSource === "free_trial"} preview={<HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} errorLabel={runtimeCopy.previewFailure} retryLabel={copy.retry} requestFailed={previewError} onRetry={() => { setPreviewError(false); setPreviewAttempt(value => value + 1); }} locale={locale} />} onPurchase={buyRecognizedScore} onLater={() => window.location.assign(getAppScoreUrl(scoreId, locale, submittedMode))} /> : <>
           <section className={styles.recognitionPanel} aria-live="polite">
             <div className={styles.recognitionHeading}><div><small>{copy.candidateTitle}</small><strong>{scoreTitle ?? activeMode.title}</strong></div><span className={recognitionError && !connectionError ? styles.statusError : job?.status === "completed" ? styles.statusDone : styles.statusWorking}>{recognitionError && !connectionError ? copy.failed : jobLabel}</span></div>
             {job && !["failed", "cancelled"].includes(job.status) ? <ScoreProcessingPanel job={job} copy={progressCopy} locale={locale} connectionError={connectionError} /> : null}
             {job && ["failed", "cancelled"].includes(job.status) ? <div role="alert"><p className={styles.recognitionError}><strong>{resolveRecognitionFailure(experience, job.errorMessage)}</strong></p>{recognitionUsedPaidCredits(job.params) ? <p>{experience.creditsOnly}</p> : null}{job.errorMessage ? <details><summary>{preflightCopy.title}</summary><p>{job.errorMessage}</p></details> : null}</div> : recognitionError && !connectionError ? <p className={styles.recognitionError} role="alert">{recognitionError}</p> : null}
             {job?.status === "completed" ? <p>{copy.candidateBody}</p> : null}
             {job?.status === "completed" ? <HomeCandidatePreview musicXml={musicXml} loadingLabel={copy.previewLoading} errorLabel={runtimeCopy.previewFailure} retryLabel={copy.retry} requestFailed={previewError} onRetry={() => { setPreviewError(false); setPreviewAttempt(value => value + 1); }} locale={locale} /> : null}
+            {job && ["failed", "cancelled"].includes(job.status) ? <><p>{wb.retryBody}</p><button type="button" className="button button-primary" disabled={retrying} onClick={() => void retryOriginal()}>{wb.retry}</button><button type="button" className="button button-secondary" onClick={() => { setStatusOpen(false); beginFileSelection(); }}>{wb.change}</button></> : null}
+            <p>{wb.background}</p>
+            <button type="button" className="button button-secondary" onClick={() => setPreviewAttempt(value => value + 1)}>{wb.refresh}</button>
             <div className={styles.recognitionActions}>{scoreId ? <a href={getAppScoreUrl(scoreId, locale, submittedMode)}>{copy.openProject}<ArrowNorthEastIcon width={15} height={15} /></a> : null}{!busy && !job ? <button type="button" onClick={beginFileSelection}>{activeMode.action}</button> : null}</div>
           </section>
-        ) : null}
+
+          </>}
+        </WorkbenchModal> : null}
       </div>
 
       {purchasePrompt && purchaseRequired ? <dialog ref={purchaseDialog} data-recognition-purchase-dialog className={styles.purchaseDialog} aria-label={runtimeCopy.paymentOptions} onCancel={event => { event.preventDefault(); setPurchasePrompt(false); }} onClick={event => { if (event.target === event.currentTarget) setPurchasePrompt(false); }}><div className={styles.recognitionPanel}><h2>{runtimeCopy.paymentOptions}</h2><button type="button" className={styles.preflightRetry} disabled={busy} onClick={() => setPurchasePrompt(false)}>{runtimeCopy.close}</button>{bigNeedsPayment ? <p>{formatMessage(experience.bigReason, { pages: formatNumber(preflight?.sourcePageCount ?? 0, locale) })}</p> : null}<RecognitionPlanSummary messages={experience} /><p>{experience.continueInApp}</p><RecognitionPurchaseActions messages={experience} disabled={busy || !recognitionMode} onStarter={() => { void continueBigUpload("starter-monthly"); }} onPass={() => { void continueBigUpload("single-score"); }} primaryClassName={styles.workbenchAction} secondaryClassName={styles.preflightRetry} /></div></dialog> : null}
-      <nav className={styles.toolRail} aria-label={copy.availableToolsLabel}>{toolDefinitions.map((tool, index) => {
+      <nav className={styles.toolRail} aria-label={copy.availableToolsLabel}>{[0, 1, 2, 4, 5, 3].map(index => {
+        const tool = toolDefinitions[index];
         if (!audioAvailable && tool.href === "/audio-to-score") return null;
         const [title, body] = copy.tools[index];
         return <a key={tool.href} href={localizePublicHref(tool.href, locale)}><span aria-hidden="true">{tool.icon}</span><strong>{title}</strong><small>{body}</small><ArrowNorthEastIcon width={17} height={17} /></a>;

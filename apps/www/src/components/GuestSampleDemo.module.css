@@ -44,3 +44,25 @@
   .measures { gap: 22px 6px; }
   .measure { gap: 8px; }
 }
+
+/* Equal-weight hero sample card. */
+.demo { padding: 18px; border: 1px solid var(--outline); border-radius: 20px; background: var(--surface-mid); display: flex; flex-direction: column; min-width: 0; height: 100%; }
+.heading { margin-bottom: 8px; }
+.heading h2 { font-size: 18px; margin: 4px 0; }
+.heading > p:not(:first-child) { font-size: 12px; margin: 4px 0; }
+.workbench { padding: 0; border: 0; border-radius: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.source { margin: 4px 0 8px; }
+.source[open] { max-height: 180px; overflow: auto; }
+.controls { gap: 8px; }
+.key { gap: 3px; font-size: 12px; }
+.key select { min-width: 100px; }
+.notations button { padding: 8px; font-size: 12px; }
+.score { flex: 1; min-height: 130px; max-height: 230px; overflow: auto; margin: 10px 0; padding: 8px 0; }
+.footer { gap: 8px; }
+.footer a, .footer > button { padding: 10px 12px; font-size: 13px; }
+.allowance { font-size: 11px; margin-top: 8px; }
+@media (max-width: 600px) { .demo { padding: 16px; } .key, .notations { width: auto; } .score { max-height: 160px; } }
+
+.notations { flex-shrink: 0; }
+.notations button { white-space: nowrap; }
+.score { max-height: 160px; }

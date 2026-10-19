@@ -8,7 +8,7 @@ export const deScoreEditorMessages = {
     scoreViewportAria: "Interaktive Notenfläche",
     eyebrow: "Visueller Editor",
     title: "Grafischer Editor auf Taktebene",
-    body: "Wählen Sie eine Note aus, um Tonhöhe und Dauer zu bearbeiten. Ziehe sie vertikal, um die Tonhöhe zu ändern, oder horizontal, um sie im Takt neu anzuordnen. Jeder Vorgang wird als neue Revision in Score JSON zurückgeschrieben.",
+    body: "Wählen Sie eine Note aus, um Tonhöhe und Dauer zu bearbeiten. Ziehe sie vertikal, um die Tonhöhe zu ändern, oder horizontal, um sie im Takt neu anzuordnen. Jeder Vorgang wird als neue Revision in Bearbeitbare Partiturdatei zurückgeschrieben.",
     empty: "Diese Revision enthält keine bearbeitbaren Noten.",
     selected: "Ausgewählte Note",
     selectedCount: "{count} Noten ausgewählt",

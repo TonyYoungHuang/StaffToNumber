@@ -16,7 +16,7 @@ export const enScoreDetailMessages = {
     currentBadge: "Current",
     previewTitle: "OSMD staff preview",
     previewBody: "OpenSheetMusicDisplay renders the imported MusicXML as browser-native staff notation here.",
-    modelTitle: "Score JSON structure",
+    modelTitle: "Editable score file structure",
     modelBody: "Editing, transposition, playback, and exports are generated from this structured score model.",
     revisions: "Revision history",
   },
@@ -31,7 +31,7 @@ export const enScoreDetailMessages = {
   jianpu: {
     eyebrow: "Staff to Jianpu",
     title: "Jianpu preview",
-    body: "Generated from the current Score JSON revision, so transposition, editing, and playback can regenerate it from the same structure.",
+    body: "Generated from the current Editable score file revision, so transposition, editing, and playback can regenerate it from the same structure.",
     loading: "Generating Jianpu...",
     error: "Jianpu generation failed.",
     key: "Key",
@@ -51,7 +51,7 @@ export const enScoreDetailMessages = {
   transpose: {
     eyebrow: "Transpose",
     title: "Create transposed revision",
-    body: "Generate a new score revision from the current Score JSON. Jianpu, playback, and exports regenerate from the new version.",
+    body: "Generate a new score revision from the current Editable score file. Jianpu, playback, and exports regenerate from the new version.",
     semitones: "Semitones",
     down: "-1",
     up: "+1",
@@ -90,7 +90,7 @@ export const enScoreDetailMessages = {
     mixolydian: "Mixolydian",
     locrian: "Locrian",
     engine: "Transpose engine",
-    scoreJsonFallback: "Score JSON fallback",
+    scoreJsonFallback: "Editable score file fallback",
   },
   transposeRange: {
     label: "Range check",
@@ -121,7 +121,7 @@ export const enScoreDetailMessages = {
   clef: {
     eyebrow: "Clef assistant",
     title: "Automatic clef recommendations",
-    body: "Analyze each part's pitch range and create a new Score JSON revision with readable first-measure clefs.",
+    body: "Analyze each part's pitch range and create a new Editable score file revision with readable first-measure clefs.",
     load: "Analyze clefs",
     loading: "Analyzing clefs...",
     apply: "Apply recommended clefs",
@@ -138,7 +138,7 @@ export const enScoreDetailMessages = {
   exports: {
     cost: {
       freeFormat: "Free on this score · no credits needed",
-      passFormatUnavailable: "This format needs a One Score Pass or Starter. Jianpu and Score JSON exports are free.",
+      passFormatUnavailable: "This format needs a One Score Pass or Starter. Jianpu and Editable score file exports are free.",
       generate: "Generate {format}",
       costSingle: "This time: {count} credit",
       costMultiple: "This time: {count} credits",
@@ -154,7 +154,7 @@ export const enScoreDetailMessages = {
     },
     midi: { button: "Export MIDI", exporting: "Queueing MIDI...", success: "MIDI exported.", failed: "MIDI export failed." },
     jianpu: { button: "Export Jianpu", exporting: "Exporting Jianpu...", success: "Jianpu exported.", failed: "Jianpu export failed." },
-    scoreJson: { button: "Export Score JSON", exporting: "Exporting Score JSON...", success: "Score JSON snapshot exported.", failed: "Score JSON export failed." },
+    scoreJson: { button: "Export Editable score file", exporting: "Exporting Editable score file...", success: "Editable score file snapshot exported.", failed: "Editable score file export failed." },
     wav: { button: "Export WAV", exporting: "Queueing WAV...", success: "WAV exported.", failed: "WAV export failed." },
     mp3: { button: "Export MP3", exporting: "Queueing MP3...", success: "MP3 exported.", failed: "MP3 export could not be completed. Retry later or contact support with the job reference." },
     musicXml: { button: "Export MusicXML", exporting: "Queueing MusicXML...", success: "MusicXML generated.", failed: "MusicXML export failed." },
@@ -183,18 +183,18 @@ export const enScoreDetailMessages = {
   partExtract: {
     eyebrow: "Part Copy Generator Beta",
     title: "Create an independent part practice copy",
-    body: "Extract selected parts into a new Score JSON project for practice, teaching links, transposition, playback, and export. Copies do not yet follow later full-score edits.",
+    body: "Extract selected parts into a new Editable score file project for practice, teaching links, transposition, playback, and export. Copies do not yet follow later full-score edits.",
     titleLabel: "New project title", parts: "Parts", applyClefs: "Apply automatic clef cleanup", submit: "Create part copy",
     working: "Creating part copy...", success: "Part copy project created.", failed: "Could not create the part copy.", open: "Open part copy",
   },
   assets: {
     eyebrow: "Export center", title: "Project files and exports",
-    body: "Source files and generated exports stay here so MusicXML, Score JSON, Jianpu, MIDI, PDF, image, and audio outputs can be downloaded again.",
-    loading: "Loading exports...", empty: "No exported files yet. Generate MusicXML, Score JSON, Jianpu, or MIDI first.", failed: "Could not load export records.",
+    body: "Source files and generated exports stay here so MusicXML, Editable score file, Jianpu, MIDI, PDF, image, and audio outputs can be downloaded again.",
+    loading: "Loading exports...", empty: "No exported files yet. Generate MusicXML, Editable score file, Jianpu, or MIDI first.", failed: "Could not load export records.",
     download: "Download", source: "Source", export: "Export", stale: "Stale", sourceRevision: "Source revision",
     kinds: {
       sourceMusicXml: "MusicXML source", sourceJianpu: "Jianpu source", sourcePdf: "PDF source", sourceImage: "Image source", sourceAudio: "Audio source",
-      scoreMusicXml: "MusicXML", scoreJsonSnapshot: "Score JSON", outputJianpu: "Jianpu", outputMidi: "MIDI", renderedPdf: "PDF",
+      scoreMusicXml: "MusicXML", scoreJsonSnapshot: "Editable score file", outputJianpu: "Jianpu", outputMidi: "MIDI", renderedPdf: "PDF",
       renderedPng: "PNG", renderedSvg: "SVG", outputAudio: "Audio/WAV",
     },
   },
@@ -261,14 +261,14 @@ export const enScoreDetailMessages = {
   },
   emptyStates: {
     correctionEyebrow: "Correction", correctionTitle: "Waiting for editable notation",
-    correctionBody: "The correction panel will appear after MusicXML import or OMR creates a Score JSON revision.",
+    correctionBody: "The correction panel will appear after MusicXML import or OMR creates a Editable score file revision.",
     playbackEyebrow: "Playback practice", playbackTitle: "Waiting for a score revision",
-    playbackBody: "Playback will be available after OMR produces a MusicXML/Score JSON candidate revision.",
+    playbackBody: "Playback will be available after OMR produces a MusicXML/Editable score file candidate revision.",
   },
   preview: { empty: "No renderable MusicXML yet.", loading: "Rendering staff notation preview...", error: "MusicXML preview could not be rendered.", retry: "Try rendering again", technicalDetails: "Technical details", deferred: "This score is large. Load the complete MusicXML preview when you need the OSMD comparison view.", render: "Load complete preview", eventLabel: "{part} · measure {measure} · {type} {number}", note: "note", rest: "rest" },
   revision: {
     undoRedoAria: "Revision undo and redo", undo: "Undo", redo: "Redo",
-    sources: { musicxml_import: "MusicXML import", score_json_import: "Score JSON import", midi_import: "MIDI import", omr_import: "OMR import", jianpu_import: "Jianpu import", audio_transcribe: "Audio transcription", candidate_accept: "Candidate accepted", manual_edit: "Manual edit", restore: "Restored version", part_extract: "Part extraction", transpose: "Transposition", system: "System" },
+    sources: { musicxml_import: "MusicXML import", score_json_import: "Editable score file import", midi_import: "MIDI import", omr_import: "OMR import", jianpu_import: "Jianpu import", audio_transcribe: "Audio transcription", candidate_accept: "Candidate accepted", manual_edit: "Manual edit", restore: "Restored version", part_extract: "Part extraction", transpose: "Transposition", system: "System" },
   },
   diagnostics: { measures: "Measures", notes: "Notes", revision: "Revision", midi: "MIDI", warnings: "Warnings", statuses: { processing: "Processing", failed: "Failed", cancelled: "Cancelled", completed: "Completed", diagnostic: "Diagnostic" } },
   practice: { solo: "solo", mute: "mute", allParts: "all parts", loop: "loop", fullScore: "full score", metronome: "metronome", countIn: "count-in" },

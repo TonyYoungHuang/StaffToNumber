@@ -6,17 +6,18 @@ import { useFlowMessages } from "../lib/flow-messages/client";
 import { useAppLocale } from "./AppLocaleProvider";
 
 export type WorkspaceView = "edit" | "jianpu" | "transpose" | "play" | "export" | "share" | "history" | "parts" | "source" | "teaching" | "advanced";
-const mainViews: WorkspaceView[] = ["edit", "jianpu", "transpose", "play", "export"];
-const extraViews: WorkspaceView[] = ["parts", "share", "history", "source", "teaching", "advanced"];
+const mainViews: WorkspaceView[] = ["edit", "transpose", "play", "export"];
+const extraViews: WorkspaceView[] = ["parts", "share", "history", "source", "teaching", "advanced", "jianpu"];
 const anchors: Record<WorkspaceView, string> = { edit: "visual-editor", jianpu: "jianpu-preview", transpose: "transpose-score", play: "playback-practice", export: "export-center", share: "score-sharing", history: "revision-history", parts: "score-parts", source: "omr-comparison", teaching: "teaching-workflow", advanced: "score-json-model" };
 const aliasViews: Record<string, WorkspaceView> = { "correction-editor": "edit", "live-collaboration": "share", "project-comments": "share", "score-jobs": "export", "print-export-settings": "export", "audio-export-settings": "export" };
 const WorkspaceContext = createContext<WorkspaceView>("edit");
 
-export function ScoreWorkspace({ header, children }: { header: ReactNode; children: ReactNode }) {
+export function ScoreWorkspace({ header, preview, children }: { header: ReactNode; preview?: ReactNode; children: ReactNode }) {
   const { locale } = useAppLocale();
   const locked = useScoreNavigationLocked();
   const lockedRef = useRef(locked); lockedRef.current = locked;
   const copy = useFlowMessages();
+  const [sheetOpen, setSheetOpen] = useState(true);
   const [view, setView] = useState<WorkspaceView>("edit");
   useEffect(() => {
     const sync = () => {
@@ -53,6 +54,7 @@ export function ScoreWorkspace({ header, children }: { header: ReactNode; childr
   function select(next: WorkspaceView) {
     if (lockedRef.current) return;
     setView(next);
+    setSheetOpen(true);
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#${anchors[next]}`);
     window.dispatchEvent(new HashChangeEvent("hashchange"));
     document.getElementById("score-workspace-tools")?.scrollIntoView({ block: "start" });
@@ -67,7 +69,13 @@ export function ScoreWorkspace({ header, children }: { header: ReactNode; childr
           {extraViews.map(name => <option key={name} value={name}>{copy[name]}</option>)}
         </select></label>
       </nav>
-      {children}
+      <div className="workspace-body" data-view={view}>
+        <div className="workspace-canvas" hidden={view === "edit"}>{view !== "edit" ? preview : null}</div>
+        <div className="workspace-properties" data-expanded={sheetOpen}>
+          {view !== "edit" ? <button type="button" className="workspace-sheet-handle" aria-expanded={sheetOpen} aria-controls="workspace-properties-content" onClick={() => setSheetOpen(value => !value)}><span aria-hidden="true" />{copy[view]}</button> : null}
+          <div id="workspace-properties-content">{children}</div>
+        </div>
+      </div>
     </div>
   </WorkspaceContext.Provider>;
 }

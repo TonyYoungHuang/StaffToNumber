@@ -8,7 +8,7 @@ export const koScoreEditorMessages = {
     scoreViewportAria: "대화형 악보 캔버스",
     eyebrow: "비주얼 편집기",
     title: "마디 단위 그래픽 편집기",
-    body: "음표를 선택하여 음높이와 길이를 편집하세요. 위아래로 끌면 음높이가 바뀌고, 좌우로 끌면 마디 안의 순서가 바뀝니다. 모든 작업은 새 리비전으로 Score JSON에 기록됩니다.",
+    body: "음표를 선택하여 음높이와 길이를 편집하세요. 위아래로 끌면 음높이가 바뀌고, 좌우로 끌면 마디 안의 순서가 바뀝니다. 모든 작업은 새 리비전으로 편집 가능한 악보 파일에 기록됩니다.",
     empty: "이 리비전에는 편집할 수 있는 음표가 없습니다.",
     selected: "선택한 음표",
     selectedCount: "음표 {count}개 선택됨",

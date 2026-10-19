@@ -8,7 +8,7 @@ export const esScoreEditorMessages = {
     scoreViewportAria: "Lienzo de partitura interactivo",
     eyebrow: "Editor visual",
     title: "Editor gráfico por compases",
-    body: "Selecciona una nota para editar su altura y duración. Arrástrala verticalmente para cambiar la altura u horizontalmente para reordenarla dentro del compás. Cada operación se guarda en Score JSON como una nueva revisión.",
+    body: "Selecciona una nota para editar su altura y duración. Arrástrala verticalmente para cambiar la altura u horizontalmente para reordenarla dentro del compás. Cada operación se guarda en Archivo de partitura editable como una nueva revisión.",
     empty: "Esta revisión no contiene notas editables.",
     selected: "Nota seleccionada",
     selectedCount: "{count} notas seleccionadas",

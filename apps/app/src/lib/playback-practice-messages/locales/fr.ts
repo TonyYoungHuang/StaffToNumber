@@ -2,7 +2,7 @@ import type { PlaybackPracticeMessages } from "../types";
 
 export const frPlaybackPracticeMessages = {
   playback: {
-    eyebrow: "Entraînement à la lecture", title: "Lecteur d’entraînement par partie Tone.js", body: "Génère depuis le Score JSON actuel des événements prêts pour l’entraînement, avec tempo, boucles, métronome, décompte et Solo/Mute par partie.",
+    eyebrow: "Entraînement à la lecture", title: "Lecteur d’entraînement par partie Tone.js", body: "Génère depuis le Fichier de partition modifiable actuel des événements prêts pour l’entraînement, avec tempo, boucles, métronome, décompte et Solo/Mute par partie.",
     load: "Générer les événements", play: "Lire", stop: "Arrêter", tempo: "Tempo en BPM", playhead: "Position de lecture", loop: "Boucler la section", loopStart: "Temps de début", loopEnd: "Temps de fin", metronome: "Métronome", countIn: "Décompte d’une mesure",
     loading: "Génération des événements…", ready: "Événements de lecture générés.", failed: "Impossible de générer la lecture.", empty: "Cliquez sur Écouter ; les données se chargent automatiquement.", noEvents: "Le filtre de parties actuel ne contient aucune note lisible.",
     events: "Événements", activeEvents: "Événements actifs", beats: "Nombre total de temps", parts: "Parties", solo: "Solo", mute: "Muet", allParts: "Toutes les parties", revision: "Révision",

@@ -4,12 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { getLocaleConfig, getScorePreflightMessages, getScoreRequestWaitingMessages } from "@score/i18n";
 import { getPricingPlanCatalog, getPurchaseOptionsCopy } from "@score/shared";
-import { ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
+import { workbenchCopy, ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
 import { getHomeRuntimeCopy } from "../lib/home-runtime-copy";
-import { HomeEntryActions } from "../components/HomeEntryActions";
 import { GuestSampleDemo } from "../components/GuestSampleDemo";
-import { ProductCommercialBackdrop } from "../components/ProductCommercialBackdrop";
 import { PurchasePlanCard } from "../components/PurchasePlanCard";
 import { homeWorkflowLinks } from "../lib/home-on-page";
 import { getHomePresentationCopy } from "../lib/home-presentation";
@@ -105,8 +103,17 @@ export default async function HomePage() {
               {copy.heroTitle.map((line, index) => <span className={styles.heroTitleLine} key={line}>{index > 0 ? " " : ""}{line}</span>)}
             </h1>
             <p className={styles.heroIntro}>{copy.heroIntro.join(" ")}</p>
-            <HomeEntryActions scanLabel={commercialCopy.scanAction} sampleLabel={commercialCopy.sampleAction} />
           </div>
+        </div>
+      </section>
+
+      <section id="product-overview" className={`${styles.section} ${styles.overviewSection}`}>
+        <div className={`${styles.container} ${styles.heroMediaPair}`}>
+          <div className={styles.heroVideoCard}>
+            <video controls playsInline preload="none" poster={productCommercial.backgroundPosterSrc} src={productCommercial.videoSrc} aria-label={commercialCopy.watchFilm} />
+            <strong>{commercialCopy.watchFilm}</strong>
+          </div>
+          <GuestSampleDemo locale={locale} />
         </div>
       </section>
 
@@ -130,23 +137,7 @@ export default async function HomePage() {
         <div className={`${styles.container} ${styles.factBar}`}>{copy.facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
       </section>
 
-      <section className={styles.section}>
-        <div className={styles.container}><GuestSampleDemo locale={locale} /></div>
-      </section>
 
-      <div id="product-overview" className={`${styles.section} ${styles.overviewSection}`}>
-        <div className={styles.container}>
-          <ProductCommercialBackdrop
-            key={locale}
-            locale={locale}
-            copy={commercialCopy}
-            videoSrc={productCommercial.backgroundVideoSrc}
-            posterSrc={productCommercial.backgroundPosterSrc}
-            filmSrc={productCommercial.videoSrc}
-            pricingHref={localizePublicHref("/pricing", locale)}
-          />
-        </div>
-      </div>
 
       <section id="demos" className={`${styles.section} ${styles.demoSection}`} aria-labelledby="demos-title">
         <div className={styles.container}>
@@ -238,9 +229,9 @@ export default async function HomePage() {
       <section className={`${styles.section} ${styles.engineSection}`} aria-labelledby="engine-title">
         <div className={styles.container}>
           <header className={styles.sectionHeading}><p className={styles.kicker}>{copy.engineKicker}</p><h2 id="engine-title">{copy.engineTitle}</h2><p>{copy.engineBody}</p></header>
-          <div className={styles.pipeline}>{copy.pipeline.map(([label, value], index) => <div key={label} className={index === copy.pipeline.length - 1 ? styles.pipelineCore : undefined}><small>{label}</small><strong>{value}</strong>{index < copy.pipeline.length - 1 ? <i aria-hidden="true">→</i> : null}</div>)}</div>
+          <div className={styles.pipeline}>{copy.pipeline.map(([label, value], index) => <div key={label} className={index === copy.pipeline.length - 1 ? styles.pipelineCore : undefined}><small>{label}</small><strong>{value === "Score JSON" ? workbenchCopy[locale].editable : value}</strong>{index < copy.pipeline.length - 1 ? <i aria-hidden="true">→</i> : null}</div>)}</div>
           <div className={styles.capabilityGrid}>
-            {copy.capabilities.map(([title, body, href], index) => {
+            {copy.capabilities.map((item, index) => ({ item, index })).sort((a, b) => Number(a.item[2].includes("jianpu")) - Number(b.item[2].includes("jianpu"))).map(({ item: [title, body, href], index }) => {
               const sample = capabilityScoreSamples[index];
               const [sampleTitle, sampleAlt] = mediaCopy.scoreSamples[index];
               return (

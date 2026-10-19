@@ -8,7 +8,7 @@ export const frScoreEditorMessages = {
     scoreViewportAria: "Zone de partition interactive",
     eyebrow: "Éditeur visuel",
     title: "Éditeur graphique par mesure",
-    body: "Sélectionnez une note pour modifier sa hauteur et sa durée. Faites-la glisser verticalement pour changer sa hauteur, ou horizontalement pour la réordonner dans la mesure. Chaque opération est réécrite dans Score JSON sous forme d’une nouvelle révision.",
+    body: "Sélectionnez une note pour modifier sa hauteur et sa durée. Faites-la glisser verticalement pour changer sa hauteur, ou horizontalement pour la réordonner dans la mesure. Chaque opération est réécrite dans Fichier de partition modifiable sous forme d’une nouvelle révision.",
     empty: "Cette révision ne contient aucune note modifiable.",
     selected: "Note sélectionnée",
     selectedCount: "{count} notes sélectionnées",

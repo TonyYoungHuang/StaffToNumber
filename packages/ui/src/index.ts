@@ -8,3 +8,7 @@ export * from "./processing-progress";
 export * from "./photo-corner-editor";
 export * from "./recognition-purchase-actions";
 export * from "./recognition-rejection";
+
+export * from "./workbench-modal";
+export * from "./post-recognition-value";
+export * from "./workbench-copy";

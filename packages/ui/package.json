@@ -13,7 +13,7 @@
     "./sonata.css": "./src/sonata.css"
   },
   "scripts": {
-    "test": "tsx --tsconfig tsconfig.test.json --test src/processing-progress.test.tsx src/credit-plan-card.test.tsx",
+    "test": "tsx --tsconfig tsconfig.test.json --test src/processing-progress.test.tsx src/credit-plan-card.test.tsx src/post-recognition-value.test.tsx",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

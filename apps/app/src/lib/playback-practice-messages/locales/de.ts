@@ -2,7 +2,7 @@ import type { PlaybackPracticeMessages } from "../types";
 
 export const dePlaybackPracticeMessages = {
   playback: {
-    eyebrow: "Wiedergabeübung", title: "Tone.js-Übungsplayer nach Stimme", body: "Erzeugt aus dem aktuellen Score JSON übungsbereite Wiedergabeereignisse mit Tempo, Schleifen, Metronom, Einzähler und Solo/Stumm pro Stimme.",
+    eyebrow: "Wiedergabeübung", title: "Tone.js-Übungsplayer nach Stimme", body: "Erzeugt aus dem aktuellen Bearbeitbare Notendatei übungsbereite Wiedergabeereignisse mit Tempo, Schleifen, Metronom, Einzähler und Solo/Stumm pro Stimme.",
     load: "Wiedergabeereignisse erzeugen", play: "Abspielen", stop: "Stoppen", tempo: "Tempo in BPM", playhead: "Wiedergabeposition", loop: "Abschnitt wiederholen", loopStart: "Startschlag", loopEnd: "Endschlag", metronome: "Metronom", countIn: "Ein Takt Einzähler",
     loading: "Wiedergabeereignisse werden erzeugt…", ready: "Wiedergabeereignisse wurden erzeugt.", failed: "Wiedergabe konnte nicht erzeugt werden.", empty: "Klicken Sie auf Abspielen. Die Daten werden automatisch geladen.", noEvents: "Der aktuelle Stimmenfilter enthält keine abspielbaren Noten.",
     events: "Ereignisse", activeEvents: "Aktive Ereignisse", beats: "Schläge insgesamt", parts: "Stimmen", solo: "Solo", mute: "Stumm", allParts: "Alle Stimmen", revision: "Revision",

@@ -5,7 +5,7 @@ import { ScoreOperationBoundary, useScoreActivity, useScoreNavigationLocked } fr
 import { ScoreWorkspace, WorkspacePanel } from "./ScoreWorkspace";
 import { shareAvailability } from "../lib/share-availability";
 import { ScoreImportStatus } from "./ScoreImportStatus";
-import { ProcessingProgress } from "@score/ui";
+import { workbenchCopy, ProcessingProgress } from "@score/ui";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { trackFunnelEvent } from "../lib/analytics";
 import { notifyScoreReviewsChanged } from "../lib/pending-omr-reviews";
@@ -431,6 +431,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const performancePreviewUrlRef = useRef<Record<string, string>>({});
   const { locale } = useAppLocale();
+  const wb = workbenchCopy[locale];
   const transferCopy = scoreTransferCopy(locale);
   const flow = useFlowMessages();
   const scorePassCopy = getScorePassCopy(locale);
@@ -919,7 +920,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   function exportCostHint(format: string) {
     const option = exportQuoteOption(exportQuote, format);
     if (!option || !exportQuote) return exportQuoteError ? exportCostCopy.unavailable : exportCostCopy.checking;
-    if (option.reason === "SCORE_PASS_REQUIRED") return `${flow.recognitionExperience.passPlan} · ${flow.recognitionExperience.starterPlan}`;
+    if (option.reason === "SCORE_PASS_REQUIRED") return `${wb.pass} · Starter / Pro`;
     if (option.creditCost === 0 && exportQuote.options.some(item => item.reason === "SCORE_PASS_REQUIRED")) return exportCostCopy.freeFormat;
     const shared = exportQuote.balance.creditSource === "score_pass" ? ` · ${formatMessage(scorePassCopy.sharedBalance, { balance: formatNumber(exportQuote.balance.available, locale) })}` : "";
     return `${formatMessage(option.creditCost === 1 ? exportCostCopy.costSingle : exportCostCopy.costMultiple, { count: formatNumber(option.creditCost, locale) })} · ${formatMessage(exportCostCopy.balance, {
@@ -2153,7 +2154,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
     setTransposeEngineResult(result.data.transposeEngine);
     setTransposeWarnings(result.data.transposeWarnings ?? []);
     setClefRecommendations(result.data.clefRecommendations ?? []);
-    setTransposeStatus(`${transposeCopy.success} (${result.data.transposeEngine === "music21" ? "music21" : "Score JSON"})`);
+    setTransposeStatus(`${transposeCopy.success} (${result.data.transposeEngine === "music21" ? "music21" : wb.editable})`);
     setTransposeStatusKind("success");
     await refreshJianpu();
     } catch {
@@ -2654,7 +2655,24 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
   }
 
   return (
-    <ScoreWorkspace header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
+    <ScoreWorkspace preview={<ScoreMusicXmlPreview
+            fileId={null}
+            token={token}
+            musicXml={generatedPreviewMusicXml}
+            scoreJson={currentScoreJson}
+            selectedEventId={selectedScoreEventId}
+            onEventSelect={handleScoreEventSelect}
+            emptyLabel={detailCopy.preview.empty}
+            loadingLabel={detailCopy.preview.loading}
+            errorLabel={detailCopy.preview.error}
+            retryLabel={detailCopy.preview.retry}
+            technicalDetailsLabel={detailCopy.preview.technicalDetails}
+            deferredLabel={detailCopy.preview.deferred}
+            renderLabel={detailCopy.preview.render}
+            eventLabelTemplate={detailCopy.preview.eventLabel}
+            noteLabel={detailCopy.preview.note}
+            restLabel={detailCopy.preview.rest}
+          />} header={<header className="workspace-heading"><div><h1 className="page-title">{score.title}</h1><p className="helper-copy">{detailCopy.status.score[score.status]} · {copy.current}: {formatNumber(score.currentRevision?.revisionNumber ?? 0, locale)}</p></div><div className="button-row">{!ensemble ? <Link href={scoreTaskDocumentPath(score.id, taskIntent, true)} className="button button-secondary">{flow.ensemble.ensembleTitle}</Link> : null}<Link href={taskIntent ? scoreTaskEntryPath(taskIntent) : APP_ROUTES.scores} className="button button-secondary">{copy.back}</Link></div></header>}>
 <ScoreRecognitionCandidates scoreId={score.id} token={token} locale={locale} expectedEditableRevisionId={score.currentRevisionId} onUpdated={refreshScoreSnapshot} />
 {continuationError ? <p className="form-status error" role="alert">{continuationError}</p> : null}
 {downloadError ? <p className="form-status error">{downloadError}</p> : null}
@@ -3130,7 +3148,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 <WorkspacePanel name="export"><section className="surface-panel stack-lg flow-export"><h2 className="card-title">{flow.export}</h2>
 {passRemaining !== null ? <p className="helper-copy">{formatMessage(scorePassCopy.sharedBalance, { balance: formatNumber(passRemaining, locale) })}</p> : null}
 <label className="field-group"><span>{flow.format}</span><select aria-label={flow.format} className="field-select" value={exportFormat} onChange={event => setExportFormat(event.target.value)}>
-{["pdf", "musicxml", "midi", "wav", "mp3", "svg", "png", "jianpu", "score-json"].map(format => <option key={format} value={format}>{format === "jianpu" ? flow.jianpu : format === "score-json" ? "Score JSON" : format.toUpperCase()}</option>)}
+{["pdf", "musicxml", "midi", "wav", "mp3", "svg", "png", "score-json", "jianpu"].map(format => <option key={format} value={format}>{format === "jianpu" ? flow.jianpu : format === "score-json" ? wb.editable : format.toUpperCase()}</option>)}
 </select></label>
 <p className="helper-copy" aria-live="polite">{exportCostHint(exportFormat)}</p>
 <ProcessingProgress active={exportQuoteLoading} label={exportCostCopy.checking} error={Boolean(exportQuoteError)} locale={locale} />
@@ -3138,7 +3156,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
 {selectedExportQuote && !selectedExportQuote.canSubmit ? <div className="stack-sm"><button type="button" className="button button-primary" onClick={() => onUpgrade(currentExportAction(), passRemaining !== null)}>{scorePassCopy.title}</button><Link className="micro-copy" href={scoreCheckoutPath(scoreId, currentExportAction(), passRemaining !== null)}>{scorePassCopy.fallback}</Link></div> : null}
 <button type="button" className="button button-primary" disabled={!currentScoreJson || !canRequestScoreExport(exportQuote, exportFormat) || requestingExport || selectedExportRunning} onClick={() => {
 const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMusicXml, midi: handleExportMidi, pdf: handleExportPdf, wav: handleExportWav, mp3: handleExportMp3, svg: () => handleExportRenderedImage("svg"), png: () => handleExportRenderedImage("png"), jianpu: handleExportJianpu, "score-json": handleExportScoreJson }; void actions[exportFormat]();
-}}>{requestingExport || selectedExportRunning ? `${flow.scoreOperations.exporting} ${exportFormat.toUpperCase()}` : formatMessage(exportCostCopy.generate, { format: exportFormat === "jianpu" ? `${flow.jianpu} TXT` : exportFormat === "score-json" ? "Score JSON" : exportFormat.toUpperCase() })}</button>
+}}>{requestingExport || selectedExportRunning ? `${flow.scoreOperations.exporting} ${exportFormat === "score-json" ? wb.editable : exportFormat.toUpperCase()}` : formatMessage(exportCostCopy.generate, { format: exportFormat === "jianpu" ? `${flow.jianpu} TXT` : exportFormat === "score-json" ? wb.editable : exportFormat.toUpperCase() })}</button>
 {!["jianpu", "score-json"].includes(exportFormat) ? <p className="helper-copy">{exportCostCopy.regeneration}</p> : null}
 {exportStatus && exportStatusKind ? <p role={exportStatusKind === "error" ? "alert" : "status"} className={`form-status ${exportStatusKind}`}>{exportStatus}</p> : null}
 {scoreJobs.filter(job => job.jobType === "render_export").map(job => <div key={job.id} data-export-progress={job.id}>
@@ -4175,7 +4193,7 @@ const actions: Record<string, () => Promise<void>> = { musicxml: handleExportMus
       </section></WorkspacePanel>
 <WorkspacePanel name="advanced"><section id="score-json-model" className="surface-panel stack-lg">
           <div className="stack-sm">
-            <p className="eyebrow">Score JSON</p>
+            <p className="eyebrow">{wb.editable}</p>
             <h2 className="card-title">{copy.modelTitle}</h2>
             <p className="body-copy">{copy.modelBody}</p>
           </div>

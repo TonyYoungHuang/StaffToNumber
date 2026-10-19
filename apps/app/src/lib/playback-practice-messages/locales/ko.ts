@@ -2,7 +2,7 @@ import type { PlaybackPracticeMessages } from "../types";
 
 export const koPlaybackPracticeMessages = {
   playback: {
-    eyebrow: "재생 연습", title: "Tone.js 파트 연습 플레이어", body: "현재 Score JSON에서 연습용 재생 이벤트를 생성하며 템포, 구간 반복, 메트로놈, 카운트인, 파트 Solo/Mute를 지원합니다.",
+    eyebrow: "재생 연습", title: "Tone.js 파트 연습 플레이어", body: "현재 편집 가능한 악보 파일에서 연습용 재생 이벤트를 생성하며 템포, 구간 반복, 메트로놈, 카운트인, 파트 Solo/Mute를 지원합니다.",
     load: "재생 이벤트 생성", play: "재생", stop: "정지", tempo: "템포 BPM", playhead: "재생 위치", loop: "구간 반복", loopStart: "시작 박", loopEnd: "종료 박", metronome: "메트로놈", countIn: "한 마디 카운트인",
     loading: "재생 이벤트를 생성하는 중…", ready: "재생 이벤트가 생성되었습니다.", failed: "재생 이벤트를 생성하지 못했습니다.", empty: "재생을 누르면 필요한 데이터를 자동으로 불러옵니다.", noEvents: "현재 파트 필터에 재생할 수 있는 음표가 없습니다.",
     events: "이벤트", activeEvents: "활성 이벤트", beats: "전체 박", parts: "파트", solo: "Solo", mute: "Mute", allParts: "모든 파트", revision: "리비전",

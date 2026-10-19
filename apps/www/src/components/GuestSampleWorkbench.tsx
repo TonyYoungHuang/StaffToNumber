@@ -24,9 +24,9 @@ function JianpuNote({ event }: { event: GuestSampleEvent }) {
   );
 }
 
-export function GuestSampleWorkbench({ copy, workspaceHrefs }: {
+export function GuestSampleWorkbench({ copy, scanLabel }: {
   copy: GuestSampleCopy;
-  workspaceHrefs: Record<GuestSampleKey, Record<GuestSampleNotation, string>>;
+  scanLabel: string;
 }) {
   const [key, setKey] = useState<GuestSampleKey>("C");
   const [notation, setNotation] = useState<GuestSampleNotation>("staff");
@@ -66,9 +66,16 @@ export function GuestSampleWorkbench({ copy, workspaceHrefs }: {
     const generation = generationRef.current;
     try {
       // The prepared Score JSON timeline supplies all pitches, rhythms and repeats.
-      const context = new AudioContext();
+      const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Web Audio unavailable");
+      const context = new AudioContextClass();
       contextRef.current = context;
-      await context.resume();
+      // Unlock audio synchronously inside the user gesture, including Safari.
+      const unlock = context.createBufferSource();
+      unlock.buffer = context.createBuffer(1, 1, context.sampleRate);
+      unlock.connect(context.destination); unlock.start();
+      await Promise.race([context.resume(), new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Audio start timed out")), 8000))]);
+      if (context.state !== "running") throw new Error("Audio context suspended");
       if (generation !== generationRef.current) return;
       const startAt = context.currentTime + 0.04;
       const secondsPerBeat = 60 / variant.playback.tempoBpm;
@@ -146,9 +153,9 @@ export function GuestSampleWorkbench({ copy, workspaceHrefs }: {
           )}
         </div>
         <div className={styles.footer}>
-          <button type="button" className="public-button primary" disabled={starting} aria-pressed={playing} onClick={() => playing ? stop() : void play()}>{playing ? copy.stop : copy.play}</button>
+          <button type="button" className="public-button primary" aria-busy={starting} aria-pressed={playing || starting} onClick={() => playing || starting ? stop() : void play()}>{playing || starting ? copy.stop : copy.play}</button>
           <progress value={position} max={duration} aria-label={copy.progress} />
-          <a className="public-button secondary" href={workspaceHrefs[key][notation]}>{copy.useMyScore}</a>
+          <a className="public-button secondary" href="#home-workbench">{scanLabel}</a>
         </div>
         <p className={styles.allowance}>{copy.allowance}</p>
         {error ? <p role="status">{error}</p> : null}

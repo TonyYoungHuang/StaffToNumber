@@ -1,3 +1,4 @@
+import { workbenchCopy } from "@score/ui";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -512,26 +513,22 @@ test("checkout defaults to Starter monthly and carries a targeted explicit pass 
   targeted.dispose();
 });
 
-test("upgrade modal offers Starter and a score pass and sends exact export options to hosted checkout", async () => {
-  for (const code of ["starter-monthly", "single-score"] as const) {
+test("upgrade modal sends all three v7 plans with exact export options to hosted checkout", async () => {
+  for (const code of ["single-score", "starter-monthly", "converter-pro-monthly"] as const) {
     const calls: Array<{ path: string; init?: RequestInit }> = [];
     let release: (result: unknown) => void = () => {};
     const harness = componentHarness("../components/ScorePassUpgradeModal.tsx", {
       "next/link": "a", "./ScorePassUpgradeModal.module.css": { recommended: "recommended" },
+      "@score/ui": { PostRecognitionValue: "value-hook", workbenchCopy },
       "../lib/auth-storage": { getStoredToken: () => "auth-token" },
       "../lib/flow-return": { saveCheckoutReturn() {} },
       "../lib/api": { apiRequest: (path: string, init?: RequestInit) => { calls.push({ path, init }); return new Promise(resolve => { release = resolve; }); } },
     });
     const action = { kind: "export", format: "png", options: { pageSize: "a4", imageResolutionDpi: 300, trimImage: true } };
     const tree = harness.render("ScorePassUpgradeModal", { documentId: "score-1", action, locale: "en", topUp: true, onClose() {} });
-    const buttons = nodes(tree).filter(node => node.type === "button" && text(node) === getScorePassCopy("en").continuePayment);
-    assert.equal(buttons.length, 2);
-    assert.ok(buttons[0].props.className.includes("button-primary"));
-    assert.ok(buttons[1].props.className.includes("button-secondary"));
-    assert.ok(text(tree).includes("7.99")); assert.ok(text(tree).includes("2.99"));
-    assert.doesNotMatch(text(tree), /Converter Pro/u);
-    const index = ["starter-monthly", "single-score"].indexOf(code);
-    buttons[index].props.onClick(); buttons[index].props.onClick();
+    const hook = nodes(tree).find(node => node.type === "value-hook")!;
+    assert.ok(hook, "v7 value panel is connected to the existing checkout flow");
+    hook.props.onPurchase(code); hook.props.onPurchase(code);
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(calls.length, 1, "rapid duplicate clicks create one checkout");
     const payload = JSON.parse(String(calls[0].init?.body));
@@ -542,7 +539,6 @@ test("upgrade modal offers Starter and a score pass and sends exact export optio
     release({ ok: true, data: { orderId: "order-topup", url: "https://checkout.stripe.com/test-only" } });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(harness.browser.location.href, "https://checkout.stripe.com/test-only");
-    assert.ok(text(tree).includes(`US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`));
     harness.dispose();
   }
 });

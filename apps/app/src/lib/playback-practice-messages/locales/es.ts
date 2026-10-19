@@ -2,7 +2,7 @@ import type { PlaybackPracticeMessages } from "../types";
 
 export const esPlaybackPracticeMessages = {
   playback: {
-    eyebrow: "Práctica de reproducción", title: "Reproductor de práctica por parte con Tone.js", body: "Genera eventos de reproducción para practicar desde el Score JSON actual, con tempo, bucles, metrónomo, cuenta previa y Solo/Mute por parte.",
+    eyebrow: "Práctica de reproducción", title: "Reproductor de práctica por parte con Tone.js", body: "Genera eventos de reproducción para practicar desde el Archivo de partitura editable actual, con tempo, bucles, metrónomo, cuenta previa y Solo/Mute por parte.",
     load: "Generar eventos", play: "Reproducir", stop: "Detener", tempo: "Tempo en BPM", playhead: "Posición de reproducción", loop: "Repetir sección", loopStart: "Pulso inicial", loopEnd: "Pulso final", metronome: "Metrónomo", countIn: "Cuenta previa de un compás",
     loading: "Generando eventos de reproducción…", ready: "Eventos de reproducción generados.", failed: "No se pudo generar la reproducción.", empty: "Pulsa Reproducir; los datos se cargarán automáticamente.", noEvents: "El filtro de partes actual no contiene notas reproducibles.",
     events: "Eventos", activeEvents: "Eventos activos", beats: "Pulsos totales", parts: "Partes", solo: "Solo", mute: "Silenciar", allParts: "Todas las partes", revision: "Revisión",

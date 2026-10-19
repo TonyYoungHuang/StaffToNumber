@@ -263,3 +263,39 @@
 
 .recognition-purchase-dialog { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; border: 1px solid #d9dce8; border-radius: 20px; padding: 24px; color: var(--text-primary, #202431); background: var(--surface, #fff); }
 .recognition-purchase-dialog::backdrop { background: rgba(20, 24, 40, .55); }
+
+/* Every tool shares a score-left / properties-right workbench. */
+.workspace-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); align-items: start; gap: 20px; min-width: 0; }
+.workspace-canvas { min-width: 0; overflow: auto; padding: 16px; background: var(--surface-mid); border: 1px solid var(--outline); border-radius: 14px; position: sticky; top: 90px; max-height: calc(100dvh - 120px); }
+.workspace-canvas[hidden] { display: none; }
+.workspace-properties { min-width: 0; }
+.workspace-body[data-view="edit"] { display: block; }
+.workspace-properties .surface-panel { padding: 18px; }
+.workspace-properties .form-grid, .workspace-properties .score-comparison-grid { grid-template-columns: minmax(0, 1fr); }
+.workspace-body[data-view="edit"] .visual-score-editor { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); }
+.workspace-sheet-handle, .editor-sheet-handle { display: none; }
+.editor-properties-sheet > summary { list-style: none; }
+.editor-properties-sheet > summary::-webkit-details-marker { display: none; }
+@media (max-width: 760px) {
+  .workspace-body { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .workspace-canvas { position: relative; top: auto; max-height: 44dvh; min-height: 220px; }
+  .workspace-body:not([data-view="edit"]) .workspace-properties, .editor-properties-sheet { position: sticky; bottom: 0; z-index: 10; max-height: 52dvh; overflow: auto; border: 1px solid var(--outline); border-radius: 20px 20px 0 0; background: var(--surface-mid); box-shadow: var(--shadow-soft); padding: 12px; }
+  .workspace-sheet-handle, .editor-sheet-handle { display: block; width: 100%; border: 0; padding: 10px; text-align: left; font: inherit; font-weight: 650; background: var(--surface-mid); color: var(--text); cursor: pointer; position: sticky; top: -12px; z-index: 1; }
+  .workspace-sheet-handle::before, .editor-sheet-handle::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto 12px; border-radius: 999px; background: var(--outline-strong); }
+  .workspace-properties[data-expanded="false"] #workspace-properties-content { display: none; }
+  .workspace-body[data-view="edit"] .visual-score-editor { grid-template-columns: minmax(0, 1fr); }
+  .visual-score-scroll { max-height: 44dvh; overflow: auto; }
+  .workspace-tools { flex-wrap: nowrap; gap: 4px; }
+  .workspace-tools .button { flex: 1 1 auto; padding: 9px 5px; font-size: 12px; }
+  .workspace-more { flex: 1 1 auto; min-width: 0; }
+  .workspace-more select { padding: 9px 5px; font-size: 12px; }
+}
+
+.workspace-properties .playback-panel, .workspace-properties .transpose-panel,
+.workspace-properties .practice-controls, .workspace-properties .loop-controls,
+.workspace-properties .split-layout { grid-template-columns: minmax(0, 1fr); }
+.workspace-properties .field-group, .workspace-properties .field-control,
+.workspace-properties .field-select, .workspace-properties .practice-grid { min-width: 0; max-width: 100%; }
+.workspace-properties .part-practice-row { flex-wrap: wrap; }
+.workspace-properties .helper-copy { overflow-wrap: anywhere; }
+.workspace-body[data-view="edit"] [data-score-draft-editor] { padding: 0; background: transparent; box-shadow: none; border: 0; }
