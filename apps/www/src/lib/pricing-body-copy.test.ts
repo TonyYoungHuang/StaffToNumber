@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { SUPPORTED_LOCALES, getRecognitionExperienceMessages } from "@score/i18n";
 import { getSingleScorePassCopy } from "@score/shared";
+import { workbenchCopy } from "@score/ui";
 import { getCreditGuideCopy, getPricingIntroCopy, getPurchaseFaqs } from "./pricing-body-copy";
 import { pricingFacts } from "./pricing-facts";
 import { pricingCopy } from "./localized-pricing";
@@ -17,7 +18,7 @@ test("all nine languages provide the complete pricing introduction, fee guide an
     const intro = getPricingIntroCopy(locale);
     const guide = getCreditGuideCopy(locale);
     const faqs = getPurchaseFaqs(locale);
-    assert.equal(intro.notes.length, 4);
+    assert.equal(intro.notes.length, 3);
     assert.equal(guide.rows.length, 7);
     assert.equal(guide.examples.length, 5);
     assert.equal(guide.rules.length, 5);
@@ -40,7 +41,8 @@ test("displayed costs and worked examples use the same published credit budgets"
     for (const [index, budget] of [[1, pricingFacts.starterMonthlyCredits], [2, pricingFacts.proMonthlyCredits]] as const) {
       for (const number of [budget, Math.floor(budget / pricingFacts.simpleScanCredits), Math.floor(budget / pricingFacts.complexScanCredits)]) assert.match(guide.examples[index], new RegExp(`\\b${number}\\b`));
     }
-    for (const number of [pricingFacts.oneScorePassCredits, pricingFacts.oneScorePassCredits - pricingFacts.simpleScanCredits, pricingFacts.oneScorePassCredits - pricingFacts.complexScanCredits]) assert.match(guide.examples[3], new RegExp(`\\b${number}\\b`));
+    assert.ok(guide.examples[3].includes(workbenchCopy[locale].passBody));
+    assert.doesNotMatch(guide.examples[3], /\b10\b/u);
     assert.equal(pricingFacts.freeMonthlyCredits, 0);
     assert.match(guide.examples[4], /1/u);
     assert.doesNotMatch(guide.examples[4], /25/u);
@@ -70,10 +72,10 @@ test("all nine languages keep the same free, pass, Starter and lane facts across
     const home = getHomepageLocalization(locale);
     const faq = resolveFaqGroups(locale, true);
     const summary = getRecognitionExperienceMessages(locale);
-    assert.ok(intro.freeDescription.includes(facts.freeScope), locale);
-    assert.equal(intro.passDescription, facts.passScope, locale);
+    assert.ok(intro.freeDescription.includes(workbenchCopy[locale].editable), locale);
+    assert.ok(intro.passDescription.includes(workbenchCopy[locale].passBody), locale);
     assert.equal(intro.comparisonNote, facts.starterScope, locale);
-    assert.equal(guide.description, facts.billing, locale);
+    assert.equal(guide.description, `Starter / Pro: ${facts.billing}`, locale);
     assert.ok(guide.rules[1].body.includes(facts.refund), locale);
     assert.equal(home.page.priceNote, facts.laneGuide, locale);
     assert.ok(home.page.faqs[0][1].includes(facts.freeScope), locale);

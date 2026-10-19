@@ -261,7 +261,7 @@ export const enScoreDetailMessages = {
   },
   emptyStates: {
     correctionEyebrow: "Correction", correctionTitle: "Waiting for editable notation",
-    correctionBody: "The correction panel will appear after MusicXML import or OMR creates a Editable score file revision.",
+    correctionBody: "The correction panel will appear after MusicXML import or OMR creates an Editable score file revision.",
     playbackEyebrow: "Playback practice", playbackTitle: "Waiting for a score revision",
     playbackBody: "Playback will be available after OMR produces a MusicXML/Editable score file candidate revision.",
   },

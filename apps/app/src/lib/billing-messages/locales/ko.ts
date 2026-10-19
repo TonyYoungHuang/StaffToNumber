@@ -24,7 +24,7 @@ export const koBillingMessages = {
     },
     selector: {
       plansAria: "크레딧 요금제 선택", selectedPlan: "선택한 요금제", continueTemplate: "{name} {cycle} 계속하기", freeEyebrow: "무료",
-      freeTitle: "첫 번째 완전한 악보를 무료로 만들기", freeBody: "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 1–5페이지의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 무료 요금제에는 월간 크레딧이 없으며 무료 인식에는 잔액이 필요하지 않습니다. 해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 Score JSON 내보내기는 무료입니다. PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다.", freeCta: "무료로 악보 만들기", creditUsage: "작업 생성 시 크레딧 예약", includedCapabilities: "포함 기능", benefitsAndResources: "혜택 및 리소스",
+      freeTitle: "첫 번째 완전한 악보를 무료로 만들기", freeBody: "평생 1회 무료 스캔. 편집, 조옮김, 재생, 편집 가능한 악보 파일, 숫자 악보. One Score Pass · US$2.99. 현재 악보 전용 · 일회성 구매. 이 악보의 모든 내보내기 형식 이용 (PDF / MusicXML / MIDI / MP3 등). 새 악보 추가 인식 · Starter / Pro 필요 (One Score Pass 제외). Starter · US$7.99/월 · 매월 50 크레딧. 월간 요금제: 일반 악보 곡당 약 1크레딧, 여러 페이지 대형 악보(약 6페이지 이상) 곡당 약 5크레딧.", freeCta: "무료로 악보 만들기", creditUsage: "작업 생성 시 크레딧 예약", includedCapabilities: "포함 기능", benefitsAndResources: "혜택 및 리소스",
     },
     client: {
       checkoutEyebrow: "결제", title: "온라인 결제 후 이용 권한 자동 활성화", body: "결제가 완료되면 등록 계정의 이용 권한이 자동으로 활성화됩니다.",
@@ -48,7 +48,7 @@ export const koBillingMessages = {
   },
   billing: {
     page: { eyebrow: "결제 관리", title: "구독, 갱신, 환불 및 학교 좌석을 관리하세요.", body: "이용 권한은 검증된 결제 서비스 Webhook 원장을 따르며 갱신 실패, 취소, 환불도 권한 상태에 반영됩니다.",
-      displayBody: "결제 확인 후 선택한 이용 권한이 활성화됩니다. 일회성 기간 요금제는 자동 갱신 없이 만료되며 구독은 취소할 때까지 갱신됩니다. 한 곡 이용권 크레딧은 만료되지 않으며 원본 악보와 추출 파트가 공유합니다. 결제 실패, 취소 및 결제 환불 내역도 여기에 표시됩니다." },
+      displayBody: "One Score Pass · US$2.99. 현재 악보 전용 · 일회성 구매. 이 악보의 모든 내보내기 형식 이용 (PDF / MusicXML / MIDI / MP3 등). 새 악보 추가 인식 · Starter / Pro 필요 (One Score Pass 제외). Starter · US$7.99/월 · 매월 50 크레딧." },
     manager: {
       loading: "결제 정보 불러오는 중...", fallbackError: "결제 정보를 불러올 수 없습니다. 다시 시도하세요.", signIn: "결제 정보를 보려면 로그인하세요.",
       creditEyebrow: "크레딧 잔액", availableCredits: "이번 달 사용 가능 크레딧", creditUnit: "크레딧", creditSummaryTemplate: "이번 달 {limit}개 중 {used}개를 사용했습니다.", creditUsage: "이번 달 크레딧 사용량", storage: "파일 저장 공간",
@@ -57,7 +57,7 @@ export const koBillingMessages = {
       prepaidNote: "간단 인식은 작업당 1크레딧, 복잡한 인식은 5크레딧입니다. 페이지 수는 처리 경로에 영향을 주며 페이지 수만큼 요금을 곱하지 않습니다. 일부만 제공되면 미제공 비율의 견적 크레딧을 반환하고 실패 또는 취소 시 처리 크레딧을 반환합니다. 현금 환불이 아닌 크레딧 반환입니다.",
       additionalPrepaidTemplate: "추가 선불 크레딧: {remaining} / {total}. 월간 크레딧이 부족할 때 사용하며, 미사용 크레딧은 유지됩니다.",
       quotaNote: "간단 인식은 작업당 1크레딧, 복잡한 인식은 5크레딧입니다. 페이지 수는 처리 경로에 영향을 주며 페이지 수만큼 요금을 곱하지 않습니다. 일부만 제공되면 미제공 비율의 견적 크레딧을 반환하고 실패 또는 취소 시 처리 크레딧을 반환합니다. 현금 환불이 아닌 크레딧 반환입니다. 월간 크레딧은 UTC 기준 매월 1일 초기화되며 이월되지 않습니다. 보기, 재생 및 서버에 작업을 제출하지 않는 기본 편집에는 크레딧이 들지 않습니다.",
-      freeEyebrow: "무료 이용 상태", noPaidTitle: "활성 유료 요금제가 없습니다", freeBody: "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 1–5페이지의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 무료 요금제에는 월간 크레딧이 없으며 무료 인식에는 잔액이 필요하지 않습니다. 해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 Score JSON 내보내기는 무료입니다. PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다.", unlock: "전체 이용 권한 활성화",
+      freeEyebrow: "무료 이용 상태", noPaidTitle: "활성 유료 요금제가 없습니다", freeBody: "평생 1회 무료 스캔. 편집, 조옮김, 재생, 편집 가능한 악보 파일, 숫자 악보. One Score Pass · US$2.99. 현재 악보 전용 · 일회성 구매. 이 악보의 모든 내보내기 형식 이용 (PDF / MusicXML / MIDI / MP3 등). 새 악보 추가 인식 · Starter / Pro 필요 (One Score Pass 제외). Starter · US$7.99/월 · 매월 50 크레딧. 월간 요금제: 일반 악보 곡당 약 1크레딧, 여러 페이지 대형 악보(약 6페이지 이상) 곡당 약 5크레딧.", unlock: "전체 이용 권한 활성화",
       subscriptionsEyebrow: "구독", subscriptionsTitle: "이용 권한 및 갱신 상태", manageStripe: "Stripe 결제 수단 관리", managingStripe: "Stripe 여는 중...", noSubscriptions: "이 계정에 연결된 구독이 없습니다.",
       currentPeriodEndsTemplate: "현재 기간 종료일: {date}", noFixedEnd: "고정된 기간 종료일 없음", renewalFailed: "최근 갱신에 실패했습니다. 결제 수단을 업데이트하세요.", cancellationScheduled: "현재 기간이 끝날 때 취소됩니다.",
       seatsTemplate: "{count}석", cancel: "기간 종료 시 취소", canceling: "취소 중...", cancelSuccess: "현재 결제 기간이 끝날 때 구독이 취소됩니다.",
@@ -78,9 +78,9 @@ export const koBillingMessages = {
     ctas: { free: "무료로 악보 만들기", "starter-monthly": "Starter 월간 선택", "starter-annual": "Starter 연간 선택", "converter-pro-monthly": "Converter Pro 월간 선택", "converter-pro-annual": "Converter Pro 연간 선택" },
     unitPriceTemplate: "크레딧당 {unitPrice}", freeUnitPriceTemplate: "완전한 악보 프로젝트 {projectCount}개", creditsTemplate: "월 {monthlyCredits} 크레딧", freeCreditsTemplate: "평생 {projectCount}회 무료 간단 인식 · 표준 처리 · 월간 크레딧 없음",
     benefits: {
-      freeProject: "평생 무료 간단 인식 {projectCount}회, 표준 처리에서만 이용. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF이며 파일 검사 결과에 따릅니다", freeTools: "해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 Score JSON 내보내기는 무료입니다. PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다.", moreThanFreeProject: "무료 악보 프로젝트 {projectCount}개 제한 해제", starterIncluded: "현재 Starter의 모든 기능", starterMonthlyIncluded: "현재 Starter 월간의 모든 기능", converterMonthlyIncluded: "현재 Converter Pro 월간의 모든 기능",
+      freeProject: "평생 무료 간단 인식 {projectCount}회, 표준 처리에서만 이용. 보통 사진 1장 또는 약 5페이지 이하의 A4/Letter PDF이며 파일 검사 결과에 따릅니다", freeTools: "편집, 조옮김, 재생, 편집 가능한 악보 파일, 숫자 악보. One Score Pass · US$2.99. 현재 악보 전용 · 일회성 구매. 이 악보의 모든 내보내기 형식 이용 (PDF / MusicXML / MIDI / MP3 등). 새 악보 추가 인식 · Starter / Pro 필요 (One Score Pass 제외). Starter · US$7.99/월 · 매월 50 크레딧. 월간 요금제: 일반 악보 곡당 약 1크레딧, 여러 페이지 대형 악보(약 6페이지 이상) 곡당 약 5크레딧.", moreThanFreeProject: "무료 악보 프로젝트 {projectCount}개 제한 해제", starterIncluded: "현재 Starter의 모든 기능", starterMonthlyIncluded: "현재 Starter 월간의 모든 기능", converterMonthlyIncluded: "현재 Converter Pro 월간의 모든 기능",
       editor: "온라인 편집기, 파트 사본 생성기 Beta 및 실시간 공동 작업 Beta", practice: "재생, 브라우저 녹음 및 연습 피드백 Beta, 스마트 조옮김", conversion: "오선보 ↔ 숫자보 및 MusicXML ↔ MIDI 변환",
-      exports: "해당 렌더러 사용 시 PDF/SVG/PNG 및 WAV/MP3 내보내기", freeExports: "숫자악보 및 Score JSON 내보내기는 무료. 다른 형식은 한 곡 이용권 또는 Starter가 필요합니다",
+      exports: "해당 렌더러 사용 시 PDF/SVG/PNG 및 WAV/MP3 내보내기", freeExports: "숫자악보 및 편집 가능한 악보 파일 내보내기는 무료. 다른 형식은 한 곡 이용권 또는 Starter가 필요합니다",
     },
     resources: {
       monthlyCredits: "매월 {monthlyCredits}크레딧. 간단 인식 작업당 1, 복잡한 인식 5크레딧. 표준 및 대용량 파일 처리는 파일 검사 결과에 따릅니다", monthlyCreditsReset: "UTC 기준 매월 {monthlyCredits}크레딧, 이월 없음. 간단 인식 작업당 1, 복잡한 인식 5크레딧. 두 처리 경로는 파일 검사 결과에 따릅니다", freeMonthlyCredits: "월간 크레딧 없음. 평생 1회 무료 간단 인식은 크레딧을 사용하지 않습니다.", storage: "파일 저장 공간 {storage} MB", personalLibrary: "개인 악보함, 수정 기록 및 공개 악보 카탈로그",

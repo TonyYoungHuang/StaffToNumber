@@ -2,7 +2,7 @@ import type { PlaybackPracticeMessages } from "../types";
 
 export const zhCNPlaybackPracticeMessages = {
   playback: {
-    eyebrow: "播放练习", title: "Tone.js 分声部练习播放器", body: "从当前 可编辑乐谱文件 生成可练习的播放事件，支持变速、片段循环、节拍器、倒拍以及声部 Solo/Mute。",
+    eyebrow: "播放练习", title: "Tone.js 分声部练习播放器", body: "从当前可编辑乐谱文件生成可练习的播放事件，支持变速、片段循环、节拍器、倒拍以及声部 Solo/Mute。",
     load: "生成播放事件", play: "播放", stop: "停止", tempo: "速度 BPM", playhead: "播放位置", loop: "循环片段", loopStart: "起始拍", loopEnd: "结束拍", metronome: "节拍器", countIn: "一小节倒拍",
     loading: "正在生成播放事件……", ready: "播放事件已生成。", failed: "播放生成失败。", empty: "点击“播放”即可试听，播放数据会自动加载。", noEvents: "当前声部筛选下没有可播放音符。",
     events: "事件", activeEvents: "当前播放事件", beats: "总拍数", parts: "声部", solo: "Solo", mute: "Mute", allParts: "全部声部", revision: "版本",

@@ -6,7 +6,7 @@ export const zhCNScoreSharingMessages = {
     revision: "当前修订", preview: "五线谱预览", previewEmpty: "此分享暂时没有可渲染的 MusicXML。", previewLoading: "正在渲染五线谱...",
     previewError: "无法渲染五线谱预览。", previewRetry: "重新尝试渲染", previewTechnicalDetails: "技术详情", previewDeferred: "此乐谱较大。需要 OSMD 对照视图时再加载完整 MusicXML 预览。", previewRender: "加载完整预览", previewEventLabel: "{part} · 第 {measure} 小节 · 第 {number} 个{type}", previewNote: "音符", previewRest: "休止符",
     jianpu: "简谱预览", summary: "结构化摘要", parts: "声部", measures: "小节", notes: "音符", rests: "休止符",
-    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "简谱", scoreJsonEyebrow: "Score JSON", assignmentScoreFailed: "无法加载作业指定的乐谱版本。",
+    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "简谱", scoreJsonEyebrow: "可编辑乐谱文件", assignmentScoreFailed: "无法加载作业指定的乐谱版本。",
     assignmentScoreShown: "正在显示作业乐谱版本 {version}。", loadingAria: "分享乐谱加载状态",
   },
   assignments: {

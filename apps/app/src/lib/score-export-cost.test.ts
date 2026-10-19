@@ -3,6 +3,7 @@ import test from "node:test";
 import { localizeApiError, SUPPORTED_LOCALES } from "@score/i18n";
 import { isCreditUpgradeError, scoreCheckoutPath, readCheckoutAction, saveContinuationNotice, takeContinuationNotice } from "./score-pass-checkout";
 import { getScorePassCopy } from "./billing-messages/client";
+import { workbenchCopy } from "@score/ui";
 import { getScoreDetailMessages } from "./score-detail-messages";
 import { canRequestScoreExport, checkExportQuote, type ScoreExportQuote } from "./score-export-cost";
 
@@ -110,7 +111,7 @@ test("a failed consumed continuation shows once and does not become another paym
   } finally { globalThis.window = original; }
 });
 
-test("all nine upgrade catalogs explain score-and-parts credit sharing and offer native continuation copy", () => {
+test("all nine upgrade catalogs describe the bound score and offer native continuation copy", () => {
   const english = getScorePassCopy("en");
   for (const locale of SUPPORTED_LOCALES) {
     const copy = getScorePassCopy(locale);
@@ -118,7 +119,9 @@ test("all nine upgrade catalogs explain score-and-parts credit sharing and offer
       assert.ok(copy[key].trim(), `${locale}/${key}`);
       if (locale !== "en") assert.notEqual(copy[key], english[key], `${locale}/${key}`);
     }
-    assert.match(copy.sharedBalance, /\{balance\}/u);
+    assert.equal(copy.sharedBalance, workbenchCopy[locale].passLine);
+    assert.ok(copy.passTarget.includes(workbenchCopy[locale].passBody));
+    assert.doesNotMatch(copy.passTarget, /\b10\b/u);
     assert.match(copy.topUp, /\{price\}/u);
     assert.match(copy.newPass, /\{price\}/u);
   }

@@ -26,7 +26,7 @@ export const jaScoreSharingMessages = {
     rests: "休符",
     musicXmlEyebrow: "MusicXML",
     jianpuEyebrow: "数字譜",
-    scoreJsonEyebrow: "Score JSON",
+    scoreJsonEyebrow: "編集可能な楽譜ファイル",
     assignmentScoreFailed: "課題の楽譜バージョンを読み込めませんでした。",
     assignmentScoreShown: "課題の楽譜バージョン {version} を表示しています。",
     loadingAria: "共有楽譜の読み込み状況",

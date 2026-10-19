@@ -24,7 +24,7 @@ export const enScoreSharingMessages = {
     rests: "Rests",
     musicXmlEyebrow: "MusicXML",
     jianpuEyebrow: "Jianpu",
-    scoreJsonEyebrow: "Score JSON",
+    scoreJsonEyebrow: "Editable score file",
     assignmentScoreFailed: "Could not load the assignment score version.",
     assignmentScoreShown: "Showing assignment score version {version}.",
     loadingAria: "Shared score loading status",

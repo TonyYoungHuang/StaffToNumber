@@ -1,5 +1,6 @@
 "use client";
 
+import { workbenchCopy } from "@score/ui";
 import { getSingleScorePassCopy } from "@score/shared";
 
 import { formatMessage, formatNumber, type SupportedLocale } from "@score/i18n";
@@ -305,7 +306,7 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
       {passes.length ? <section className="surface-panel stack-lg" id="score-passes">
         <h2 className="card-title">{passCopy.name}</h2>
         {passes.map(pass => <div className="list-item stack-sm" key={pass.id}>
-          <strong>{passCopy.remaining}: {pass.remaining} / {pass.credits}</strong>
+          <strong>{workbenchCopy[locale].passBody}</strong>
           {pass.documentId ? <Link href={`/scores/${encodeURIComponent(pass.documentId)}`} className="button button-secondary">{passCopy.open}</Link>
             : <Link href="/scores#free-scan" className="button button-secondary">{passCopy.unused}</Link>}
         </div>)}

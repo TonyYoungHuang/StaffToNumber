@@ -1,5 +1,6 @@
 import { getRecognitionPricingCopy } from "./recognition-pricing-copy";
 import type { SupportedLocale } from "@score/i18n";
+import { workbenchCopy } from "@score/ui";
 import { getSingleScorePassCopy } from "@score/shared";
 import { pricingFacts } from "./pricing-facts";
 
@@ -49,7 +50,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("en").freeScope + " " + getRecognitionPricingCopy("en").laneGuide,
     passTitle: `Your next score: One Score Pass for ${passPrice("en")}.`,
     passDescription: getRecognitionPricingCopy("en").passScope,
-    notes: [getRecognitionPricingCopy("en").passFirst, `${pass} processing credits for this score`, "One-time payment", "No automatic renewal"],
+    notes: [getRecognitionPricingCopy("en").passFirst, "One-time payment", "No automatic renewal"],
     freeCta: "Start free",
     passCta: "Buy One Score Pass",
     comparisonNote: getRecognitionPricingCopy("en").starterScope,
@@ -59,7 +60,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("zh-CN").freeScope + " " + getRecognitionPricingCopy("zh-CN").laneGuide,
     passTitle: `下一首：${getSingleScorePassCopy("zh-CN").name} ${passPrice("zh-CN")}。`,
     passDescription: getRecognitionPricingCopy("zh-CN").passScope,
-    notes: [getRecognitionPricingCopy("zh-CN").passFirst, `这首乐谱专属 ${pass} 个处理积分`, "一次付款", "不自动续费"],
+    notes: [getRecognitionPricingCopy("zh-CN").passFirst, "一次付款", "不自动续费"],
     freeCta: "免费开始",
     passCta: "买单谱通行证",
     comparisonNote: getRecognitionPricingCopy("zh-CN").starterScope,
@@ -69,7 +70,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").laneGuide,
     passTitle: `下一首：${getSingleScorePassCopy("zh-TW").name} ${passPrice("zh-TW")}。`,
     passDescription: getRecognitionPricingCopy("zh-TW").passScope,
-    notes: [getRecognitionPricingCopy("zh-TW").passFirst, `這首樂譜專屬 ${pass} 個處理點數`, "一次付款", "不自動續費"],
+    notes: [getRecognitionPricingCopy("zh-TW").passFirst, "一次付款", "不自動續費"],
     freeCta: "免費開始",
     passCta: "購買單譜通行證",
     comparisonNote: getRecognitionPricingCopy("zh-TW").starterScope,
@@ -79,7 +80,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("ja").freeScope + " " + getRecognitionPricingCopy("ja").laneGuide,
     passTitle: `次の楽譜には、${getSingleScorePassCopy("ja").name}を ${passPrice("ja")} で。`,
     passDescription: getRecognitionPricingCopy("ja").passScope,
-    notes: [getRecognitionPricingCopy("ja").passFirst, `この楽譜専用の処理クレジット ${pass}`, "1回払い", "自動更新なし"],
+    notes: [getRecognitionPricingCopy("ja").passFirst, "1回払い", "自動更新なし"],
     freeCta: "無料で始める",
     passCta: "1曲パスを購入",
     comparisonNote: getRecognitionPricingCopy("ja").starterScope,
@@ -89,7 +90,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("ko").freeScope + " " + getRecognitionPricingCopy("ko").laneGuide,
     passTitle: `다음 악보는 ${getSingleScorePassCopy("ko").name} ${passPrice("ko")}로.`,
     passDescription: getRecognitionPricingCopy("ko").passScope,
-    notes: [getRecognitionPricingCopy("ko").passFirst, `해당 악보 전용 처리 크레딧 ${pass}개`, "일회성 결제", "자동 갱신 없음"],
+    notes: [getRecognitionPricingCopy("ko").passFirst, "일회성 결제", "자동 갱신 없음"],
     freeCta: "무료로 시작",
     passCta: "한 곡 이용권 구매",
     comparisonNote: getRecognitionPricingCopy("ko").starterScope,
@@ -99,7 +100,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("fr").freeScope + " " + getRecognitionPricingCopy("fr").laneGuide,
     passTitle: `Pour la suivante : One Score Pass à ${passPrice("fr")}.`,
     passDescription: getRecognitionPricingCopy("fr").passScope,
-    notes: [getRecognitionPricingCopy("fr").passFirst, `${pass} crédits de traitement pour cette partition`, "Paiement unique", "Sans renouvellement automatique"],
+    notes: [getRecognitionPricingCopy("fr").passFirst, "Paiement unique", "Sans renouvellement automatique"],
     freeCta: "Commencer gratuitement",
     passCta: "Acheter le pass une partition",
     comparisonNote: getRecognitionPricingCopy("fr").starterScope,
@@ -109,7 +110,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("es").freeScope + " " + getRecognitionPricingCopy("es").laneGuide,
     passTitle: `Para tu próxima partitura: One Score Pass por ${passPrice("es")}.`,
     passDescription: getRecognitionPricingCopy("es").passScope,
-    notes: [getRecognitionPricingCopy("es").passFirst, `${pass} créditos de procesamiento para esta partitura`, "Pago único", "Sin renovación automática"],
+    notes: [getRecognitionPricingCopy("es").passFirst, "Pago único", "Sin renovación automática"],
     freeCta: "Empezar gratis",
     passCta: "Comprar pase para una partitura",
     comparisonNote: getRecognitionPricingCopy("es").starterScope,
@@ -119,7 +120,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("de").freeScope + " " + getRecognitionPricingCopy("de").laneGuide,
     passTitle: `Für Ihre nächste Partitur: One Score Pass für ${passPrice("de")}.`,
     passDescription: getRecognitionPricingCopy("de").passScope,
-    notes: [getRecognitionPricingCopy("de").passFirst, `${pass} Verarbeitungscredits für diese Partitur`, "Einmalzahlung", "Keine automatische Verlängerung"],
+    notes: [getRecognitionPricingCopy("de").passFirst, "Einmalzahlung", "Keine automatische Verlängerung"],
     freeCta: "Kostenlos beginnen",
     passCta: "Einzelpartitur-Pass kaufen",
     comparisonNote: getRecognitionPricingCopy("de").starterScope,
@@ -129,7 +130,7 @@ const intro: Record<SupportedLocale, PricingIntroCopy> = {
     freeDescription: getRecognitionPricingCopy("ru").freeScope + " " + getRecognitionPricingCopy("ru").laneGuide,
     passTitle: `Для следующей партитуры: One Score Pass за ${passPrice("ru")}.`,
     passDescription: getRecognitionPricingCopy("ru").passScope,
-    notes: [getRecognitionPricingCopy("ru").passFirst, `${pass} кредитов обработки для этой партитуры`, "Разовая оплата", "Без автопродления"],
+    notes: [getRecognitionPricingCopy("ru").passFirst, "Разовая оплата", "Без автопродления"],
     freeCta: "Начать бесплатно",
     passCta: "Купить пакет для одной партитуры",
     comparisonNote: getRecognitionPricingCopy("ru").starterScope,
@@ -458,11 +459,29 @@ const purchaseFaqs: Record<SupportedLocale, readonly PurchaseFaq[]> = {
 };
 
 export function getPricingIntroCopy(locale: SupportedLocale): PricingIntroCopy {
-  return intro[locale];
+  const copy = workbenchCopy[locale];
+  return {
+    ...intro[locale],
+    passTitle: `${copy.pass} · ${passPrice(locale)}`,
+    passDescription: `${copy.passLine}. ${copy.passBody}. ${copy.benefits[4]}`,
+    freeDescription: `${intro[locale].freeTitle} ${copy.chips.join(" · ")}. ${getRecognitionPricingCopy(locale).laneGuide}`,
+  };
 }
 
 export function getCreditGuideCopy(locale: SupportedLocale): CreditGuideCopy {
-  return guides[locale];
+  const copy = workbenchCopy[locale];
+  const guide = guides[locale];
+  return {
+    ...guide,
+    description: `Starter / Pro: ${guide.description}`,
+    rows: guide.rows.map(row => ({ ...row, operation: row.operation.replace("Score JSON", copy.editable) })),
+    examples: guide.examples.map((example, index) => index === 3
+      ? `${copy.pass} · ${passPrice(locale)}. ${copy.passLine}. ${copy.passBody}. ${copy.benefits[4]}`
+      : example),
+    rules: guide.rules.map((rule, index) => index === 2
+      ? { title: "Starter / Pro", body: copy.note }
+      : index === 3 ? { title: copy.pass, body: `${copy.passLine}. ${copy.passBody}` } : rule),
+  };
 }
 
 export function getPurchaseFaqs(locale: SupportedLocale): readonly PurchaseFaq[] {

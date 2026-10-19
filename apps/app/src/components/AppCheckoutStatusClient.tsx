@@ -1,6 +1,5 @@
 "use client";
 
-import { getSingleScorePassCopy } from "@score/shared";
 
 import Link from "next/link";
 import { useAppAuthModal } from "./AppAuthModal";
@@ -246,7 +245,7 @@ export function AppCheckoutStatusClient({
             {accessState === "mismatch" ? <button className="button button-secondary" onClick={() => { clearStoredToken(); signIn("login", () => setRetryCount(n => n + 1)); }}>{flow.accountMismatch}</button> : null}
           </div> : null}
           {isPaid && order?.billingKind === "one_time" ? <div className="stack-sm">
-            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "single-score" ? order.continuation ? scorePassCopy.passTarget : getSingleScorePassCopy(locale).paid : purchaseCopy.oneTimeNote}</p>
+            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "single-score" ? scorePassCopy.passTarget : purchaseCopy.oneTimeNote}</p>
             {order.accessStartsAt ? <p>{formatMessage(purchaseCopy.startsTemplate, { date: formatBillingDateTime(order.accessStartsAt, locale) })}</p> : null}
             {order.accessEndsAt ? <p>{formatMessage(purchaseCopy.expiresTemplate, { date: formatBillingDateTime(order.accessEndsAt, locale) })}</p> : null}
           </div> : null}

@@ -17,14 +17,15 @@ import { useAppAuthModal } from "./AppAuthModal";
 import { clearAuthIntent, consumeAuthIntent, saveAuthIntent } from "../lib/auth-intent";
 
 
-export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClose, returnTo }: {
-  documentId: string; action?: CheckoutIntendedAction; locale: SupportedLocale; topUp: boolean; onClose: () => void; returnTo?: string;
+export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClose, returnTo, postRecognition = false }: {
+  documentId: string; action?: CheckoutIntendedAction; locale: SupportedLocale; topUp: boolean; onClose: () => void; returnTo?: string; postRecognition?: boolean;
 }) {
   const wb = workbenchCopy[locale];
   const [scoreTitle, setScoreTitle] = useState("");
   const [freeUsed, setFreeUsed] = useState(false);
   const signIn = useAppAuthModal();
   const copy = getScorePassCopy(locale);
+  const heading = postRecognition ? wb.done : action?.kind === "export" ? copy.exportTitle : copy.title;
   const dialog = useRef<HTMLDialogElement>(null);
   const lock = useRef(false);
   const [loading, setLoading] = useState<PurchasePlanCode | null>(null);
@@ -88,8 +89,8 @@ export function ScorePassUpgradeModal({ documentId, action, locale, topUp, onClo
 
   return <dialog data-checkout-control ref={dialog} className={styles.dialog} aria-labelledby="score-upgrade-title" aria-describedby="score-upgrade-body" onCancel={event => { event.preventDefault(); if (!loading) onClose(); }} onClick={event => { if (event.target === event.currentTarget && !loading) onClose(); }}>
     <div className="stack-lg">
-      <div className={styles.heading}><h2 id="score-upgrade-title" className="card-title">{scoreTitle ? `${wb.done} · ${scoreTitle}` : copy.title}</h2><button type="button" className="button button-tertiary" disabled={Boolean(loading)} onClick={onClose} aria-label={copy.close}>×</button></div>
-      <div id="score-upgrade-body"><PostRecognitionValue locale={locale} freeUsed={freeUsed} busy={Boolean(loading)} preview={<RecognizedScorePreview documentId={documentId} onLoaded={(title, used) => { setScoreTitle(title); setFreeUsed(used); }} />} onPurchase={plan => void checkout(plan)} onLater={onClose} /></div>
+      <div className={styles.heading}><h2 id="score-upgrade-title" className="card-title">{scoreTitle ? `${heading} · ${scoreTitle}` : heading}</h2><button type="button" className="button button-tertiary" disabled={Boolean(loading)} onClick={onClose} aria-label={copy.close}>×</button></div>
+      <div id="score-upgrade-body"><PostRecognitionValue lead={postRecognition ? undefined : copy.exportBody} locale={locale} freeUsed={freeUsed} busy={Boolean(loading)} preview={<RecognizedScorePreview documentId={documentId} onLoaded={(title, used) => { setScoreTitle(title); setFreeUsed(used); }} />} onPurchase={plan => void checkout(plan)} onLater={onClose} /></div>
       {error ? <p className="form-status error" role="alert">{error}</p> : null}
       {recoveryOrders.map(order => <a key={order.id} className="button button-secondary" href={order.checkoutUrl || `/checkout/success?${new URLSearchParams({ order_id: order.id, provider: order.provider, ...(order.token ? { token: order.token } : {}) })}`}>{getCheckoutReturnCopy(locale).recover} · {order.id.slice(-8)}</a>)}
       <Link href={fallback} className="micro-copy">{copy.fallback}</Link>

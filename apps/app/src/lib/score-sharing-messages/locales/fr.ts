@@ -26,7 +26,7 @@ export const frScoreSharingMessages = {
     rests: "Silences",
     musicXmlEyebrow: "MusicXML",
     jianpuEyebrow: "Notation chiffrée",
-    scoreJsonEyebrow: "Score JSON",
+    scoreJsonEyebrow: "Fichier de partition modifiable",
     assignmentScoreFailed: "Impossible de charger la version de la partition associée au devoir.",
     assignmentScoreShown: "Affichage de la version {version} de la partition du devoir.",
     loadingAria: "État du chargement de la partition partagée",

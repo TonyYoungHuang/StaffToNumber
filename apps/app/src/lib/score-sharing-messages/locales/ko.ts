@@ -26,7 +26,7 @@ export const koScoreSharingMessages = {
     rests: "쉼표",
     musicXmlEyebrow: "MusicXML",
     jianpuEyebrow: "숫자 악보",
-    scoreJsonEyebrow: "Score JSON",
+    scoreJsonEyebrow: "편집 가능한 악보 파일",
     assignmentScoreFailed: "과제 악보 버전을 불러올 수 없습니다.",
     assignmentScoreShown: "과제 악보 버전 {version}을 표시하고 있습니다.",
     loadingAria: "공유 악보 불러오기 상태",

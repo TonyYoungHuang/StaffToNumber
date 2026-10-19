@@ -6,7 +6,7 @@ export const ruScoreSharingMessages = {
     revision: "Текущая редакция", preview: "Предпросмотр нот", previewEmpty: "В этой публикации пока нет MusicXML, доступного для отображения.", previewLoading: "Отрисовка нот...",
     previewError: "Не удалось отобразить нотный текст.", previewRetry: "Попробовать отрисовать снова", previewTechnicalDetails: "Технические сведения", previewDeferred: "Эта партитура велика. Загрузите полный предпросмотр MusicXML, когда понадобится сравнительный вид OSMD.", previewRender: "Загрузить полный предпросмотр", previewEventLabel: "{part} · такт {measure} · {type} {number}", previewNote: "нота", previewRest: "пауза",
     jianpu: "Предпросмотр цифровой нотации", summary: "Структурированная сводка", parts: "Партии", measures: "Такты", notes: "Ноты", rests: "Паузы",
-    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "Цифровая нотация", scoreJsonEyebrow: "Score JSON", assignmentScoreFailed: "Не удалось загрузить версию партитуры для задания.",
+    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "Цифровая нотация", scoreJsonEyebrow: "Редактируемый файл партитуры", assignmentScoreFailed: "Не удалось загрузить версию партитуры для задания.",
     assignmentScoreShown: "Показана версия партитуры {version} для задания.", loadingAria: "Состояние загрузки общей партитуры",
   },
   assignments: {

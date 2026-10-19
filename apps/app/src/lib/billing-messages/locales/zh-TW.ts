@@ -24,7 +24,7 @@ export const zhTWBillingMessages = {
     },
     selector: {
       plansAria: "選擇點數方案", selectedPlan: "目前已選", continueTemplate: "繼續購買 {name} {cycle}", freeEyebrow: "免費版",
-      freeTitle: "免費建立你的第一份完整樂譜", freeBody: "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 1–5 頁的 A4/Letter PDF，以檔案預檢為準。免費方案沒有每月點數，免費辨識無須點數餘額。 在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。", freeCta: "免費建立樂譜", creditUsage: "任務建立時預留點數", includedCapabilities: "包含功能", benefitsAndResources: "權益與資源",
+      freeTitle: "免費建立你的第一份完整樂譜", freeBody: "終身 1 次免費掃譜。 編輯、移調、播放、可編輯樂譜檔案、簡譜。單譜通行證 · One Score Pass · US$2.99。綁定目前這首譜 · 一次性。解鎖這首譜的全部匯出格式（PDF / MusicXML / MIDI / MP3 等）。繼續識別新樂譜 · 需 Starter / Pro（單譜通行證不含）。Starter · US$7.99/月 · 每月 50 積分。月付方案：普通譜約 1 積分/首，多頁大譜（約 6 頁以上）約 5 積分/首.", freeCta: "免費建立樂譜", creditUsage: "任務建立時預留點數", includedCapabilities: "包含功能", benefitsAndResources: "權益與資源",
     },
     client: {
       checkoutEyebrow: "付款", title: "線上付款並自動開通權限", body: "付款成功後，權限會自動開通到註冊帳戶。",
@@ -48,7 +48,7 @@ export const zhTWBillingMessages = {
   },
   billing: {
     page: { eyebrow: "帳單中心", title: "管理訂閱、續費、退款與學校席位。", body: "訂閱存取權以支付服務的已驗證 Webhook 帳本為準，續費失敗、取消與退款都會同步反映在權限狀態。",
-      displayBody: "付款確認後開通所選權益。一次性方案存取權限到期後不自動續費，訂閱會續費直到取消。單譜通行證點數不到期，由原譜與擷取分譜共用。付款失敗、取消和支付退款會在此顯示。" },
+      displayBody: "單譜通行證 · One Score Pass · US$2.99。綁定目前這首譜 · 一次性。解鎖這首譜的全部匯出格式（PDF / MusicXML / MIDI / MP3 等）。繼續識別新樂譜 · 需 Starter / Pro（單譜通行證不含）。Starter · US$7.99/月 · 每月 50 積分." },
     manager: {
       loading: "正在載入帳單資訊...", fallbackError: "目前無法載入帳單資訊，請重試。", signIn: "請先登入以查看帳單。",
       creditEyebrow: "點數餘額", availableCredits: "本月可用點數", creditUnit: "點數", creditSummaryTemplate: "本月共 {limit} 點，已使用 {used} 點。", creditUsage: "本月點數使用", storage: "檔案儲存空間",
@@ -57,7 +57,7 @@ export const zhTWBillingMessages = {
       prepaidNote: "簡單辨識每項任務 1 點，複雜辨識每項任務 5 點；頁數影響通道，不依頁數倍增。部分交付按比例返還未交付部分的報價點數，失敗或取消返還處理點數；此處指退點數，不是退現金。",
       additionalPrepaidTemplate: "另有一次性點數 {remaining} / {total}，月度額度不足時使用；未用點數保留。",
       quotaNote: "簡單辨識每項任務 1 點，複雜辨識每項任務 5 點；頁數影響通道，不依頁數倍增。部分交付按比例返還未交付部分的報價點數，失敗或取消返還處理點數；此處指退點數，不是退現金。 每月點數按 UTC 曆月月初重設，不累積。檢視、播放及未提交伺服器任務的基本編輯不扣點數。",
-      freeEyebrow: "免費使用狀態", noPaidTitle: "目前沒有生效中的付費方案", freeBody: "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 1–5 頁的 A4/Letter PDF，以檔案預檢為準。免費方案沒有每月點數，免費辨識無須點數餘額。 在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。", unlock: "開通完整權限",
+      freeEyebrow: "免費使用狀態", noPaidTitle: "目前沒有生效中的付費方案", freeBody: "終身 1 次免費掃譜。 編輯、移調、播放、可編輯樂譜檔案、簡譜。單譜通行證 · One Score Pass · US$2.99。綁定目前這首譜 · 一次性。解鎖這首譜的全部匯出格式（PDF / MusicXML / MIDI / MP3 等）。繼續識別新樂譜 · 需 Starter / Pro（單譜通行證不含）。Starter · US$7.99/月 · 每月 50 積分。月付方案：普通譜約 1 積分/首，多頁大譜（約 6 頁以上）約 5 積分/首.", unlock: "開通完整權限",
       subscriptionsEyebrow: "訂閱", subscriptionsTitle: "存取權與續費狀態", manageStripe: "管理 Stripe 付款方式", managingStripe: "正在開啟 Stripe...", noSubscriptions: "目前帳戶尚無訂閱。",
       currentPeriodEndsTemplate: "目前週期至 {date}", noFixedEnd: "沒有固定的週期結束時間", renewalFailed: "最近一次續費失敗，請更新付款方式。", cancellationScheduled: "已安排在目前週期結束時取消。",
       seatsTemplate: "{count} 個席位", cancel: "於週期結束時取消", canceling: "正在取消...", cancelSuccess: "訂閱將於目前計費週期結束時取消。",
@@ -78,9 +78,9 @@ export const zhTWBillingMessages = {
     ctas: { free: "免費建立樂譜", "starter-monthly": "選擇 Starter 月繳", "starter-annual": "選擇 Starter 年繳", "converter-pro-monthly": "選擇 Converter Pro 月繳", "converter-pro-annual": "選擇 Converter Pro 年繳" },
     unitPriceTemplate: "每點 {unitPrice}", freeUnitPriceTemplate: "{projectCount} 個完整樂譜專案", creditsTemplate: "每月 {monthlyCredits} 點", freeCreditsTemplate: "終身 {projectCount} 次免費簡單辨識 · 一般通道 · 沒有每月點數",
     benefits: {
-      freeProject: "終身 {projectCount} 次一般通道免費簡單辨識；通常適用於一張照片或約 5 頁以內的 A4/Letter PDF，以檔案預檢為準", freeTools: "在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。", moreThanFreeProject: "不再受 {projectCount} 個免費樂譜專案限制", starterIncluded: "包含 Starter 的所有現有功能", starterMonthlyIncluded: "包含 Starter 月繳的所有現有功能", converterMonthlyIncluded: "包含 Converter Pro 月繳的所有現有功能",
+      freeProject: "終身 {projectCount} 次一般通道免費簡單辨識；通常適用於一張照片或約 5 頁以內的 A4/Letter PDF，以檔案預檢為準", freeTools: "編輯、移調、播放、可編輯樂譜檔案、簡譜。單譜通行證 · One Score Pass · US$2.99。綁定目前這首譜 · 一次性。解鎖這首譜的全部匯出格式（PDF / MusicXML / MIDI / MP3 等）。繼續識別新樂譜 · 需 Starter / Pro（單譜通行證不含）。Starter · US$7.99/月 · 每月 50 積分。月付方案：普通譜約 1 積分/首，多頁大譜（約 6 頁以上）約 5 積分/首.", moreThanFreeProject: "不再受 {projectCount} 個免費樂譜專案限制", starterIncluded: "包含 Starter 的所有現有功能", starterMonthlyIncluded: "包含 Starter 月繳的所有現有功能", converterMonthlyIncluded: "包含 Converter Pro 月繳的所有現有功能",
       editor: "線上樂譜編輯、聲部分譜副本與多人協作 Beta", practice: "練習播放、瀏覽器錄音回饋 Beta 與智慧移調", conversion: "五線譜／簡譜及 MusicXML／MIDI 轉換",
-      exports: "對應渲染服務可用時，支援 PDF／SVG／PNG 與 WAV／MP3 匯出", freeExports: "簡譜與 Score JSON 免費匯出；其他格式需單譜通行證或 Starter",
+      exports: "對應渲染服務可用時，支援 PDF／SVG／PNG 與 WAV／MP3 匯出", freeExports: "簡譜與 可編輯樂譜檔案 免費匯出；其他格式需單譜通行證或 Starter",
     },
     resources: {
       monthlyCredits: "每月 {monthlyCredits} 點；簡單辨識每項任務 1 點，複雜 5 點；一般和大檔案通道以檔案預檢為準", monthlyCreditsReset: "每個 UTC 曆月 {monthlyCredits} 點，不累積；簡單辨識每項任務 1 點，複雜 5 點；兩條通道均以檔案預檢為準", freeMonthlyCredits: "沒有每月點數；終身免費簡單辨識不扣點數。", storage: "{storage} MB 檔案儲存空間", personalLibrary: "個人樂譜庫、修訂記錄與開放曲庫",

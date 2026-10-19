@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { workbenchCopy } from "@score/ui";
 import { getSingleScorePassCopy } from "@score/shared";
 import { apiRequest } from "../lib/api";
 import { useAppLocale } from "./AppLocaleProvider";
@@ -24,5 +25,5 @@ export function ScorePassBalance() {
     void refresh();
     return () => { active = false; clearTimeout(timer); };
   }, [params.id]);
-  return pass ? <aside className="surface-panel inline-meta" aria-live="polite"><strong>{copy.name}</strong><span>{copy.remaining}: {pass.remaining} / {pass.credits}</span></aside> : null;
+  return pass ? <aside className="surface-panel inline-meta" aria-live="polite"><strong>{copy.name}</strong><span>{workbenchCopy[locale].passBody}</span></aside> : null;
 }

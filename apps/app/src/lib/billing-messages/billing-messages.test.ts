@@ -1,3 +1,4 @@
+import { workbenchCopy } from "@score/ui";
 import { readCheckoutReturn, workReturnPath } from "../flow-return";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -72,12 +73,12 @@ test("app purchase, library and billing copy preserve the three offers and per-t
     const upsell = getOneScoreUpsellCopy(locale);
     const scan = getScoreEntryMessages(locale).library.scan;
     const dashboard = getWorkspaceMessages(locale).dashboard.metrics;
-    for (const value of [upsell.passNote, billing.scorePass.passTarget]) assert.match(value, /10/u, locale);
+    for (const value of [upsell.passNote, billing.scorePass.passTarget]) assert.ok(value.includes(workbenchCopy[locale].passBody), locale);
     assert.match(billing.scorePass.starterBody, /50/u, locale);
     for (const value of [scan.freeBody, dashboard.freeRouteBody]) {
-      for (const amount of ["1", "10", "50"]) assert.ok(value.includes(amount), `${locale} ${amount}`);
+      for (const amount of ["1", "50"]) assert.ok(value.includes(amount), `${locale} ${amount}`);
       assert.doesNotMatch(value, /25/u, locale);
-      assert.match(value, /Score JSON/u, locale);
+      assert.ok(value.includes(workbenchCopy[locale].editable), locale);
       assert.match(value, /2[.,]99/u, locale);
       assert.match(value, /7[.,]99/u, locale);
     }
@@ -134,8 +135,8 @@ test("billing corrects visible pass expiry copy while keeping the existing SEO d
   assert.match(page, /description: page\.body/u);
   assert.match(page, /\{copy\.billing\.page\.displayBody\}/u);
   assert.notEqual(getBillingMessages("en").billing.page.body, getBillingMessages("en").billing.page.displayBody);
-  assert.match(getBillingMessages("en").billing.page.displayBody, /One Score Pass credits have no expiry/u);
-  assert.match(getBillingMessages("zh-CN").billing.page.displayBody, /单谱通行证积分不过期/u);
+  assert.ok(getBillingMessages("en").billing.page.displayBody.includes(workbenchCopy.en.passBody));
+  assert.ok(getBillingMessages("zh-CN").billing.page.displayBody.includes(workbenchCopy["zh-CN"].passBody));
 });
 
 test("checkout supports an explicit One Score Pass and defaults to Starter without activation", () => {

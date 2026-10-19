@@ -29,3 +29,11 @@ test("paid-feature hook does not falsely claim a free scan was used", () => {
   assert.ok(!$.text().includes(workbenchCopy.en.used));
   assert.ok(!$.text().includes(workbenchCopy.en.lead));
 });
+
+test("export hook keeps its own subtitle even when the free scan was used", () => {
+  const lead = "Unlock all export formats for this score.";
+  const $ = load(renderToStaticMarkup(<PostRecognitionValue locale="en" freeUsed lead={lead} preview={null} onPurchase={() => {}} onLater={() => {}} />));
+  assert.equal($("[data-post-recognition-value] > .body-copy").text(), lead);
+  assert.ok(!$.text().includes(workbenchCopy.en.lead));
+  assert.ok($.text().includes(workbenchCopy.en.used));
+});

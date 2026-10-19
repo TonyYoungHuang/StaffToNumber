@@ -6,7 +6,7 @@ export const zhTWScoreSharingMessages = {
     revision: "目前修訂", preview: "五線譜預覽", previewEmpty: "此分享目前沒有可呈現的 MusicXML。", previewLoading: "正在呈現五線譜...",
     previewError: "無法呈現五線譜預覽。", previewRetry: "重新嘗試呈現", previewTechnicalDetails: "技術詳細資料", previewDeferred: "此樂譜較大。需要 OSMD 對照檢視時再載入完整 MusicXML 預覽。", previewRender: "載入完整預覽", previewEventLabel: "{part} · 第 {measure} 小節 · 第 {number} 個{type}", previewNote: "音符", previewRest: "休止符",
     jianpu: "簡譜預覽", summary: "結構化摘要", parts: "聲部", measures: "小節", notes: "音符", rests: "休止符",
-    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "簡譜", scoreJsonEyebrow: "Score JSON", assignmentScoreFailed: "無法載入作業指定的樂譜版本。",
+    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "簡譜", scoreJsonEyebrow: "可編輯樂譜檔案", assignmentScoreFailed: "無法載入作業指定的樂譜版本。",
     assignmentScoreShown: "正在顯示作業樂譜版本 {version}。", loadingAria: "分享樂譜載入狀態",
   },
   assignments: {

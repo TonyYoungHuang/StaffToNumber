@@ -6,7 +6,7 @@ export const deScoreSharingMessages = {
     revision: "Aktuelle Revision", preview: "Notenvorschau", previewEmpty: "Diese Freigabe enthält noch kein darstellbares MusicXML.", previewLoading: "Notensatz wird gerendert ...",
     previewError: "Die Notenvorschau konnte nicht gerendert werden.", previewRetry: "Erneut rendern", previewTechnicalDetails: "Technische Details", previewDeferred: "Diese Partitur ist umfangreich. Laden Sie die vollständige MusicXML-Vorschau, wenn Sie die Vergleichsansicht benötigen.", previewRender: "Vollständige Vorschau laden", previewEventLabel: "{part} · Takt {measure} · {type} {number}", previewNote: "Note", previewRest: "Pause",
     jianpu: "Jianpu-Vorschau", summary: "Strukturierte Zusammenfassung", parts: "Stimmen", measures: "Takte", notes: "Noten", rests: "Pausen",
-    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "Jianpu", scoreJsonEyebrow: "Score JSON", assignmentScoreFailed: "Die Partiturversion der Aufgabe konnte nicht geladen werden.",
+    musicXmlEyebrow: "MusicXML", jianpuEyebrow: "Jianpu", scoreJsonEyebrow: "Bearbeitbare Partiturdatei", assignmentScoreFailed: "Die Partiturversion der Aufgabe konnte nicht geladen werden.",
     assignmentScoreShown: "Partiturversion {version} der Aufgabe wird angezeigt.", loadingAria: "Ladestatus der freigegebenen Partitur",
   },
   assignments: {

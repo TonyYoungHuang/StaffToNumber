@@ -4,9 +4,9 @@ import type { SupportedLocale } from "@score/i18n";
 import { workbenchCopy } from "./workbench-copy";
 
 export type WorkbenchPlan = "single-score" | "starter-monthly" | "converter-pro-monthly";
-export function PostRecognitionValue({ locale, preview, freeUsed, onPurchase, onLater, busy = false }: {
+export function PostRecognitionValue({ locale, preview, freeUsed, onPurchase, onLater, busy = false, lead }: {
   locale: SupportedLocale; preview: ReactNode; freeUsed: boolean; onPurchase: (plan: WorkbenchPlan) => void;
-  onLater: () => void; busy?: boolean;
+  onLater: () => void; busy?: boolean; lead?: string;
 }) {
   const copy = workbenchCopy[locale];
   const name = useId();
@@ -17,7 +17,7 @@ export function PostRecognitionValue({ locale, preview, freeUsed, onPurchase, on
     { code: "converter-pro-monthly" as const, title: "Pro", price: "$14.99", line: copy.credits.replace("{n}", "200"), body: copy.pro },
   ];
   return <div data-post-recognition-value>
-    <p className="body-copy">{freeUsed ? copy.lead : copy.paidLead}</p>
+    <p className="body-copy">{lead ?? (freeUsed ? copy.lead : copy.paidLead)}</p>
     <div className="wb-value-top">
       <div className="wb-value-preview">{preview}</div>
       <div className="wb-value-panels">

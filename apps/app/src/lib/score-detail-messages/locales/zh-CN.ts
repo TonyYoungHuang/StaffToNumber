@@ -8,18 +8,18 @@ export const zhCNScoreDetailMessages = {
     loading: "正在加载乐谱工程...", missing: "未找到乐谱工程。", back: "返回乐谱库", status: "工程状态", current: "当前版本",
     source: "源 MusicXML", download: "下载 MusicXML", downloadFailed: "下载失败。", restore: "恢复此版本", restoring: "正在恢复...",
     restoreSuccess: "已从历史版本创建新的当前版本。", restoreFailed: "版本恢复失败。", currentBadge: "当前", previewTitle: "OSMD 五线谱预览",
-    previewBody: "OpenSheetMusicDisplay 会在浏览器中把导入的 MusicXML 渲染为五线谱。", modelTitle: "可编辑乐谱文件 结构",
+    previewBody: "OpenSheetMusicDisplay 会在浏览器中把导入的 MusicXML 渲染为五线谱。", modelTitle: "可编辑乐谱文件结构",
     modelBody: "编辑、移调、播放和导出都从这份结构化乐谱模型生成。", revisions: "版本历史",
   },
   summary: { parts: "声部", measures: "小节", notes: "音符", rests: "休止符", parser: "解析器", warnings: "导入说明" },
   jianpu: {
-    eyebrow: "五线谱转简谱", title: "简谱预览", body: "由当前 可编辑乐谱文件 版本生成，因此移调、编辑和播放都能从同一结构重新生成简谱。",
+    eyebrow: "五线谱转简谱", title: "简谱预览", body: "由当前可编辑乐谱文件版本生成，因此移调、编辑和播放都能从同一结构重新生成简谱。",
     loading: "正在生成简谱...", error: "简谱生成失败。", key: "调号", source: "来源", warnings: "简谱投影提示", pitchSystem: "唱名法",
     movableDo: "首调唱名", fixedDo: "固定唱名", accidentals: "升降号策略", preserve: "保留原拼写", preferSharps: "优先升号",
     preferFlats: "优先降号", apply: "重新生成", sourceText: "简谱源文本", empty: "当前版本还没有可用于生成简谱的结构化乐谱数据。",
   },
   transpose: {
-    eyebrow: "移调", title: "创建移调版本", body: "从当前 可编辑乐谱文件 创建新的乐谱版本，简谱、播放和导出都会基于新版本重新生成。",
+    eyebrow: "移调", title: "创建移调版本", body: "从当前可编辑乐谱文件创建新的乐谱版本，简谱、播放和导出都会基于新版本重新生成。",
     semitones: "半音数", down: "-1", up: "+1", submit: "创建移调版本", working: "正在移调...", success: "已创建新的移调版本。", failed: "移调失败。",
   },
   transposeTarget: {
@@ -28,7 +28,7 @@ export const zhCNScoreDetailMessages = {
     up: "向上", down: "向下", spelling: "异名同音策略", spellingAuto: "跟随目标调号", spellingPreserve: "保持原拼写倾向",
     spellingSharps: "优先升号", spellingFlats: "优先降号", pitchDirection: "音高方向", concertToWritten: "实际音转记谱音",
     writtenToConcert: "记谱音转实际音", major: "大调", minor: "小调", dorian: "多利亚调式", phrygian: "弗里几亚调式",
-    lydian: "利底亚调式", mixolydian: "混合利底亚调式", locrian: "洛克里亚调式", engine: "移调引擎", scoreJsonFallback: "可编辑乐谱文件 备用引擎",
+    lydian: "利底亚调式", mixolydian: "混合利底亚调式", locrian: "洛克里亚调式", engine: "移调引擎", scoreJsonFallback: "可编辑乐谱文件备用引擎",
   },
   transposeRange: {
     label: "音域检查", part: "检查声部", allParts: "全部声部", perPart: "按声部设置音域", noPartProfile: "不检查该声部", none: "不检查音域",
@@ -38,14 +38,14 @@ export const zhCNScoreDetailMessages = {
     presetFailed: "无法保存工程移调预设。", suggestionTitle: "{value} 个半音至 {target}", from: "原调", score: "乐谱", range: "音域",
   },
   clef: {
-    eyebrow: "谱号助手", title: "自动谱号建议", body: "分析各声部音域，并创建采用易读首小节谱号的新 可编辑乐谱文件 版本。",
+    eyebrow: "谱号助手", title: "自动谱号建议", body: "分析各声部音域，并创建采用易读首小节谱号的新可编辑乐谱文件版本。",
     load: "分析谱号", loading: "正在分析谱号...", apply: "应用建议谱号", applying: "正在应用谱号...", success: "已创建谱号建议版本。",
     failed: "无法更新谱号。", current: "当前", recommended: "建议", range: "音域", noNotes: "没有带音高的音符", line: "第", octave: "八度",
   },
   exports: {
     cost: {
       freeFormat: "此乐谱免费导出，无需积分",
-      passFormatUnavailable: "此格式需单谱通行证或 Starter；简谱和 可编辑乐谱文件 免费导出。",
+      passFormatUnavailable: "此格式需单谱通行证或 Starter；简谱和可编辑乐谱文件免费导出。",
       generate: "生成 {format}",
       costSingle: "本次：{count} 积分",
       costMultiple: "本次：{count} 积分",
@@ -61,7 +61,7 @@ export const zhCNScoreDetailMessages = {
     },
     midi: { button: "导出 MIDI", exporting: "正在加入队列...", success: "MIDI 已导出。", failed: "MIDI 导出失败。" },
     jianpu: { button: "导出简谱", exporting: "正在导出简谱...", success: "简谱已导出。", failed: "简谱导出失败。" },
-    scoreJson: { button: "导出 可编辑乐谱文件", exporting: "正在导出 可编辑乐谱文件...", success: "可编辑乐谱文件 快照已导出。", failed: "可编辑乐谱文件 导出失败。" },
+    scoreJson: { button: "导出可编辑乐谱文件", exporting: "正在导出可编辑乐谱文件...", success: "可编辑乐谱文件快照已导出。", failed: "可编辑乐谱文件导出失败。" },
     wav: { button: "导出 WAV", exporting: "正在加入队列...", success: "WAV 已导出。", failed: "WAV 导出失败。" },
     mp3: { button: "导出 MP3", exporting: "正在加入队列...", success: "MP3 已导出。", failed: "MP3 导出失败，请检查 FluidSynth、SoundFont 和 ffmpeg 配置。" },
     musicXml: { button: "导出 MusicXML", exporting: "正在加入队列...", success: "MusicXML 已生成。", failed: "MusicXML 导出失败。" },
@@ -83,7 +83,7 @@ export const zhCNScoreDetailMessages = {
   },
   partExtract: {
     eyebrow: "声部分谱副本 Beta", title: "生成独立声部练习副本",
-    body: "把所选声部提取为新的 可编辑乐谱文件 工程，用于个人练习、教学链接、移调、播放和导出；副本暂不会自动跟随总谱后续修改。",
+    body: "把所选声部提取为新的可编辑乐谱文件工程，用于个人练习、教学链接、移调、播放和导出；副本暂不会自动跟随总谱后续修改。",
     titleLabel: "新工程名称", parts: "选择声部", applyClefs: "自动优化谱号", submit: "生成声部副本", working: "正在生成...",
     success: "声部副本工程已创建。", failed: "无法创建声部副本。", open: "打开声部副本",
   },
@@ -142,11 +142,11 @@ export const zhCNScoreDetailMessages = {
     templatesEmpty: "还没有评分模板。", templateSaved: "评分模板已保存。", templateDeleted: "评分模板已删除。", templateFailed: "评分模板操作失败。",
   },
   emptyStates: {
-    correctionEyebrow: "修谱", correctionTitle: "等待可编辑乐谱", correctionBody: "MusicXML 导入或 OMR 创建 可编辑乐谱文件 版本后，将显示修谱面板。",
-    playbackEyebrow: "播放练习", playbackTitle: "等待乐谱版本", playbackBody: "OMR 生成 MusicXML/可编辑乐谱文件 候选版本后即可播放。",
+    correctionEyebrow: "修谱", correctionTitle: "等待可编辑乐谱", correctionBody: "MusicXML 导入或 OMR 创建可编辑乐谱文件版本后，将显示修谱面板。",
+    playbackEyebrow: "播放练习", playbackTitle: "等待乐谱版本", playbackBody: "OMR 生成 MusicXML/可编辑乐谱文件候选版本后即可播放。",
   },
   preview: { empty: "暂无可渲染的 MusicXML。", loading: "正在渲染五线谱预览...", error: "MusicXML 预览渲染失败。", retry: "重新尝试渲染", technicalDetails: "技术详情", deferred: "这是一份大型乐谱。需要使用 OSMD 对照时再加载完整 MusicXML 预览。", render: "加载完整预览", eventLabel: "{part} · 第 {measure} 小节 · 第 {number} 个{type}", note: "音符", rest: "休止符" },
-  revision: { undoRedoAria: "版本撤销与重做", undo: "撤销", redo: "重做", sources: { musicxml_import: "MusicXML 导入", score_json_import: "可编辑乐谱文件 导入", midi_import: "MIDI 导入", omr_import: "OMR 导入", jianpu_import: "简谱导入", audio_transcribe: "音频转谱", candidate_accept: "接受候选", manual_edit: "手动编辑", restore: "恢复版本", part_extract: "提取声部", transpose: "移调", system: "系统" } },
+  revision: { undoRedoAria: "版本撤销与重做", undo: "撤销", redo: "重做", sources: { musicxml_import: "MusicXML 导入", score_json_import: "可编辑乐谱文件导入", midi_import: "MIDI 导入", omr_import: "OMR 导入", jianpu_import: "简谱导入", audio_transcribe: "音频转谱", candidate_accept: "接受候选", manual_edit: "手动编辑", restore: "恢复版本", part_extract: "提取声部", transpose: "移调", system: "系统" } },
   diagnostics: { measures: "小节", notes: "音符", revision: "版本", midi: "MIDI", warnings: "警告", statuses: { processing: "处理中", failed: "失败", cancelled: "已取消", completed: "已完成", diagnostic: "诊断" } },
   practice: { solo: "独奏", mute: "静音", allParts: "全部声部", loop: "循环", fullScore: "全谱", metronome: "节拍器", countIn: "预备拍" },
   profiles: {

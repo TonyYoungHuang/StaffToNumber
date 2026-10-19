@@ -26,7 +26,7 @@ export const esScoreSharingMessages = {
     rests: "Silencios",
     musicXmlEyebrow: "MusicXML",
     jianpuEyebrow: "Notación numérica",
-    scoreJsonEyebrow: "Score JSON",
+    scoreJsonEyebrow: "Archivo de partitura editable",
     assignmentScoreFailed: "No se pudo cargar la versión de la partitura de la tarea.",
     assignmentScoreShown: "Mostrando la versión {version} de la partitura de la tarea.",
     loadingAria: "Estado de carga de la partitura compartida",

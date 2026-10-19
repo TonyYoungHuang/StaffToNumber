@@ -66,7 +66,7 @@ export function CheckoutPlanSelector({
       resources: [...plan.resources.slice(0, 3), purchaseCopy.oneTimeNote] };
   });
   const selectedPlan = selectedPlanCode === SINGLE_SCORE_PASS.code ? {
-    code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: passPrice, credits: passCopy.benefits[1],
+    code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: passPrice, credits: scorePassCopy.passTarget,
   } : displayPlans.find((plan) => plan.code === selectedPlanCode);
   const selectedBillingKind = selectedPlanCode === SINGLE_SCORE_PASS.code ? "one_time" : billingKind;
   const planListTracked = useRef(false);
@@ -117,7 +117,7 @@ export function CheckoutPlanSelector({
       <section className={styles.plansPanel} aria-labelledby="checkout-plans-title">
         <div className="stack-sm" data-primary-plan={selectedPlanCode}>
           <h2 className={styles.sectionHeading}>{passTitle}</h2>
-          <p className="body-copy">{targetDocumentId ? scorePassCopy.passTarget : passCopy.body}</p>
+          <p className="body-copy">{scorePassCopy.passTarget}</p>
           {targetDocumentId ? <p className="helper-copy">{scorePassCopy.sharedCredits}</p> : null}
           <p className="micro-copy">{passCopy.once}</p>
           {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <button type="button" className="button button-secondary" onClick={() => choosePlan(SINGLE_SCORE_PASS.code)}>{passTitle}</button> : null}
