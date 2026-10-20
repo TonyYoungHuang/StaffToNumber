@@ -7,6 +7,8 @@ import {
   type GuestSampleEvent, type GuestSampleKey, type GuestSampleNotation,
 } from "../lib/guest-sample";
 import styles from "./GuestSampleDemo.module.css";
+import homeStyles from "../app/home-page.module.css";
+import { WorkbenchModal } from "@score/ui";
 
 function JianpuNote({ event }: { event: GuestSampleEvent }) {
   const octave = event.octaveShift ?? 0;
@@ -24,10 +26,13 @@ function JianpuNote({ event }: { event: GuestSampleEvent }) {
   );
 }
 
-export function GuestSampleWorkbench({ copy, scanLabel }: {
+export function GuestSampleWorkbench({ copy, workspaceHrefs, closeLabel, editLabel }: {
   copy: GuestSampleCopy;
-  scanLabel: string;
+  workspaceHrefs: Record<GuestSampleKey, Record<GuestSampleNotation, string>>;
+  closeLabel: string;
+  editLabel: string;
 }) {
+  const [open, setOpen] = useState(false);
   const [key, setKey] = useState<GuestSampleKey>("C");
   const [notation, setNotation] = useState<GuestSampleNotation>("staff");
   const [playing, setPlaying] = useState(false);
@@ -109,10 +114,19 @@ export function GuestSampleWorkbench({ copy, scanLabel }: {
   }
 
   return (
-    <section id="sample-score-demo" className={styles.demo} aria-labelledby="guest-sample-title" data-guest-sample>
+    <article id="sample-score-demo" className={homeStyles.demoCard} data-guest-sample-card>
+      <button type="button" className={`${homeStyles.demoMedia} ${styles.launch}`} aria-label={copy.title} onClick={() => setOpen(true)}>
+        <img src={guestSample.variants.C.staffImage} alt={copy.preview.replace("{key}", copy.keyNames.C)} width={340} loading="lazy" />
+        <span aria-hidden="true">↗</span>
+      </button>
+      <div className={homeStyles.demoCopy}>
+        <strong>{copy.title}</strong><small>{copy.body}</small>
+        <button type="button" className={styles.launchLink} onClick={() => setOpen(true)}>{copy.prepared} →</button>
+      </div>
+      {open ? <WorkbenchModal title={copy.title} closeLabel={closeLabel} onClose={() => { stop(); setOpen(false); }}>
+    <section className={styles.demo} aria-label={copy.title} data-guest-sample>
       <div className={styles.heading}>
         <p className="eyebrow">{copy.badge}</p>
-        <h2 id="guest-sample-title">{copy.title}</h2>
         <p>{copy.body}</p>
       </div>
       <div className={styles.workbench}>
@@ -155,11 +169,13 @@ export function GuestSampleWorkbench({ copy, scanLabel }: {
         <div className={styles.footer}>
           <button type="button" className="public-button primary" aria-busy={starting} aria-pressed={playing || starting} onClick={() => playing || starting ? stop() : void play()}>{playing || starting ? copy.stop : copy.play}</button>
           <progress value={position} max={duration} aria-label={copy.progress} />
-          <a className="public-button secondary" href="#home-workbench">{scanLabel}</a>
+          <a className="public-button secondary" href={workspaceHrefs[key][notation]}>{editLabel}</a>
         </div>
         <p className={styles.allowance}>{copy.allowance}</p>
         {error ? <p role="status">{error}</p> : null}
       </div>
     </section>
+      </WorkbenchModal> : null}
+    </article>
   );
 }

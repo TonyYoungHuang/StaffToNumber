@@ -86,7 +86,7 @@ test("all nine languages keep the same free, pass, Starter and lane facts across
     assert.match(summary.starterPlan, /7[.,]99/);
     assert.match(summary.starterPlan, /50/);
     assert.doesNotMatch(facts.freeScope, /25/u);
-    assert.match(facts.freeScope, /Score JSON/u);
+    assert.ok(facts.freeScope.includes(workbenchCopy[locale].editable), locale);
     assert.match(facts.freeScope, /2[.,]99/u);
     assert.match(facts.freeScope, /7[.,]99/u);
     assert.match(facts.freeScope, /1/);

@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { getLocaleConfig, getScorePreflightMessages, getScoreRequestWaitingMessages } from "@score/i18n";
 import { getPricingPlanCatalog, getPurchaseOptionsCopy } from "@score/shared";
-import { workbenchCopy, ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon, SparkIcon } from "@score/ui";
+import { workbenchCopy, ArrowNorthEastIcon, CheckSealIcon, CreditPlanGrid, FileStackIcon } from "@score/ui";
 import { HomeHeroWorkbench } from "../components/HomeHeroWorkbench";
 import { getHomeRuntimeCopy } from "../lib/home-runtime-copy";
+import { ProductCommercialBackdrop } from "../components/ProductCommercialBackdrop";
 import { GuestSampleDemo } from "../components/GuestSampleDemo";
 import { PurchasePlanCard } from "../components/PurchasePlanCard";
 import { homeWorkflowLinks } from "../lib/home-on-page";
@@ -94,33 +95,21 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema).replaceAll("<", "\\u003c") }}
       />
 
-      <section className={`${styles.section} ${styles.hero} ${styles.introduction}`} aria-labelledby="home-title">
-        <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
-        <div className={`${styles.container} ${styles.heroGrid}`}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}><SparkIcon width={16} height={16} />{copy.heroKicker}</p>
-            <h1 id="home-title" className={usesCjkLayout ? undefined : styles.heroTitleEnglish}>
-              {copy.heroTitle.map((line, index) => <span className={styles.heroTitleLine} key={line}>{index > 0 ? " " : ""}{line}</span>)}
-            </h1>
-            <p className={styles.heroIntro}>{copy.heroIntro.join(" ")}</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="product-overview" className={`${styles.section} ${styles.overviewSection}`}>
-        <div className={`${styles.container} ${styles.heroMediaPair}`}>
-          <div className={styles.heroVideoCard}>
-            <video controls playsInline preload="none" poster={productCommercial.backgroundPosterSrc} src={productCommercial.videoSrc} aria-label={commercialCopy.watchFilm} />
-            <strong>{commercialCopy.watchFilm}</strong>
-          </div>
-          <GuestSampleDemo locale={locale} />
-        </div>
-      </section>
+      <div id="product-overview" className={styles.fullWidthHero}>
+        <ProductCommercialBackdrop
+          key={locale} locale={locale} copy={commercialCopy}
+          videoSrc={productCommercial.backgroundVideoSrc}
+          posterSrc={productCommercial.backgroundPosterSrc}
+          filmSrc={productCommercial.videoSrc}
+          pricingHref={localizePublicHref("/pricing", locale)}
+        />
+      </div>
 
       <section className={`${styles.section} ${styles.hero}`} aria-labelledby="workbench-title">
         <div className={styles.heroGlowOne} /><div className={styles.heroGlowTwo} />
         <div className={`${styles.container} ${styles.heroGrid}`}>
           <div className={styles.workbenchIntro}>
+            <h1 id="home-title" className={usesCjkLayout ? undefined : styles.heroTitleEnglish}>{copy.heroTitle.join(" ")}</h1>
             <h2 id="workbench-title">{presentation.title}</h2>
             <p>{presentation.body}</p>
           </div>
@@ -146,7 +135,9 @@ export default async function HomePage() {
             <p>{copy.demosBody}</p>
           </div>
           <div className={styles.demoGrid}>
-            {copy.demos.map(([title, body], index) => {
+            <GuestSampleDemo locale={locale} />
+            {[0, 1, 3, 2].map(index => {
+              const [title, body] = copy.demos[index];
               const demo = featureDemos[index];
               const media = getHomepageDemoProductMedia(demo.slug, locale);
               const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, title) : null;

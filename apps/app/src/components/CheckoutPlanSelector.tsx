@@ -59,7 +59,7 @@ export function CheckoutPlanSelector({
   const passPrice = `US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`;
   const passTitle = targetDocumentId ? formatMessage(isTopUp ? scorePassCopy.topUp : scorePassCopy.newPass, { price: passPrice }) : `${passCopy.name} · ${passPrice}`;
   const displayPlans = billingKind === "subscription" ? plans : plans.map(plan => {
-    if (plan.code === "free") return plan;
+    if (plan.code === "free" || plan.code === "converter-pro-annual") return plan;
     const duration = plan.code.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month;
     return { ...plan, cycle: duration, badge: purchaseCopy.oneTime,
       cta: formatMessage(purchaseCopy.buyTemplate, { name: plan.name, duration }),
@@ -68,6 +68,7 @@ export function CheckoutPlanSelector({
   const selectedPlan = selectedPlanCode === SINGLE_SCORE_PASS.code ? {
     code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: passPrice, credits: scorePassCopy.passTarget,
   } : displayPlans.find((plan) => plan.code === selectedPlanCode);
+  // TODO(lifetime-checkout): converter-pro-annual retains annual checkout until the backend migration.
   const selectedBillingKind = selectedPlanCode === SINGLE_SCORE_PASS.code ? "one_time" : billingKind;
   const planListTracked = useRef(false);
 
@@ -152,7 +153,7 @@ export function CheckoutPlanSelector({
         {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <details className="flow-details">
           <summary>{flow.planDetails}</summary>
           <CreditPlanGrid label={copy.selector.plansAria}>
-            <CreditPlanCard plan={selectedPlan as PricingPlanDisplay} labels={{ creditUsage: copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
+            <CreditPlanCard plan={selectedPlan as PricingPlanDisplay} labels={{ creditUsage: selectedPlan.code === "converter-pro-annual" ? (selectedPlan as PricingPlanDisplay).resources[0] : copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
           </CreditPlanGrid>
         </details> : null}
         </details>

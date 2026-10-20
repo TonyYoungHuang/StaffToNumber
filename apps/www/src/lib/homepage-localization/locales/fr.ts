@@ -67,13 +67,13 @@ export const frHomepage = {
       ["Aucune promesse de reconnaissance parfaite", "Les scans dégradés, la gravure dense et la polyphonie nécessitent souvent des corrections."],
       ["Les propositions restent corrigeables", "Notes, durées, tonalités, paroles et mesures sont enregistrées dans des révisions structurées."],
       ["Vos fichiers privés le restent", "Les projets restent séparés des exemples et preuves publiés."],
-      ["Formats et projets restent portables", "MusicXML, MIDI, texte Jianpu et Score JSON limitent la dépendance à un outil."],
+      ["Formats et projets restent portables", "MusicXML, MIDI, texte Jianpu et Fichier de partition modifiable limitent la dépendance à un outil."],
     ],
     pricingKicker: "Tarifs par crédits",
     pricingTitle: "Choisissez votre formule de crédits",
     pricingBody: getPricingCardCopy("fr").intro,
     pricingPromoLabel: "Économisez avec l’abonnement annuel",
-    pricingPromoValue: "Environ 45 % à 49 % d’économie par an",
+    pricingPromoValue: "Environ 49 % d’économie par an",
     creditPlanGridLabel: "Formules de crédits",
     creditPlanCardLabels: { creditUsage: "Crédits réservés par tâche", includedCapabilities: "Fonctionnalités incluses", benefitsAndResources: "Avantages et ressources" },
     creditRulesKicker: "Règles des crédits",
@@ -82,7 +82,7 @@ export const frHomepage = {
     creditRules: [
       ["0 $US", "Un projet complet gratuit", getRecognitionPricingCopy("fr").freeScope],
       ["Crédits réservés", "Réservation et restitution", "Les crédits sont réservés à la création de la tâche ; ils sont automatiquement restitués en cas d’échec ou d’annulation. La transposition directe et l’aperçu Jianpu n’en consomment pas."],
-      ["Réinitialisation mensuelle", "Crédits de la formule", "Starter comprend 50 crédits par mois et Converter Pro 200. Les crédits inutilisés ne sont pas reportés."],
+      ["Réinitialisation mensuelle", "Crédits de la formule", "Starter comprend 50 crédits par mois et Converter Pro mensuel 200. Les crédits inutilisés ne sont pas reportés."],
     ],
     priceNote: getRecognitionPricingCopy("fr").laneGuide,
     faqKicker: "FAQ",
@@ -90,7 +90,7 @@ export const frHomepage = {
     faqs: [
       ["La reconnaissance est-elle exacte à 100 % ?", getRecognitionPricingCopy("fr").freeScope + " " + getRecognitionPricingCopy("fr").laneGuide],
       ["Puis-je ensuite transposer ou créer du Jianpu ?", "Oui. L’édition, le Jianpu, la transposition, la lecture et l’export utilisent le même projet de partition validé."],
-      ["Quels formats d’export sont pris en charge ?", "MusicXML est le principal format d’échange, complété par MIDI, Score JSON, le texte Jianpu et les exports validés sur le déploiement actuel."],
+      ["Quels formats d’export sont pris en charge ?", "MusicXML est le principal format d’échange, complété par MIDI, Fichier de partition modifiable, le texte Jianpu et les exports validés sur le déploiement actuel."],
       ["La conversion audio vers partition est-elle disponible ?", "Elle est proposée comme fonction expérimentale, avec des limites explicites de format, de quota et de correction."],
       ["Mes fichiers importés seront-ils publiés ?", "Non. Les projets privés ne deviennent jamais automatiquement des exemples publics."],
     ],
@@ -111,7 +111,7 @@ export const frHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "Reconnaître", title: "Importer un PDF ou une image de partition", body: getRecognitionPricingCopy("fr").freeScope, action: "Créer gratuitement" },
+      recognize: { label: "Reconnaître", title: "Importer un PDF ou une image de partition", body: "Importez une partition pour la reconnaître, la modifier et l’écouter.", action: "Créer gratuitement" },
       process: { label: "Traiter la partition", title: "Importer une notation structurée", body: "Continuez l’édition, la transposition, la conversion, la lecture et l’export dans un même projet de partition.", action: "Ouvrir l’espace de partition" },
       transcribe: { label: "Audio vers partition", title: "Importer un fichier audio ou vidéo", body: "Créez une proposition MIDI et une notation à vérifier ; la polyphonie dense doit toujours être corrigée.", action: "Créer une proposition", unavailableAction: "Voir l’état de la fonction expérimentale" },
     },
@@ -127,7 +127,7 @@ export const frHomepage = {
     tools: [["Éditer en ligne", "Corriger les hauteurs, les durées, les tonalités et les mesures"], ["Convertir la partition", "Convertir entre MusicXML, MIDI et les formats structurés"], ["Transposer", "Créer une nouvelle révision par tonalité ou demi-ton"], ["Créer du Jianpu", "Créer du Jianpu depuis la même partition structurée"], ["Partition vers audio", "Écouter, ralentir, boucler et créer un support de travail"], ["Audio vers partition", "Créer une proposition vérifiable depuis un média autorisé"]],
   },
   plans: {
-    free: { badge: getRecognitionPricingCopy("fr").freeShort, name: "Gratuit", cycle: "À vie", unitPrice: getRecognitionPricingCopy("fr").freeUnit, credits: "1 scan simple gratuit à vie · traitement standard · aucun crédit mensuel", audience: getRecognitionPricingCopy("fr").freeLead, benefits: [getRecognitionPricingCopy("fr").freeUnit, "Sur cette partition, la modification, la transposition, la lecture, le choix des résultats, le titre et le partage sont gratuits, ainsi que les exports Jianpu et Score JSON.", "Exports Jianpu et Score JSON gratuits ; autres formats avec un pass une partition ou Starter", "Aucun crédit mensuel ; le scan simple gratuit à vie ne consomme aucun crédit.", "Les exports PDF, MusicXML, MIDI, SVG, PNG, WAV et MP3, une autre partition, la reconnaissance complexe, les fichiers volumineux et l’extraction de parties nécessitent un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois."], resources: [getRecognitionPricingCopy("fr").freeScope, "50 Mo de stockage", "Bibliothèque de partitions ouvertes et téléchargements CC0", "Aucune carte bancaire requise ; conservez le projet gratuit"], cta: "Créer une partition gratuite" },
+    free: { badge: getRecognitionPricingCopy("fr").freeShort, name: "Gratuit", cycle: "À vie", unitPrice: getRecognitionPricingCopy("fr").freeUnit, credits: "1 scan simple gratuit à vie · traitement standard · aucun crédit mensuel", audience: getRecognitionPricingCopy("fr").freeLead, benefits: [getRecognitionPricingCopy("fr").freeUnit, "Sur cette partition, la modification, la transposition, la lecture, le choix des résultats, le titre et le partage sont gratuits, ainsi que les exports Jianpu et Fichier de partition modifiable.", "Exports Jianpu et Fichier de partition modifiable gratuits ; autres formats avec un pass une partition ou Starter", "Aucun crédit mensuel ; le scan simple gratuit à vie ne consomme aucun crédit.", "Les exports PDF, MusicXML, MIDI, SVG, PNG, WAV et MP3, une autre partition, la reconnaissance complexe, les fichiers volumineux et l’extraction de parties nécessitent un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois."], resources: [getRecognitionPricingCopy("fr").freeScope, "50 Mo de stockage", "Bibliothèque de partitions ouvertes et téléchargements CC0", "Aucune carte bancaire requise ; conservez le projet gratuit"], cta: "Créer une partition gratuite" },
     "starter-monthly": { badge: "Mensuel flexible", name: "Starter", cycle: "Mensuel", unitPrice: "0,16 $US par crédit", credits: "50 crédits / mois", audience: "Pour modifier régulièrement vos partitions, préparer vos cours et pratiquer", benefits: [getRecognitionPricingCopy("fr").starterCredits, ...paidBenefits], resources: ["50 crédits / mois" + " · " + getPricingCardCopy("fr").reset, "250 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Starter mensuel" },
     "starter-annual": { badge: "Starter annuel", name: "Starter", cycle: "Annuel", unitPrice: "0,082 $US par crédit", credits: "50 crédits / mois", audience: "Pour un usage individuel durable à moindre coût par crédit", benefits: ["Toutes les fonctions actuelles de Starter mensuel", ...paidBenefits], resources: ["50 crédits / mois" + " · " + getPricingCardCopy("fr").reset, "250 Mo de stockage", "Économisez 46,88 $US par rapport à douze mensualités", "Bibliothèque personnelle, historique des révisions et catalogue ouvert"], cta: "Choisir Starter annuel" },
     "converter-pro-monthly": { badge: "Capacité supérieure", name: "Converter Pro", cycle: "Mensuel", unitPrice: "0,075 $US par crédit", credits: "200 crédits / mois", audience: "Pour les personnes qui traitent davantage de partitions chaque mois", benefits: ["Toutes les fonctions actuelles de Starter", ...paidBenefits], resources: ["200 crédits / mois" + " · " + getPricingCardCopy("fr").reset, "500 Mo de stockage", "Bibliothèque personnelle, historique des révisions et catalogue ouvert", "Renouvellement mensuel sans engagement long"], cta: "Choisir Converter Pro mensuel" },

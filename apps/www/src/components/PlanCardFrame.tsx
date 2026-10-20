@@ -10,9 +10,9 @@ const labels: Record<PurchasePlanCode, string> = {
   "converter-pro-annual": "HIGH VOLUME",
 };
 
-export function PlanCardFrame({ code, children }: { code: PurchasePlanCode; children: ReactNode }) {
+export function PlanCardFrame({ code, children, label }: { code: PurchasePlanCode; children: ReactNode; label?: string }) {
   return <div className={styles.frame} data-plan={code} id={code === "single-score" ? "single-score-pass" : undefined}>
-    <span className={styles.ribbon} lang="en">{labels[code]}</span>
+    <span className={styles.ribbon} lang={label ? undefined : "en"}>{label ?? labels[code]}</span>
     {children}
   </div>;
 }

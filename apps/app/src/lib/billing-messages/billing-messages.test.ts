@@ -182,19 +182,26 @@ test("payment review notices and representative page, validation, status, and AR
 
 test("localized plans keep shared commercial facts and identifiers immutable", () => {
   const sharedPlans = getPricingPlanCatalog("en");
-  const sharedIdentity = sharedPlans.map(({ code, featured }) => ({ code, featured }));
+  const orderedSharedPlans = [sharedPlans[0], sharedPlans[1], sharedPlans[3], sharedPlans[2], sharedPlans[4]];
+  const sharedIdentity = orderedSharedPlans.map(({ code, featured }) => ({ code, featured }));
 
   for (const locale of SUPPORTED_LOCALES) {
     const plans = getLocalizedPricingPlanCatalog(locale);
     assert.deepEqual(plans.map(({ code, featured }) => ({ code, featured })), sharedIdentity, `${locale} plan identity`);
     assert.deepEqual(plans.map(plan => plan.price.replace(/\s/gu, " ")), locale === "fr"
-      ? ["0,00 $US", "7,99 $US", "49,00 $US", "14,99 $US", "99,00 $US"]
-      : locale === "de" || locale === "ru" || locale === "es" ? ["0,00 USD", "7,99 USD", "49,00 USD", "14,99 USD", "99,00 USD"]
-      : sharedPlans.map(plan => plan.price), `${locale} plan amounts and currency`);
+      ? ["0,00 $US", "7,99 $US", "14,99 $US", "49,00 $US", "99,00 $US"]
+      : locale === "de" || locale === "ru" || locale === "es" ? ["0,00 USD", "7,99 USD", "14,99 USD", "49,00 USD", "99,00 USD"]
+      : orderedSharedPlans.map(plan => plan.price), `${locale} plan amounts and currency`);
     assert.equal(plans.length, 5, `${locale} plan count`);
 
     for (const [index, plan] of plans.entries()) {
-      const shared = sharedPlans[index];
+      const shared = orderedSharedPlans[index];
+      if (plan.code === "converter-pro-annual") {
+        assert.match(plan.price, /99/);
+        assert.doesNotMatch(JSON.stringify(plan), /200|80[.,]88|UTC/);
+        assert.notEqual(plan.cycle, shared.cycle);
+        continue;
+      }
       assert.equal(plan.benefits.length, shared.benefits.length, `${locale} ${plan.code} benefit count`);
       assert.equal(plan.resources.length, shared.resources.length, `${locale} ${plan.code} resource count`);
       for (const { value } of leafStrings(plan)) {

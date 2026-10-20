@@ -509,7 +509,7 @@ test("checkout defaults to Starter monthly and carries a targeted explicit pass 
   assert.equal(selected.props.targetDocumentId, "score-1");
   assert.deepEqual(selected.props.intendedAction, action);
   assert.ok(text(tree).includes(getScorePassCopy("en").passTarget));
-  assert.ok(text(tree).includes("Buy 10 more credits"));
+  assert.ok(text(tree).includes(getScorePassCopy("en").topUp.replace("{price}", "US$2.99")));
   targeted.dispose();
 });
 

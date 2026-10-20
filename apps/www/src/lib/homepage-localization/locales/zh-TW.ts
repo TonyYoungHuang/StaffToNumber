@@ -51,9 +51,9 @@ export const zhTWHomepage = {
     caseAction: "探索此功能",
     engineKicker: "運作方式與核心能力",
     engineTitle: "一份結構化樂譜，串接後續每一項操作",
-    engineBody: "每項能力都搭配實際樂譜片段。來源先成為可供檢查的候選結果，確認後再進入同一個 Score JSON 專案。",
+    engineBody: "每項能力都搭配實際樂譜片段。來源先成為可供檢查的候選結果，確認後再進入同一個 可編輯樂譜檔案 專案。",
     capabilityProof: "實際樂譜",
-    pipeline: [["來源", "PDF／圖片／音訊"], ["辨識與檢查", "MusicXML 候選結果"], ["專案資料真源", "Score JSON"]],
+    pipeline: [["來源", "PDF／圖片／音訊"], ["辨識與檢查", "MusicXML 候選結果"], ["專案資料真源", "可編輯樂譜檔案"]],
     capabilities: [
       ["線上編輯", "修正音高、時值、調號與小節。", "/score-editor"],
       ["建立簡譜", "從同一份結構化音符產生簡譜。", "/staff-to-jianpu"],
@@ -67,13 +67,13 @@ export const zhTWHomepage = {
       ["不承諾完美辨識", "畫質不佳的掃描、複雜排版與多聲部內容通常仍需修正。"],
       ["候選結果可持續修正", "音符、時值、調號、歌詞與小節都會進入結構化修訂。"],
       ["私人檔案保持私密", "私人專案與公開案例及佐證資料彼此分開。"],
-      ["格式與專案皆可攜出", "MusicXML、MIDI、簡譜文字與 Score JSON 可降低平台綁定。"],
+      ["格式與專案皆可攜出", "MusicXML、MIDI、簡譜文字與 可編輯樂譜檔案 可降低平台綁定。"],
     ],
     pricingKicker: "點數方案",
     pricingTitle: "選擇你的點數方案",
     pricingBody: getPricingCardCopy("zh-TW").intro,
     pricingPromoLabel: "年繳更省",
-    pricingPromoValue: "年繳約省 45%～49%",
+    pricingPromoValue: "年繳約省 49%",
     creditPlanGridLabel: "點數方案",
     creditPlanCardLabels: {
       creditUsage: "任務建立時預留點數",
@@ -86,7 +86,7 @@ export const zhTWHomepage = {
     creditRules: [
       ["$0", "一個完整免費專案", getRecognitionPricingCopy("zh-TW").freeScope],
       ["預留點數", "點數預留與退回", "任務建立時預留點數；失敗或取消後自動退回。同步移調或簡譜預覽不會自動扣點。"],
-      ["每月重置", "方案額度", "Starter 每月含 50 點；Converter Pro 每月含 200 點。未使用的額度不會延續到下個月。"],
+      ["每月重置", "方案額度", "Starter 每月含 50 點；Converter Pro 月付版 每月含 200 點。未使用的額度不會延續到下個月。"],
     ],
     priceNote: getRecognitionPricingCopy("zh-TW").laneGuide,
     faqKicker: "常見問題",
@@ -94,7 +94,7 @@ export const zhTWHomepage = {
     faqs: [
       ["辨識結果會 100% 準確嗎？", getRecognitionPricingCopy("zh-TW").freeScope + " " + getRecognitionPricingCopy("zh-TW").laneGuide],
       ["之後可以移調或建立簡譜嗎？", "可以。編輯、簡譜、移調、播放與匯出都會讀取同一個已接受的樂譜專案。"],
-      ["支援哪些匯出格式？", "MusicXML 是主要交換格式，另外支援 MIDI、Score JSON、簡譜文字，以及目前部署環境中已驗證的匯出格式。"],
+      ["支援哪些匯出格式？", "MusicXML 是主要交換格式，另外支援 MIDI、可編輯樂譜檔案、簡譜文字，以及目前部署環境中已驗證的匯出格式。"],
       ["現在可以使用音訊轉樂譜嗎？", "此功能以實驗性功能開放，並會清楚標示格式、額度與人工修正界線。"],
       ["上傳的檔案會公開嗎？", "不會。私人專案不會自動成為公開案例。"],
     ],
@@ -124,7 +124,7 @@ export const zhTWHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "樂譜辨識", title: "上傳 PDF 或樂譜圖片", body: getRecognitionPricingCopy("zh-TW").freeScope, action: "免費建立" },
+      recognize: { label: "樂譜辨識", title: "上傳 PDF 或樂譜圖片", body: "上傳樂譜，辨識後即可編輯與試聽。", action: "免費建立" },
       process: { label: "處理樂譜", title: "匯入結構化樂譜", body: "在同一個樂譜專案中持續編輯、移調、轉換、播放與匯出。", action: "開啟樂譜工作區" },
       transcribe: { label: "音訊轉樂譜", title: "匯入音訊或影片", body: "建立可供檢查的 MIDI 與樂譜候選結果；複雜的多聲部內容仍需修正。", action: "建立候選結果", unavailableAction: "查看實驗功能狀態" },
     },
@@ -175,7 +175,7 @@ export const zhTWHomepage = {
   plans: {
     free: {
       badge: getRecognitionPricingCopy("zh-TW").freeShort, name: "Free", cycle: "終身", unitPrice: getRecognitionPricingCopy("zh-TW").freeUnit, credits: "終身 1 次免費簡單辨識 · 一般通道 · 沒有每月點數", audience: getRecognitionPricingCopy("zh-TW").freeLead,
-      benefits: [getRecognitionPricingCopy("zh-TW").freeUnit, "在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。", "簡譜與 Score JSON 免費匯出；其他格式需單譜通行證或 Starter", "沒有每月點數；終身免費簡單辨識不扣點數。", "PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。"],
+      benefits: [getRecognitionPricingCopy("zh-TW").freeUnit, "在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 可編輯樂譜檔案 匯出免費。", "簡譜與 可編輯樂譜檔案 免費匯出；其他格式需單譜通行證或 Starter", "沒有每月點數；終身免費簡單辨識不扣點數。", "PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。"],
       resources: [getRecognitionPricingCopy("zh-TW").freeScope, "50 MB 檔案儲存空間", "開放樂譜庫與 CC0 下載", "無須信用卡；免費專案持續保留"], cta: "建立免費樂譜",
     },
     "starter-monthly": {

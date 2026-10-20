@@ -51,9 +51,9 @@ export const zhCNHomepage = {
     caseAction: "查看完整功能",
     engineKicker: "工作原理与核心能力",
     engineTitle: "一份结构化乐谱，连接所有后续动作",
-    engineBody: "每项能力都配有真实谱面片段；输入文件先成为可核对的候选，确认后进入同一个 Score JSON 乐谱工程。",
+    engineBody: "每项能力都配有真实谱面片段；输入文件先成为可核对的候选，确认后进入同一个 可编辑乐谱文件 乐谱工程。",
     capabilityProof: "真实谱面",
-    pipeline: [["输入来源", "PDF／图片／音视频"], ["识别与校正", "MusicXML 候选"], ["项目真源", "Score JSON"]],
+    pipeline: [["输入来源", "PDF／图片／音视频"], ["识别与校正", "MusicXML 候选"], ["项目真源", "可编辑乐谱文件"]],
     capabilities: [
       ["在线编辑", "修正音高、时值、调号与小节。", "/score-editor"],
       ["生成简谱", "由同一份结构化音符生成简谱。", "/staff-to-jianpu"],
@@ -67,13 +67,13 @@ export const zhCNHomepage = {
       ["不承诺完美识别", "低清扫描、复杂排版和多声部内容通常需要人工校正。"],
       ["候选结果可以修正", "音符、时值、调号、歌词和小节都进入结构化修订。"],
       ["私人文件不会公开", "项目文件与公共案例分开，公开证据需要单独审核。"],
-      ["格式和项目可以带走", "MusicXML、MIDI、简谱文本和 Score JSON 降低工具锁定。"],
+      ["格式和项目可以带走", "MusicXML、MIDI、简谱文本和 可编辑乐谱文件 降低工具锁定。"],
     ],
     pricingKicker: "积分付费方案",
     pricingTitle: "选择你的积分套餐",
     pricingBody: getPricingCardCopy("zh-CN").intro,
     pricingPromoLabel: "年付更省",
-    pricingPromoValue: "年付节省约 45%～49%",
+    pricingPromoValue: "年付节省约 49%",
     creditPlanGridLabel: "积分套餐",
     creditPlanCardLabels: {
       creditUsage: "任务创建时预留积分",
@@ -86,7 +86,7 @@ export const zhCNHomepage = {
     creditRules: [
       ["$0", "一个完整免费项目", getRecognitionPricingCopy("zh-CN").freeScope],
       ["预留积分", "积分预留与退回", "任务创建时预留积分；失败或取消后自动退回。同步移调或简谱预览不固定扣分。"],
-      ["每月重置", "套餐额度", "Starter 每月 50 积分；Converter Pro 每月 200 积分，未使用额度不滚存。"],
+      ["每月重置", "套餐额度", "Starter 每月 50 积分；Converter Pro 月付版 每月 200 积分，未使用额度不滚存。"],
     ],
     priceNote: getRecognitionPricingCopy("zh-CN").laneGuide,
     faqKicker: "FAQ",
@@ -94,7 +94,7 @@ export const zhCNHomepage = {
     faqs: [
       ["识别结果会百分之百准确吗？", getRecognitionPricingCopy("zh-CN").freeScope + " " + getRecognitionPricingCopy("zh-CN").laneGuide],
       ["识别以后可以继续移调或转简谱吗？", "可以。接受候选版本后，编辑、简谱、移调、播放和导出都读取同一个乐谱工程。"],
-      ["支持哪些导出格式？", "主要交换格式为 MusicXML，并支持 MIDI、Score JSON、简谱文本和当前部署已验证的导出格式。"],
+      ["支持哪些导出格式？", "主要交换格式为 MusicXML，并支持 MIDI、可编辑乐谱文件、简谱文本和当前部署已验证的导出格式。"],
       ["音视频转谱现在可用吗？", "该能力按实验功能开放，并会明确支持格式、配额与人工校正边界。"],
       ["上传文件会被公开吗？", "不会。私人项目不会自动进入公共案例。"],
     ],
@@ -115,7 +115,7 @@ export const zhCNHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "乐谱识别", title: "上传 PDF 或乐谱图片", body: getRecognitionPricingCopy("zh-CN").freeScope, action: "免费创建" },
+      recognize: { label: "乐谱识别", title: "上传 PDF 或乐谱图片", body: "上传乐谱，识别后即可编辑与试听。", action: "免费创建" },
       process: { label: "乐谱处理", title: "导入结构化乐谱", body: "使用同一个乐谱工程继续编辑、移调、生成简谱、播放和导出。", action: "进入乐谱工作台" },
       transcribe: { label: "音视频转谱", title: "导入音乐或视频文件", body: "生成需要人工复核的 MIDI 与五线谱候选；复杂多声部内容仍需校正。", action: "开始生成候选谱", unavailableAction: "查看实验能力状态" },
     },
@@ -166,7 +166,7 @@ export const zhCNHomepage = {
   plans: {
     free: {
       badge: getRecognitionPricingCopy("zh-CN").freeShort, name: "Free", cycle: "终身", unitPrice: getRecognitionPricingCopy("zh-CN").freeUnit, credits: "终身 1 次免费简单识谱 · 普通通道 · 没有月积分", audience: getRecognitionPricingCopy("zh-CN").freeLead,
-      benefits: [getRecognitionPricingCopy("zh-CN").freeUnit, "在该乐谱内可免费编辑、移调、播放、选择识别结果、修改标题和分享，简谱及 Score JSON 导出免费。", "简谱和 Score JSON 免费导出；其他格式需单谱通行证或 Starter", "没有月积分；终身免费简单识谱不扣积分。", "PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 导出、新乐谱、复杂识谱、大文件通道和提取分谱需 US$2.99 单谱通行证，或 US$7.99/月起的 Starter。"],
+      benefits: [getRecognitionPricingCopy("zh-CN").freeUnit, "在该乐谱内可免费编辑、移调、播放、选择识别结果、修改标题和分享，简谱及 可编辑乐谱文件 导出免费。", "简谱和 可编辑乐谱文件 免费导出；其他格式需单谱通行证或 Starter", "没有月积分；终身免费简单识谱不扣积分。", "PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 导出、新乐谱、复杂识谱、大文件通道和提取分谱需 US$2.99 单谱通行证，或 US$7.99/月起的 Starter。"],
       resources: [getRecognitionPricingCopy("zh-CN").freeScope, "50 MB 文件存储", "开放曲库浏览与 CC0 文件下载", "无需信用卡，免费项目长期保留"], cta: "免费创建乐谱",
     },
     "starter-monthly": {

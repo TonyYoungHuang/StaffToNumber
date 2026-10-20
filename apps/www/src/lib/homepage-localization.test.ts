@@ -81,35 +81,29 @@ test("homepage media availability never maps a locale to another language", () =
   assert.equal(HOMEPAGE_MEDIA_SOURCE_LOCALES["zh-CN"], "zh-CN");
 });
 
-test("localized plan displays preserve checkout and entitlement invariants", () => {
-  const basePlans = getPricingPlanCatalog("en");
-  const invariantFields = basePlans.map(({ code, featured }) => ({ code, featured }));
-
+test("localized display keeps billing identity while presenting lifetime access and monthly order", () => {
+  const base = getPricingPlanCatalog("en");
   for (const locale of SUPPORTED_LOCALES) {
-    const localizedPlans = localizeHomepagePlans(locale, basePlans);
-    assert.deepEqual(
-      localizedPlans.map(({ code, featured }) => ({ code, featured })),
-      invariantFields,
-      locale,
-    );
-    assert.deepEqual(localizedPlans.slice(1).map((plan) => plan.name), ["Starter", "Starter", "Converter Pro", "Converter Pro"]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.price.replace(/\s/gu, " ")), locale === "fr"
-      ? ["0,00 $US", "7,99 $US", "49,00 $US", "14,99 $US", "99,00 $US"]
-      : locale === "de" || locale === "ru" || locale === "es" ? ["0,00 USD", "7,99 USD", "49,00 USD", "14,99 USD", "99,00 USD"]
-      : ["$0", "$7.99", "$49", "$14.99", "$99"]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.featured), [false, false, true, false, false]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.benefits.length), [5, 5, 5, 5, 5]);
-    assert.deepEqual(localizedPlans.map((plan) => plan.resources.length), [4, 4, 4, 4, 4]);
-    assert.match(localizedPlans[0]?.credits ?? "", /1/u);
-    assert.doesNotMatch(localizedPlans[0]?.credits ?? "", /25/u);
-    assert.ok(localizedPlans.slice(1, 3).every((plan) => /50/u.test(plan.credits)));
-    assert.ok(localizedPlans.slice(3).every((plan) => /200/u.test(plan.credits)));
-    for (const plan of localizedPlans.slice(1)) {
-      assert.match(plan.resources.join(" "), /UTC/u);
-      assert.equal(plan.benefits.length + plan.resources.length, 9, `${locale}: ${plan.code}`);
-      assert.ok(plan.audience.length > 15, `${locale}: plan-specific audience`);
+    const plans = localizeHomepagePlans(locale, base);
+    assert.deepEqual(plans.map(p => p.code), ["free", "starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-annual"]);
+    for (const plan of plans) {
+      const original = base.find(p => p.code === plan.code)!;
+      assert.equal(plan.featured, original.featured);
+      if (plan.code === "converter-pro-annual") {
+        assert.match(plan.price, /99/);
+        assert.doesNotMatch([plan.cycle, plan.credits, plan.unitPrice, ...plan.resources].join(" "), /200|UTC|0[.,]041|80[.,]88|annual|年付/i);
+        assert.equal(plan.benefits.length, 4);
+        assert.equal(plan.resources.length, 2);
+      } else if (plan.code !== "free") {
+        assert.match(plan.credits, plan.code.startsWith("starter") ? /50/ : /200/);
+        assert.match(plan.resources.join(" "), /UTC/);
+      }
     }
+    assert.doesNotMatch(JSON.stringify(plans), /Score JSON/);
   }
+  // Presentation must never rewrite the backend catalog or annual price code.
+  assert.equal(base.find(p => p.code === "converter-pro-annual")!.cycle, "Annual");
+  assert.match(base.find(p => p.code === "converter-pro-annual")!.credits, /200/);
 });
 
 test("homepage catalogs keep current product boundaries and stable tool routes", () => {
@@ -132,6 +126,7 @@ test("mobile paid cards add localized compact copy while preserving full and fre
     const copy = getPricingCardCopy(locale);
     assert.equal(copy.benefits.length, 3);
     for (const plan of plans.slice(1)) {
+      if (plan.code === "converter-pro-annual") { assert.equal(withMobilePricingCopy(locale, plan), plan); continue; }
       const mobile = withMobilePricingCopy(locale, plan);
       assert.ok("benefitsShort" in mobile && "resourcesShort" in mobile && "audienceShort" in mobile);
       const { benefitsShort, resourcesShort, audienceShort, ...full } = mobile;

@@ -1,5 +1,5 @@
 import { localizeUsdText, type SupportedLocale } from "@score/i18n";
-import type { PricingPlanDisplay } from "@score/shared";
+import { presentPricingPlans, type PricingPlanDisplay } from "@score/shared";
 import { homeOnPage } from "../home-on-page";
 import { deHomepage } from "./locales/de";
 import { enHomepage } from "./locales/en";
@@ -78,13 +78,13 @@ export function localizeHomepagePlans(
   plans: readonly PricingPlanDisplay[],
 ): readonly PricingPlanDisplay[] {
   const translations = getHomepageLocalization(locale).plans;
-  return plans.map((plan) => ({
+  return presentPricingPlans(locale, plans.map((plan) => ({
     ...plan,
     ...translations[plan.code],
     code: plan.code,
     price: localizeUsdText(plan.price, locale),
     featured: plan.featured,
-  } satisfies PricingPlanDisplay));
+  } satisfies PricingPlanDisplay)));
 }
 
 export function getHomepagePlanTranslation(

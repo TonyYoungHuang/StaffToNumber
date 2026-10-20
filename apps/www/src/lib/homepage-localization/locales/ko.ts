@@ -51,9 +51,9 @@ export const koHomepage = {
     caseAction: "기능 살펴보기",
     engineKicker: "작동 방식과 주요 기능",
     engineTitle: "하나의 구조화 악보가 모든 다음 작업을 연결합니다",
-    engineBody: "모든 기능은 실제 악보 일부와 함께 제시됩니다. 원본은 검토 가능한 후보가 되고, 확인 후에는 하나의 Score JSON 프로젝트로 이어집니다.",
+    engineBody: "모든 기능은 실제 악보 일부와 함께 제시됩니다. 원본은 검토 가능한 후보가 되고, 확인 후에는 하나의 편집 가능한 악보 파일 프로젝트로 이어집니다.",
     capabilityProof: "실제 악보",
-    pipeline: [["원본", "PDF／이미지／오디오"], ["인식 및 검토", "MusicXML 후보"], ["프로젝트의 기준 데이터", "Score JSON"]],
+    pipeline: [["원본", "PDF／이미지／오디오"], ["인식 및 검토", "MusicXML 후보"], ["프로젝트의 기준 데이터", "편집 가능한 악보 파일"]],
     capabilities: [
       ["온라인 편집", "음높이, 음가, 조표, 마디를 수정합니다.", "/score-editor"],
       ["Jianpu 생성", "같은 구조화 음표에서 Jianpu를 생성합니다.", "/staff-to-jianpu"],
@@ -67,13 +67,13 @@ export const koHomepage = {
       ["완벽한 인식을 약속하지 않습니다", "품질이 낮은 스캔, 복잡한 판형, 다성부 악보는 대개 수정이 필요합니다."],
       ["후보 결과는 계속 수정할 수 있습니다", "음표, 음가, 조표, 가사, 마디를 구조화된 리비전으로 관리합니다."],
       ["비공개 파일은 비공개로 유지됩니다", "개인 프로젝트는 공개 예시 및 검증 자료와 분리됩니다."],
-      ["형식과 프로젝트를 옮길 수 있습니다", "MusicXML, MIDI, Jianpu 텍스트, Score JSON으로 특정 서비스에 대한 종속을 줄입니다."],
+      ["형식과 프로젝트를 옮길 수 있습니다", "MusicXML, MIDI, Jianpu 텍스트, 편집 가능한 악보 파일으로 특정 서비스에 대한 종속을 줄입니다."],
     ],
     pricingKicker: "크레딧 요금제",
     pricingTitle: "크레딧 요금제를 선택하세요",
     pricingBody: getPricingCardCopy("ko").intro,
     pricingPromoLabel: "연간 결제로 절약",
-    pricingPromoValue: "연간 약 45%~49% 절약",
+    pricingPromoValue: "연간 약 49% 절약",
     creditPlanGridLabel: "크레딧 요금제",
     creditPlanCardLabels: {
       creditUsage: "작업 생성 시 크레딧 예약",
@@ -86,7 +86,7 @@ export const koHomepage = {
     creditRules: [
       ["$0", "완전한 무료 프로젝트 1개", getRecognitionPricingCopy("ko").freeScope],
       ["예약 크레딧", "크레딧 예약 및 반환", "작업 생성 시 크레딧이 예약되며, 실패하거나 취소되면 자동으로 반환됩니다. 동기식 조옮김이나 Jianpu 미리보기는 자동으로 크레딧을 차감하지 않습니다."],
-      ["매월 초기화", "요금제 제공량", "Starter는 매월 50개, Converter Pro는 매월 200개의 크레딧을 제공합니다. 사용하지 않은 크레딧은 이월되지 않습니다."],
+      ["매월 초기화", "요금제 제공량", "Starter는 매월 50개, Converter Pro 월간 요금제는 매월 200개의 크레딧을 제공합니다. 사용하지 않은 크레딧은 이월되지 않습니다."],
     ],
     priceNote: getRecognitionPricingCopy("ko").laneGuide,
     faqKicker: "자주 묻는 질문",
@@ -94,7 +94,7 @@ export const koHomepage = {
     faqs: [
       ["인식 결과가 100% 정확한가요?", getRecognitionPricingCopy("ko").freeScope + " " + getRecognitionPricingCopy("ko").laneGuide],
       ["나중에 조옮김하거나 Jianpu를 만들 수 있나요?", "네. 편집, Jianpu, 조옮김, 재생, 내보내기는 모두 승인된 하나의 악보 프로젝트를 사용합니다."],
-      ["어떤 형식으로 내보낼 수 있나요?", "MusicXML이 기본 교환 형식이며 MIDI, Score JSON, Jianpu 텍스트와 현재 배포 환경에서 검증된 내보내기 형식을 지원합니다."],
+      ["어떤 형식으로 내보낼 수 있나요?", "MusicXML이 기본 교환 형식이며 MIDI, 편집 가능한 악보 파일, Jianpu 텍스트와 현재 배포 환경에서 검증된 내보내기 형식을 지원합니다."],
       ["오디오를 악보로 바꾸는 기능을 지금 사용할 수 있나요?", "지원 형식과 할당량, 수동 수정 범위를 명확히 안내하는 실험 기능으로 제공됩니다."],
       ["업로드한 파일이 공개되나요?", "아니요. 비공개 프로젝트는 자동으로 공개 예시가 되지 않습니다."],
     ],
@@ -124,7 +124,7 @@ export const koHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "악보 인식", title: "PDF 또는 악보 이미지 업로드", body: getRecognitionPricingCopy("ko").freeScope, action: "무료로 만들기" },
+      recognize: { label: "악보 인식", title: "PDF 또는 악보 이미지 업로드", body: "악보를 올려 인식하고 편집·재생하세요.", action: "무료로 만들기" },
       process: { label: "악보 처리", title: "구조화 악보 가져오기", body: "하나의 악보 프로젝트 안에서 편집, 조옮김, 변환, 재생, 내보내기를 계속하세요.", action: "악보 작업 공간 열기" },
       transcribe: { label: "오디오를 악보로", title: "오디오 또는 비디오 가져오기", body: "검토할 MIDI와 기보 후보를 만듭니다. 복잡한 다성부는 여전히 수정이 필요합니다.", action: "후보 만들기", unavailableAction: "실험 기능 상태 확인" },
     },
@@ -175,7 +175,7 @@ export const koHomepage = {
   plans: {
     free: {
       badge: getRecognitionPricingCopy("ko").freeShort, name: "Free", cycle: "평생", unitPrice: getRecognitionPricingCopy("ko").freeUnit, credits: "평생 1회 무료 간단 인식 · 표준 처리 · 월간 크레딧 없음", audience: getRecognitionPricingCopy("ko").freeLead,
-      benefits: [getRecognitionPricingCopy("ko").freeUnit, "해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 Score JSON 내보내기는 무료입니다.", "숫자악보 및 Score JSON 내보내기는 무료. 다른 형식은 한 곡 이용권 또는 Starter가 필요합니다", "월간 크레딧 없음. 평생 1회 무료 간단 인식은 크레딧을 사용하지 않습니다.", "PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다."],
+      benefits: [getRecognitionPricingCopy("ko").freeUnit, "해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 편집 가능한 악보 파일 내보내기는 무료입니다.", "숫자악보 및 편집 가능한 악보 파일 내보내기는 무료. 다른 형식은 한 곡 이용권 또는 Starter가 필요합니다", "월간 크레딧 없음. 평생 1회 무료 간단 인식은 크레딧을 사용하지 않습니다.", "PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다."],
       resources: [getRecognitionPricingCopy("ko").freeScope, "50 MB 파일 저장 공간", "오픈 악보 라이브러리 및 CC0 다운로드", "신용카드 불필요, 무료 프로젝트 계속 보관"], cta: "무료 악보 만들기",
     },
     "starter-monthly": {

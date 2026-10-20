@@ -1,10 +1,10 @@
-import { getPricingPlanCatalog, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
+import { presentPricingPlans, getPricingPlanCatalog, type CheckoutIntendedAction, type PurchasePlanCode } from "@score/shared";
 import type { SupportedLocale } from "@score/i18n";
 import { currentWorkPath } from "./flow-return";
 import { checkoutReturnContext } from "./checkout-flow";
 import type { CheckoutReturnState } from "@score/shared";
 
-export function getScoreUpgradePlans(locale: SupportedLocale) { return getPricingPlanCatalog(locale); }
+export function getScoreUpgradePlans(locale: SupportedLocale) { return presentPricingPlans(locale, getPricingPlanCatalog(locale)); }
 
 export function defaultCheckoutPlan(initial: PurchasePlanCode | undefined): PurchasePlanCode {
   return initial ?? "starter-monthly";

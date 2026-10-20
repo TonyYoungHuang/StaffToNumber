@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
 import type { ScoreRecognitionMode, ScoreRecognitionOption, ScoreStructurePreflight } from "@score/shared";
 import { fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, getGoogleAuthCopy, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS } from "@score/shared";
-import { WorkbenchModal, PostRecognitionValue, workbenchCopy, type WorkbenchPlan, ArrowNorthEastIcon, CheckSealIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
+import { WorkbenchModal, PostRecognitionValue, workbenchCopy, type WorkbenchPlan, ArrowNorthEastIcon, SparkIcon, UploadIcon, ScoreProcessingPanel, ProcessingProgress, PhotoCornerEditor, RecognitionPlanSummary, RecognitionPurchaseActions, needsBigRecognitionLane, type PhotoCorners } from "@score/ui";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import type { HomepageWorkbenchCopy } from "../lib/homepage-localization/types";
 import { localizePublicHref } from "../lib/locale-routing";
@@ -521,7 +521,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
     <div id="home-workbench" className={styles.workbench} aria-label={copy.workbenchLabel}>
       <input ref={fileInputRef} className={styles.visuallyHidden} type="file" accept={acceptedScoreFiles} tabIndex={-1} aria-hidden="true" onChange={(event) => acceptFile(event.target.files?.[0])} />
       <input ref={cameraRef} className={styles.visuallyHidden} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label={experience.photoCapture} onChange={event => { acceptFile(event.target.files?.[0]); event.target.value = ""; }} />
-      <div className={styles.workbenchHeading}><span><SparkIcon width={16} height={16} />{copy.workbenchLabel}</span><em>{copy.workbenchBadge}</em></div>
+      <div className={styles.workbenchHeading}><span><SparkIcon width={16} height={16} />{copy.workbenchLabel}</span></div>
 
       <div className={styles.modeTabs} role="tablist" aria-label={copy.taskTypeLabel}>
         {modes.map((item) => <button key={item.id} id={`home-workbench-tab-${item.id}`} type="button" role="tab" aria-controls="home-workbench-panel" aria-selected={item.id === mode} tabIndex={item.id === mode ? 0 : -1} className={item.id === mode ? styles.activeTab : undefined} onClick={() => setMode(item.id)}>{item.label}{item.experimental ? <small>{copy.experimentalLabel}</small> : null}</button>)}
@@ -530,10 +530,10 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
       <div id="home-workbench-panel" className={styles.workbenchPanel} role="tabpanel" aria-labelledby={`home-workbench-tab-${mode}`}>
         {mode === "recognize" ? (
           <button type="button" className={styles.dropZone} disabled={busy} onClick={beginFileSelection} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); acceptFile(event.dataTransfer.files?.[0]); }}>
-            <span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList} aria-label={copy.supportedFormatsLabel}>{activeMode.formats.map((format) => <i key={format}>{format === "Score JSON" ? wb.editable : format}</i>)}</span>
+            <span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p>
           </button>
         ) : (
-          <a className={styles.dropZone} href={localizePublicHref(activeMode.href, locale)}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p><span className={styles.formatList}>{activeMode.formats.map((format) => <i key={format}>{format === "Score JSON" ? wb.editable : format}</i>)}</span></a>
+          <a className={styles.dropZone} href={localizePublicHref(activeMode.href, locale)}><span className={styles.uploadIcon}><UploadIcon width={24} height={24} /></span><strong>{activeMode.title}</strong><p>{activeMode.body}</p></a>
         )}
 
         {mode === "recognize" ? <button type="button" className={styles.workbenchAction} onClick={beginFileSelection} disabled={busy}>{pendingFileSelection && session === "authenticated" ? homeCommercialCopy[locale].continueScan : activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></button> : <a className={styles.workbenchAction} href={localizePublicHref(activeMode.href, locale)}>{activeMode.action}<ArrowNorthEastIcon width={16} height={16} /></a>}
@@ -579,7 +579,7 @@ export function HomeHeroWorkbench({ locale, copy, startUrl, audioAvailable, pref
         const [title, body] = copy.tools[index];
         return <a key={tool.href} href={localizePublicHref(tool.href, locale)}><span aria-hidden="true">{tool.icon}</span><strong>{title}</strong><small>{body}</small><ArrowNorthEastIcon width={17} height={17} /></a>;
       })}</nav>
-      <p className={styles.workbenchStatus}><CheckSealIcon width={15} height={15} />{session === "checking" ? copy.checking : session === "authenticated" ? copy.signedIn : copy.signInFirst}</p>
+
 
 
     </div>

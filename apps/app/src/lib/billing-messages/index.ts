@@ -7,6 +7,7 @@ import {
 } from "@score/i18n";
 import {
   getPricingPlanCatalog,
+  presentPricingPlans,
   type PricingPlanCode,
   type PricingPlanDisplay,
 } from "@score/shared";
@@ -75,7 +76,7 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
   const copy = getBillingMessages(locale).plans;
   const projectCount = formatNumber(Number(SHARED_FREE_PROJECT_COUNT), locale);
 
-  return SHARED_PRICING_PLANS.map((plan) => {
+  return presentPricingPlans(locale, SHARED_PRICING_PLANS.map((plan) => {
     const facts = sharedPlanFacts(plan);
     const values = {
       projectCount,
@@ -119,7 +120,7 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
       cta: copy.ctas[plan.code],
       featured: plan.featured,
     };
-  });
+  }));
 }
 
 export const BILLING_SUPPORTED_LOCALES = SUPPORTED_LOCALES;

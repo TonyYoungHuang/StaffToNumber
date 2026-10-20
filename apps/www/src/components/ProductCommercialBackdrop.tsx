@@ -111,6 +111,7 @@ export function ProductCommercialBackdrop({ locale, copy, videoSrc, posterSrc, f
           className={styles.video}
           width={1920}
           height={1080}
+          autoPlay
           muted={muted}
           loop
           playsInline

@@ -3,9 +3,9 @@ import type { SupportedLocale } from "@score/i18n";
 /** Customer explanations only. Prices, quotas and routing remain server-owned. */
 const recognitionPricingCopy = {
   "en": {
-    "proCredits": "Converter Pro includes 200 credits monthly.",
+    "proCredits": "Converter Pro monthly includes 200 credits monthly.",
     "freeLead": "1 lifetime free scan · Simple mode · Standard processing",
-    "freeScope": "1 lifetime free simple scan in the standard lane, usually a photo or an A4/Letter PDF of about 1–5 pages, subject to the file check. Free has no monthly credits, and the free scan needs no credit balance. On that score, edit, transpose, play, choose recognition results, rename the title and share for free. Jianpu and Score JSON exports are free. PDF, MusicXML, MIDI, SVG, PNG, WAV and MP3 exports, another score, complex recognition, large-file processing and part extraction require a US$2.99 One Score Pass or Starter from US$7.99/month.",
+    "freeScope": "1 lifetime free simple scan in the standard lane, usually a photo or an A4/Letter PDF of about 1–5 pages, subject to the file check. Free has no monthly credits, and the free scan needs no credit balance. On that score, edit, transpose, play, choose recognition results, rename the title and share for free. Jianpu and Editable score file exports are free. PDF, MusicXML, MIDI, SVG, PNG, WAV and MP3 exports, another score, complex recognition, large-file processing and part extraction require a US$2.99 One Score Pass or Starter from US$7.99/month.",
     "passScope": "US$2.99 once buys 10 processing credits for one PDF or image document and any parts extracted from it by the service. Standard and large-file processing are included, without an extra lane fee. No automatic renewal or expiry; file preflight and your existing storage allowance still apply.",
     "starterScope": "Starter costs US$7.99 per month and includes 50 credits each month for new scores in standard or large-file processing. At default costs, that covers up to 50 simple or 10 complex recognition jobs before exports and other work. Monthly credits reset by UTC calendar month and do not roll over. Alternatively US$49/year with the same monthly allowance; 250 MB storage, complex recognition, paid exports and part extraction included.",
     "laneGuide": "Standard processing usually fits one score photo or an A4/Letter PDF of about 1–5 pages; large-file processing usually fits about 6–24 pages. A4/Letter PDFs of about 25 pages or more may exceed the processing limit. Files over 20 MiB, images over 32 MP, or PDF pages beyond the preflight pixel limit cannot be accepted. Page counts are approximate: actual acceptance and processing depend on file size, page layout and preflight. Split PDFs into files of about 24 pages or fewer, compress oversized files or images, or import MusicXML. Rejected files incur no payment or credit charges.",
@@ -17,12 +17,12 @@ const recognitionPricingCopy = {
     "passFirst": "1 PDF or image document · Subject to file preflight",
     "passCredits": "10 credits shared by this document and its extracted parts · No expiry",
     "passLane": "Standard and large-file processing · No extra lane fee",
-    "inputScope": "Upload PDF, PNG, JPG/JPEG, WebP or TIFF scores. The lifetime free scan is simple mode in standard processing; One Score Pass and Starter also cover large-file processing. File and storage limits apply. MusicXML/MXL, MIDI, structured Jianpu and Score JSON imports follow the current access rules; audio transcription remains experimental."
+    "inputScope": "Upload PDF, PNG, JPG/JPEG, WebP or TIFF scores. The lifetime free scan is simple mode in standard processing; One Score Pass and Starter also cover large-file processing. File and storage limits apply. MusicXML/MXL, MIDI, structured Jianpu and Editable score file imports follow the current access rules; audio transcription remains experimental."
   },
   "zh-CN": {
-    "proCredits": "Converter Pro 每月含 200 积分。",
+    "proCredits": "Converter Pro 月付版 每月含 200 积分。",
     "freeLead": "终身 1 次免费扫谱 · 简单模式 · 普通通道",
-    "freeScope": "终身 1 次普通通道简单识谱，通常适用于一张照片或约 1–5 页的 A4/Letter PDF，以文件预检为准。免费档没有月积分，免费识谱无需积分余额。 在该乐谱内可免费编辑、移调、播放、选择识别结果、修改标题和分享，简谱及 Score JSON 导出免费。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 导出、新乐谱、复杂识谱、大文件通道和提取分谱需 US$2.99 单谱通行证，或 US$7.99/月起的 Starter。",
+    "freeScope": "终身 1 次普通通道简单识谱，通常适用于一张照片或约 1–5 页的 A4/Letter PDF，以文件预检为准。免费档没有月积分，免费识谱无需积分余额。 在该乐谱内可免费编辑、移调、播放、选择识别结果、修改标题和分享，简谱及 可编辑乐谱文件 导出免费。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 导出、新乐谱、复杂识谱、大文件通道和提取分谱需 US$2.99 单谱通行证，或 US$7.99/月起的 Starter。",
     "passScope": "单谱通行证一次 US$2.99，含 10 个处理积分，供同一份 PDF 或图片文档及服务从中提取的分谱共享。包含普通通道和大文件通道，不另收通道费。不自动续费、无到期日；仍受文件预检和账号现有存储额度限制。",
     "starterScope": "Starter 每月 US$7.99，含每月 50 积分，可在普通通道或大文件通道处理新谱。按默认费用，不做导出或其他任务时最多可做 50 次简单识别或 10 次复杂识别。月积分按 UTC 自然月重置，不结转。 也可 US$49/年，仍按月提供同样积分；含 250 MB 存储、复杂识谱、付费格式导出及提取分谱。",
     "laneGuide": "普通通道通常适合一张乐谱照片，或约 1–5 页的 A4／Letter PDF；大文件通道通常适合约 6–24 页 PDF。约 25 页及以上的 A4／Letter PDF 可能超过处理上限。超过 20 MiB 的文件、超过 3200 万像素（32 MP）的图片，或页面超出预检像素上限的 PDF，无法受理。页数均为近似值，实际受理及通道以文件大小、页面结构和预检结果为准。建议拆分为每份约 24 页以内、压缩过大的文件或图片，或导入 MusicXML。拒绝的文件不会收款或扣积分。",
@@ -34,12 +34,12 @@ const recognitionPricingCopy = {
     "passFirst": "1 份 PDF 或图片文档 · 以文件预检为准",
     "passCredits": "同一文档及其提取分谱共享 10 积分 · 不过期",
     "passLane": "普通通道和大文件通道 · 不另收通道费",
-    "inputScope": "支持上传 PDF、PNG、JPG/JPEG、WebP、TIFF 乐谱。终身免费扫谱仅限简单模式、普通通道；单谱通行证和 Starter 也可使用大文件通道，仍受文件及存储限制。MusicXML/MXL、MIDI、结构化简谱和 Score JSON 导入按现有访问权限开放，音频转谱仍属实验功能。"
+    "inputScope": "支持上传 PDF、PNG、JPG/JPEG、WebP、TIFF 乐谱。终身免费扫谱仅限简单模式、普通通道；单谱通行证和 Starter 也可使用大文件通道，仍受文件及存储限制。MusicXML/MXL、MIDI、结构化简谱和 可编辑乐谱文件 导入按现有访问权限开放，音频转谱仍属实验功能。"
   },
   "zh-TW": {
-    "proCredits": "Converter Pro 每月含 200 點。",
+    "proCredits": "Converter Pro 月付版 每月含 200 點。",
     "freeLead": "終身 1 次免費辨識 · 簡單模式 · 一般通道",
-    "freeScope": "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 1–5 頁的 A4/Letter PDF，以檔案預檢為準。免費方案沒有每月點數，免費辨識無須點數餘額。 在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 Score JSON 匯出免費。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。",
+    "freeScope": "終身 1 次一般通道簡單辨識，通常適用於一張照片或約 1–5 頁的 A4/Letter PDF，以檔案預檢為準。免費方案沒有每月點數，免費辨識無須點數餘額。 在該樂譜內可免費編輯、移調、播放、選擇辨識結果、修改標題及分享，簡譜與 可編輯樂譜檔案 匯出免費。 PDF、MusicXML、MIDI、SVG、PNG、WAV、MP3 匯出、新樂譜、複雜辨識、大檔案通道及擷取分譜需 US$2.99 單譜通行證，或 US$7.99/月起的 Starter。",
     "passScope": "單譜通行證一次 US$2.99，含 10 個處理點數，供同一份 PDF 或圖片文件及服務從中擷取的分譜共用。包含一般通道及大檔案通道，不另收通道費。不自動續訂、無到期日；仍受檔案預檢及帳號現有儲存額度限制。",
     "starterScope": "Starter 每月 US$7.99，含每月 50 點，可在一般通道或大檔案通道處理新譜。按預設費用，不做匯出或其他工作時最多可做 50 次簡單辨識或 10 次複雜辨識。月點數按 UTC 自然月重設，不累積。 也可 US$49/年，仍按月提供相同點數；含 250 MB 儲存、複雜辨識、付費格式匯出及擷取分譜。",
     "laneGuide": "一般通道通常適合一張樂譜照片，或約 1–5 頁的 A4／Letter PDF；大檔案通道通常適合約 6–24 頁 PDF。約 25 頁及以上的 A4／Letter PDF 可能超過處理上限。超過 20 MiB 的檔案、超過 3200 萬像素（32 MP）的圖片，或頁面超出預檢像素上限的 PDF，無法受理。頁數均為近似值，實際受理及通道以檔案大小、頁面結構及預檢結果為準。建議拆分為每份約 24 頁以內、壓縮過大的檔案或圖片，或匯入 MusicXML。遭拒的檔案不會收款或扣點。",
@@ -51,12 +51,12 @@ const recognitionPricingCopy = {
     "passFirst": "1 份 PDF 或圖片文件 · 以檔案預檢為準",
     "passCredits": "同一文件及其擷取分譜共用 10 點 · 不過期",
     "passLane": "一般通道及大檔案通道 · 不另收通道費",
-    "inputScope": "支援上傳 PDF、PNG、JPG/JPEG、WebP、TIFF 樂譜。終身免費辨識僅限簡單模式、一般通道；單譜通行證和 Starter 也可使用大檔案通道，仍受檔案及儲存限制。MusicXML/MXL、MIDI、結構化簡譜及 Score JSON 匯入依現有存取權限開放，音訊轉譜仍屬實驗功能。"
+    "inputScope": "支援上傳 PDF、PNG、JPG/JPEG、WebP、TIFF 樂譜。終身免費辨識僅限簡單模式、一般通道；單譜通行證和 Starter 也可使用大檔案通道，仍受檔案及儲存限制。MusicXML/MXL、MIDI、結構化簡譜及 可編輯樂譜檔案 匯入依現有存取權限開放，音訊轉譜仍屬實驗功能。"
   },
   "ja": {
-    "proCredits": "Converter Pro は毎月 200 クレジットです。",
+    "proCredits": "Converter Pro 月額プラン は毎月 200 クレジットです。",
     "freeLead": "生涯 1 回無料スキャン · シンプルモード · 通常処理",
-    "freeScope": "標準処理で簡単な楽譜認識を生涯1回無料で利用できます。通常は写真1枚か約1–5ページのA4/Letter PDFが対象で、ファイル確認の結果によります。無料プランに毎月のクレジットはなく、無料認識に残高は必要ありません。 その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・Score JSONの書き出しは無料です。 PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。",
+    "freeScope": "標準処理で簡単な楽譜認識を生涯1回無料で利用できます。通常は写真1枚か約1–5ページのA4/Letter PDFが対象で、ファイル確認の結果によります。無料プランに毎月のクレジットはなく、無料認識に残高は必要ありません。 その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・編集可能な楽譜ファイルの書き出しは無料です。 PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。",
     "passScope": "1曲パスは US$2.99 の1回払いで、1つの PDF または画像文書と、サービスがそこから抽出したパートで共用する 10 処理クレジットを含みます。通常処理と大容量ファイル処理に対応し、処理経路による追加料金はありません。自動更新・有効期限はなく、ファイルの事前確認と既存の保存容量制限が適用されます。",
     "starterScope": "Starter は月額 US$7.99、毎月 50 クレジットで、新しい楽譜を通常処理または大容量ファイル処理で認識できます。標準料金では、書き出しなどを除き、シンプル認識を最大 50 件または複雑認識を最大 10 件処理できます。月間枠は UTC の暦月ごとにリセットされ、繰り越せません。 年額US$49でも月間枠は同じです。250 MB保存、複雑認識、有料形式の書き出し、パート抽出を含みます。",
     "laneGuide": "通常処理は楽譜写真 1 枚、または約 1～5 ページの A4・Letter PDF、大容量ファイル処理は約 6～24 ページの PDF が目安です。約 25 ページ以上の A4・Letter PDF は処理上限を超える場合があります。20 MiB を超えるファイル、3200 万画素（32 MP）を超える画像、またはページが事前確認の画素数上限を超える PDF は受け付けられません。ページ数は目安で、実際の受付可否と処理経路はファイル容量・ページ構成と事前確認で決まります。PDF は 1 ファイル約 24 ページ以内に分割し、大きすぎるファイルや画像を圧縮するか、MusicXML を取り込んでください。受け付けられないファイルには料金やクレジットはかかりません。",
@@ -68,12 +68,12 @@ const recognitionPricingCopy = {
     "passFirst": "PDF または画像文書 1 件 · 事前確認が必要",
     "passCredits": "同じ文書と抽出パートで 10 クレジットを共用 · 有効期限なし",
     "passLane": "通常処理・大容量ファイル処理 · 追加料金なし",
-    "inputScope": "PDF、PNG、JPG/JPEG、WebP、TIFF の楽譜を取り込めます。生涯 1 回の無料認識はシンプルモード・通常処理のみです。1曲パスと Starter は大容量ファイル処理にも対応し、ファイル・保存容量制限が適用されます。MusicXML/MXL、MIDI、構造化数字譜、Score JSON は現在のアクセス権に従います。音声採譜は実験機能です。"
+    "inputScope": "PDF、PNG、JPG/JPEG、WebP、TIFF の楽譜を取り込めます。生涯 1 回の無料認識はシンプルモード・通常処理のみです。1曲パスと Starter は大容量ファイル処理にも対応し、ファイル・保存容量制限が適用されます。MusicXML/MXL、MIDI、構造化数字譜、編集可能な楽譜ファイル は現在のアクセス権に従います。音声採譜は実験機能です。"
   },
   "ko": {
-    "proCredits": "Converter Pro는 매월 200크레딧을 제공합니다.",
+    "proCredits": "Converter Pro 월간 요금제는 매월 200크레딧을 제공합니다.",
     "freeLead": "평생 1회 무료 스캔 · 간단 모드 · 일반 처리",
-    "freeScope": "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 1–5페이지의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 무료 요금제에는 월간 크레딧이 없으며 무료 인식에는 잔액이 필요하지 않습니다. 해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 Score JSON 내보내기는 무료입니다. PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다.",
+    "freeScope": "표준 처리에서 간단한 악보 인식을 평생 1회 무료로 이용할 수 있습니다. 보통 사진 1장 또는 약 1–5페이지의 A4/Letter PDF가 해당되며 파일 검사 결과에 따릅니다. 무료 요금제에는 월간 크레딧이 없으며 무료 인식에는 잔액이 필요하지 않습니다. 해당 악보의 편집, 조옮김, 재생, 인식 결과 선택, 제목 변경, 공유와 숫자악보 및 편집 가능한 악보 파일 내보내기는 무료입니다. PDF, MusicXML, MIDI, SVG, PNG, WAV, MP3 내보내기, 다른 악보, 복잡한 인식, 대용량 처리, 파트 추출에는 US$2.99 한 곡 이용권 또는 월 US$7.99부터 시작하는 Starter가 필요합니다.",
     "passScope": "한 곡 이용권은 US$2.99 일회성 결제로, PDF 또는 이미지 문서 하나와 서비스가 그 문서에서 추출한 파트가 공유하는 처리 크레딧 10개를 제공합니다. 일반 처리와 대용량 파일 처리를 포함하며 별도 처리 경로 요금은 없습니다. 자동 갱신이나 만료는 없고 파일 사전 검사와 계정의 기존 저장 공간 제한이 적용됩니다.",
     "starterScope": "Starter는 월 US$7.99에 매월 50크레딧을 제공하며 새 악보의 일반 처리와 대용량 파일 처리를 지원합니다. 기본 비용으로 내보내기 등 다른 작업이 없다면 간단 인식 최대 50건 또는 복잡 인식 최대 10건을 처리할 수 있습니다. 월간 크레딧은 UTC 달력 월마다 초기화되며 이월되지 않습니다. 연 US$49도 같은 월간 한도를 제공합니다. 250 MB 저장 공간, 복잡한 인식, 유료 형식 내보내기와 파트 추출이 포함됩니다.",
     "laneGuide": "일반 처리는 보통 악보 사진 한 장이나 약 1~5페이지의 A4·Letter PDF에, 대용량 파일 처리는 약 6~24페이지의 PDF에 적합합니다. 약 25페이지 이상의 A4·Letter PDF는 처리 한도를 초과할 수 있습니다. 20 MiB를 넘는 파일, 3,200만 화소(32 MP)를 넘는 이미지 또는 페이지가 사전 검사 픽셀 한도를 넘는 PDF는 접수할 수 없습니다. 페이지 수는 참고치이며 실제 접수 여부와 처리 경로는 파일 크기, 페이지 구성과 사전 검사로 결정됩니다. PDF를 파일당 약 24페이지 이하로 나누거나, 너무 큰 파일이나 이미지를 압축하거나, MusicXML을 가져오세요. 접수되지 않은 파일에는 요금이나 크레딧이 청구되지 않습니다.",
@@ -85,12 +85,12 @@ const recognitionPricingCopy = {
     "passFirst": "PDF 또는 이미지 문서 1개 · 파일 사전 검사 필요",
     "passCredits": "같은 문서와 추출 파트가 10크레딧 공유 · 만료 없음",
     "passLane": "일반 처리와 대용량 파일 처리 · 별도 요금 없음",
-    "inputScope": "PDF, PNG, JPG/JPEG, WebP, TIFF 악보를 업로드할 수 있습니다. 평생 1회 무료 스캔은 간단 모드와 일반 처리만 지원합니다. 한 곡 이용권과 Starter는 대용량 파일 처리도 지원하며 파일 및 저장 공간 제한이 적용됩니다. MusicXML/MXL, MIDI, 구조화 숫자 악보, Score JSON 가져오기는 현재 접근 권한을 따릅니다. 오디오 채보는 실험 기능입니다."
+    "inputScope": "PDF, PNG, JPG/JPEG, WebP, TIFF 악보를 업로드할 수 있습니다. 평생 1회 무료 스캔은 간단 모드와 일반 처리만 지원합니다. 한 곡 이용권과 Starter는 대용량 파일 처리도 지원하며 파일 및 저장 공간 제한이 적용됩니다. MusicXML/MXL, MIDI, 구조화 숫자 악보, 편집 가능한 악보 파일 가져오기는 현재 접근 권한을 따릅니다. 오디오 채보는 실험 기능입니다."
   },
   "fr": {
-    "proCredits": "Converter Pro comprend 200 crédits mensuels.",
+    "proCredits": "Converter Pro mensuel comprend 200 crédits mensuels.",
     "freeLead": "1 scan gratuit à vie · Mode simple · Traitement standard",
-    "freeScope": "1 reconnaissance simple gratuite à vie, en traitement standard : généralement une photo ou un PDF A4/Letter d’environ 1–5 pages, sous réserve de vérification. La formule gratuite ne fournit aucun crédit mensuel ; le scan gratuit ne demande aucun solde. Sur cette partition, la modification, la transposition, la lecture, le choix des résultats, le titre et le partage sont gratuits, ainsi que les exports Jianpu et Score JSON. Les exports PDF, MusicXML, MIDI, SVG, PNG, WAV et MP3, une autre partition, la reconnaissance complexe, les fichiers volumineux et l’extraction de parties nécessitent un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois.",
+    "freeScope": "1 reconnaissance simple gratuite à vie, en traitement standard : généralement une photo ou un PDF A4/Letter d’environ 1–5 pages, sous réserve de vérification. La formule gratuite ne fournit aucun crédit mensuel ; le scan gratuit ne demande aucun solde. Sur cette partition, la modification, la transposition, la lecture, le choix des résultats, le titre et le partage sont gratuits, ainsi que les exports Jianpu et Fichier de partition modifiable. Les exports PDF, MusicXML, MIDI, SVG, PNG, WAV et MP3, une autre partition, la reconnaissance complexe, les fichiers volumineux et l’extraction de parties nécessitent un pass une partition à 2,99 USD ou Starter dès 7,99 USD/mois.",
     "passScope": "Le pass une partition coûte 2,99 USD en paiement unique et comprend 10 crédits partagés par un même document PDF ou image et les parties que le service en extrait. Il inclut le traitement standard et celui des fichiers volumineux, sans supplément de traitement. Sans renouvellement automatique ni expiration ; la vérification du fichier et le quota de stockage actuel s’appliquent.",
     "starterScope": "Starter coûte 7,99 USD par mois et comprend 50 crédits mensuels pour de nouvelles partitions, en traitement standard ou fichiers volumineux. Aux tarifs par défaut, cela permet jusqu’à 50 reconnaissances simples ou 10 complexes, hors exports et autres tâches. Les crédits mensuels sont réinitialisés par mois civil en UTC, sans report. Ou 49 USD/an avec le même quota mensuel : 250 Mo de stockage, reconnaissance complexe, exports payants et extraction de parties inclus.",
     "laneGuide": "Le traitement standard convient généralement à une photo ou à un PDF A4/Letter d’environ 1 à 5 pages ; le traitement des fichiers volumineux vise environ 6 à 24 pages. Les PDF A4/Letter d’environ 25 pages ou plus peuvent dépasser la limite de traitement. Les fichiers de plus de 20 MiB, les images de plus de 32 MP ou les PDF dont les pages dépassent la limite de pixels de la vérification préalable ne peuvent pas être acceptés. Ces nombres sont indicatifs : la taille du fichier, la mise en page et la vérification préalable déterminent l’acceptation et le traitement. Divisez les PDF en fichiers d’environ 24 pages maximum, compressez les fichiers ou images trop volumineux, ou importez du MusicXML. Un fichier refusé ne donne lieu à aucun paiement ni débit de crédits.",
@@ -102,12 +102,12 @@ const recognitionPricingCopy = {
     "passFirst": "1 document PDF ou image · Vérification préalable requise",
     "passCredits": "10 crédits partagés par le document et ses parties extraites · Sans expiration",
     "passLane": "Traitement standard et fichiers volumineux · Sans supplément",
-    "inputScope": "Importez des partitions PDF, PNG, JPG/JPEG, WebP ou TIFF. Le scan gratuit à vie est limité au mode simple et au traitement standard ; le pass une partition et Starter couvrent aussi les fichiers volumineux, sous réserve des limites de fichier et de stockage. Les imports MusicXML/MXL, MIDI, Jianpu structuré et Score JSON suivent les droits actuels. La transcription audio reste expérimentale."
+    "inputScope": "Importez des partitions PDF, PNG, JPG/JPEG, WebP ou TIFF. Le scan gratuit à vie est limité au mode simple et au traitement standard ; le pass une partition et Starter couvrent aussi les fichiers volumineux, sous réserve des limites de fichier et de stockage. Les imports MusicXML/MXL, MIDI, Jianpu structuré et Fichier de partition modifiable suivent les droits actuels. La transcription audio reste expérimentale."
   },
   "es": {
-    "proCredits": "Converter Pro incluye 200 créditos al mes.",
+    "proCredits": "Converter Pro mensual incluye 200 créditos al mes.",
     "freeLead": "1 escaneo gratuito de por vida · Modo simple · Procesamiento estándar",
-    "freeScope": "1 reconocimiento simple gratuito de por vida en la vía estándar, normalmente una foto o un PDF A4/Letter de unas 1–5 páginas, según la comprobación. El plan gratuito no incluye créditos mensuales; el escaneo gratuito no necesita saldo. En esa partitura puedes editar, transponer, reproducir, elegir resultados, cambiar el título y compartir gratis, además de exportar Jianpu y Score JSON. Las exportaciones PDF, MusicXML, MIDI, SVG, PNG, WAV y MP3, otra partitura, el reconocimiento complejo, los archivos grandes y la extracción de partes requieren un pase de 2,99 USD o Starter desde 7,99 USD/mes.",
+    "freeScope": "1 reconocimiento simple gratuito de por vida en la vía estándar, normalmente una foto o un PDF A4/Letter de unas 1–5 páginas, según la comprobación. El plan gratuito no incluye créditos mensuales; el escaneo gratuito no necesita saldo. En esa partitura puedes editar, transponer, reproducir, elegir resultados, cambiar el título y compartir gratis, además de exportar Jianpu y Archivo de partitura editable. Las exportaciones PDF, MusicXML, MIDI, SVG, PNG, WAV y MP3, otra partitura, el reconocimiento complejo, los archivos grandes y la extracción de partes requieren un pase de 2,99 USD o Starter desde 7,99 USD/mes.",
     "passScope": "El pase para una partitura cuesta 2,99 USD una sola vez e incluye 10 créditos compartidos por un documento PDF o imagen y las partes que el servicio extraiga de él. Incluye procesamiento estándar y de archivos grandes, sin recargo por la vía de procesamiento. Sin renovación automática ni caducidad; se aplican la comprobación previa y el almacenamiento actual de la cuenta.",
     "starterScope": "Starter cuesta 7,99 USD al mes e incluye 50 créditos mensuales para nuevas partituras, con procesamiento estándar o de archivos grandes. Con los costes predeterminados, permite hasta 50 reconocimientos simples o 10 complejos, sin contar exportaciones ni otras tareas. Los créditos se restablecen por mes natural según UTC y no se acumulan. También 49 USD/año con el mismo cupo mensual: incluye 250 MB, reconocimiento complejo, exportaciones de pago y extracción de partes.",
     "laneGuide": "El procesamiento estándar suele ser adecuado para una foto o un PDF A4/Letter de unas 1–5 páginas; la vía de archivos grandes, para unas 6–24 páginas. Los PDF A4/Letter de unas 25 páginas o más pueden superar el límite de procesamiento. No se aceptan archivos de más de 20 MiB, imágenes de más de 32 MP ni PDF cuyas páginas superen el límite de píxeles de la comprobación previa. Las páginas son orientativas: el tamaño real, la distribución de la página y la comprobación previa determinan la aceptación y la vía. Divide los PDF en archivos de unas 24 páginas como máximo, comprime los archivos o imágenes demasiado grandes o importa MusicXML. Los archivos rechazados no generan cobros ni consumen créditos.",
@@ -119,12 +119,12 @@ const recognitionPricingCopy = {
     "passFirst": "1 documento PDF o imagen · Sujeto a comprobación previa",
     "passCredits": "10 créditos compartidos por el documento y sus partes extraídas · Sin caducidad",
     "passLane": "Procesamiento estándar y archivos grandes · Sin recargo",
-    "inputScope": "Puedes subir partituras PDF, PNG, JPG/JPEG, WebP o TIFF. El escaneo gratuito de por vida solo incluye modo simple y procesamiento estándar; el pase para una partitura y Starter también cubren archivos grandes, sujetos a los límites de archivo y almacenamiento. Las importaciones MusicXML/MXL, MIDI, Jianpu estructurado y Score JSON siguen los permisos actuales. La transcripción de audio sigue siendo experimental."
+    "inputScope": "Puedes subir partituras PDF, PNG, JPG/JPEG, WebP o TIFF. El escaneo gratuito de por vida solo incluye modo simple y procesamiento estándar; el pase para una partitura y Starter también cubren archivos grandes, sujetos a los límites de archivo y almacenamiento. Las importaciones MusicXML/MXL, MIDI, Jianpu estructurado y Archivo de partitura editable siguen los permisos actuales. La transcripción de audio sigue siendo experimental."
   },
   "de": {
-    "proCredits": "Converter Pro enthält 200 Credits monatlich.",
+    "proCredits": "Converter Pro monatlich enthält 200 Credits monatlich.",
     "freeLead": "1 kostenloser Scan auf Lebenszeit · Einfacher Modus · Standardverarbeitung",
-    "freeScope": "1 kostenloser einfacher Scan auf Lebenszeit in der Standardverarbeitung, meist ein Foto oder ein A4-/Letter-PDF mit ungefähr 1–5 Seiten, nach Dateiprüfung. Der kostenlose Tarif enthält keine monatlichen Credits; der kostenlose Scan benötigt kein Guthaben. Diese Partitur kostenlos bearbeiten, transponieren, abspielen, Erkennungsergebnisse auswählen, umbenennen und teilen sowie als Jianpu und Score JSON exportieren. PDF-, MusicXML-, MIDI-, SVG-, PNG-, WAV- und MP3-Exporte, eine weitere Partitur, komplexe Erkennung, große Dateien und Stimmenauszüge benötigen einen Einzelpartitur-Pass für 2,99 USD oder Starter ab 7,99 USD/Monat.",
+    "freeScope": "1 kostenloser einfacher Scan auf Lebenszeit in der Standardverarbeitung, meist ein Foto oder ein A4-/Letter-PDF mit ungefähr 1–5 Seiten, nach Dateiprüfung. Der kostenlose Tarif enthält keine monatlichen Credits; der kostenlose Scan benötigt kein Guthaben. Diese Partitur kostenlos bearbeiten, transponieren, abspielen, Erkennungsergebnisse auswählen, umbenennen und teilen sowie als Jianpu und Bearbeitbare Partiturdatei exportieren. PDF-, MusicXML-, MIDI-, SVG-, PNG-, WAV- und MP3-Exporte, eine weitere Partitur, komplexe Erkennung, große Dateien und Stimmenauszüge benötigen einen Einzelpartitur-Pass für 2,99 USD oder Starter ab 7,99 USD/Monat.",
     "passScope": "Der Einzelpartitur-Pass kostet einmalig 2,99 USD und enthält 10 Credits für ein PDF- oder Bilddokument sowie die daraus vom Dienst extrahierten Stimmen. Standardverarbeitung und Verarbeitung großer Dateien sind ohne gesonderten Aufpreis enthalten. Keine automatische Verlängerung und kein Ablaufdatum; Dateivorprüfung und vorhandenes Speicherkontingent gelten weiterhin.",
     "starterScope": "Starter kostet 7,99 USD pro Monat und enthält monatlich 50 Credits für neue Partituren mit Standardverarbeitung oder Verarbeitung großer Dateien. Zu Standardkosten sind damit bis zu 50 einfache oder 10 komplexe Erkennungsaufträge möglich, ohne Exporte und andere Aufgaben. Monatscredits werden nach UTC-Kalendermonat zurückgesetzt und nicht übertragen. Alternativ 49 USD/Jahr mit demselben Monatskontingent; 250 MB Speicher, komplexe Erkennung, kostenpflichtige Exportformate und Stimmenauszüge enthalten.",
     "laneGuide": "Standardverarbeitung passt meist für ein Notenfoto oder ein A4-/Letter-PDF mit ungefähr 1–5 Seiten; die Verarbeitung großer Dateien für ungefähr 6–24 Seiten. A4-/Letter-PDFs mit ungefähr 25 Seiten oder mehr können die Verarbeitungsgrenze überschreiten. Dateien über 20 MiB, Bilder über 32 MP oder PDFs mit Seiten über der Pixelgrenze der Vorprüfung können nicht angenommen werden. Die Seitenzahlen sind Richtwerte: Dateigröße, Seitenaufbau und Vorprüfung bestimmen Annahme und Verarbeitungsweg. Teilen Sie PDFs in Dateien mit jeweils ungefähr 24 Seiten oder weniger, komprimieren Sie zu große Dateien oder Bilder oder importieren Sie MusicXML. Abgelehnte Dateien verursachen keine Zahlung und keinen Credit-Abzug.",
@@ -136,12 +136,12 @@ const recognitionPricingCopy = {
     "passFirst": "1 PDF- oder Bilddokument · Dateivorprüfung erforderlich",
     "passCredits": "10 Credits für dieses Dokument und seine extrahierten Stimmen · Ohne Ablaufdatum",
     "passLane": "Standardverarbeitung und große Dateien · Ohne Aufpreis",
-    "inputScope": "Unterstützt werden PDF-, PNG-, JPG/JPEG-, WebP- und TIFF-Partituren. Der einmalige kostenlose Scan gilt für den einfachen Modus mit Standardverarbeitung. Einzelpartitur-Pass und Starter enthalten auch große Dateien; Datei- und Speichergrenzen gelten weiterhin. MusicXML/MXL, MIDI, strukturiertes Jianpu und Score JSON richten sich nach den aktuellen Zugriffsrechten. Audiotranskription bleibt experimentell."
+    "inputScope": "Unterstützt werden PDF-, PNG-, JPG/JPEG-, WebP- und TIFF-Partituren. Der einmalige kostenlose Scan gilt für den einfachen Modus mit Standardverarbeitung. Einzelpartitur-Pass und Starter enthalten auch große Dateien; Datei- und Speichergrenzen gelten weiterhin. MusicXML/MXL, MIDI, strukturiertes Jianpu und Bearbeitbare Partiturdatei richten sich nach den aktuellen Zugriffsrechten. Audiotranskription bleibt experimentell."
   },
   "ru": {
-    "proCredits": "Converter Pro включает 200 кредитов в месяц.",
+    "proCredits": "Месячный Converter Pro включает 200 кредитов в месяц.",
     "freeLead": "1 бесплатное сканирование за всё время · Простой режим · Обычная обработка",
-    "freeScope": "1 бесплатное простое распознавание за всё время в стандартной очереди: обычно фото или PDF A4/Letter примерно на 1–5 страниц, по проверке файла. В бесплатном тарифе нет месячных кредитов, и для бесплатного сканирования баланс не нужен. На этой партитуре бесплатно доступны редактирование, транспонирование, воспроизведение, выбор результатов, смена названия, публикация и экспорт Jianpu и Score JSON. Экспорт PDF, MusicXML, MIDI, SVG, PNG, WAV и MP3, другая партитура, сложное распознавание, большие файлы и извлечение партий требуют пакета за 2,99 USD или Starter от 7,99 USD/месяц.",
+    "freeScope": "1 бесплатное простое распознавание за всё время в стандартной очереди: обычно фото или PDF A4/Letter примерно на 1–5 страниц, по проверке файла. В бесплатном тарифе нет месячных кредитов, и для бесплатного сканирования баланс не нужен. На этой партитуре бесплатно доступны редактирование, транспонирование, воспроизведение, выбор результатов, смена названия, публикация и экспорт Jianpu и Редактируемый файл партитуры. Экспорт PDF, MusicXML, MIDI, SVG, PNG, WAV и MP3, другая партитура, сложное распознавание, большие файлы и извлечение партий требуют пакета за 2,99 USD или Starter от 7,99 USD/месяц.",
     "passScope": "Пакет для одной партитуры стоит 2,99 USD однократно и содержит 10 кредитов для одного PDF или документа-изображения и партий, извлечённых из него сервисом. Включены обычная обработка и обработка больших файлов без доплаты за способ обработки. Нет автопродления и срока действия; сохраняются предварительная проверка файла и текущая квота хранения аккаунта.",
     "starterScope": "Starter стоит 7,99 USD в месяц и включает 50 кредитов ежемесячно для новых партитур с обычной обработкой или обработкой больших файлов. По стандартной стоимости это до 50 простых или 10 сложных заданий распознавания без экспорта и других задач. Месячные кредиты обновляются по календарным месяцам UTC и не переносятся. Или 49 USD/год с тем же месячным лимитом; включены 250 МБ, сложное распознавание, платные форматы экспорта и извлечение партий.",
     "laneGuide": "Обычная обработка обычно подходит для одной фотографии нот или PDF A4/Letter примерно на 1–5 страниц, обработка больших файлов — примерно на 6–24 страницы. PDF A4/Letter примерно на 25 страниц и более могут превысить предел обработки. Файлы больше 20 MiB, изображения больше 32 MP или PDF со страницами сверх пиксельного предела предварительной проверки не принимаются. Число страниц приблизительное: возможность приёма и способ обработки определяют размер файла, структура страниц и предварительная проверка. Разделите PDF на файлы примерно по 24 страницы или меньше, сожмите слишком большие файлы или изображения либо импортируйте MusicXML. За отклонённые файлы оплата и кредиты не списываются.",
@@ -153,7 +153,7 @@ const recognitionPricingCopy = {
     "passFirst": "1 PDF или документ-изображение · Нужна проверка файла",
     "passCredits": "10 кредитов для документа и извлечённых партий · Без срока действия",
     "passLane": "Обычная обработка и большие файлы · Без доплаты",
-    "inputScope": "Можно загрузить ноты в PDF, PNG, JPG/JPEG, WebP или TIFF. Бесплатное сканирование за всё время доступно только в простом режиме с обычной обработкой. Пакет для одной партитуры и Starter также включают большие файлы в пределах ограничений файла и хранения. Импорт MusicXML/MXL, MIDI, структурированного Jianpu и Score JSON зависит от текущих прав доступа. Транскрибация аудио остаётся экспериментальной."
+    "inputScope": "Можно загрузить ноты в PDF, PNG, JPG/JPEG, WebP или TIFF. Бесплатное сканирование за всё время доступно только в простом режиме с обычной обработкой. Пакет для одной партитуры и Starter также включают большие файлы в пределах ограничений файла и хранения. Импорт MusicXML/MXL, MIDI, структурированного Jianpu и Редактируемый файл партитуры зависит от текущих прав доступа. Транскрибация аудио остаётся экспериментальной."
   }
 } as const;
 

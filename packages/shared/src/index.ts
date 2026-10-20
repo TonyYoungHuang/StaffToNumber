@@ -1603,3 +1603,5 @@ export { normalizeScoreTransposeTitle } from "./score-title.ts";
 export { sharedInFlightRequest, fetchScorePreflight, parseStagedPreflightMetadata, stagedScoreRecognitionBody, forgetStagedScorePreflight, scorePreflightFileKey, retryAfterMilliseconds, SCORE_PREFLIGHT_CLIENT_TIMEOUT_MS, SCORE_READ_TIMEOUT_MS } from "./client-request.ts";
 export * from "./payment-recovery-copy.ts";
 export * from "./checkout-return.ts";
+
+export { LIFETIME_PRESENTATION_PLAN, presentLifetimePlan, presentPricingPlans } from "./lifetime-plan-presentation.ts";

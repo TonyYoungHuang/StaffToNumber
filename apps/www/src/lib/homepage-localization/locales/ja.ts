@@ -51,9 +51,9 @@ export const jaHomepage = {
     caseAction: "機能を見る",
     engineKicker: "仕組みとできること",
     engineTitle: "一つの構造化楽譜が、次のすべての操作につながります",
-    engineBody: "各機能には実際の楽譜断片を組み合わせています。ソースは確認可能な候補になり、承認後は一つの Score JSON プロジェクトに引き継がれます。",
+    engineBody: "各機能には実際の楽譜断片を組み合わせています。ソースは確認可能な候補になり、承認後は一つの 編集可能な楽譜ファイル プロジェクトに引き継がれます。",
     capabilityProof: "実際の楽譜",
-    pipeline: [["ソース", "PDF／画像／音声"], ["認識と確認", "MusicXML 候補"], ["プロジェクトの正本", "Score JSON"]],
+    pipeline: [["ソース", "PDF／画像／音声"], ["認識と確認", "MusicXML 候補"], ["プロジェクトの正本", "編集可能な楽譜ファイル"]],
     capabilities: [
       ["オンライン編集", "音高、音価、調号、小節を修正します。", "/score-editor"],
       ["Jianpu を作成", "同じ構造化音符から Jianpu を生成します。", "/staff-to-jianpu"],
@@ -67,13 +67,13 @@ export const jaHomepage = {
       ["完全認識をうたわない", "不鮮明なスキャン、複雑な譜面、多声部の内容は一般に修正が必要です。"],
       ["候補はいつでも修正可能", "音符、音価、調号、歌詞、小節を構造化された改訂として保持します。"],
       ["非公開ファイルは非公開のまま", "個人プロジェクトは公開例や検証資料とは分けて管理します。"],
-      ["形式もプロジェクトも移行可能", "MusicXML、MIDI、Jianpu テキスト、Score JSON によりベンダーロックインを抑えます。"],
+      ["形式もプロジェクトも移行可能", "MusicXML、MIDI、Jianpu テキスト、編集可能な楽譜ファイル によりベンダーロックインを抑えます。"],
     ],
     pricingKicker: "クレジット料金",
     pricingTitle: "クレジットプランを選択",
     pricingBody: getPricingCardCopy("ja").intro,
     pricingPromoLabel: "年払いでお得",
-    pricingPromoValue: "年払いなら約45%～49%お得",
+    pricingPromoValue: "年払いなら約49%お得",
     creditPlanGridLabel: "クレジットプラン",
     creditPlanCardLabels: {
       creditUsage: "タスク作成時にクレジットを予約",
@@ -86,7 +86,7 @@ export const jaHomepage = {
     creditRules: [
       ["$0", "完全な無料プロジェクトを1件", getRecognitionPricingCopy("ja").freeScope],
       ["予約クレジット", "クレジットの予約と返還", "タスク作成時にクレジットを予約し、失敗またはキャンセルされた場合は自動的に返還します。同期移調や Jianpu プレビューでは自動的に消費されません。"],
-      ["毎月リセット", "プランの割り当て", "Starter は毎月50クレジット、Converter Pro は毎月200クレジット。未使用分の繰り越しはありません。"],
+      ["毎月リセット", "プランの割り当て", "Starter は毎月50クレジット、Converter Pro 月額プラン は毎月200クレジット。未使用分の繰り越しはありません。"],
     ],
     priceNote: getRecognitionPricingCopy("ja").laneGuide,
     faqKicker: "よくある質問",
@@ -94,7 +94,7 @@ export const jaHomepage = {
     faqs: [
       ["認識精度は100%ですか？", getRecognitionPricingCopy("ja").freeScope + " " + getRecognitionPricingCopy("ja").laneGuide],
       ["あとから移調したり Jianpu を作成したりできますか？", "はい。編集、Jianpu、移調、再生、書き出しは、承認済みの同じ楽譜プロジェクトを参照します。"],
-      ["どの書き出し形式に対応していますか？", "主要な交換形式は MusicXML です。MIDI、Score JSON、Jianpu テキスト、および現在のデプロイ環境で検証済みの形式にも対応します。"],
+      ["どの書き出し形式に対応していますか？", "主要な交換形式は MusicXML です。MIDI、編集可能な楽譜ファイル、Jianpu テキスト、および現在のデプロイ環境で検証済みの形式にも対応します。"],
       ["音声から楽譜への変換は現在利用できますか？", "対応形式、割り当て、人による修正範囲を明示した実験機能として提供されます。"],
       ["アップロードしたファイルは公開されますか？", "いいえ。非公開プロジェクトが自動的に公開例になることはありません。"],
     ],
@@ -124,7 +124,7 @@ export const jaHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "楽譜を認識", title: "PDF または楽譜画像をアップロード", body: getRecognitionPricingCopy("ja").freeScope, action: "無料で作成" },
+      recognize: { label: "楽譜を認識", title: "PDF または楽譜画像をアップロード", body: "楽譜をアップロードして、認識・編集・再生。", action: "無料で作成" },
       process: { label: "楽譜を処理", title: "構造化楽譜を読み込む", body: "一つの楽譜プロジェクト内で、編集、移調、変換、再生、書き出しを続けられます。", action: "楽譜ワークスペースを開く" },
       transcribe: { label: "音声から楽譜へ", title: "音声または動画を読み込む", body: "確認用の MIDI と楽譜候補を作成します。複雑な多声部は引き続き修正が必要です。", action: "候補を作成", unavailableAction: "実験機能の状況を確認" },
     },
@@ -175,7 +175,7 @@ export const jaHomepage = {
   plans: {
     free: {
       badge: getRecognitionPricingCopy("ja").freeShort, name: "Free", cycle: "生涯", unitPrice: getRecognitionPricingCopy("ja").freeUnit, credits: "生涯1回の無料シンプル認識 · 標準処理 · 毎月のクレジットなし", audience: getRecognitionPricingCopy("ja").freeLead,
-      benefits: [getRecognitionPricingCopy("ja").freeUnit, "その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・Score JSONの書き出しは無料です。", "数字譜・Score JSONの書き出しは無料。他の形式には1曲パスかStarterが必要です", "毎月のクレジットなし。生涯1回の無料シンプル認識はクレジットを使いません。", "PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。"],
+      benefits: [getRecognitionPricingCopy("ja").freeUnit, "その楽譜の編集、移調、再生、認識結果の選択、タイトル変更、共有と、数字譜・編集可能な楽譜ファイルの書き出しは無料です。", "数字譜・編集可能な楽譜ファイルの書き出しは無料。他の形式には1曲パスかStarterが必要です", "毎月のクレジットなし。生涯1回の無料シンプル認識はクレジットを使いません。", "PDF・MusicXML・MIDI・SVG・PNG・WAV・MP3の書き出し、別の楽譜、複雑認識、大容量ファイル処理、パート抽出にはUS$2.99の1曲パスか月額US$7.99からのStarterが必要です。"],
       resources: [getRecognitionPricingCopy("ja").freeScope, "50 MB のファイルストレージ", "オープン楽譜ライブラリと CC0 ダウンロード", "クレジットカード不要。無料プロジェクトは保持されます"], cta: "無料楽譜を作成",
     },
     "starter-monthly": {

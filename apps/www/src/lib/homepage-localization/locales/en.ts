@@ -67,13 +67,13 @@ export const enHomepage = {
       ["No perfect-recognition promise", "Weak scans, dense engraving, and polyphony commonly require correction."],
       ["Fix the notes it misreads", "Change notes, duration, key, lyrics and measures in the editor."],
       ["Private files stay private", "Projects remain separate from public examples and evidence."],
-      ["Formats and projects are portable", "MusicXML, MIDI, Jianpu text, and Score JSON reduce lock-in."],
+      ["Formats and projects are portable", "MusicXML, MIDI, Jianpu text, and Editable score file reduce lock-in."],
     ],
     pricingKicker: "Credit pricing",
     pricingTitle: "Choose your credit plan",
     pricingBody: getPricingCardCopy("en").intro,
     pricingPromoLabel: "Save with annual",
-    pricingPromoValue: "Save about 45%–49% annually",
+    pricingPromoValue: "Save about 49% annually",
     creditPlanGridLabel: "Credit plans",
     creditPlanCardLabels: {
       creditUsage: "Credits reserved per job",
@@ -86,7 +86,7 @@ export const enHomepage = {
     creditRules: [
       ["$0", "One complete free project", getRecognitionPricingCopy("en").freeScope],
       ["Reserved credits", "Reservation and return", "Credits are reserved when a job is created; they are automatically returned if it fails or is cancelled. Synchronous transposition and Jianpu previews do not automatically use a credit."],
-      ["Monthly reset", "Plan allowance", "Starter includes 50 credits per month and Converter Pro includes 200. Allowances reset at the start of each UTC calendar month; unused credits do not roll over."],
+      ["Monthly reset", "Plan allowance", "Starter includes 50 credits per month and Converter Pro monthly includes 200. Allowances reset at the start of each UTC calendar month; unused credits do not roll over."],
     ],
     priceNote: getRecognitionPricingCopy("en").laneGuide,
     faqKicker: "FAQ",
@@ -124,7 +124,7 @@ export const enHomepage = {
   },
   workbench: {
     modes: {
-      recognize: { label: "Recognize", title: "Upload a PDF or score image", body: getRecognitionPricingCopy("en").freeScope, action: "Create for free" },
+      recognize: { label: "Recognize", title: "Upload a PDF or score image", body: "Upload a score to recognize, edit and play.", action: "Create for free" },
       process: { label: "Edit a score", title: "Import MusicXML or MIDI", body: "Edit the notes, change key, listen and export without re-uploading your score.", action: "Open score workspace" },
       transcribe: { label: "Audio to score", title: "Import audio or video", body: "Create a MIDI and notation candidate for review; dense polyphony still requires correction.", action: "Create a candidate", unavailableAction: "Check experimental status" },
     },
@@ -175,7 +175,7 @@ export const enHomepage = {
   plans: {
     free: {
       badge: getRecognitionPricingCopy("en").freeShort, name: "Free", cycle: "Lifetime", unitPrice: getRecognitionPricingCopy("en").freeUnit, credits: "1 lifetime free simple scan · standard lane · no monthly credits", audience: getRecognitionPricingCopy("en").freeLead,
-      benefits: [getRecognitionPricingCopy("en").freeUnit, "On that score, edit, transpose, play, choose recognition results, rename the title and share for free. Jianpu and Score JSON exports are free.", "Free Jianpu and Score JSON exports; other formats require a One Score Pass or Starter", "No monthly credits; the lifetime free simple scan uses no credits.", "PDF, MusicXML, MIDI, SVG, PNG, WAV and MP3 exports, another score, complex recognition, large-file processing and part extraction require a US$2.99 One Score Pass or Starter from US$7.99/month."],
+      benefits: [getRecognitionPricingCopy("en").freeUnit, "On that score, edit, transpose, play, choose recognition results, rename the title and share for free. Jianpu and Editable score file exports are free.", "Free Jianpu and Editable score file exports; other formats require a One Score Pass or Starter", "No monthly credits; the lifetime free simple scan uses no credits.", "PDF, MusicXML, MIDI, SVG, PNG, WAV and MP3 exports, another score, complex recognition, large-file processing and part extraction require a US$2.99 One Score Pass or Starter from US$7.99/month."],
       resources: [getRecognitionPricingCopy("en").freeScope, "50 MB file storage", "Open score library and CC0 downloads", "No credit card required; keep the free project"], cta: "Create a free score",
     },
     "starter-monthly": {
