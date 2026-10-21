@@ -38,10 +38,9 @@ export const frHomepage = {
     demosProof: "Enregistré dans le produit",
     demosAction: "Ouvrir l’outil complet",
     demos: [
-      ["Édition en ligne", "Modifiez les hauteurs, les durées et le contenu des mesures."],
       ["Transposition d’une partition", "Conservez la tonalité d’origine et créez une révision dans la tonalité cible."],
-      ["De la portée au Jianpu", "Générez une notation Jianpu depuis la même partition structurée."],
       ["De la partition à l’audio", "Réglez le tempo et les boucles, puis créez un support de travail."],
+      ["De la portée au Jianpu", "Générez une notation Jianpu depuis la même partition structurée."],
     ],
     cases: [
       ["Préparation de cours", "Numérisez une partition papier, vérifiez-la puis créez du Jianpu", "Conservez la source, les diagnostics et la proposition ensemble, puis corrigez les passages incertains."],
@@ -100,7 +99,7 @@ export const frHomepage = {
   },
   media: {
     caseAlts: ["Interface en anglais de vérification d’une proposition reconnue depuis un PDF ou une image", "Espace en anglais de transposition d’une partition structurée", "Espace en anglais de lecture de partition et de création d’audio de travail"],
-    demoAlts: ["Démonstration en anglais de l’édition de partition en ligne", "Démonstration en anglais de la transposition d’une partition", "Démonstration en anglais du passage de la portée au Jianpu", "Démonstration en anglais de la création d’audio depuis une partition"],
+    demoAlts: ["Démonstration en anglais de la transposition d’une partition", "Démonstration en anglais de la création d’audio depuis une partition", "Démonstration en anglais du passage de la portée au Jianpu"],
     scoreSamples: [
       ["Variations K. 265 de Mozart", "Extrait réel des Variations K. 265 de Mozart présenté avec la fonction d’édition en ligne"],
       ["Canon en ré de Pachelbel", "Extrait réel du Canon en ré de Pachelbel présenté avec la conversion de la portée au Jianpu"],

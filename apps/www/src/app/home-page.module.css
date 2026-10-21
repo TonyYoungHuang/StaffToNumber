@@ -744,12 +744,17 @@
 
 .demoGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 10px;
   margin-top: 12px;
 }
 
+.sampleDemoRow { max-width: 760px; margin: 28px auto 24px; }
+
 .demoCard {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--home-line);
   border-radius: 15px;
@@ -805,6 +810,7 @@
 
 .demoCopy {
   display: grid;
+  flex: 1;
   gap: 4px;
   padding: 10px 12px 11px;
 }
@@ -1095,7 +1101,6 @@
   .capabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .capabilityGrid a,
   .capabilityGrid a:nth-last-child(-n + 2) { grid-column: auto; }
-  .demoGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .trustLayout,
   .faqLayout { grid-template-columns: 1fr; gap: 32px; }
   .trustHeading { max-width: 780px; }
@@ -1122,6 +1127,7 @@
   .capabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .trustGrid { grid-template-columns: 1fr; }
   .demoHeading { grid-template-columns: 1fr; gap: 12px; }
+  .demoGrid { grid-template-columns: 1fr; }
   .pricingHeader { align-items: start; flex-direction: column; gap: 18px; }
   .pricingSavings { min-width: 0; text-align: left; }
   .factBar { grid-template-columns: 1fr; }
@@ -1144,7 +1150,6 @@
   .trustHeading h2 { font-size: 31px; }
   .trustHeadingEnglish h2 { font-size: 31px; white-space: normal; }
   .capabilityGrid { grid-template-columns: 1fr; }
-  .demoGrid { grid-template-columns: 1fr; }
   .capabilityGrid a { min-height: 0; }
   .creditRules > div:last-child { grid-template-columns: 1fr; }
   .finalSection { padding-inline: 14px; }
@@ -1184,11 +1189,4 @@
 .purchaseDialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; border: 1px solid #c9cedb; border-radius: 20px; padding: 24px; background: #fff; color: #202431; }
 .purchaseDialog::backdrop { background: rgba(20, 24, 40, .55); }
 
-/* The pre-workbench-redesign dimensions come from 747c2f5. */
-.fullWidthHero > section { width: 100%; min-height: calc(100svh - 76px); border: 0; border-radius: 0; }
 .workbenchIntro h1 { font-size: clamp(26px, 3vw, 42px); margin-bottom: 20px; }
-.demoGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; align-items: stretch; }
-.demoCard { display: flex; flex-direction: column; }
-.demoCopy { flex: 1; }
-@media (max-width: 1100px) { .demoGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .demoGrid { grid-template-columns: minmax(0, 1fr); } }

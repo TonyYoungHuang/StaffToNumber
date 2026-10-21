@@ -38,10 +38,9 @@ export const enHomepage = {
     demosProof: "Recorded in product",
     demosAction: "Open the full tool",
     demos: [
-      ["Edit online", "Change pitch, duration, and measure content."],
       ["Transpose a score", "Choose a new key while keeping the original."],
-      ["Staff to Jianpu", "Generate Jianpu from the same structured score."],
       ["Score to audio", "Control tempo and loops, then create practice media."],
+      ["Staff to Jianpu", "Generate Jianpu from the same structured score."],
     ],
     cases: [
       ["Lesson preparation", "Scan a paper score, review it, then create Jianpu", "Compare the scan with the recognized notes, correct mistakes and prepare numbered notation."],
@@ -109,10 +108,9 @@ export const enHomepage = {
       "Score playback and practice-audio workspace",
     ],
     demoAlts: [
-      "English online score editing product demo",
       "English score transposition product demo",
-      "English staff notation to Jianpu product demo",
       "English score-to-audio product demo",
+      "English staff notation to Jianpu product demo",
     ],
     scoreSamples: [
       ["Mozart K. 265 variations", "Real Mozart K. 265 score excerpt shown with the online editing feature"],

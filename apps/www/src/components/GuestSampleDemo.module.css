@@ -1,10 +1,10 @@
 .demo {
-  padding: 64px 0;
+  min-width: 0;
   scroll-margin-top: 90px;
 }
 
 .heading { max-width: 760px; margin-bottom: 24px; }
-.heading h2 { margin: 8px 0 12px; font-size: clamp(26px, 3vw, 38px); line-height: 1.2; }
+.heading h3 { margin: 8px 0 12px; font-size: clamp(24px, 2.5vw, 32px); line-height: 1.2; }
 .heading p { color: #4d5b66; }
 .workbench { padding: 24px; border: 1px solid #dbe1e3; border-radius: 22px; background: #fff; }
 .source { margin-bottom: 20px; color: #51606d; }
@@ -17,7 +17,7 @@
 .notations button { min-height: 44px; padding: 10px 15px; border: 1px solid #d1dae0; border-radius: 10px; color: #314351; background: #f7f9fa; font: inherit; cursor: pointer; }
 .notations button[aria-pressed="true"] { color: #fff; background: #274b62; border-color: #274b62; }
 .score { margin: 22px 0; min-height: 180px; padding: 16px 0; border-block: 1px solid #e8edef; }
-.score > img { display: block; width: 340px; max-width: 100%; height: auto; margin: 0 auto; }
+.score > img { display: block; width: 520px; max-width: 100%; height: auto; margin: 0 auto; }
 .jianpu { max-width: 690px; margin: 0 auto; }
 .jianpu p { font-size: 15px; font-weight: 600; }
 .measures { display: flex; flex-wrap: wrap; gap: 22px 10px; margin: 24px 0; }
@@ -32,8 +32,11 @@
 .footer progress { flex: 1 1 100px; max-width: 260px; height: 7px; accent-color: #274b62; }
 .allowance { margin: 16px 0 0; font-size: 13px; color: #64727b; line-height: 1.6; }
 
+@media (min-width: 601px) {
+  .score > img { width: 420px; }
+}
+
 @media (max-width: 600px) {
-  .demo { padding: 36px 0; }
   .workbench { padding: 16px; border-radius: 16px; }
   .controls { align-items: stretch; gap: 14px; }
   .key, .notations { width: 100%; }
@@ -44,13 +47,3 @@
   .measures { gap: 22px 6px; }
   .measure { gap: 8px; }
 }
-
-
-.demo { padding: 0; }
-.workbench { padding: 16px; }
-.score { max-height: 340px; overflow: auto; }
-.launch { width: 100%; padding: 0; cursor: pointer; border: 0; background: #faf9ff; }
-.launch img { display: block; width: 100%; height: 100%; object-fit: contain; }
-.launch > span { position: absolute; right: 16px; bottom: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: #fff; background: var(--home-brand); font-size: 22px; }
-.launchLink { align-self: flex-start; border: 0; padding: 0; background: transparent; color: var(--home-brand-strong); font: inherit; font-size: 12px; font-weight: 750; text-align: start; cursor: pointer; }
-.launch:focus-visible, .launchLink:focus-visible { outline: 3px solid var(--home-brand); outline-offset: -3px; }

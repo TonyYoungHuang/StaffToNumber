@@ -29,7 +29,7 @@ export const esHomepage = {
     demosBody: "Cada vídeo muestra el espacio de trabajo actual durante una operación real. Reprodúcelo aquí sin salir de la página de inicio.",
     demosProof: "Grabado en el producto",
     demosAction: "Abrir la herramienta completa",
-    demos: [["Edición online", "Cambia notas, duraciones y contenido de compases."], ["Transponer una partitura", "Conserva la tonalidad original y crea una revisión en la tonalidad de destino."], ["De pentagrama a Jianpu", "Genera Jianpu desde la misma partitura estructurada."], ["De partitura a audio", "Controla tempo y bucles y crea material de práctica."]],
+    demos: [["Transponer una partitura", "Conserva la tonalidad original y crea una revisión en la tonalidad de destino."], ["De partitura a audio", "Controla tempo y bucles y crea material de práctica."], ["De pentagrama a Jianpu", "Genera Jianpu desde la misma partitura estructurada."]],
     cases: [["Preparación de clases", "Escanea una partitura en papel, revísala y crea Jianpu", "Compara las notas reconocidas con el original y corrige los pasajes dudosos."], ["Arreglos y ensayos", "Importa MusicXML y cambia la tonalidad", "Conserva el original y guarda una versión para tu voz o instrumento."], ["Práctica individual", "Mira, escucha y repite los compases difíciles", "Controla tempo, bucles y partes y después crea MIDI o audio de práctica."]],
     caseAction: "Explorar la función",
     engineKicker: "Cómo funciona y qué permite hacer",
@@ -62,7 +62,7 @@ export const esHomepage = {
   },
   media: {
     caseAlts: ["Interfaz en inglés para revisar un borrador reconocido desde PDF o imagen", "Espacio en inglés para transponer una partitura estructurada", "Espacio en inglés para reproducir partituras y crear audio de práctica"],
-    demoAlts: ["Demostración en inglés de edición online de partituras", "Demostración en inglés de transposición de partituras", "Demostración en inglés de conversión de pentagrama a Jianpu", "Demostración en inglés de creación de audio desde una partitura"],
+    demoAlts: ["Demostración en inglés de transposición de partituras", "Demostración en inglés de creación de audio desde una partitura", "Demostración en inglés de conversión de pentagrama a Jianpu"],
     scoreSamples: [["Variaciones K. 265 de Mozart", "Fragmento real de las Variaciones K. 265 de Mozart mostrado con la edición online"], ["Canon en re de Pachelbel", "Fragmento real del Canon en re de Pachelbel mostrado con la conversión a Jianpu"], ["Nocturno op. 9 n.º 2 de Chopin", "Fragmento real del Nocturno op. 9 n.º 2 de Chopin mostrado con la transposición"], ["Preludio BWV 846 de Bach", "Fragmento real del Preludio BWV 846 de Bach mostrado con reproducción y audio"], ["Appassionata op. 57 de Beethoven", "Fragmento real de la Appassionata op. 57 de Beethoven mostrado con el reconocimiento de partituras"]],
   },
   workbench: {

@@ -36,10 +36,9 @@ const caseImages = [
 ] as const;
 
 const featureDemos = [
-  { slug: "score-editor" },
   { slug: "transpose-score" },
-  { slug: "staff-to-jianpu" },
   { slug: "score-to-audio" },
+  { slug: "staff-to-jianpu" },
 ] as const;
 
 const capabilityScoreSamples = [
@@ -95,14 +94,16 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema).replaceAll("<", "\\u003c") }}
       />
 
-      <div id="product-overview" className={styles.fullWidthHero}>
-        <ProductCommercialBackdrop
-          key={locale} locale={locale} copy={commercialCopy}
-          videoSrc={productCommercial.backgroundVideoSrc}
-          posterSrc={productCommercial.backgroundPosterSrc}
-          filmSrc={productCommercial.videoSrc}
-          pricingHref={localizePublicHref("/pricing", locale)}
-        />
+      <div id="product-overview" className={`${styles.section} ${styles.overviewSection}`}>
+        <div className={styles.container}>
+          <ProductCommercialBackdrop
+            key={locale} locale={locale} copy={commercialCopy}
+            videoSrc={productCommercial.backgroundVideoSrc}
+            posterSrc={productCommercial.backgroundPosterSrc}
+            filmSrc={productCommercial.videoSrc}
+            pricingHref={localizePublicHref("/pricing", locale)}
+          />
+        </div>
       </div>
 
       <section className={`${styles.section} ${styles.hero}`} aria-labelledby="workbench-title">
@@ -134,11 +135,12 @@ export default async function HomePage() {
             <div><p className={styles.kicker}>{copy.demosKicker}</p><h2 id="demos-title">{copy.demosTitle}</h2></div>
             <p>{copy.demosBody}</p>
           </div>
-          <div className={styles.demoGrid}>
+          <div className={styles.sampleDemoRow}>
             <GuestSampleDemo locale={locale} />
-            {[0, 1, 3, 2].map(index => {
+          </div>
+          <div className={styles.demoGrid}>
+            {featureDemos.map((demo, index) => {
               const [title, body] = copy.demos[index];
-              const demo = featureDemos[index];
               const media = getHomepageDemoProductMedia(demo.slug, locale);
               const mediaPresentation = media ? getProductMediaPresentation(locale, media.sourceLocale, title) : null;
               const pendingPresentation = media ? null : getPendingProductMediaPresentation(locale, title);
