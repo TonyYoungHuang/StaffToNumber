@@ -35,7 +35,7 @@ const baseLocalizations = {
 function withLifetimePolicy(locale: SupportedLocale, base: SupportLegalLocalization): SupportLegalLocalization {
   const policy = getLifetimePolicy(locale);
   return { ...base, terms: { ...base.terms, sections: [...base.terms.sections,
-    { title: `${getLifetimeCopy(locale).name} · $99 USD`, points: [policy.tax, policy.refund, policy.upgrade] }],
+    { title: `${getLifetimeCopy(locale).name} · $99 USD`, points: [policy.refund, policy.upgrade] }],
     purchase: { ...base.terms.purchase, body: `${base.terms.purchase.body} ${policy.refund}` } } };
 }
 

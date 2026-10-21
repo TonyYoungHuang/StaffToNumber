@@ -1,6 +1,6 @@
 # Lifetime purchase, tax, refund and annual upgrade
 
-The lifetime plan costs **$99 USD before applicable tax**. A full refund can be
+The lifetime plan costs **$99 USD total**. A full refund can be
 requested through support within **14 days of payment**. Any full refund or
 chargeback revokes the corresponding lifetime entitlement, including reversals
 outside that request window. Partial refunds retain access. Refunding lifetime
@@ -10,7 +10,10 @@ does not restart an annual renewal that was already stopped.
 
 - Configure `STRIPE_PRICE_CONVERTER_PRO_LIFETIME` with an active, one-time,
   9900-cent USD Price with `tax_behavior=exclusive`.
-- Set `STRIPE_LIFETIME_AUTOMATIC_TAX=true` only after Stripe Tax is configured.
+- Production uses `STRIPE_LIFETIME_AUTOMATIC_TAX=false`: tax must be zero and the
+  total must equal 9900 cents minus the reserved annual upgrade credit.
+- Set `STRIPE_LIFETIME_AUTOMATIC_TAX=true` only after Stripe Tax is configured
+  and customer-facing tax disclosures have been updated.
   It controls `automatic_tax.enabled` for this product. The default is false.
 - Lifetime uses direct Stripe Payments with optional Stripe Tax. It does not
   inherit `STRIPE_MANAGED_PAYMENTS_ENABLED`; existing recurring plans retain
@@ -22,7 +25,7 @@ does not restart an annual renewal that was already stopped.
 - The fulfillment handler verifies a 9900-cent `amount_subtotal`, the original
   account/order/Price/session, the recorded discount, and
   `amount_total = amount_subtotal - amount_discount + amount_tax`. Shipping must
-  be zero. Tax must be a nonnegative integer. A larger tax-inclusive total is
+  be zero. Tax must be a nonnegative integer and must be zero when automatic tax is disabled. A larger tax-inclusive total is
   valid; changing the list price or supplying an unrecorded discount is not.
 - `lifetime_payment_amounts` records list subtotal, credit, tax and paid total.
   The order's `amount_minor` keeps the actual paid total; purchase analytics use

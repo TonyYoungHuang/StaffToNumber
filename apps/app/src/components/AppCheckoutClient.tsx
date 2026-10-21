@@ -386,7 +386,7 @@ export function AppCheckoutClient({
         <p className={styles.purchaseNotice}>{selectedPlan.code === "converter-pro-lifetime" ? getLifetimeCopy(locale).permanent : selectedPlan.code === "single-score" ? targetDocumentId ? scorePassCopy.sharedCredits : getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
         {selectedPlan.code === "converter-pro-lifetime" ? <div className={styles.purchaseNotice}>
           {lifetimeQuote?.upgrade ? <p>{getLifetimePolicy(locale).upgradePrice}: {new Intl.NumberFormat(locale, { style: "currency", currency: "USD" }).format(lifetimeQuote.amountMinor / 100)}</p> : null}
-          <p>{getLifetimePolicy(locale).tax}</p><p>{getLifetimePolicy(locale).refund}</p><p>{getLifetimePolicy(locale).upgrade}</p>
+          <p>{getLifetimePolicy(locale).refund}</p><p>{getLifetimePolicy(locale).upgrade}</p>
         </div> : null}
         <div className={styles.checkoutSelection}>
           <span>{copy.selectedPlan}</span>

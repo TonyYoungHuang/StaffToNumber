@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { RuntimeDatabaseLike, LifetimeEntitlement } from "@score/runtime-database";
 import type Stripe from "stripe";
 import { hashPaymentOrderToken } from "../lib/payments.js";
+import { config } from "../config.js";
 
 export function lifetimeForOrder(db: RuntimeDatabaseLike, orderId: string): LifetimeEntitlement | undefined {
   return db.prepare("SELECT * FROM lifetime_entitlements WHERE source_order_id = ?").get(orderId);
@@ -45,6 +46,7 @@ export function processLifetimeWebhook(db: RuntimeDatabaseLike, event: Stripe.Ev
       const net = 9900 - discount;
       if (object.amount_subtotal !== 9900 || !Number.isSafeInteger(discount) || discount !== (upgrade?.credit_minor ?? 0)
         || discount < 0 || discount >= 9900 || !Number.isSafeInteger(tax) || tax < 0
+        || (!config.stripeLifetimeAutomaticTax && tax !== 0)
         || (object.total_details?.amount_shipping ?? 0) !== 0 || object.amount_total !== net + tax
         || (upgrade && (upgrade.state === "expired" || (typeof object.customer === "string" ? object.customer : object.customer?.id) !== upgrade.customer_id))) {
         throw new Error("Lifetime subtotal, annual credit, tax or customer does not match the account order.");

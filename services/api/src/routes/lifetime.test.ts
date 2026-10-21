@@ -8,6 +8,7 @@ import Stripe from "stripe";
 process.env.STRIPE_SECRET_KEY = "sk_test_LocalLifetimeFixture";
 process.env.STRIPE_WEBHOOK_SECRET = "whsec_local_lifetime_fixture";
 process.env.STRIPE_TEST_ONLY = "true";
+process.env.STRIPE_LIFETIME_AUTOMATIC_TAX = "false";
 process.env.POSTGRES_URL = "";
 process.env.RESEND_API_KEY = "";
 const { db, initDb } = await import("../db.js");
@@ -69,6 +70,10 @@ test("lifetime checkout is a separate $99 one-time Stripe plan; recurring prices
   assert.equal(getCheckoutPriceId("paddle", "converter-pro-lifetime", "one_time"), null);
   assert.equal(getCheckoutPriceId("stripe", "converter-pro-annual", "subscription"), "price_existing_annual");
   const params = buildStripeCheckoutSessionParams({ orderId: "fixture", publicToken: "fixture", userId: "fixture", planCode: "converter-pro-lifetime", billingKind: "one_time", priceId: "price_lifetime_fixture" });
+  assert.equal(params.automatic_tax?.enabled, false);
+  const submitText = params.custom_text?.submit;
+  assert.ok(submitText && submitText.message.includes("14 days"));
+  assert.doesNotMatch(submitText.message, /applicable tax|undefined/);
   assert.equal(params.mode, "payment"); assert.equal(params.allow_promotion_codes, false); assert.equal(params.adaptive_pricing?.enabled, false);
   assert.equal(params.payment_intent_data?.metadata?.planCode, "converter-pro-lifetime");
   assert.equal(buildStripeCheckoutSessionParams({ orderId: "fixture", publicToken: "fixture", userId: "fixture", planCode: "converter-pro-lifetime", billingKind: "one_time", priceId: "price_lifetime_fixture" }, { managedPaymentsEnabled: true }).managed_payments, undefined);
@@ -318,17 +323,18 @@ test("annual renewal only stops after paid fulfillment; provider failures remain
   assert.ok(audit.renewal_stopped_at); assert.equal(audit.renewal_error, null);
 });
 
-test("lifetime accepts tax above $99, stores net revenue, rejects a changed list price or unapproved discount", async () => {
+test("lifetime with tax disabled requires exactly $99, zero tax and no unapproved discount", async () => {
   const f = fixture(), { app, post } = await server();
   try {
     for (const wrong of [
       { ...f.session, amount_subtotal: 9800, amount_total: 9900, total_details: { amount_tax: 100, amount_discount: 0 } },
       { ...f.session, amount_total: 9800, total_details: { amount_discount: 100, amount_tax: 0 } },
       { ...f.session, amount_total: 10700, total_details: { amount_discount: 0, amount_tax: 700 } },
+      { ...f.session, amount_total: 10700, total_details: { amount_discount: 0, amount_tax: 800 } },
     ]) assert.equal((await post("checkout.session.completed", wrong)).statusCode, 400);
-    assert.equal((await post("checkout.session.completed", { ...f.session, amount_total: 10700, total_details: { amount_tax: 800, amount_discount: 0 } })).statusCode, 200);
-    assert.equal(findPaymentOrderById(f.order.id)?.amount_minor, 10700);
-    assert.equal((db.prepare("SELECT total_minor FROM lifetime_payment_amounts WHERE order_id = ?").get(f.order.id) as { total_minor: number }).total_minor, 10700);
+    assert.equal((await post("checkout.session.completed", { ...f.session, total_details: { amount_tax: 0, amount_discount: 0 } })).statusCode, 200);
+    assert.equal(findPaymentOrderById(f.order.id)?.amount_minor, 9900);
+    assert.equal((db.prepare("SELECT total_minor FROM lifetime_payment_amounts WHERE order_id = ?").get(f.order.id) as { total_minor: number }).total_minor, 9900);
   } finally { await app.close(); }
 });
 
@@ -337,15 +343,16 @@ test("discounted fulfillment binds the reserved annual credit to its customer an
   db.prepare(`INSERT INTO lifetime_upgrade_orders (order_id,user_id,customer_id,subscription_id,invoice_id,paid_minor,period_start,period_end,quoted_at,credit_minor,expires_at,state)
     VALUES (?,?,'cus_upgrade','sub_upgrade',?,6000,100,400,200,4000,500,'reserved')`).run(f.order.id, f.userId, `in_${f.order.id}`);
   const event = (object: unknown) => ({ id: `evt_${crypto.randomUUID()}`, type: "checkout.session.completed", created: Math.floor(Date.now()/1000), data: { object } }) as Stripe.Event;
-  const discounted = { ...f.session, customer: "cus_upgrade", amount_total: 6490, total_details: { amount_discount: 4000, amount_tax: 590 } };
+  const discounted = { ...f.session, customer: "cus_upgrade", amount_total: 5900, total_details: { amount_discount: 4000, amount_tax: 0 } };
   assert.throws(() => processLifetimeWebhook(db, event({ ...discounted, customer: "cus_other" })), /customer/);
   assert.throws(() => processLifetimeWebhook(db, event({ ...discounted, total_details: { amount_discount: 3999, amount_tax: 589 } })), /credit/);
+  assert.throws(() => processLifetimeWebhook(db, event({ ...discounted, amount_total: 6490, total_details: { amount_discount: 4000, amount_tax: 590 } })), /tax/);
   processLifetimeWebhook(db, event(discounted));
-  assert.equal(findPaymentOrderById(f.order.id)?.amount_minor, 6490);
+  assert.equal(findPaymentOrderById(f.order.id)?.amount_minor, 5900);
   const mapped = mapPaymentOrderForPublic(findPaymentOrderById(f.order.id)!);
   assert.equal(confirmedPurchaseEvent(mapped, { status: "ready", canRetry: false, checkedAt: new Date().toISOString() } as never)?.value, 59);
   assert.equal((db.prepare("SELECT state FROM lifetime_upgrade_orders WHERE order_id = ?").get(f.order.id) as { state: string }).state, "paid");
   processLifetimeWebhook(db, { id: `evt_${crypto.randomUUID()}`, type: "charge.refunded", created: Math.floor(Date.now()/1000) + 30 * 86400,
-    data: { object: { id: "ch_upgrade", payment_intent: f.intent, amount: 6490, amount_refunded: 6490 } } } as Stripe.Event);
+    data: { object: { id: "ch_upgrade", payment_intent: f.intent, amount: 5900, amount_refunded: 5900 } } } as Stripe.Event);
   assert.equal(lifetimeForOrder(db, f.order.id)?.status, "revoked");
 });

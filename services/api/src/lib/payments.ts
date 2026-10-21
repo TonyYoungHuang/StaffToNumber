@@ -227,7 +227,7 @@ export function buildStripeCheckoutSessionParams(
     billing_address_collection: "auto",
     allow_promotion_codes: input.planCode !== "converter-pro-lifetime",
     ...(lifetime ? { adaptive_pricing: { enabled: false }, automatic_tax: { enabled: config.stripeLifetimeAutomaticTax } } : {}),
-    ...(lifetime ? { custom_text: { submit: { message: `${lifetimePolicy.tax}. ${lifetimePolicy.refund}` } } } : {}),
+    ...(lifetime ? { custom_text: { submit: { message: lifetimePolicy.refund } } } : {}),
     ...(input.lifetimeUpgrade ? {
       customer: input.lifetimeUpgrade.customerId,
       customer_update: { address: "auto" as const },
