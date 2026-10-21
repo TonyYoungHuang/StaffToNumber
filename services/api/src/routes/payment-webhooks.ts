@@ -1,4 +1,5 @@
 import { processLifetimeWebhook } from "../repositories/lifetime-repository.js";
+import { stopAnnualRenewalAfterLifetimePayment } from "../repositories/lifetime-upgrade-repository.js";
 import { retrieveStripeCharge } from "../lib/payments.js";
 import type { FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
@@ -74,7 +75,10 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
         if (lifetime.handled) {
           const session = event.data.object as { metadata?: Record<string, string> | null };
           const order = session.metadata?.orderId ? findPaymentOrderById(session.metadata.orderId) : undefined;
-          if (order?.status === "paid") await saveDurablePaymentOrder(order);
+          if (order?.status === "paid") {
+            await stopAnnualRenewalAfterLifetimePayment(db, order.id);
+            await saveDurablePaymentOrder(order);
+          }
           return reply.send({ received: true });
         }
         if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {

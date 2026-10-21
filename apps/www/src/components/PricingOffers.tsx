@@ -1,5 +1,5 @@
 import type { SupportedLocale } from "@score/i18n";
-import { getPricingPlanCatalog, getPurchaseOptionsCopy } from "@score/shared";
+import { getPricingPlanCatalog, getPurchaseOptionsCopy, getLifetimePolicy } from "@score/shared";
 import { getHomepageLocalization, localizeHomepagePlans } from "../lib/homepage-localization";
 import { getPurchaseFlowCopy } from "../lib/purchase-copy";
 import { PricingOffersClient } from "./PricingOffersClient";
@@ -19,5 +19,7 @@ export function PricingOffers({ locale, title }: { locale: SupportedLocale; titl
   return <section id="pricing-plans" className={styles.offers} aria-labelledby="pricing-title">
     <header className={styles.heading}><h1 id="pricing-title">{title ?? getPurchaseFlowCopy(locale).title}</h1><p>{home.pricingBody}</p></header>
     <PricingOffersClient locale={locale} plans={plans} labels={home.creditPlanCardLabels} purchase={purchase} />
+    <p>{getLifetimePolicy(locale).refund}</p>
+    <p>{getLifetimePolicy(locale).upgrade}</p>
   </section>;
 }

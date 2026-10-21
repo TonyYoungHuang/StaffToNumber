@@ -1,4 +1,5 @@
 import { lifetimeForOrder } from "../repositories/lifetime-repository.js";
+import { quoteAnnualUpgrade, prepareLifetimeUpgrade } from "../repositories/lifetime-upgrade-repository.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { isPurchasePlanCode, isCheckoutBillingKind, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
@@ -576,6 +577,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
         if (body.provider === "stripe") {
           if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: request.authUserId!, planCode, priceId: priceId!, targetDocumentId });
           const stripeInput = {
+            lifetimeUpgrade: planCode === "converter-pro-lifetime" ? await prepareLifetimeUpgrade(db, request.authUserId!, order.id) : undefined,
             locale: order.locale,
             billingKind, planCode,
             orderId: order.id,
@@ -770,6 +772,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
       if (body.provider === "stripe") {
         if (billingKind === "one_time") prepareOneTimePurchase(db, { orderId: order.id, userId: account.id, planCode, priceId });
         const stripeInput = {
+          lifetimeUpgrade: planCode === "converter-pro-lifetime" ? await prepareLifetimeUpgrade(db, account.id, order.id) : undefined,
           locale: order.locale,
           billingKind, planCode,
           orderId: order.id,
@@ -845,6 +848,15 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
     const order = findPaymentOrderByIntent(request.authUserId!, query.provider, createHash("sha256").update(key).digest("hex"));
     if (!order) return reply.code(404).send({ error: "Purchase intent not found." });
     return reply.send(checkoutResponse(order, true));
+  });
+
+  app.get("/payments/lifetime-quote", { preHandler: app.requireAuth }, async (request, reply) => {
+    try {
+      const quote = await quoteAnnualUpgrade(db, request.authUserId!);
+      return { listPriceMinor: 9900, creditMinor: quote?.creditMinor ?? 0, amountMinor: 9900 - (quote?.creditMinor ?? 0), currency: "USD", upgrade: Boolean(quote) };
+    } catch {
+      return reply.code(409).send({ error: "Your annual upgrade needs review. Restore an existing checkout or contact support.", code: "LIFETIME_UPGRADE_REVIEW" });
+    }
   });
   app.get("/payments/orders", { preHandler: app.requireAuth }, async (request, reply) => {
     reply.header("Cache-Control", "no-store");

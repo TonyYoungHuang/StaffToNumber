@@ -1,5 +1,6 @@
 import { getLifetimeQueueMessage, type SupportedLocale } from "@score/i18n";
 import type { PricingPlanDisplay } from "./index.ts";
+import { getLifetimePolicy } from "./lifetime-policy.ts";
 
 export const LIFETIME_PRESENTATION_PLAN = "converter-pro-lifetime";
 
@@ -18,7 +19,8 @@ const copy = {
 export function presentLifetimePlan(locale: SupportedLocale, plan: PricingPlanDisplay): PricingPlanDisplay {
   if (plan.code !== LIFETIME_PRESENTATION_PLAN) return plan;
   const text = copy[locale];
-  return { ...plan, badge: text[0], cycle: text[1], unitPrice: text[2], credits: text[3],
+  const policy = getLifetimePolicy(locale);
+  return { ...plan, badge: text[0], cycle: text[1], unitPrice: `${text[2]} · ${policy.tax}`, credits: text[3],
     audience: text[4], benefits: text.slice(5, 9), resources: [text[9], text[10]], cta: text[11] };
 }
 

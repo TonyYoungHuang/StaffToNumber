@@ -10,7 +10,7 @@ export function assertTestKey(key) {
 }
 export function validateLifetimePrice(price) {
   if (price.livemode !== false || price.type !== "one_time" || price.recurring || price.currency !== "usd"
-    || price.unit_amount !== 9900 || !price.active || price.lookup_key !== lifetimeLookupKey) throw new Error("The existing TEST lifetime Price does not match $99 USD one-time. Refusing to modify it.");
+    || price.unit_amount !== 9900 || price.tax_behavior !== "exclusive" || !price.active || price.lookup_key !== lifetimeLookupKey) throw new Error("The existing TEST lifetime Price does not match $99 USD exclusive-tax one-time. Refusing to modify it.");
   return price;
 }
 export async function ensureLifetimeTestPrice(key, client = new Stripe(key)) {
@@ -18,10 +18,17 @@ export async function ensureLifetimeTestPrice(key, client = new Stripe(key)) {
   const request = async (operation) => { assertTestKey(key); return operation(); };
   const prices = await request(() => client.prices.list({ lookup_keys: [lifetimeLookupKey], limit: 100 }));
   if (prices.data.length > 1) throw new Error("Ambiguous lifetime lookup key.");
-  if (prices.data.length) return validateLifetimePrice(prices.data[0]);
+  if (prices.data.length) {
+    const existing = prices.data[0];
+    // Stripe permits the one-way transition from unspecified to exclusive.
+    if (existing.livemode === false && existing.tax_behavior === "unspecified" && existing.unit_amount === 9900 && existing.currency === "usd" && existing.type === "one_time" && existing.active) {
+      return validateLifetimePrice(await request(() => client.prices.update(existing.id, { tax_behavior: "exclusive" })));
+    }
+    return validateLifetimePrice(existing);
+  }
   const product = await request(() => client.products.create({ name: "Converter Pro Lifetime", metadata: { product_code: "converter-pro-lifetime" } }, { idempotencyKey: `${lifetimeLookupKey}_product` }));
   if (product.livemode !== false) throw new Error("Unexpected live product. Aborting.");
-  const price = await request(() => client.prices.create({ product: product.id, currency: "usd", unit_amount: 9900,
+  const price = await request(() => client.prices.create({ product: product.id, currency: "usd", unit_amount: 9900, tax_behavior: "exclusive",
     lookup_key: lifetimeLookupKey, metadata: { product_code: "converter-pro-lifetime", purchase_model: "lifetime", billing_kind: "one_time" } }, { idempotencyKey: `${lifetimeLookupKey}_price` }));
   return validateLifetimePrice(price);
 }

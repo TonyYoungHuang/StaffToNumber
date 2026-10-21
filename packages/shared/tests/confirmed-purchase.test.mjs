@@ -14,6 +14,8 @@ test("lifetime purchase is emitted only with a backend ready confirmation and ac
   const event = confirmedPurchaseEvent(order, { status: "ready", retryable: false });
   assert.deepEqual({ model: event.purchase_model, kind: event.billing_kind, code: event.plan_code, value: event.value, currency: event.currency, id: event.transaction_id },
     { model: "lifetime", kind: "one_time", code: "converter-pro-lifetime", value: 99, currency: "USD", id: "pi_test_confirmed" });
+  assert.equal(confirmedPurchaseEvent({ ...order, amountMinor: 6490, lifetime: { ...order.lifetime, subtotalMinor: 9900, discountMinor: 4000, taxMinor: 590 } }, { status: "ready", retryable: false }).value, 59);
+  for (const amountMinor of [0, -1, 10000, 3.5, null]) assert.equal(confirmedPurchaseEvent({ ...order, amountMinor }, { status: "ready", retryable: false }), null);
 });
 
 test("reloads, duplicate polls and analytics-readiness retries deduplicate by transaction id", () => {

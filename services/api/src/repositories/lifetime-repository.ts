@@ -16,7 +16,9 @@ export function processLifetimeWebhook(db: RuntimeDatabaseLike, event: Stripe.Ev
   if (!completed && !refunded && !disputed) return { handled: false };
   const object = event.data.object as unknown as {
     id: string; mode?: string; status?: string; payment_status?: string; currency?: string;
-    amount_total?: number; amount?: number; amount_refunded?: number;
+    amount_total?: number; amount_subtotal?: number; amount?: number; amount_refunded?: number;
+    total_details?: { amount_discount?: number; amount_tax?: number; amount_shipping?: number };
+    customer?: string | { id: string } | null;
     payment_intent?: string | { id: string } | null; metadata?: Record<string, string> | null;
   };
   if (completed && object.metadata?.planCode !== "converter-pro-lifetime") return { handled: false };
@@ -37,6 +39,16 @@ export function processLifetimeWebhook(db: RuntimeDatabaseLike, event: Stripe.Ev
     if (completed && object.payment_status === "paid") {
       const metadata = object.metadata!;
       orderId = metadata.orderId;
+      const upgrade = db.prepare("SELECT customer_id, credit_minor, state FROM lifetime_upgrade_orders WHERE order_id = ?").get(orderId) as { customer_id: string; credit_minor: number; state: string } | undefined;
+      const discount = object.total_details?.amount_discount ?? 0;
+      const tax = object.total_details?.amount_tax ?? 0;
+      const net = 9900 - discount;
+      if (object.amount_subtotal !== 9900 || !Number.isSafeInteger(discount) || discount !== (upgrade?.credit_minor ?? 0)
+        || discount < 0 || discount >= 9900 || !Number.isSafeInteger(tax) || tax < 0
+        || (object.total_details?.amount_shipping ?? 0) !== 0 || object.amount_total !== net + tax
+        || (upgrade && (upgrade.state === "expired" || (typeof object.customer === "string" ? object.customer : object.customer?.id) !== upgrade.customer_id))) {
+        throw new Error("Lifetime subtotal, annual credit, tax or customer does not match the account order.");
+      }
       const purchase = db.prepare(`SELECT p.*, o.public_token, o.checkout_session_id AS expected_session,
         o.user_id AS owner_id, o.provider, o.billing_kind, o.checkout_plan_code
         FROM billing_one_time_purchases p JOIN payment_orders o ON o.id = p.id WHERE p.id = ?`).get(orderId) as {
@@ -45,7 +57,7 @@ export function processLifetimeWebhook(db: RuntimeDatabaseLike, event: Stripe.Ev
           provider: string; billing_kind: string; checkout_plan_code: string;
         } | undefined;
       if (!purchase || object.mode !== "payment" || object.status !== "complete" || object.currency !== "usd"
-        || object.amount_total !== 9900 || !intentId || !object.id || !metadata.userId
+        || !intentId || !object.id || !metadata.userId
         || purchase.provider !== "stripe" || purchase.billing_kind !== "one_time"
         || purchase.checkout_plan_code !== "converter-pro-lifetime" || purchase.plan_code !== "converter-pro-lifetime"
         || purchase.user_id !== metadata.userId || purchase.owner_id !== metadata.userId
@@ -65,10 +77,13 @@ export function processLifetimeWebhook(db: RuntimeDatabaseLike, event: Stripe.Ev
       const entitlement = lifetimeForOrder(db, orderId!);
       if (!entitlement || entitlement.checkout_session_id !== object.id || entitlement.payment_intent_id !== intentId) throw new Error("Lifetime purchase identity conflict.");
       db.prepare(`UPDATE billing_one_time_purchases SET status = ?, checkout_session_id = ?, payment_intent_id = ?,
-        starts_at = COALESCE(starts_at, ?), ends_at = NULL, paid_at = COALESCE(paid_at, ?), amount_minor = 9900,
-        currency = 'usd', updated_at = ? WHERE id = ?`).run(entitlement.status === "active" ? "active" : "refunded", object.id, intentId, now, now, now, orderId);
-      db.prepare(`UPDATE payment_orders SET status = 'paid', amount_minor = 9900, currency = 'usd',
-        checkout_session_id = ?, paid_at = COALESCE(paid_at, ?), failure_reason = NULL, updated_at = ? WHERE id = ?`).run(object.id, now, now, orderId);
+        starts_at = COALESCE(starts_at, ?), ends_at = NULL, paid_at = COALESCE(paid_at, ?), amount_minor = ?,
+        currency = 'usd', updated_at = ? WHERE id = ?`).run(entitlement.status === "active" ? "active" : "refunded", object.id, intentId, now, now, object.amount_total, now, orderId);
+      db.prepare(`UPDATE payment_orders SET status = 'paid', amount_minor = ?, currency = 'usd',
+        checkout_session_id = ?, paid_at = COALESCE(paid_at, ?), failure_reason = NULL, updated_at = ? WHERE id = ?`).run(object.amount_total, object.id, now, now, orderId);
+      db.prepare(`INSERT INTO lifetime_payment_amounts (order_id, subtotal_minor, discount_minor, tax_minor, total_minor)
+        VALUES (?, 9900, ?, ?, ?) ON CONFLICT(order_id) DO NOTHING`).run(orderId, discount, tax, object.amount_total);
+      db.prepare("UPDATE lifetime_upgrade_orders SET state = 'paid' WHERE order_id = ?").run(orderId);
       outcome = entitlement.status === "active" ? "granted" : "kept_revoked";
     } else if (refunded || disputed) {
       if (refunded && (!Number.isSafeInteger(object.amount) || object.amount! <= 0 || !Number.isSafeInteger(object.amount_refunded)

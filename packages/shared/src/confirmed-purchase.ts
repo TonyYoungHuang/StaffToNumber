@@ -3,16 +3,21 @@ import type { PaymentVerification } from "./payment-recovery-copy.ts";
 export type ConfirmedPurchaseOrder = {
   id: string; status: string; provider: string; billingKind: string; planCode?: string | null;
   amountMinor?: number | null; currency?: string | null; seatQuantity?: number; purchaseStatus?: string | null;
-  lifetime?: { status: string; transactionId: string } | null;
+  lifetime?: { status: string; transactionId: string; subtotalMinor?: number; discountMinor?: number; taxMinor?: number } | null;
 };
 
 /** Only a backend-verified order may produce a purchase event. Never accepts click data. */
 export function confirmedPurchaseEvent(order: ConfirmedPurchaseOrder | null, verification: PaymentVerification | null | undefined) {
   if (!order || order.status !== "paid" || verification?.status !== "ready" || order.purchaseStatus === "refunded") return null;
   if (order.planCode === "converter-pro-lifetime") {
-    if (order.lifetime?.status !== "active" || !order.lifetime.transactionId || order.amountMinor !== 9900 || order.currency?.toUpperCase() !== "USD") return null;
+    const discount = order.lifetime?.discountMinor ?? 0, tax = order.lifetime?.taxMinor ?? 0;
+    const subtotal = order.lifetime?.subtotalMinor ?? 9900;
+    const valueMinor = subtotal - discount;
+    if (order.lifetime?.status !== "active" || !order.lifetime.transactionId || subtotal !== 9900 || !Number.isSafeInteger(discount)
+      || discount < 0 || discount >= 9900 || !Number.isSafeInteger(tax) || tax < 0
+      || order.amountMinor !== valueMinor + tax || order.currency?.toUpperCase() !== "USD") return null;
     return { transaction_id: order.lifetime.transactionId, purchase_model: "lifetime", billing_kind: "one_time",
-      plan_code: order.planCode, value: 99, currency: "USD", payment_type: "stripe",
+      plan_code: order.planCode, value: valueMinor / 100, tax: tax / 100, currency: "USD", payment_type: "stripe",
       items: [{ item_id: order.planCode, item_name: "Converter Pro Lifetime", quantity: 1 }] };
   }
   return { transaction_id: order.id, billing_kind: order.billingKind, plan_code: order.planCode,

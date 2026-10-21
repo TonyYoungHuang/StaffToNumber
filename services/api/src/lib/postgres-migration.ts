@@ -540,7 +540,15 @@ export async function migrateSqliteToPostgres(input: {
       // Keep rejecting arbitrary checks rather than silently dropping them.
       const portableRoleCheck = table.name === "score_pass_documents" && /CHECK\s*\(role IN \('root', 'part_extract'\)\)/u.test(table.sql);
       const portableDerivationCheck = table.name === "score_document_derivations" && /CHECK\s*\(derivation_kind = 'part_extract'\)/u.test(table.sql);
-      let remainingSql = table.sql;
+      const lifetimeChecks: Record<string, string[]> = {
+        lifetime_upgrade_orders: ["paid_minor > 0", "credit_minor >= 0 AND credit_minor < 9900", "state IN ('reserved', 'paid', 'expired')"],
+        lifetime_payment_amounts: ["subtotal_minor = 9900", "discount_minor >= 0 AND discount_minor < 9900", "tax_minor >= 0", "total_minor = subtotal_minor - discount_minor + tax_minor"],
+        lifetime_entitlements: ["product_code = 'converter-pro-lifetime'", "lifetime = 1", "expires_at IS NULL", "status IN ('active', 'revoked')", "(status = 'active' AND revoked_at IS NULL) OR (status = 'revoked' AND revoked_at IS NOT NULL)"],
+        lifetime_unmetered_jobs: ["job_family IN ('score', 'legacy')"],
+      };
+      let remainingSql = table.sql.replace(/\s+/gu, " ");
+      const portableLifetimeChecks = (lifetimeChecks[table.name] ?? []).filter(expression => remainingSql.includes(`CHECK (${expression})`));
+      for (const expression of portableLifetimeChecks) remainingSql = remainingSql.replace(`CHECK (${expression})`, "");
       if (portableRoleCheck) remainingSql = remainingSql.replace(/CHECK\s*\(role IN \('root', 'part_extract'\)\)/u, "");
       if (portableDerivationCheck) remainingSql = remainingSql.replace(/CHECK\s*\(derivation_kind = 'part_extract'\)/u, "");
       if (/\b(?:CHECK|GENERATED)\b|WITHOUT\s+ROWID/iu.test(remainingSql)) {
@@ -552,6 +560,7 @@ export async function migrateSqliteToPostgres(input: {
       await input.target.query(createTableSql(table.name, columns));
       if (portableRoleCheck) await input.target.query("ALTER TABLE score_pass_documents ADD CONSTRAINT score_pass_documents_role_check CHECK (role IN ('root', 'part_extract'))");
       if (portableDerivationCheck) await input.target.query("ALTER TABLE score_document_derivations ADD CONSTRAINT score_document_derivations_kind_check CHECK (derivation_kind = 'part_extract')");
+      for (const expression of portableLifetimeChecks) await input.target.query(`ALTER TABLE ${quoteIdentifier(table.name)} ADD CHECK (${expression})`);
     }
 
     const reports: PostgresMigrationTableReport[] = [];

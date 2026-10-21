@@ -5,10 +5,10 @@ import test from "node:test";
 import { LIFETIME_SCHEMA_SQL } from "./lifetime.js";
 
 test("additive deployment SQL matches runtime tables, is repeatable, and enforces permanent purchase identity", () => {
-  const sql = readFileSync(new URL("../../../deploy/hetzner/converter-pro-lifetime.sql", import.meta.url), "utf8");
+  const sql = ["converter-pro-lifetime-upgrade.sql", "converter-pro-lifetime.sql"].map(file => readFileSync(new URL(`../../../deploy/hetzner/${file}`, import.meta.url), "utf8")).join("\n");
   const normalized = sql.replace(/--[^\n]*/g, "").replace(/^\s*(?:GRANT|REVOKE) [^;]+;/gm, "")
     .replace(/\b(?:BEGIN|COMMIT);/g, "").replace(/:"runtime_schema"\./g, "").trim();
-  assert.equal(normalized.replace(/\r/g, ""), LIFETIME_SCHEMA_SQL.trim());
+  assert.equal(normalized.replace(/\s+/g, " "), LIFETIME_SCHEMA_SQL.trim().replace(/\s+/g, " "));
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys=ON; CREATE TABLE users (id TEXT PRIMARY KEY); INSERT INTO users VALUES ('account');");
   db.exec(normalized); db.exec(normalized);

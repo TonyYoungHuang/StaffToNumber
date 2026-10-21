@@ -19,6 +19,8 @@ const { createUser, createSession, getUserProfile, generateActivationCodes, rede
 const { createPaymentOrder, attachStripeCheckoutSession, findPaymentOrderById, mapPaymentOrderForPublic } = await import("../repositories/payment-repository.js");
 const { prepareOneTimePurchase, fulfillOneTimePurchase } = await import("../repositories/one-time-purchase-repository.js");
 const { lifetimeForOrder } = await import("../repositories/lifetime-repository.js");
+const { processLifetimeWebhook } = await import("../repositories/lifetime-repository.js");
+const { proratedAnnualCredit, quoteAnnualUpgrade, stopAnnualRenewalAfterLifetimePayment } = await import("../repositories/lifetime-upgrade-repository.js");
 const { hashPaymentOrderToken, buildStripeCheckoutSessionParams, getCheckoutPriceId, assertStripeTestSafety } = await import("../lib/payments.js");
 const { getPlanQuotaUsage, assertStorageQuota, assertProcessingQuota, recordProcessingCredit } = await import("../lib/plan-quotas.js");
 const { resolveRecognitionAccess } = await import("../lib/recognition-options.js");
@@ -38,7 +40,7 @@ function fixture(accountId?: string) {
   prepareOneTimePurchase(db, { orderId: order.id, userId, planCode: "converter-pro-lifetime", priceId: "price_lifetime_fixture" });
   attachStripeCheckoutSession(order.id, id, null);
   const metadata = { billingKind: "one_time", planCode: "converter-pro-lifetime", orderId: order.id, userId, priceId: "price_lifetime_fixture", orderTokenHash: hashPaymentOrderToken(order.public_token) };
-  const session = { id, object: "checkout.session", mode: "payment", status: "complete", payment_status: "paid", amount_total: 9900, currency: "usd", payment_intent: intent, metadata };
+  const session = { id, object: "checkout.session", mode: "payment", status: "complete", payment_status: "paid", amount_total: 9900, amount_subtotal: 9900, currency: "usd", payment_intent: intent, metadata };
   return { userId, order, session, intent };
 }
 async function server() {
@@ -69,7 +71,7 @@ test("lifetime checkout is a separate $99 one-time Stripe plan; recurring prices
   const params = buildStripeCheckoutSessionParams({ orderId: "fixture", publicToken: "fixture", userId: "fixture", planCode: "converter-pro-lifetime", billingKind: "one_time", priceId: "price_lifetime_fixture" });
   assert.equal(params.mode, "payment"); assert.equal(params.allow_promotion_codes, false); assert.equal(params.adaptive_pricing?.enabled, false);
   assert.equal(params.payment_intent_data?.metadata?.planCode, "converter-pro-lifetime");
-  assert.throws(() => buildStripeCheckoutSessionParams({ orderId: "fixture", publicToken: "fixture", userId: "fixture", planCode: "converter-pro-lifetime", billingKind: "one_time", priceId: "price_lifetime_fixture" }, { managedPaymentsEnabled: true }), /tax policy/);
+  assert.equal(buildStripeCheckoutSessionParams({ orderId: "fixture", publicToken: "fixture", userId: "fixture", planCode: "converter-pro-lifetime", billingKind: "one_time", priceId: "price_lifetime_fixture" }, { managedPaymentsEnabled: true }).managed_payments, undefined);
   const key = config.stripeSecretKey;
   try { config.stripeSecretKey = "sk_live_fixture"; assert.throws(assertStripeTestSafety); } finally { config.stripeSecretKey = key; }
 });
@@ -250,4 +252,100 @@ test("authenticated lifetime checkout accepts existing subscribers without cance
     assert.equal(lifetimeForOrder(db, response.json().orderId), undefined);
     assert.equal(mapPaymentOrderForPublic(findPaymentOrderById(response.json().orderId)!).lifetime, null);
   } finally { await app.close(); }
+});
+
+test("annual credit floors fractional cents, clamps elapsed time and cannot make lifetime free", () => {
+  assert.equal(proratedAnnualCredit(6000, 100, 400, 200), 4000);
+  assert.equal(proratedAnnualCredit(100, 0, 3, 1), 66);
+  assert.equal(proratedAnnualCredit(6000, 100, 400, 500), 0);
+  assert.equal(proratedAnnualCredit(6000, 100, 400, 0), 6000);
+  assert.equal(proratedAnnualCredit(50000, 100, 400, 100), 9899);
+  assert.equal(proratedAnnualCredit(-1, 100, 400, 200), 0);
+  assert.equal(proratedAnnualCredit(6000, 400, 100, 200), 0);
+});
+
+test("annual quotes use the actual paid current invoice and reject mismatched, refunded, unpaid or scheduled subscriptions", async () => {
+  const f = fixture(), now = Math.floor(Date.now()/1000), stamp = new Date().toISOString();
+  config.stripeConverterProAnnualPriceId = "price_annual_quote";
+  const localCustomer = crypto.randomUUID(), subscriptionId = `sub_${crypto.randomUUID()}`;
+  db.prepare("INSERT INTO billing_customers (id,provider,provider_customer_id,user_id,created_at,updated_at) VALUES (?,'stripe','cus_quote',?,?,?)").run(localCustomer, f.userId, stamp, stamp);
+  db.prepare("INSERT INTO billing_subscriptions (id,provider,provider_subscription_id,customer_id,user_id,status,plan_ref,seat_quantity,created_at,updated_at) VALUES (?,'stripe',?,?,?,'active','price_annual_quote',1,?,?)")
+    .run(crypto.randomUUID(), subscriptionId, localCustomer, f.userId, stamp, stamp);
+  const subscription = { id: subscriptionId, customer: "cus_quote", livemode: false, status: "active", metadata: { userId: f.userId }, latest_invoice: "in_quote", schedule: null as string | null,
+    items: { has_more: false, data: [{ quantity: 1, price: { id: "price_annual_quote", recurring: { interval: "year", interval_count: 1 } }, current_period_start: now - 1000, current_period_end: now + 1000 }] } };
+  const invoice = { id: "in_quote", livemode: false, customer: "cus_quote", status: "paid", currency: "usd", amount_paid: 4000, amount_remaining: 0,
+    parent: { subscription_details: { subscription: subscriptionId } }, lines: { has_more: false, data: [{ period: { start: now - 1000, end: now + 1000 }, parent: { subscription_item_details: { proration: false } } }] } };
+  const charge = { livemode: false, customer: "cus_quote", paid: true, disputed: false, amount_refunded: 0, currency: "usd" };
+  const client = { subscriptions: { retrieve: async () => subscription }, invoices: { retrieve: async () => invoice },
+    invoicePayments: { list: async () => ({ has_more: false, data: [{ livemode: false, amount_paid: 4000, payment: { charge: "ch_quote" } }] }) },
+    charges: { retrieve: async () => charge } } as unknown as Stripe;
+  const request: typeof import("../lib/payments.js").stripeRequest = async operation => operation(client);
+  const quote = await quoteAnnualUpgrade(db, f.userId, request);
+  assert.equal(quote?.paidMinor, 4000); assert.ok(quote!.creditMinor <= 2000 && quote!.creditMinor >= 1990);
+  charge.amount_refunded = 100; await assert.rejects(quoteAnnualUpgrade(db, f.userId, request), /Refunded/); charge.amount_refunded = 0;
+  subscription.customer = "cus_other"; await assert.rejects(quoteAnnualUpgrade(db, f.userId, request), /ownership/); subscription.customer = "cus_quote";
+  invoice.status = "open"; await assert.rejects(quoteAnnualUpgrade(db, f.userId, request), /invoice/); invoice.status = "paid";
+  invoice.lines.data[0].period.end = now; await assert.rejects(quoteAnnualUpgrade(db, f.userId, request), /invoice/); invoice.lines.data[0].period.end = now + 1000;
+  subscription.schedule = "sub_sched_test"; await assert.rejects(quoteAnnualUpgrade(db, f.userId, request), /review/);
+});
+
+test("annual renewal only stops after paid fulfillment; provider failures remain retryable and audited", async () => {
+  const f = fixture();
+  db.prepare(`INSERT INTO lifetime_upgrade_orders (order_id,user_id,customer_id,subscription_id,invoice_id,paid_minor,period_start,period_end,quoted_at,credit_minor,expires_at,state)
+    VALUES (?,?,'cus_retry','sub_retry',?,6000,100,400,200,4000,500,'reserved')`).run(f.order.id, f.userId, `in_${f.order.id}`);
+  let reads = 0, updates = 0, fail = true;
+  const client = { subscriptions: {
+    retrieve: async () => { reads++; return { id: "sub_retry", customer: "cus_retry", status: "active", cancel_at_period_end: false, livemode: false }; },
+    update: async (_id: string, params: { cancel_at_period_end: boolean }, options: { idempotencyKey: string }) => {
+      updates++; assert.equal(params.cancel_at_period_end, true); assert.equal(options.idempotencyKey, `lifetime-stop-renewal-${f.order.id}`);
+      if (fail) throw new Error("temporary provider failure"); return { cancel_at_period_end: true };
+    },
+  } } as unknown as Stripe;
+  const request: typeof import("../lib/payments.js").stripeRequest = async operation => operation(client);
+  await stopAnnualRenewalAfterLifetimePayment(db, f.order.id, request);
+  assert.equal(reads, 0); assert.equal(updates, 0);
+  processLifetimeWebhook(db, { id: `evt_${crypto.randomUUID()}`, type: "checkout.session.completed", created: Math.floor(Date.now()/1000), data: { object: {
+    ...f.session, customer: "cus_retry", amount_total: 5900, total_details: { amount_discount: 4000, amount_tax: 0 },
+  } } } as unknown as Stripe.Event);
+  await assert.rejects(stopAnnualRenewalAfterLifetimePayment(db, f.order.id, request), /temporary/);
+  assert.equal(lifetimeForOrder(db, f.order.id)?.status, "active");
+  assert.equal((db.prepare("SELECT renewal_error FROM lifetime_upgrade_orders WHERE order_id = ?").get(f.order.id) as { renewal_error: string }).renewal_error, "provider_retry_required");
+  fail = false;
+  await stopAnnualRenewalAfterLifetimePayment(db, f.order.id, request);
+  await stopAnnualRenewalAfterLifetimePayment(db, f.order.id, request);
+  assert.equal(updates, 2);
+  const audit = db.prepare("SELECT renewal_stopped_at, renewal_error FROM lifetime_upgrade_orders WHERE order_id = ?").get(f.order.id) as { renewal_stopped_at: string; renewal_error: string | null };
+  assert.ok(audit.renewal_stopped_at); assert.equal(audit.renewal_error, null);
+});
+
+test("lifetime accepts tax above $99, stores net revenue, rejects a changed list price or unapproved discount", async () => {
+  const f = fixture(), { app, post } = await server();
+  try {
+    for (const wrong of [
+      { ...f.session, amount_subtotal: 9800, amount_total: 9900, total_details: { amount_tax: 100, amount_discount: 0 } },
+      { ...f.session, amount_total: 9800, total_details: { amount_discount: 100, amount_tax: 0 } },
+      { ...f.session, amount_total: 10700, total_details: { amount_discount: 0, amount_tax: 700 } },
+    ]) assert.equal((await post("checkout.session.completed", wrong)).statusCode, 400);
+    assert.equal((await post("checkout.session.completed", { ...f.session, amount_total: 10700, total_details: { amount_tax: 800, amount_discount: 0 } })).statusCode, 200);
+    assert.equal(findPaymentOrderById(f.order.id)?.amount_minor, 10700);
+    assert.equal((db.prepare("SELECT total_minor FROM lifetime_payment_amounts WHERE order_id = ?").get(f.order.id) as { total_minor: number }).total_minor, 10700);
+  } finally { await app.close(); }
+});
+
+test("discounted fulfillment binds the reserved annual credit to its customer and keeps revocation effective beyond 14 days", () => {
+  const f = fixture();
+  db.prepare(`INSERT INTO lifetime_upgrade_orders (order_id,user_id,customer_id,subscription_id,invoice_id,paid_minor,period_start,period_end,quoted_at,credit_minor,expires_at,state)
+    VALUES (?,?,'cus_upgrade','sub_upgrade',?,6000,100,400,200,4000,500,'reserved')`).run(f.order.id, f.userId, `in_${f.order.id}`);
+  const event = (object: unknown) => ({ id: `evt_${crypto.randomUUID()}`, type: "checkout.session.completed", created: Math.floor(Date.now()/1000), data: { object } }) as Stripe.Event;
+  const discounted = { ...f.session, customer: "cus_upgrade", amount_total: 6490, total_details: { amount_discount: 4000, amount_tax: 590 } };
+  assert.throws(() => processLifetimeWebhook(db, event({ ...discounted, customer: "cus_other" })), /customer/);
+  assert.throws(() => processLifetimeWebhook(db, event({ ...discounted, total_details: { amount_discount: 3999, amount_tax: 589 } })), /credit/);
+  processLifetimeWebhook(db, event(discounted));
+  assert.equal(findPaymentOrderById(f.order.id)?.amount_minor, 6490);
+  const mapped = mapPaymentOrderForPublic(findPaymentOrderById(f.order.id)!);
+  assert.equal(confirmedPurchaseEvent(mapped, { status: "ready", canRetry: false, checkedAt: new Date().toISOString() } as never)?.value, 59);
+  assert.equal((db.prepare("SELECT state FROM lifetime_upgrade_orders WHERE order_id = ?").get(f.order.id) as { state: string }).state, "paid");
+  processLifetimeWebhook(db, { id: `evt_${crypto.randomUUID()}`, type: "charge.refunded", created: Math.floor(Date.now()/1000) + 30 * 86400,
+    data: { object: { id: "ch_upgrade", payment_intent: f.intent, amount: 6490, amount_refunded: 6490 } } } as Stripe.Event);
+  assert.equal(lifetimeForOrder(db, f.order.id)?.status, "revoked");
 });

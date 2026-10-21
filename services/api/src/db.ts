@@ -1427,6 +1427,8 @@ function validatePostgresSchema() {
     "lifetime_entitlements",
     "lifetime_webhook_events",
     "lifetime_unmetered_jobs",
+    "lifetime_upgrade_orders",
+    "lifetime_payment_amounts",
     "score_passes",
     "score_pass_jobs",
     "score_pass_documents",

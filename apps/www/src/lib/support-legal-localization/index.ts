@@ -1,4 +1,5 @@
 import type { SupportedLocale } from "@score/i18n";
+import { getLifetimeCopy, getLifetimePolicy } from "@score/shared";
 import { deSupportLegal } from "./locales/de";
 import { enSupportLegal } from "./locales/en";
 import { esSupportLegal } from "./locales/es";
@@ -19,7 +20,7 @@ export type {
   SupportLegalLocalization,
 } from "./types";
 
-export const SUPPORT_LEGAL_LOCALIZATIONS = {
+const baseLocalizations = {
   en: enSupportLegal,
   "zh-CN": zhCNSupportLegal,
   "zh-TW": zhTWSupportLegal,
@@ -30,6 +31,17 @@ export const SUPPORT_LEGAL_LOCALIZATIONS = {
   de: deSupportLegal,
   ru: ruSupportLegal,
 } as const satisfies Readonly<Record<SupportedLocale, SupportLegalLocalization>>;
+
+function withLifetimePolicy(locale: SupportedLocale, base: SupportLegalLocalization): SupportLegalLocalization {
+  const policy = getLifetimePolicy(locale);
+  return { ...base, terms: { ...base.terms, sections: [...base.terms.sections,
+    { title: `${getLifetimeCopy(locale).name} · $99 USD`, points: [policy.tax, policy.refund, policy.upgrade] }],
+    purchase: { ...base.terms.purchase, body: `${base.terms.purchase.body} ${policy.refund}` } } };
+}
+
+export const SUPPORT_LEGAL_LOCALIZATIONS = Object.fromEntries(
+  (Object.keys(baseLocalizations) as SupportedLocale[]).map(locale => [locale, withLifetimePolicy(locale, baseLocalizations[locale])]),
+) as Record<SupportedLocale, SupportLegalLocalization>;
 
 export function getSupportLegalLocalization(locale: SupportedLocale): SupportLegalLocalization {
   return SUPPORT_LEGAL_LOCALIZATIONS[locale];

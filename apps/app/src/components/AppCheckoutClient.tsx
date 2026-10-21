@@ -1,5 +1,5 @@
 "use client";
-import { getLifetimeCopy } from "@score/shared";
+import { getLifetimeCopy, getLifetimePolicy } from "@score/shared";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
@@ -152,6 +152,15 @@ export function AppCheckoutClient({
   copy: CheckoutClientCopy;
 }) {
   const [sessionState, setSessionState] = useState<"checking" | "ready" | "signedOut">("checking");
+  const [lifetimeQuote, setLifetimeQuote] = useState<{ amountMinor: number; creditMinor: number; upgrade: boolean } | null>(null);
+  useEffect(() => {
+    if (selectedPlan.code !== "converter-pro-lifetime" || sessionState !== "ready") return;
+    const controller = new AbortController();
+    const token = getStoredToken();
+    void apiRequest<{ amountMinor: number; creditMinor: number; upgrade: boolean }>("/api/payments/lifetime-quote", { signal: controller.signal, headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+      .then(result => { if (result.ok && result.data) setLifetimeQuote(result.data); }).catch(() => {});
+    return () => controller.abort();
+  }, [selectedPlan.code, sessionState]);
   const [provider, setProvider] = useState<PaymentProvider>(billingKind === "one_time" ? "stripe" : defaultProvider);
   const flow = useFlowMessages();
   const checkoutParams = new URLSearchParams({ plan: selectedPlan.code, billing: billingKind, next: workReturnPath(returnTo) });
@@ -375,6 +384,10 @@ export function AppCheckoutClient({
         <h2 id="checkout-payment-title" className={styles.sectionHeading}>{copy.title}</h2>
         <p className="body-copy large">{copy.body}</p>
         <p className={styles.purchaseNotice}>{selectedPlan.code === "converter-pro-lifetime" ? getLifetimeCopy(locale).permanent : selectedPlan.code === "single-score" ? targetDocumentId ? scorePassCopy.sharedCredits : getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
+        {selectedPlan.code === "converter-pro-lifetime" ? <div className={styles.purchaseNotice}>
+          {lifetimeQuote?.upgrade ? <p>{getLifetimePolicy(locale).upgradePrice}: {new Intl.NumberFormat(locale, { style: "currency", currency: "USD" }).format(lifetimeQuote.amountMinor / 100)}</p> : null}
+          <p>{getLifetimePolicy(locale).tax}</p><p>{getLifetimePolicy(locale).refund}</p><p>{getLifetimePolicy(locale).upgrade}</p>
+        </div> : null}
         <div className={styles.checkoutSelection}>
           <span>{copy.selectedPlan}</span>
           <strong>{selectedPlan.name} · {selectedPlan.cycle}</strong>

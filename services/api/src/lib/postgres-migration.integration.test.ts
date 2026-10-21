@@ -3,10 +3,40 @@ import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { Pool } from "pg";
+import { readFile } from "node:fs/promises";
+import { LIFETIME_SCHEMA_SQL } from "@score/runtime-database";
 import { migrateSqliteToPostgres, rollbackPostgresMigration, verifySqlitePostgresParity } from "./postgres-migration.js";
 
 const connectionString = process.env.POSTGRES_TEST_URL?.trim();
 if (process.env.CI && !connectionString) throw new Error("POSTGRES_TEST_URL is required in CI; real integration coverage must not be skipped.");
+
+test("real PostgreSQL preserves lifetime checks and repeatable upgrade migration", { skip: !connectionString }, async () => {
+  const source = new DatabaseSync(":memory:");
+  source.exec("CREATE TABLE users (id TEXT PRIMARY KEY)");
+  source.exec(LIFETIME_SCHEMA_SQL);
+  const pool = new Pool({ connectionString, max: 1 });
+  const client = await pool.connect();
+  const schema = `score_lifetime_${randomUUID().replace(/-/gu, "").slice(0, 16)}`;
+  try {
+    await migrateSqliteToPostgres({ source, target: client, targetSchema: schema });
+    await client.query(`SET search_path TO "${schema}", public`);
+    const role = String((await client.query("SELECT current_user AS role")).rows[0].role).replaceAll('"', '""');
+    const migration = (await readFile(new URL("../../../../deploy/hetzner/converter-pro-lifetime-upgrade.sql", import.meta.url), "utf8"))
+      .replaceAll(':"runtime_schema"', `"${schema}"`).replaceAll(':"runtime_role"', `"${role}"`);
+    await client.query(migration); await client.query(migration);
+    await client.query("INSERT INTO lifetime_payment_amounts VALUES ('paid',9900,4000,590,6490)");
+    await assert.rejects(client.query("INSERT INTO lifetime_payment_amounts VALUES ('bad',9900,4000,590,9900)"), /check constraint/u);
+    await assert.rejects(client.query("INSERT INTO lifetime_payment_amounts VALUES ('free',9900,9900,0,0)"), /check constraint/u);
+    await assert.rejects(client.query("INSERT INTO lifetime_unmetered_jobs VALUES ('other','job',NULL,'now',NULL)"), /check constraint/u);
+    await client.query("INSERT INTO lifetime_upgrade_orders (order_id,customer_id,subscription_id,invoice_id,paid_minor,period_start,period_end,quoted_at,credit_minor,expires_at,state) VALUES ('one','cus','sub','invoice',6000,0,100,50,3000,90,'reserved')");
+    await assert.rejects(client.query("INSERT INTO lifetime_upgrade_orders SELECT 'two',user_id,customer_id,subscription_id,invoice_id,paid_minor,period_start,period_end,quoted_at,credit_minor,expires_at,coupon_id,promotion_code_id,state,renewal_stopped_at,renewal_error FROM lifetime_upgrade_orders"), /duplicate key/u);
+    await client.query("UPDATE lifetime_upgrade_orders SET state='expired'");
+    await client.query("INSERT INTO lifetime_upgrade_orders SELECT 'two',user_id,customer_id,subscription_id,invoice_id,paid_minor,period_start,period_end,quoted_at,credit_minor,expires_at,coupon_id,promotion_code_id,'reserved',renewal_stopped_at,renewal_error FROM lifetime_upgrade_orders");
+  } finally {
+    await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    client.release(); await pool.end(); source.close();
+  }
+});
 
 test("real PostgreSQL migration preserves rows, bytes, partial uniqueness, and foreign keys", { skip: !connectionString }, async () => {
   const source = new DatabaseSync(":memory:");

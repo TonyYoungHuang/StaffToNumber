@@ -292,6 +292,7 @@ export function completePaymentOrder(input: {
 
 export function mapPaymentOrderForPublic(order: PaymentOrderRow, includePrivate = false) {
   const lifetime = order.checkout_plan_code === "converter-pro-lifetime" ? lifetimeForOrder(db, order.id) : undefined;
+  const amounts = lifetime ? db.prepare("SELECT subtotal_minor, discount_minor, tax_minor, total_minor FROM lifetime_payment_amounts WHERE order_id = ?").get(order.id) as { subtotal_minor: number; discount_minor: number; tax_minor: number; total_minor: number } | undefined : undefined;
   const purchase = order.billing_kind === "one_time" ? findOneTimePurchase(db, order.id) : undefined;
   return {
     id: order.id,
@@ -314,7 +315,8 @@ export function mapPaymentOrderForPublic(order: PaymentOrderRow, includePrivate 
     accessStartsAt: purchase?.starts_at ?? null,
     accessEndsAt: purchase?.ends_at ?? null,
     purchaseStatus: purchase?.status ?? null,
-    lifetime: lifetime ? { status: lifetime.status, expiresAt: null, grantedAt: lifetime.granted_at, revokedAt: lifetime.revoked_at, transactionId: lifetime.payment_intent_id } : null,
+    lifetime: lifetime ? { status: lifetime.status, expiresAt: null, grantedAt: lifetime.granted_at, revokedAt: lifetime.revoked_at, transactionId: lifetime.payment_intent_id,
+      ...(amounts ? { subtotalMinor: amounts.subtotal_minor, discountMinor: amounts.discount_minor, taxMinor: amounts.tax_minor } : {}) } : null,
     planCode: order.checkout_plan_code ?? purchase?.plan_code ?? null,
     passMode: order.pass_mode,
     providerCheckoutStartedAt: includePrivate ? order.provider_checkout_started_at : null,

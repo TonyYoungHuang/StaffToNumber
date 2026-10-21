@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
-import { getLocaleConfig, normalizeLocale, type CheckoutBillingKind, type CheckoutPlanCode, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
+import { getLocaleConfig, getLifetimePolicy, normalizeLocale, type CheckoutBillingKind, type CheckoutPlanCode, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
 import { config } from "../config.js";
 
 type PaddleTransactionResponse = {
@@ -97,6 +97,7 @@ export function buildLocalizedAppReturnUrl(input: {
 }
 
 type StripeCheckoutSessionInput = {
+  lifetimeUpgrade?: { customerId: string; promotionCodeId: string | null; creditMinor: number; subscriptionId: string; expiresAt: number };
   locale?: string | null;
   billingKind?: CheckoutBillingKind;
   planCode?: PurchasePlanCode;
@@ -199,17 +200,16 @@ export function buildStripeCheckoutSessionParams(
   options: { managedPaymentsEnabled?: boolean } = {},
 ) {
   if (input.planCode === "converter-pro-lifetime" && (input.billingKind !== "one_time" || input.organizationId || (input.seatQuantity ?? 1) !== 1)) throw new Error("Lifetime is a one-time individual purchase.");
-  // Tax/merchant-of-record policy for the fixed $99 offer is still undecided.
-  // Fail before collecting money if global Managed Payments could add tax.
-  if (input.planCode === "converter-pro-lifetime" && (options.managedPaymentsEnabled ?? config.stripeManagedPaymentsEnabled)) {
-    throw new Error("Lifetime checkout requires a confirmed $99 USD tax policy before enabling Managed Payments.");
-  }
+  // Lifetime uses direct Stripe Payments + optional Stripe Tax. Legacy plans
+  // retain their Managed Payments configuration independently.
+  const lifetime = input.planCode === "converter-pro-lifetime";
   const priceId = normalizeStripeCredential(input.priceId);
   if (!priceId) {
     throw new Error("Stripe is not configured.");
   }
 
   const metadata = {
+    ...(lifetime ? { listPriceMinor: "9900", upgradeCreditMinor: String(input.lifetimeUpgrade?.creditMinor ?? 0) } : {}),
     ...(input.billingKind ? { billingKind: input.billingKind } : {}),
     ...(input.planCode ? { planCode: input.planCode } : {}),
     orderId: input.orderId,
@@ -220,32 +220,40 @@ export function buildStripeCheckoutSessionParams(
     seatQuantity: String(Math.max(1, input.seatQuantity ?? 1)),
   };
   const selectedLocale = normalizeLocale(input.locale);
+  const lifetimePolicy = getLifetimePolicy(selectedLocale ?? "en");
   const params: ManagedPaymentsCheckoutParams = {
     locale: selectedLocale === "zh-CN" ? "zh" : selectedLocale ?? "auto",
     mode: input.billingKind ? input.billingKind === "one_time" ? "payment" : "subscription" : config.paymentBillingMode,
     billing_address_collection: "auto",
     allow_promotion_codes: input.planCode !== "converter-pro-lifetime",
-    ...(input.planCode === "converter-pro-lifetime" ? { adaptive_pricing: { enabled: false } } : {}),
+    ...(lifetime ? { adaptive_pricing: { enabled: false }, automatic_tax: { enabled: config.stripeLifetimeAutomaticTax } } : {}),
+    ...(lifetime ? { custom_text: { submit: { message: `${lifetimePolicy.tax}. ${lifetimePolicy.refund}` } } } : {}),
+    ...(input.lifetimeUpgrade ? {
+      customer: input.lifetimeUpgrade.customerId,
+      customer_update: { address: "auto" as const },
+      expires_at: input.lifetimeUpgrade.expiresAt,
+      ...(input.lifetimeUpgrade.promotionCodeId ? { discounts: [{ promotion_code: input.lifetimeUpgrade.promotionCodeId }], allow_promotion_codes: undefined } : {}),
+    } : {}),
     line_items: [
       {
         price: priceId,
         quantity: Math.max(1, input.seatQuantity ?? 1),
       },
     ],
-    customer_email: input.customerEmail ?? undefined,
+    customer_email: input.lifetimeUpgrade ? undefined : input.customerEmail ?? undefined,
     metadata,
     success_url:
       input.successUrl ??
       `${config.publicSiteUrl}/checkout/success?provider=stripe&order_id=${input.orderId}&token=${input.publicToken}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:
       input.cancelUrl ?? `${config.publicSiteUrl}/checkout/cancel?provider=stripe&order_id=${input.orderId}&token=${input.publicToken}`,
-    ...((options.managedPaymentsEnabled ?? config.stripeManagedPaymentsEnabled)
+    ...(!lifetime && (options.managedPaymentsEnabled ?? config.stripeManagedPaymentsEnabled)
       ? { managed_payments: { enabled: true as const } }
       : {}),
   };
   if (params.mode === "subscription") params.subscription_data = { metadata };
   if (input.billingKind === "one_time") {
-    params.customer_creation = "always";
+    if (!input.lifetimeUpgrade) params.customer_creation = "always";
     params.payment_intent_data = { metadata };
   }
   return params;
@@ -282,6 +290,13 @@ export function stripeSessionMatchesPaymentOrder(
 
 export function assertStripeTestSafety() {
   if (config.stripeTestOnly && !/^(sk|rk)_test_/.test(config.stripeSecretKey.trim())) throw new Error("Stripe TEST-only guard rejected this credential.");
+}
+
+/** Every Stripe operation in the upgrade flow passes through this guard. */
+export async function stripeRequest<T>(operation: (client: Stripe) => Promise<T>): Promise<T> {
+  assertStripeTestSafety();
+  if (!stripeClient) throw new Error("Stripe is not configured.");
+  return operation(stripeClient);
 }
 
 export async function retrieveStripeCharge(chargeId: string) {
@@ -327,14 +342,14 @@ export async function createStripeCheckoutSession(input: StripeCheckoutSessionIn
     assertStripeTestSafety();
     const price = await stripeClient.prices.retrieve(input.priceId);
     assertStripeEventMode(price, config.stripeSecretKey);
-    if (!price.active || price.type !== "one_time" || price.recurring || price.currency !== "usd" || price.unit_amount !== 9900) {
+    if (!price.active || price.type !== "one_time" || price.recurring || price.currency !== "usd" || price.unit_amount !== 9900 || price.tax_behavior !== "exclusive") {
       throw new Error("Configured lifetime Price must be active, one-time, and exactly $99 USD.");
     }
   }
   assertStripeTestSafety();
   const session = await stripeClient.checkout.sessions.create(
     params,
-    buildStripeCheckoutRequestOptions(input.orderId),
+    buildStripeCheckoutRequestOptions(input.orderId, input.planCode === "converter-pro-lifetime" ? false : config.stripeManagedPaymentsEnabled),
   );
 
   return session;

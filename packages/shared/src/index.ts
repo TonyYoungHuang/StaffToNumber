@@ -1609,3 +1609,4 @@ export { LIFETIME_PRESENTATION_PLAN, presentLifetimePlan, presentPricingPlans } 
 
 export { getLifetimeCopy } from "./lifetime-plan-presentation.ts";
 export { purchaseAnalyticsStorage, confirmedPurchaseEvent, queueConfirmedPurchase, flushConfirmedPurchases, type ConfirmedPurchaseOrder, type PurchaseEvent } from "./confirmed-purchase.ts";
+export { getLifetimePolicy } from "./lifetime-policy.ts";
