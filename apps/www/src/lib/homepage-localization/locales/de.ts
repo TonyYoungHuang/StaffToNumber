@@ -29,7 +29,7 @@ export const deHomepage = {
     demosBody: "Jeder Clip zeigt den aktuellen Arbeitsbereich bei einem echten Vorgang. Spielen Sie ihn direkt ab, ohne die Startseite zu verlassen.",
     demosProof: "Im Produkt aufgenommen",
     demosAction: "Vollständiges Werkzeug öffnen",
-    demos: [["Online bearbeiten", "Tonhöhe, Dauer und Taktinhalt ändern."], ["Partitur transponieren", "Ausgangstonart behalten und eine Revision in der Zieltonart erstellen."], ["Notensystem zu Jianpu", "Jianpu aus derselben strukturierten Partitur erzeugen."], ["Partitur zu Audio", "Tempo und Schleifen steuern und Übungsmaterial erstellen."]],
+    demos: [["Partitur transponieren", "Ausgangstonart behalten und eine Revision in der Zieltonart erstellen."], ["Partitur zu Audio", "Tempo und Schleifen steuern und Übungsmaterial erstellen."], ["Notensystem zu Jianpu", "Jianpu aus derselben strukturierten Partitur erzeugen."]],
     cases: [["Unterrichtsvorbereitung", "Papierpartitur scannen, prüfen und Jianpu erstellen", "Quelle, Diagnosen und Kandidat zusammen aufbewahren und unsichere Stellen korrigieren."], ["Arrangement und Probe", "MusicXML importieren und eine transponierte Revision erstellen", "Originaltonart bewahren und eine nachvollziehbare Revision im selben Projekt anlegen."], ["Selbstständiges Üben", "Schwierige Takte sehen, hören und wiederholen", "Tempo, Schleifen und Stimmen steuern und anschließend MIDI oder Übungsaudio erstellen."]],
     caseAction: "Funktion entdecken",
     engineKicker: "Funktionsweise und Möglichkeiten",
@@ -62,7 +62,7 @@ export const deHomepage = {
   },
   media: {
     caseAlts: ["Englische Oberfläche zur Prüfung eines aus PDF oder Bild erkannten Kandidaten", "Englischer Arbeitsbereich zur Transposition einer strukturierten Partitur", "Englischer Arbeitsbereich für Partiturwiedergabe und Übungsaudio"],
-    demoAlts: ["Englische Produktdemo zur Online-Partiturbearbeitung", "Englische Produktdemo zur Partiturtransposition", "Englische Produktdemo zur Umwandlung von Notensystem in Jianpu", "Englische Produktdemo zur Audioerstellung aus einer Partitur"],
+    demoAlts: ["Englische Produktdemo zur Partiturtransposition", "Englische Produktdemo zur Audioerstellung aus einer Partitur", "Englische Produktdemo zur Umwandlung von Notensystem in Jianpu"],
     scoreSamples: [["Mozart-Variationen K. 265", "Echter Ausschnitt aus Mozarts Variationen K. 265 bei der Online-Bearbeitung"], ["Pachelbels Kanon in D", "Echter Ausschnitt aus Pachelbels Kanon in D bei der Umwandlung in Jianpu"], ["Chopin-Nocturne op. 9 Nr. 2", "Echter Ausschnitt aus Chopins Nocturne op. 9 Nr. 2 bei der Transposition"], ["Bach-Präludium BWV 846", "Echter Ausschnitt aus Bachs Präludium BWV 846 bei Wiedergabe und Audio"], ["Beethovens Appassionata op. 57", "Echter Ausschnitt aus Beethovens Appassionata op. 57 bei der Partiturerkennung"]],
   },
   workbench: {

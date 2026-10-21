@@ -23,7 +23,7 @@ export type HomepagePageCopy = {
   demosBody: string;
   demosProof: string;
   demosAction: string;
-  demos: readonly [HomepagePair, HomepagePair, HomepagePair, HomepagePair];
+  demos: readonly [HomepagePair, HomepagePair, HomepagePair];
   cases: readonly [HomepageTriple, HomepageTriple, HomepageTriple];
   caseAction: string;
   engineKicker: string;
@@ -61,7 +61,7 @@ export type HomepagePageCopy = {
 
 export type HomepageMediaCopy = {
   caseAlts: readonly [string, string, string];
-  demoAlts: readonly [string, string, string, string];
+  demoAlts: readonly [string, string, string];
   scoreSamples: readonly [HomepagePair, HomepagePair, HomepagePair, HomepagePair, HomepagePair];
 };
 

@@ -52,7 +52,8 @@ test("homepage catalogs are complete for every supported locale", () => {
       `${locale} must contain exactly the English catalog's string leaves`,
     );
     assert.equal(localization.media.caseAlts.length, 3);
-    assert.equal(localization.media.demoAlts.length, 4);
+    assert.equal(localization.media.demoAlts.length, 3);
+    assert.equal(localization.page.demos.length, 3);
     assert.equal(localization.media.scoreSamples.length, 5);
     assert.equal(localization.workbench.tools.length, 6);
   }

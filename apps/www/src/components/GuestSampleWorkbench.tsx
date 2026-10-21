@@ -7,8 +7,6 @@ import {
   type GuestSampleEvent, type GuestSampleKey, type GuestSampleNotation,
 } from "../lib/guest-sample";
 import styles from "./GuestSampleDemo.module.css";
-import homeStyles from "../app/home-page.module.css";
-import { WorkbenchModal } from "@score/ui";
 
 function JianpuNote({ event }: { event: GuestSampleEvent }) {
   const octave = event.octaveShift ?? 0;
@@ -26,13 +24,11 @@ function JianpuNote({ event }: { event: GuestSampleEvent }) {
   );
 }
 
-export function GuestSampleWorkbench({ copy, workspaceHrefs, closeLabel, editLabel }: {
+export function GuestSampleWorkbench({ copy, workspaceHrefs, editLabel }: {
   copy: GuestSampleCopy;
   workspaceHrefs: Record<GuestSampleKey, Record<GuestSampleNotation, string>>;
-  closeLabel: string;
   editLabel: string;
 }) {
-  const [open, setOpen] = useState(false);
   const [key, setKey] = useState<GuestSampleKey>("C");
   const [notation, setNotation] = useState<GuestSampleNotation>("staff");
   const [playing, setPlaying] = useState(false);
@@ -114,19 +110,10 @@ export function GuestSampleWorkbench({ copy, workspaceHrefs, closeLabel, editLab
   }
 
   return (
-    <article id="sample-score-demo" className={homeStyles.demoCard} data-guest-sample-card>
-      <button type="button" className={`${homeStyles.demoMedia} ${styles.launch}`} aria-label={copy.title} onClick={() => setOpen(true)}>
-        <img src={guestSample.variants.C.staffImage} alt={copy.preview.replace("{key}", copy.keyNames.C)} width={340} loading="lazy" />
-        <span aria-hidden="true">↗</span>
-      </button>
-      <div className={homeStyles.demoCopy}>
-        <strong>{copy.title}</strong><small>{copy.body}</small>
-        <button type="button" className={styles.launchLink} onClick={() => setOpen(true)}>{copy.prepared} →</button>
-      </div>
-      {open ? <WorkbenchModal title={copy.title} closeLabel={closeLabel} onClose={() => { stop(); setOpen(false); }}>
-    <section className={styles.demo} aria-label={copy.title} data-guest-sample>
+    <section id="sample-score-demo" className={styles.demo} aria-labelledby="guest-sample-title" data-guest-sample>
       <div className={styles.heading}>
         <p className="eyebrow">{copy.badge}</p>
+        <h3 id="guest-sample-title">{copy.title}</h3>
         <p>{copy.body}</p>
       </div>
       <div className={styles.workbench}>
@@ -175,7 +162,5 @@ export function GuestSampleWorkbench({ copy, workspaceHrefs, closeLabel, editLab
         {error ? <p role="status">{error}</p> : null}
       </div>
     </section>
-      </WorkbenchModal> : null}
-    </article>
   );
 }

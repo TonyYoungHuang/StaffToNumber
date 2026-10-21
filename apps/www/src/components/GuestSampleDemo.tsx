@@ -3,7 +3,6 @@ import { guestSampleCopy } from "../lib/guest-sample-copy";
 import { GUEST_SAMPLE_KEYS, guestSampleTaskSource, type GuestSampleKey, type GuestSampleNotation } from "../lib/guest-sample";
 import { getAppTaskUrl } from "../lib/site";
 import { getHomepageLocalization } from "../lib/homepage-localization";
-import { workbenchCopy } from "@score/ui";
 import { GuestSampleWorkbench } from "./GuestSampleWorkbench";
 
 export function GuestSampleDemo({ locale }: { locale: SupportedLocale }) {
@@ -13,5 +12,5 @@ export function GuestSampleDemo({ locale }: { locale: SupportedLocale }) {
       key === "C" ? {} : { targetTonic: key, targetMode: "major" },
     )]),
   )])) as Record<GuestSampleKey, Record<GuestSampleNotation, string>>;
-  return <GuestSampleWorkbench copy={guestSampleCopy[locale]} workspaceHrefs={workspaceHrefs} closeLabel={workbenchCopy[locale].close} editLabel={getHomepageLocalization(locale).workbench.tools[0][0]} />;
+  return <GuestSampleWorkbench copy={guestSampleCopy[locale]} workspaceHrefs={workspaceHrefs} editLabel={getHomepageLocalization(locale).workbench.tools[0][0]} />;
 }
