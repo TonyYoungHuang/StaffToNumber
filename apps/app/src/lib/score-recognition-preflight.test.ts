@@ -92,6 +92,7 @@ test('large-score free offers cannot start; eligible paid quotes use the same re
   assert.equal(canConfirmScoreRecognition(input), false);
   assert.equal(canConfirmScoreRecognition({ ...input, quote }), true);
   assert.equal(canConfirmScoreRecognition({ ...input, quote: { ...quote, creditSource: 'score_pass' } }), true);
+  assert.equal(canConfirmScoreRecognition({ ...input, quote: { ...quote, creditCost: 0, creditSource: 'lifetime' } }), true);
   assert.equal(canConfirmScoreRecognition({ ...input, preflight: { ...preflight, result: { ...preflight.result, memoryAssessment: { ...memoryAssessment, lane: 'unsupported' } } }, quote }), false);
   assert.equal(isFreeSimpleScanPath({ freeTrialAvailable: true, selectedMode: 'simple', simpleQuote: input.quote, preflight }), false);
   const complex = { ...input, selectedMode: 'complex' as const, quote: { ...input.quote, mode: 'complex' as const }, preflight: { ...preflight, result: { ...preflight.result, memoryAssessment: { ...memoryAssessment, lane: 'normal' as const } } } };

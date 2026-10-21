@@ -40,10 +40,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
     );
   }
 
-  const plans = getLocalizedPricingPlanCatalog(locale);
   const params = await searchParams;
   const requestedPlan = Array.isArray(params.plan) ? params.plan[0] : params.plan;
   const initialPlanCode = isPurchasePlanCode(requestedPlan) ? requestedPlan : undefined;
+  const plans = getLocalizedPricingPlanCatalog(locale, initialPlanCode === "converter-pro-annual");
   let returnState;
   try { returnState = normalizeCheckoutReturnState(typeof params.returnState === "string" ? JSON.parse(params.returnState) : undefined); } catch { returnState = undefined; }
 
@@ -73,7 +73,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Che
         continueAfterLogin={params.continue === "1"}
         originalOrderId={typeof params.order_id === "string" ? params.order_id : undefined}
         originalOrderToken={typeof params.token === "string" ? params.token : undefined}
-        initialBillingKind={initialPlanCode === "single-score" || params.billing === "one_time" ? "one_time" : "subscription"}
+        initialBillingKind={initialPlanCode === "converter-pro-lifetime" || initialPlanCode === "single-score" || params.billing === "one_time" ? "one_time" : "subscription"}
         locale={locale}
         copy={copy.checkout}
         authMessages={authMessages}

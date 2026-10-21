@@ -1,3 +1,4 @@
+import { activeLifetimeEntitlement } from "./lifetime.js";
 import type { RuntimeDatabaseLike } from "./index.js";
 
 export type StorageQuotaTier = "free" | "starter" | "converter-pro";
@@ -25,6 +26,7 @@ export function storageQuotaPolicyFromEnv(env = process.env): StorageQuotaPolicy
 }
 
 export function resolveStorageQuotaTier(db: RuntimeDatabaseLike, userId: string, policy: StorageQuotaPolicy, includePrepaid = true): StorageQuotaTier {
+  if (activeLifetimeEntitlement(db, userId)) return "converter-pro";
   const subscriptions = db.prepare(`
     SELECT subscriptions.plan_ref AS planRef, subscriptions.organization_id AS organizationId,
            subscriptions.seat_quantity AS seatQuantity
@@ -58,6 +60,7 @@ export function resolveStorageQuotaTier(db: RuntimeDatabaseLike, userId: string,
 }
 
 export function assertAccountStorageQuota(db: RuntimeDatabaseLike, userId: string, incomingBytes: number, policy = storageQuotaPolicyFromEnv()) {
+  if (Number.isSafeInteger(incomingBytes) && incomingBytes >= 0 && activeLifetimeEntitlement(db, userId)) return;
   const tier = resolveStorageQuotaTier(db, userId, policy);
   const limit = tier === "converter-pro" ? policy.converterPro : policy[tier];
   const row = db.prepare("SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM files WHERE user_id = ?").get(userId) as { bytes: number };

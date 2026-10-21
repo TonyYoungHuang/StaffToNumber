@@ -72,11 +72,11 @@ export function getBillingMessages(locale: SupportedLocale): BillingMessageCatal
   return BILLING_MESSAGE_CATALOGS[locale];
 }
 
-export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonly PricingPlanDisplay[] {
+export function getLocalizedPricingPlanCatalog(locale: SupportedLocale, includeLegacyAnnual = false): readonly PricingPlanDisplay[] {
   const copy = getBillingMessages(locale).plans;
   const projectCount = formatNumber(Number(SHARED_FREE_PROJECT_COUNT), locale);
 
-  return presentPricingPlans(locale, SHARED_PRICING_PLANS.map((plan) => {
+  const localized: PricingPlanDisplay[] = SHARED_PRICING_PLANS.map((plan) => {
     const facts = sharedPlanFacts(plan);
     const values = {
       projectCount,
@@ -120,7 +120,10 @@ export function getLocalizedPricingPlanCatalog(locale: SupportedLocale): readonl
       cta: copy.ctas[plan.code],
       featured: plan.featured,
     };
-  }));
+  });
+  const publicPlans = presentPricingPlans(locale, localized);
+  const legacyAnnual = localized.find(plan => plan.code === "converter-pro-annual");
+  return includeLegacyAnnual && legacyAnnual ? [...publicPlans, legacyAnnual] : publicPlans;
 }
 
 export const BILLING_SUPPORTED_LOCALES = SUPPORTED_LOCALES;

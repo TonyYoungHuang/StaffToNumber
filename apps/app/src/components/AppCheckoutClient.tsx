@@ -1,4 +1,5 @@
 "use client";
+import { getLifetimeCopy } from "@score/shared";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportedLocale } from "@score/i18n";
@@ -373,7 +374,7 @@ export function AppCheckoutClient({
         <p className="eyebrow">{copy.checkoutEyebrow}</p>
         <h2 id="checkout-payment-title" className={styles.sectionHeading}>{copy.title}</h2>
         <p className="body-copy large">{copy.body}</p>
-        <p className={styles.purchaseNotice}>{selectedPlan.code === "single-score" ? targetDocumentId ? scorePassCopy.sharedCredits : getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
+        <p className={styles.purchaseNotice}>{selectedPlan.code === "converter-pro-lifetime" ? getLifetimeCopy(locale).permanent : selectedPlan.code === "single-score" ? targetDocumentId ? scorePassCopy.sharedCredits : getOneScoreUpsellCopy(locale).passNote : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
         <div className={styles.checkoutSelection}>
           <span>{copy.selectedPlan}</span>
           <strong>{selectedPlan.name} · {selectedPlan.cycle}</strong>

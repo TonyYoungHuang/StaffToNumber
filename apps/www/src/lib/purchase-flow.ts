@@ -36,7 +36,7 @@ export function readPurchaseSelection(search: string): PurchaseSelection | null 
   if (!isPurchasePlanCode(planCode)) return null;
   const selectedBilling = returned ? params.get("checkoutBilling") ?? params.get("billing") : params.get("billing");
   const selectedProvider = returned ? params.get("checkoutProvider") ?? params.get("provider") : params.get("provider");
-  const billingKind = planCode === "single-score" || selectedBilling === "one_time" ? "one_time" : "subscription";
+  const billingKind = planCode === "single-score" || planCode === "converter-pro-lifetime" || selectedBilling === "one_time" ? "one_time" : "subscription";
   return {
     planCode,
     billingKind,

@@ -1,3 +1,5 @@
+import { processLifetimeWebhook } from "../repositories/lifetime-repository.js";
+import { retrieveStripeCharge } from "../lib/payments.js";
 import type { FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
 import type { PaymentOrderRow } from "../repositories/payment-repository.js";
@@ -62,6 +64,19 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
 
       try {
         const event = verifyStripeWebhook(rawRequest.rawBody, signature);
+        if ((event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn") && !event.data.object.payment_intent) {
+          const charge = event.data.object.charge;
+          const resolved = typeof charge === "string" ? await retrieveStripeCharge(charge) : charge;
+          event.data.object.payment_intent = resolved.payment_intent;
+        }
+        const lifetime = processLifetimeWebhook(db, event);
+        if (lifetime.outcome === "partial_refund_kept") app.log.info({ eventId: event.id, outcome: lifetime.outcome }, "Partial refund keeps lifetime access.");
+        if (lifetime.handled) {
+          const session = event.data.object as { metadata?: Record<string, string> | null };
+          const order = session.metadata?.orderId ? findPaymentOrderById(session.metadata.orderId) : undefined;
+          if (order?.status === "paid") await saveDurablePaymentOrder(order);
+          return reply.send({ received: true });
+        }
         if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
           const session = event.data.object;
           const order = findPaymentOrderByCheckoutSessionId(session.id);

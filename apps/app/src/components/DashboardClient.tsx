@@ -1,5 +1,7 @@
 "use client";
 
+import { getLifetimeCopy } from "@score/shared";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { APP_ROUTES } from "@score/shared";
@@ -22,6 +24,7 @@ type MePayload = {
     deletionRequestedAt: string | null;
     scheduledDeletionAt: string | null;
     entitlement: {
+      lifetime?: boolean;
       status: "inactive" | "active" | "expired";
       startsAt: string | null;
       endsAt: string | null;
@@ -216,7 +219,7 @@ export function DashboardClient({
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.entitlement}</p>
           <p className="metric-value">{copy.statuses[profile.entitlement.status]}</p>
-          <p className="helper-copy">{copy.metrics.entitlementBody}</p>
+          <p className="helper-copy">{profile?.entitlement.lifetime ? getLifetimeCopy(locale).unlimited : copy.metrics.entitlementBody}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">{copy.metrics.route}</p>
@@ -266,7 +269,7 @@ export function DashboardClient({
             </div>
             <div className="mini-card stack-sm">
               <p className="metric-label">{copy.entitlement.ends}</p>
-              <p className="item-title">{profile.entitlement.endsAt ? formatDateTime(profile.entitlement.endsAt, locale) : copy.entitlement.missing}</p>
+              <p className="item-title">{profile.entitlement.lifetime ? getLifetimeCopy(locale).permanent : profile.entitlement.endsAt ? formatDateTime(profile.entitlement.endsAt, locale) : copy.entitlement.missing}</p>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { CreditPlanCard, type CreditPlanCardLabels } from "@score/ui";
-import { isCheckoutPlanCode, type CheckoutBillingKind, type PaymentProvider, type PricingPlanDisplay } from "@score/shared";
+import { isPurchasePlanCode, type CheckoutBillingKind, type PaymentProvider, type PricingPlanDisplay } from "@score/shared";
 import { getCheckoutUrl, getSupportUrl, siteConfig } from "../lib/site";
 import { purchaseSelectionKey } from "../lib/purchase-flow";
 import { useSiteLocale } from "./SiteLocaleProvider";
@@ -14,15 +14,14 @@ export function PurchasePlanCard({ plan, labels, billingKind = "subscription", p
 }) {
   const { locale } = useSiteLocale();
   const flow = usePurchaseFlow();
-  const cardLabels = plan.code === "converter-pro-annual" ? { ...labels, creditUsage: plan.resources[0] } : labels;
+  const cardLabels = plan.code === "converter-pro-lifetime" ? { ...labels, creditUsage: plan.resources[0] } : labels;
   const responsivePlan = withMobilePricingCopy(locale, plan);
-  if (!isCheckoutPlanCode(plan.code)) return null;
-  if (!siteConfig.release.checkoutAvailable) return <PlanCardFrame code={plan.code} label={plan.code === "converter-pro-annual" ? plan.badge : undefined}><CreditPlanCard plan={responsivePlan} labels={cardLabels} headingLevel={3} actionHref={getSupportUrl("payment", "pricing", locale)} /></PlanCardFrame>;
-  // TODO(lifetime-checkout): this lifetime UI still uses the annual Price/term.
-  // Replace the backend mapping only after lifetime payment and entitlement decisions.
+  if (!isPurchasePlanCode(plan.code)) return null;
+  if (!siteConfig.release.checkoutAvailable) return <PlanCardFrame code={plan.code} label={plan.code === "converter-pro-lifetime" ? plan.badge : undefined}><CreditPlanCard plan={responsivePlan} labels={cardLabels} headingLevel={3} actionHref={getSupportUrl("payment", "pricing", locale)} /></PlanCardFrame>;
+  if (plan.code === "converter-pro-lifetime") { billingKind = "one_time"; provider = "stripe"; }
   const selection = { planCode: plan.code, billingKind, provider };
   const selected = Boolean(flow.selected && purchaseSelectionKey(flow.selected) === purchaseSelectionKey(selection));
-  return <PlanCardFrame code={plan.code} label={plan.code === "converter-pro-annual" ? plan.badge : undefined}><CreditPlanCard plan={responsivePlan} labels={cardLabels} headingLevel={3}
+  return <PlanCardFrame code={plan.code} label={plan.code === "converter-pro-lifetime" ? plan.badge : undefined}><CreditPlanCard plan={responsivePlan} labels={cardLabels} headingLevel={3}
     actionHref={`${getCheckoutUrl(locale, plan.code, billingKind)}&provider=${provider}`}
     selected={selected} busy={flow.busy}
     actionLabel={flow.busy && selected ? flow.copy.loading : plan.cta}

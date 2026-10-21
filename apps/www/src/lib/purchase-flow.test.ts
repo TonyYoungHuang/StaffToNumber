@@ -26,6 +26,13 @@ test("default purchase selection is a one-time One Score Pass through Stripe", (
   assert.deepEqual(defaultPurchaseSelection("?provider=paddle"), { planCode: "single-score", billingKind: "one_time", provider: "stripe" });
 });
 
+test("lifetime selection always uses one-time Stripe and old annual links stay recurring", () => {
+  assert.deepEqual(readPurchaseSelection("?plan=converter-pro-lifetime&billing=subscription&provider=paddle"),
+    { planCode: "converter-pro-lifetime", billingKind: "one_time", provider: "stripe" });
+  assert.deepEqual(readPurchaseSelection("?plan=converter-pro-annual"),
+    { planCode: "converter-pro-annual", billingKind: "subscription", provider: "stripe" });
+});
+
 test("pricing displays the pass and four plans before optional billing controls", () => {
   const offers = readFileSync(new URL("../components/PricingOffersClient.tsx", import.meta.url), "utf8");
   const pass = readFileSync(new URL("../components/SingleScoreOffer.tsx", import.meta.url), "utf8");

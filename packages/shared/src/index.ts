@@ -368,7 +368,7 @@ export type ScoreStructurePreflight = {
 };
 export { attachMusicXmlPreservation, exportPreservedMusicXml, MusicXmlPreservationError } from "./musicxml-preservation.ts";
 
-export type ScoreRecognitionCreditSource = "plan" | "free_trial" | "score_pass";
+export type ScoreRecognitionCreditSource = "plan" | "free_trial" | "score_pass" | "lifetime";
 
 export type ScoreRecognitionOption = {
   mode: ScoreRecognitionMode;
@@ -1103,10 +1103,11 @@ export type CheckoutPlanDisplay = {
   featured: boolean;
 };
 
+/** Legacy recurring catalog keys; lifetime is a distinct one-time purchase. */
 export type PricingPlanCode = "free" | CheckoutPlanCode;
 
 export type PricingPlanDisplay = Omit<CheckoutPlanDisplay, "code"> & {
-  code: PricingPlanCode;
+  code: PricingPlanCode | "converter-pro-lifetime";
 };
 
 type PricingCatalogLocale = "en" | "zh-CN";
@@ -1238,7 +1239,7 @@ export function getCheckoutPlanCatalog(locale: SupportedLocale): readonly Checko
   return CHECKOUT_PLAN_CATALOG[getPricingCatalogLocale(locale)];
 }
 
-const FREE_PLAN_CATALOG: Record<PricingCatalogLocale, PricingPlanDisplay> = {
+const FREE_PLAN_CATALOG: Record<PricingCatalogLocale, PricingPlanDisplay & { code: "free" }> = {
   "zh-CN": {
     code: "free",
     badge: "永久免费",
@@ -1269,7 +1270,7 @@ const FREE_PLAN_CATALOG: Record<PricingCatalogLocale, PricingPlanDisplay> = {
   },
 };
 
-export function getPricingPlanCatalog(locale: SupportedLocale): readonly PricingPlanDisplay[] {
+export function getPricingPlanCatalog(locale: SupportedLocale): readonly (PricingPlanDisplay & { code: PricingPlanCode })[] {
   const catalogLocale = getPricingCatalogLocale(locale);
   return [FREE_PLAN_CATALOG[catalogLocale], ...CHECKOUT_PLAN_CATALOG[catalogLocale]];
 }
@@ -1588,14 +1589,14 @@ export function planPdfRasterBudget(
 
 /** A score pass is a one-off product, never a recurring plan. */
 export const SINGLE_SCORE_PASS = { code: "single-score", amountMinor: 299, currency: "usd", credits: 10 } as const;
-export type PurchasePlanCode = CheckoutPlanCode | typeof SINGLE_SCORE_PASS.code;
+export type PurchasePlanCode = CheckoutPlanCode | typeof SINGLE_SCORE_PASS.code | "converter-pro-lifetime";
 /** Stored on the authenticated checkout order; the API validates ownership and options. */
 export type CheckoutIntendedAction =
   | { kind: "export"; format: ScoreExportFormat; options?: ScoreExportOptions }
   | { kind: "retry"; jobId: string; recognitionMode?: ScoreRecognitionMode }
   | { kind: "recognition"; mode: ScoreRecognitionMode; uploadDraftId?: string };
 export function isPurchasePlanCode(value: unknown): value is PurchasePlanCode {
-  return value === SINGLE_SCORE_PASS.code || isCheckoutPlanCode(value);
+  return value === "converter-pro-lifetime" || value === SINGLE_SCORE_PASS.code || isCheckoutPlanCode(value);
 }
 
 export { getSingleScorePassCopy } from "./single-score-copy.ts";
@@ -1605,3 +1606,6 @@ export * from "./payment-recovery-copy.ts";
 export * from "./checkout-return.ts";
 
 export { LIFETIME_PRESENTATION_PLAN, presentLifetimePlan, presentPricingPlans } from "./lifetime-plan-presentation.ts";
+
+export { getLifetimeCopy } from "./lifetime-plan-presentation.ts";
+export { purchaseAnalyticsStorage, confirmedPurchaseEvent, queueConfirmedPurchase, flushConfirmedPurchases, type ConfirmedPurchaseOrder, type PurchaseEvent } from "./confirmed-purchase.ts";

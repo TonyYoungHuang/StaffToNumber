@@ -7,7 +7,8 @@ import { formatDateTime, formatMessage } from "@score/i18n";
 import { getPurchaseOptionsCopy, type PaymentProvider, type PaymentOrderStatus } from "@score/shared";
 import { MetricCard, Panel, StatusPill } from "@score/ui";
 import { apiRequest } from "../lib/api";
-import { trackFunnelEventOnce } from "../lib/analytics";
+import { getLifetimeCopy } from "@score/shared";
+import { trackConfirmedPurchase } from "../lib/analytics";
 import type { CheckoutStatusCopy } from "../lib/checkout-localization";
 import { localizePublicHref } from "../lib/locale-routing";
 import {
@@ -23,6 +24,7 @@ import { getPaymentRecoveryCopy, type PaymentVerification } from "@score/shared"
 import { readPurchaseReturn } from "../lib/purchase-flow";
 
 type PublicOrder = {
+  lifetime?: { status: string; transactionId: string } | null;
   id: string;
   provider: PaymentProvider;
   status: PaymentOrderStatus;
@@ -124,19 +126,11 @@ export function CheckoutStatusClient({
 
 
   useEffect(() => {
-    if (!isPaid || !order) return;
-    const hasValue = typeof order.amountMinor === "number" && Boolean(order.currency);
-    trackFunnelEventOnce(`purchase-${order.id}`, "purchase", {
-      transaction_id: order.id,
-      payment_type: order.provider,
-      ...(hasValue ? { value: order.amountMinor! / 100, currency: order.currency!.toUpperCase() } : {}),
-      items: [{
-        item_id: order.billingKind === "subscription" ? "scoretransposer_subscription" : "scoretransposer_access",
-        item_name: order.billingKind === "subscription" ? "ScoreTransposer subscription" : "ScoreTransposer access",
-        quantity: order.seatQuantity || 1,
-      }],
-    });
-  }, [isPaid, order]);
+    if (!order) return;
+    // Account purchases are reported by the app after its backend status check.
+    if (order.userId) return;
+    trackConfirmedPurchase(order, verification);
+  }, [order, verification]);
 
   const isSubscriptionPaid = isPaid && order?.billingKind === "subscription";
   const isOneTimePaid = isPaid && Boolean(order?.accessEndsAt);
@@ -144,7 +138,7 @@ export function CheckoutStatusClient({
   const isStalled = order?.status === "cancelled" || order?.status === "failed" || hasVerificationError;
   const badge = isStalled ? copy.stalledBadge : isPaid ? copy.paidBadge : copy.pendingBadge;
   const title = hasVerificationError ? copy.errorTitle : isOneTimePaid ? copy.statuses.paid : isSubscriptionPaid ? copy.subscriptionPaidTitle : isPaid ? copy.statuses.paid : isStalled ? copy.stalledTitle : copy.pendingTitle;
-  const body = verification && verification.status !== "ready" ? recoveryCopy[verification.status] : order?.planCode === "single-score" && isPaid ? getSingleScorePassCopy(locale).paid : isOneTimePaid ? purchaseCopy.oneTimeNote : isPaid ? copy.subscriptionPaidBody : isStalled ? copy.stalledBody : copy.pendingBody;
+  const body = order?.lifetime?.status === "active" && verification?.status === "ready" ? getLifetimeCopy(locale).permanent : verification && verification.status !== "ready" ? recoveryCopy[verification.status] : order?.planCode === "single-score" && isPaid ? getSingleScorePassCopy(locale).paid : isOneTimePaid ? purchaseCopy.oneTimeNote : isPaid ? copy.subscriptionPaidBody : isStalled ? copy.stalledBody : copy.pendingBody;
   const steps = isPaid && order?.planCode === "single-score" ? [getSingleScorePassCopy(locale).paid, ...getSingleScorePassCopy(locale).benefits] : isOneTimePaid ? [
     formatMessage(purchaseCopy.startsTemplate, { date: safelyFormatDateTime(order!.accessStartsAt!, locale) }),
     formatMessage(purchaseCopy.expiresTemplate, { date: safelyFormatDateTime(order!.accessEndsAt!, locale) }),

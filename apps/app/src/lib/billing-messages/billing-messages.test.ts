@@ -183,7 +183,7 @@ test("payment review notices and representative page, validation, status, and AR
 test("localized plans keep shared commercial facts and identifiers immutable", () => {
   const sharedPlans = getPricingPlanCatalog("en");
   const orderedSharedPlans = [sharedPlans[0], sharedPlans[1], sharedPlans[3], sharedPlans[2], sharedPlans[4]];
-  const sharedIdentity = orderedSharedPlans.map(({ code, featured }) => ({ code, featured }));
+  const sharedIdentity = orderedSharedPlans.map(({ code, featured }) => ({ code: code === "converter-pro-annual" ? "converter-pro-lifetime" : code, featured }));
 
   for (const locale of SUPPORTED_LOCALES) {
     const plans = getLocalizedPricingPlanCatalog(locale);
@@ -196,7 +196,7 @@ test("localized plans keep shared commercial facts and identifiers immutable", (
 
     for (const [index, plan] of plans.entries()) {
       const shared = orderedSharedPlans[index];
-      if (plan.code === "converter-pro-annual") {
+      if (plan.code === "converter-pro-lifetime") {
         assert.match(plan.price, /99/);
         assert.doesNotMatch(JSON.stringify(plan), /200|80[.,]88|UTC/);
         assert.notEqual(plan.cycle, shared.cycle);

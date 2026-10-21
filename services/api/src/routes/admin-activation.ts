@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { isShopActivationPlanCode, type ShopActivationPlanCode } from "@score/shared";
 import { config } from "../config.js";
+import { db } from "../db.js";
 import { disableUnusedActivationCode, generateActivationCodes, listActivationCodes, mapActivationCodeForAdmin } from "../repositories/auth-repository.js";
 
 function parseExpiresAt(value: unknown) {
@@ -21,6 +22,13 @@ function parseExpiresAt(value: unknown) {
 }
 
 export async function adminActivationRoutes(app: FastifyInstance) {
+  app.get("/admin/lifetime-entitlements", { preHandler: app.requireAdmin }, async (request) => {
+    const query = (request.query ?? {}) as { userId?: string };
+    const userId = typeof query.userId === "string" ? query.userId.slice(0, 200) : "";
+    return { entitlements: db.prepare(`SELECT user_id AS accountId, product_code AS productCode, source_order_id AS orderId,
+      status, granted_at AS grantedAt, revoked_at AS revokedAt, reason, lifetime, expires_at AS expiresAt
+      FROM lifetime_entitlements ${userId ? "WHERE user_id = ?" : ""} ORDER BY granted_at DESC LIMIT 100`).all(...(userId ? [userId] : [])) };
+  });
   app.get(
     "/admin/activation-codes",
     {

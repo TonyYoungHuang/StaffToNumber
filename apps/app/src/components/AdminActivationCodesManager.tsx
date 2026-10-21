@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { useAppLocale } from "./AppLocaleProvider";
 import { shopDeliveryText, shopError, shopPlanNames } from "../lib/shop-activation";
+import { getLifetimeCopy } from "@score/shared";
 
 type ActivationCodeItem = {
   planCode: string | null;
@@ -50,6 +51,8 @@ export function AdminActivationCodesManager() {
   
 
   const [adminKey, setAdminKey] = useState("");
+  const [lifetimes, setLifetimes] = useState<Array<{ accountId: string; orderId: string; status: string; grantedAt: string; revokedAt: string | null; reason: string }>>([]);
+  const [lifetimeError, setLifetimeError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [planCode, setPlanCode] = useState("credits-50");
   const [channel, setChannel] = useState("淘宝");
@@ -321,6 +324,19 @@ export function AdminActivationCodesManager() {
             ))}
           </div>
         )}
+      </section>
+      <section className="surface-panel stack-lg">
+        <h2 className="card-title">{getLifetimeCopy(locale).name}</h2>
+        <button className="button button-secondary" disabled={!adminKey} onClick={async () => {
+          const result = await apiRequest<{ entitlements: typeof lifetimes }>("/api/admin/lifetime-entitlements", { headers: { "x-admin-key": adminKey } });
+          if (result.ok) { setLifetimes(result.data.entitlements); setLifetimeError(""); } else setLifetimeError(result.error);
+        }}>{locale === "zh-CN" ? "读取终身权益" : getLifetimeCopy(locale).name}</button>
+        {lifetimeError ? <p role="alert">{lifetimeError}</p> : null}
+        {lifetimes.map(item => <div className="list-item stack-sm" key={item.orderId}>
+          <strong>{item.accountId} · {translateStatus(item.status, locale)}</strong>
+          <p>{item.status === "active" ? getLifetimeCopy(locale).unlimited : item.reason} · {getLifetimeCopy(locale).permanent}</p>
+          <p>{item.orderId} · {formatLocal(item.grantedAt, locale)}{item.revokedAt ? ` · ${formatLocal(item.revokedAt, locale)}` : ""}</p>
+        </div>)}
       </section>
     </div>
   );

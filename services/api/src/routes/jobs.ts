@@ -1,3 +1,4 @@
+import { LifetimeRecognitionBusyError } from "@score/runtime-database";
 import type { ConversionDirection } from "@score/shared";
 import type { FastifyInstance } from "fastify";
 import { findStoredFileById } from "../repositories/file-repository.js";
@@ -8,6 +9,10 @@ function isDirection(value: unknown): value is ConversionDirection {
 }
 
 export async function jobRoutes(app: FastifyInstance) {
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof LifetimeRecognitionBusyError) return reply.code(error.statusCode).send({ code: error.code, error: error.message });
+    return reply.send(error);
+  });
   app.get(
     "/jobs",
     {

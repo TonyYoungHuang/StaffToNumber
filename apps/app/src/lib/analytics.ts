@@ -1,5 +1,7 @@
 "use client";
 
+import { purchaseAnalyticsStorage, confirmedPurchaseEvent, queueConfirmedPurchase, flushConfirmedPurchases, type ConfirmedPurchaseOrder, type PaymentVerification } from "@score/shared";
+
 export const analyticsConsentKey = "scoretransposer_analytics_consent";
 export const analyticsReadyEvent = "scoretransposer:analytics-ready";
 
@@ -69,4 +71,21 @@ export function trackFunnelEventOnce(key: string, name: string, parameters: Anal
   } catch {
     return trackFunnelEvent(name, parameters);
   }
+}
+
+export function trackConfirmedPurchase(order: ConfirmedPurchaseOrder, verification: PaymentVerification | null) {
+  const event = confirmedPurchaseEvent(order, verification);
+  if (!event || typeof window === "undefined") return false;
+  try { queueConfirmedPurchase(confirmedStorage(), event); } catch { return false; }
+  flushPurchaseAnalytics();
+  return true;
+}
+
+export function flushPurchaseAnalytics() {
+  if (typeof window === "undefined" || !window.gtag || readAnalyticsConsent() !== "granted") return;
+  try { flushConfirmedPurchases(confirmedStorage(), event => trackFunnelEvent("purchase", event)); } catch { /* Retry on the next analytics-ready page. */ }
+}
+
+function confirmedStorage() {
+  return purchaseAnalyticsStorage(window.localStorage, document, window.location.hostname.toLowerCase(), window.location.protocol === "https:", process.env.NEXT_PUBLIC_LOCALE_COOKIE_DOMAIN || "scoretransposer.com");
 }

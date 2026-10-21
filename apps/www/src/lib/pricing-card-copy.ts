@@ -84,7 +84,7 @@ export const getPricingCardCopy = (locale: SupportedLocale) => copy[locale];
 
 // Full catalog fields remain unchanged. Only paid cards opt into compact mobile copy.
 export function withMobilePricingCopy(locale: SupportedLocale, plan: PricingPlanDisplay) {
-  if (plan.code === "free" || plan.code === "converter-pro-annual") return plan;
+  if (plan.code === "free" || plan.code === "converter-pro-lifetime") return plan;
   const card = getPricingCardCopy(locale);
   return {
     ...plan,

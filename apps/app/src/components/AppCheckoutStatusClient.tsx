@@ -11,7 +11,8 @@ import { getStoredToken, clearStoredToken } from "../lib/auth-storage";
 import { readCheckoutReturn } from "../lib/flow-return";
 import { useFlowMessages } from "../lib/flow-messages/client";
 import { apiRequest } from "../lib/api";
-import { trackFunnelEventOnce } from "../lib/analytics";
+import { getLifetimeCopy } from "@score/shared";
+import { trackConfirmedPurchase } from "../lib/analytics";
 import { rawApiErrorOrFallback, formatBillingDateTime } from "../lib/billing-messages/client";
 import type { BillingMessageCatalog } from "../lib/billing-messages/types";
 import { getPaymentRecoveryCopy, type PaymentVerification } from "@score/shared";
@@ -22,6 +23,7 @@ import { PUBLIC_SITE_URL } from "../lib/support";
 import { completeCheckoutIntent } from "../lib/checkout-flow";
 
 type PublicOrder = {
+  lifetime?: { status: string; transactionId: string } | null;
   id: string;
   userId: string | null;
   provider: PaymentProvider;
@@ -195,19 +197,10 @@ export function AppCheckoutStatusClient({
 
 
   useEffect(() => {
-    if (!isPaid || !order) return;
-    const hasValue = typeof order.amountMinor === "number" && Boolean(order.currency);
-    trackFunnelEventOnce(`purchase-${order.id}`, "purchase", {
-      transaction_id: order.id,
-      payment_type: order.provider,
-      ...(hasValue ? { value: order.amountMinor! / 100, currency: order.currency!.toUpperCase() } : {}),
-      items: [{
-        item_id: order.billingKind === "subscription" ? "scoretransposer_subscription" : "scoretransposer_access",
-        item_name: order.billingKind === "subscription" ? "ScoreTransposer subscription" : "ScoreTransposer access",
-        quantity: order.seatQuantity || 1,
-      }],
-    });
-  }, [isPaid, order]);
+    if (!order) return;
+    // Account purchases are reported by the app after its backend status check.
+    trackConfirmedPurchase(order, verification);
+  }, [order, verification]);
 
   const hasVerificationError = verification?.status === "verification_failed" || verification?.status === "fulfillment_failed";
   const statusCopy = hasVerificationError
@@ -245,7 +238,7 @@ export function AppCheckoutStatusClient({
             {accessState === "mismatch" ? <button className="button button-secondary" onClick={() => { clearStoredToken(); signIn("login", () => setRetryCount(n => n + 1)); }}>{flow.accountMismatch}</button> : null}
           </div> : null}
           {isPaid && order?.billingKind === "one_time" ? <div className="stack-sm">
-            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "single-score" ? scorePassCopy.passTarget : purchaseCopy.oneTimeNote}</p>
+            <p>{order.purchaseStatus === "refunded" ? purchaseCopy.refunded : order.planCode === "converter-pro-lifetime" ? getLifetimeCopy(locale).permanent : order.planCode === "single-score" ? scorePassCopy.passTarget : purchaseCopy.oneTimeNote}</p>
             {order.accessStartsAt ? <p>{formatMessage(purchaseCopy.startsTemplate, { date: formatBillingDateTime(order.accessStartsAt, locale) })}</p> : null}
             {order.accessEndsAt ? <p>{formatMessage(purchaseCopy.expiresTemplate, { date: formatBillingDateTime(order.accessEndsAt, locale) })}</p> : null}
           </div> : null}

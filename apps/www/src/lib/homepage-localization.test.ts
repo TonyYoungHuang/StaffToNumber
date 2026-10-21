@@ -85,11 +85,11 @@ test("localized display keeps billing identity while presenting lifetime access 
   const base = getPricingPlanCatalog("en");
   for (const locale of SUPPORTED_LOCALES) {
     const plans = localizeHomepagePlans(locale, base);
-    assert.deepEqual(plans.map(p => p.code), ["free", "starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-annual"]);
+    assert.deepEqual(plans.map(p => p.code), ["free", "starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-lifetime"]);
     for (const plan of plans) {
-      const original = base.find(p => p.code === plan.code)!;
+      const original = base.find(p => p.code === (plan.code === "converter-pro-lifetime" ? "converter-pro-annual" : plan.code))!;
       assert.equal(plan.featured, original.featured);
-      if (plan.code === "converter-pro-annual") {
+      if (plan.code === "converter-pro-lifetime") {
         assert.match(plan.price, /99/);
         assert.doesNotMatch([plan.cycle, plan.credits, plan.unitPrice, ...plan.resources].join(" "), /200|UTC|0[.,]041|80[.,]88|annual|年付/i);
         assert.equal(plan.benefits.length, 4);
@@ -126,7 +126,7 @@ test("mobile paid cards add localized compact copy while preserving full and fre
     const copy = getPricingCardCopy(locale);
     assert.equal(copy.benefits.length, 3);
     for (const plan of plans.slice(1)) {
-      if (plan.code === "converter-pro-annual") { assert.equal(withMobilePricingCopy(locale, plan), plan); continue; }
+      if (plan.code === "converter-pro-lifetime") { assert.equal(withMobilePricingCopy(locale, plan), plan); continue; }
       const mobile = withMobilePricingCopy(locale, plan);
       assert.ok("benefitsShort" in mobile && "resourcesShort" in mobile && "audienceShort" in mobile);
       const { benefitsShort, resourcesShort, audienceShort, ...full } = mobile;

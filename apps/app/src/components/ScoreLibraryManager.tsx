@@ -275,7 +275,7 @@ export function ScoreLibraryManager({ view = "library", copy, recognitionMode = 
   const simpleQuote = recognitionOption(recognitionOptions, "simple");
   const memory = preflight.status === "ready" ? preflight.result.memoryAssessment : null;
   const preflightRejected = preflight.status === "ready" && isScoreRecognitionRejected(preflight.result);
-  const bigNeedsPayment = !preflightRejected && needsBigRecognitionLane(memory, selectedRecognitionMode) && recognitionQuote?.creditSource !== "plan" && recognitionQuote?.creditSource !== "score_pass";
+  const bigNeedsPayment = !preflightRejected && needsBigRecognitionLane(memory, selectedRecognitionMode) && recognitionQuote?.creditSource !== "lifetime" && recognitionQuote?.creditSource !== "plan" && recognitionQuote?.creditSource !== "score_pass";
   const recognitionReady = !bigNeedsPayment && canConfirmScoreRecognition({ file, preflight, selectedMode: selectedRecognitionMode, quote: recognitionQuote, quoteLoading, quoteError });
   const freeSimplePath = Boolean(access) && kind === "omr" && isFreeSimpleScanPath({
     freeTrialAvailable: access?.freeTrial.available === true && !bigNeedsPayment,

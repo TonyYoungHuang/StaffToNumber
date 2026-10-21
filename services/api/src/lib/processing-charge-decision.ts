@@ -1,5 +1,5 @@
 export type ProcessingChargeDecision = {
-  source: "monthly" | "prepaid" | "score_pass" | "free_trial";
+  source: "monthly" | "prepaid" | "score_pass" | "free_trial" | "lifetime";
   available: number;
   paidAccess: boolean;
   canSubmit: boolean;
@@ -9,12 +9,14 @@ export type ProcessingChargeDecision = {
  * A reservation still validates the chosen pool while the account is locked. */
 export function processingChargeDecision(input: {
   paid: boolean;
+  unlimited?: boolean;
   monthlyRemaining: number;
   prepaidRemaining: number;
   passRemaining: number | null;
   creditCost: number;
   allowFreeTrial?: boolean;
 }): ProcessingChargeDecision {
+  if (input.unlimited && input.paid) return { source: "lifetime", available: 0, paidAccess: true, canSubmit: true };
   const paidAccess = input.paid || input.passRemaining !== null;
   const source = input.paid && input.monthlyRemaining >= input.creditCost ? "monthly"
     : input.paid && input.prepaidRemaining >= input.creditCost ? "prepaid"

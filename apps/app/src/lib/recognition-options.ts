@@ -4,7 +4,7 @@ export type RecognitionOption = {
   creditCost: number;
   canSubmit: boolean;
   reason: string | null;
-  creditSource: "plan" | "free_trial" | "score_pass" | null;
+  creditSource: "plan" | "free_trial" | "score_pass" | "lifetime" | null;
 };
 export type RecognitionOptions = {
   defaultMode: RecognitionMode;

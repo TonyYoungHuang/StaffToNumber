@@ -33,7 +33,7 @@ export const pricingCopy = {
 export function getLocalizedPaidPlans(locale: "en" | "es" | "fr" | "de" | "ru", kind: CheckoutBillingKind) {
   const purchase = getPurchaseOptionsCopy(locale);
   return localizeHomepagePlans(locale, getPricingPlanCatalog("en")).filter(plan => plan.code !== "free").map(plan => {
-    if (kind === "subscription" || plan.code === "converter-pro-annual") return plan;
+    if (kind === "subscription" || plan.code === "converter-pro-lifetime") return plan;
     const duration = plan.code.endsWith("-annual") ? purchase.year : purchase.month;
     return { ...plan, cycle: duration, badge: purchase.oneTime, cta: purchase.buyTemplate.replace("{name}", plan.name).replace("{duration}", duration), resources: [...plan.resources.filter(resource => !/renewal|renewing|twelve monthly|renovación|doce pagos|renouvellement|douze mensualités|Verlängerung|zwölf Monatszahlungen|продлен|двенадцат/iu.test(resource)), purchase.oneTimeNote] };
   });

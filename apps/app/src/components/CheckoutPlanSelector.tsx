@@ -50,7 +50,7 @@ export function CheckoutPlanSelector({
   authMessages: AuthMessageCatalog["form"];
 }) {
   const [selectedPlanCode, setSelectedPlanCode] = useState<PricingPlanCode | PurchasePlanCode>(defaultCheckoutPlan(initialPlanCode));
-  const [billingKind, setBillingKind] = useState<CheckoutBillingKind>(initialBillingKind);
+  const [billingKind, setBillingKind] = useState<CheckoutBillingKind>(initialPlanCode === "converter-pro-lifetime" ? "one_time" : initialBillingKind);
   const [plansOpen, setPlansOpen] = useState(defaultCheckoutPlan(initialPlanCode) !== SINGLE_SCORE_PASS.code);
   const flow = useFlowMessages();
   const purchaseCopy = getPurchaseOptionsCopy(locale);
@@ -59,7 +59,7 @@ export function CheckoutPlanSelector({
   const passPrice = `US$${(SINGLE_SCORE_PASS.amountMinor / 100).toFixed(2)}`;
   const passTitle = targetDocumentId ? formatMessage(isTopUp ? scorePassCopy.topUp : scorePassCopy.newPass, { price: passPrice }) : `${passCopy.name} · ${passPrice}`;
   const displayPlans = billingKind === "subscription" ? plans : plans.map(plan => {
-    if (plan.code === "free" || plan.code === "converter-pro-annual") return plan;
+    if (plan.code === "free" || plan.code === "converter-pro-lifetime") return plan;
     const duration = plan.code.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month;
     return { ...plan, cycle: duration, badge: purchaseCopy.oneTime,
       cta: formatMessage(purchaseCopy.buyTemplate, { name: plan.name, duration }),
@@ -68,8 +68,7 @@ export function CheckoutPlanSelector({
   const selectedPlan = selectedPlanCode === SINGLE_SCORE_PASS.code ? {
     code: SINGLE_SCORE_PASS.code, name: passCopy.name, cycle: passCopy.once, price: passPrice, credits: scorePassCopy.passTarget,
   } : displayPlans.find((plan) => plan.code === selectedPlanCode);
-  // TODO(lifetime-checkout): converter-pro-annual retains annual checkout until the backend migration.
-  const selectedBillingKind = selectedPlanCode === SINGLE_SCORE_PASS.code ? "one_time" : billingKind;
+  const selectedBillingKind = (selectedPlanCode === SINGLE_SCORE_PASS.code || selectedPlanCode === "converter-pro-lifetime") ? "one_time" : billingKind;
   const planListTracked = useRef(false);
 
   useEffect(() => {
@@ -88,6 +87,7 @@ export function CheckoutPlanSelector({
 
   function selectPlan(plan: PricingPlanDisplay) {
     setSelectedPlanCode(plan.code);
+    if (plan.code === "converter-pro-lifetime") setBillingKind("one_time");
     trackFunnelEvent("select_item", {
       item_list_id: "credit_plans",
       item_list_name: "ScoreTransposer credit plans",
@@ -106,7 +106,7 @@ export function CheckoutPlanSelector({
     else return;
     const url = new URL(window.location.href);
     url.searchParams.set("plan", code);
-    url.searchParams.set("billing", code === SINGLE_SCORE_PASS.code ? "one_time" : billingKind);
+    url.searchParams.set("billing", (code === SINGLE_SCORE_PASS.code || code === "converter-pro-lifetime") ? "one_time" : billingKind);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
@@ -131,16 +131,16 @@ export function CheckoutPlanSelector({
               <button type="button" key={kind} aria-pressed={billingKind === kind}
                 className={`button ${billingKind === kind ? "button-primary" : "button-secondary"}`}
                 onClick={() => {
-                  setBillingKind(kind);
+                  setBillingKind(selectedPlanCode === "converter-pro-lifetime" ? "one_time" : kind);
                   if (selectedPlanCode === SINGLE_SCORE_PASS.code) setSelectedPlanCode("starter-monthly");
                   const url = new URL(window.location.href);
                   if (selectedPlanCode === SINGLE_SCORE_PASS.code) url.searchParams.set("plan", "starter-monthly");
-                  url.searchParams.set("billing", kind);
+                  url.searchParams.set("billing", selectedPlanCode === "converter-pro-lifetime" ? "one_time" : kind);
                   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
                 }}>{kind === "one_time" ? purchaseCopy.oneTime : purchaseCopy.subscription}</button>
             ))}
           </div>
-          <p className="body-copy">{billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
+          <p className="body-copy">{selectedPlanCode === "converter-pro-lifetime" ? selectedPlan.credits : billingKind === "one_time" ? purchaseCopy.oneTimeNote : purchaseCopy.subscriptionNote}</p>
           <Link href={`${APP_ROUTES.billing}#subscriptions`} className="button button-secondary">{purchaseCopy.manageHint}</Link>
         </div>
         <label className="field-group">
@@ -153,7 +153,7 @@ export function CheckoutPlanSelector({
         {selectedPlanCode !== SINGLE_SCORE_PASS.code ? <details className="flow-details">
           <summary>{flow.planDetails}</summary>
           <CreditPlanGrid label={copy.selector.plansAria}>
-            <CreditPlanCard plan={selectedPlan as PricingPlanDisplay} labels={{ creditUsage: selectedPlan.code === "converter-pro-annual" ? (selectedPlan as PricingPlanDisplay).resources[0] : copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
+            <CreditPlanCard plan={selectedPlan as PricingPlanDisplay} labels={{ creditUsage: selectedPlan.code === "converter-pro-lifetime" ? (selectedPlan as PricingPlanDisplay).resources[0] : copy.selector.creditUsage, includedCapabilities: copy.selector.includedCapabilities, benefitsAndResources: copy.selector.benefitsAndResources }} />
           </CreditPlanGrid>
         </details> : null}
         </details>

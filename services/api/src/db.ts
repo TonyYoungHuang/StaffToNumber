@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRuntimeDatabase } from "@score/runtime-database";
+import { createRuntimeDatabase, LIFETIME_SCHEMA_SQL } from "@score/runtime-database";
 import { config } from "./config.js";
 import { DATABASE_SCHEMA_VERSION } from "./schema-version.js";
 import { BILLING_ORDERING_SQL } from "./lib/billing-ordering-schema.js";
@@ -1388,6 +1388,8 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_users_account_status_deletion ON users(account_status, scheduled_deletion_at);
   `);
   db.exec(PREPAID_TABLES_SQL + PREPAID_SQLITE_TRIGGERS);
+  db.exec(LIFETIME_SCHEMA_SQL);
+  ensureColumn("lifetime_unmetered_jobs", "running_until", "TEXT");
   db.exec(BILLING_ORDERING_SQL);
   db.exec(SCORE_PASS_DOCUMENTS_SQL + SCORE_UPLOAD_DRAFTS_SQL + SCORE_PASS_BACKFILL_SQL);
   db.exec("CREATE INDEX IF NOT EXISTS idx_score_passes_group ON score_passes(group_pass_id);");
@@ -1400,6 +1402,8 @@ export function initDb() {
 }
 
 function ensureSchema27Additions() {
+  db.exec(LIFETIME_SCHEMA_SQL);
+  ensureColumn("lifetime_unmetered_jobs", "running_until", "TEXT");
   db.exec(BILLING_ORDERING_SQL);
   for (const column of ["target_document_id", "intended_action_json", "resume_consumed_at", "resume_result_json", ...PAYMENT_RETURN_COLUMNS]) ensureColumn("payment_orders", column, "TEXT");
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_checkout_intent ON payment_orders(user_id, provider, checkout_intent_hash) WHERE checkout_intent_hash IS NOT NULL");
@@ -1420,6 +1424,9 @@ function validatePostgresSchema() {
     "billing_subscriptions",
     "billing_resource_versions",
     "billing_one_time_purchases",
+    "lifetime_entitlements",
+    "lifetime_webhook_events",
+    "lifetime_unmetered_jobs",
     "score_passes",
     "score_pass_jobs",
     "score_pass_documents",

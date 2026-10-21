@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { AnalyticsConsentMessages } from "@score/i18n";
 import {
   analyticsConsentKey,
+  flushPurchaseAnalytics,
   analyticsReadyEvent,
   readAnalyticsConsent,
   trackFunnelEvent,
@@ -34,6 +35,7 @@ function AnalyticsScripts({ gaId, clarityId }: { gaId?: string; clarityId?: stri
 
   useEffect(() => {
     const sendPageEvents = () => {
+      flushPurchaseAnalytics();
       trackFunnelEvent("page_view", {
         page_location: window.location.href,
         page_path: pathname,

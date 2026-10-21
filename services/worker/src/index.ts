@@ -1,13 +1,14 @@
+import { renewLifetimeRecognitionSlot, releaseLifetimeRecognitionSlot } from "@score/runtime-database";
 import { runSimplePdfOmr, SimplePdfOmrFailure, type SimplePdfResult } from "./simple-pdf-omr.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { assertAccountStorageQuota, assertPostgresRuntimeTables, createRuntimeDatabase } from "@score/runtime-database";
+import { LifetimeRecognitionDeferredError, assertAccountStorageQuota, assertPostgresRuntimeTables, createRuntimeDatabase } from "@score/runtime-database";
 import AdmZip from "adm-zip";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { PDFParse } from "pdf-parse";
 import { PNG } from "pngjs";
-import { Queue as BullQueue, Worker as BullWorker } from "bullmq";
+import { DelayedError, Queue as BullQueue, Worker as BullWorker } from "bullmq";
 import {
   PRODUCT_NAME,
   SCORE_PROCESSING_QUEUE,
@@ -245,6 +246,8 @@ const objectStorage = new ObjectStorage({
 if (db.primary === "postgres") {
   assertPostgresRuntimeTables(db, [
     "users",
+    "lifetime_entitlements",
+    "lifetime_unmetered_jobs",
     "files",
     "jobs",
     "job_dispatch_outbox",
@@ -3745,7 +3748,14 @@ async function tick() {
   }
 }
 
+function maintainLifetimeSlot(family: "score" | "legacy", jobId: string) {
+  const timer = setInterval(() => bestEffortDiagnostic(() => renewLifetimeRecognitionSlot(db, family, jobId)), 15_000);
+  timer.unref();
+  return () => { clearInterval(timer); releaseLifetimeRecognitionSlot(db, family, jobId); };
+}
+
 async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
+  const releaseSlot = maintainLifetimeSlot("score", scoreJob.id);
   try {
     recordWorkerHeartbeat("processing", `Processing score job ${scoreJob.id}`, {
       jobId: scoreJob.id,
@@ -3783,11 +3793,13 @@ async function processClaimedScoreJob(scoreJob: ScoreJobRow) {
         if (scratch.startsWith(root + path.sep)) await fs.promises.rm(scratch, { recursive: true, force: true }).catch(error => console.error("[worker] scratch cleanup failed", error));
       }
     }
+    releaseSlot();
     bestEffortDiagnostic(() => recordWorkerHeartbeat("idle", "Waiting for queued jobs"));
   }
 }
 
 async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
+  const releaseSlot = maintainLifetimeSlot("legacy", job.id);
   try {
     recordWorkerHeartbeat("processing", `Processing job ${job.id}`, {
       jobId: job.id,
@@ -3833,6 +3845,7 @@ async function processClaimedLegacyJob(job: ClaimedLegacyJob) {
       onDiagnosticError: diagnosticError => console.error("[worker] failure diagnostic could not be recorded", diagnosticError),
     });
   } finally {
+    releaseSlot();
     bestEffortDiagnostic(() => recordWorkerHeartbeat("idle", "Waiting for queued jobs"));
   }
 }
@@ -3890,13 +3903,19 @@ if (workerConfig.jobBrokerBackend === "bullmq") {
   let startupAttempt = 0;
   while (!brokerWorker) {
     startupAttempt += 1;
-    const candidate = new BullWorker<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, async (brokerJob) => consumeBrokerJob({
+    const candidate = new BullWorker<JobBrokerPayload>(SCORE_PROCESSING_QUEUE, async (brokerJob, token) => {
+      try { return await consumeBrokerJob({
       db,
       brokerJob,
       now: nowIso,
       processScoreJob: processClaimedScoreJob,
       processLegacyJob: processClaimedLegacyJob,
-    }), {
+      }); } catch (error) {
+        if (!(error instanceof LifetimeRecognitionDeferredError)) throw error;
+        await brokerJob.moveToDelayed(Date.now() + 5000, token);
+        throw new DelayedError();
+      }
+    }, {
       connection: createBullMqWorkerRedisOptions(workerConfig.jobBrokerRedisUrl),
       prefix: workerConfig.jobBrokerPrefix,
       concurrency: workerConfig.jobBrokerConcurrency,

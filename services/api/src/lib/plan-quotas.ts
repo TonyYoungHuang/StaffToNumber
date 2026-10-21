@@ -1,12 +1,13 @@
 import { config } from "../config.js";
 import { db } from "../db.js";
-import { resolveStorageQuotaTier, settledRecognitionCreditCost } from "@score/runtime-database";
+import { activeLifetimeEntitlement, resolveStorageQuotaTier, settledRecognitionCreditCost } from "@score/runtime-database";
 import { assertMinimumFreeSpace } from "@score/storage";
 import type { ScoreRecognitionMode } from "@score/shared";
 import { prepaidCreditBalance, reservePrepaidCredits } from "./prepaid-credits.js";
 import { processingChargeDecision } from "./processing-charge-decision.js";
 
-export function recognitionCreditCost(mode: ScoreRecognitionMode) {
+export function recognitionCreditCost(mode: ScoreRecognitionMode, userId?: string) {
+  if (userId && activeLifetimeEntitlement(db, userId)) return 0;
   return mode === "complex" ? config.omrComplexCreditCost : config.omrSimpleCreditCost;
 }
 
@@ -20,6 +21,7 @@ export function processingJobParams(paramsJson: string | null): Record<string, u
 /** Existing jobs without a server quote retain their historic one-credit price. */
 export function processingJobCreditCost(job: { job_type?: string; params_json: string | null }) {
   if (job.job_type === "musicxml_import" && processingJobParams(job.params_json).catalogOnly === true) return 0;
+  if (processingJobParams(job.params_json).creditSource === "lifetime" && processingJobParams(job.params_json).creditCost === 0) return 0;
   if (job.job_type !== "omr_import") return 1;
   const params = processingJobParams(job.params_json);
   // The lifetime free scan is an allowance, never a monthly or prepaid charge.
@@ -39,7 +41,8 @@ export type PlanQuotaUsage = {
   periodStart: string;
   periodEnd: string;
   jobs: { used: number; limit: number; remaining: number };
-  creditMode: "monthly" | "prepaid";
+  creditMode: "monthly" | "prepaid" | "unlimited";
+  unlimited: boolean;
   prepaid: { total: number; used: number; remaining: number; startsAt: string | null };
   monthly: { used: number; limit: number; remaining: number };
   storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
@@ -88,22 +91,25 @@ function limitsForTier(tier: PlanQuotaTier) {
 }
 
 export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUsage {
+  const unlimited = Boolean(activeLifetimeEntitlement(db, userId));
   const tier = quotaTier(userId);
   const limits = limitsForTier(tier);
   const monthlyTier = quotaTier(userId, false);
   const prepaid = prepaidCreditBalance(userId);
-  const creditMode = prepaid.total > 0 && monthlyTier === "free" ? "prepaid" as const : "monthly" as const;
-  const monthlyLimit = creditMode === "prepaid" ? 0 : limitsForTier(monthlyTier).jobs;
+  const creditMode = unlimited ? "unlimited" as const : prepaid.total > 0 && monthlyTier === "free" ? "prepaid" as const : "monthly" as const;
+  const monthlyLimit = unlimited || creditMode === "prepaid" ? 0 : limitsForTier(monthlyTier).jobs;
   const period = utcMonthBounds(now);
   const legacyJobs = db.prepare(`
     SELECT COUNT(*) AS count FROM jobs
     WHERE user_id = ? AND datetime(created_at) >= datetime(?) AND datetime(created_at) < datetime(?)
       AND status NOT IN ('failed', 'cancelled')
+      AND NOT EXISTS (SELECT 1 FROM lifetime_unmetered_jobs u WHERE u.job_family = 'legacy' AND u.job_id = jobs.id)
       AND NOT EXISTS (SELECT 1 FROM prepaid_credit_charges p WHERE p.job_family = 'legacy' AND p.job_id = jobs.id)
   `).get(userId, period.start, period.end) as { count: number } | undefined;
   const scoreJobs = db.prepare(`
     SELECT job_type, params_json, created_at FROM score_jobs
-    WHERE NOT EXISTS (SELECT 1 FROM score_pass_jobs p WHERE p.job_id = score_jobs.id)
+    WHERE NOT EXISTS (SELECT 1 FROM lifetime_unmetered_jobs u WHERE u.job_family = 'score' AND u.job_id = score_jobs.id)
+      AND NOT EXISTS (SELECT 1 FROM score_pass_jobs p WHERE p.job_id = score_jobs.id)
       AND NOT EXISTS (SELECT 1 FROM prepaid_credit_charges p WHERE p.job_family = 'score' AND p.job_id = score_jobs.id)
       AND user_id = ? AND status NOT IN ('failed', 'cancelled')
   `).all(userId) as Array<{ job_type: string; params_json: string | null; created_at: string }>;
@@ -118,19 +124,20 @@ export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUs
   }, 0);
   const jobsUsed = Number(legacyJobs?.count ?? 0) + scoreCredits;
   const storageUsed = Number(storage?.bytes ?? 0);
-  const monthly = { used: jobsUsed, limit: monthlyLimit, remaining: Math.max(0, monthlyLimit - jobsUsed) };
+  const monthly = unlimited ? { used: 0, limit: 0, remaining: 0 } : { used: jobsUsed, limit: monthlyLimit, remaining: Math.max(0, monthlyLimit - jobsUsed) };
   return {
     tier,
     periodStart: period.start,
     periodEnd: period.end,
     creditMode,
+    unlimited,
     prepaid,
     monthly,
     jobs: creditMode === "prepaid" ? { used: prepaid.used, limit: prepaid.total, remaining: prepaid.remaining } : monthly,
     storage: {
       usedBytes: storageUsed,
-      limitBytes: limits.storageBytes,
-      remainingBytes: Math.max(0, limits.storageBytes - storageUsed),
+      limitBytes: unlimited ? 0 : limits.storageBytes,
+      remainingBytes: unlimited ? 0 : Math.max(0, limits.storageBytes - storageUsed),
     },
   };
 }
@@ -138,10 +145,10 @@ export function getPlanQuotaUsage(userId: string, now = new Date()): PlanQuotaUs
 // A verified lifetime trial or dedicated score pass has its own allowance.
 // Disk capacity still applies, while only account-funded work needs this balance.
 export function assertProcessingQuota(userId: string, independentAllowance = false, creditCost = 1) {
-  if (!Number.isSafeInteger(creditCost) || creditCost < 1) throw new Error("Processing credit cost must be a positive integer.");
+  if (!Number.isSafeInteger(creditCost) || creditCost < 0 || (creditCost === 0 && !activeLifetimeEntitlement(db, userId))) throw new Error("Processing credit cost must be a positive integer.");
   assertMinimumFreeSpace(config.storageDir, config.storageMinFreeBytes, config.uploadMaxBytes * 2);
   const quota = getPlanQuotaUsage(userId);
-  if (!independentAllowance && creditCost > quota.monthly.remaining && creditCost > quota.prepaid.remaining) {
+  if (!quota.unlimited && !independentAllowance && creditCost > quota.monthly.remaining && creditCost > quota.prepaid.remaining) {
     throw new PlanQuotaExceededError("PLAN_JOB_QUOTA_EXCEEDED", quota);
   }
   return quota;
@@ -150,6 +157,14 @@ export function assertProcessingQuota(userId: string, independentAllowance = fal
 // Use monthly credits first when a legacy plan coexists with a prepaid pack.
 // A job is charged to exactly one pool. Caller keeps the account locked.
 export function recordProcessingCredit(userId: string, family: "score" | "legacy", jobId: string, quota: PlanQuotaUsage, cost = 1) {
+  if (quota.unlimited) {
+    db.prepare(`INSERT INTO lifetime_unmetered_jobs (job_family, job_id, user_id, created_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(job_family, job_id) DO NOTHING`).run(family, jobId, userId, new Date().toISOString());
+    return;
+  }
+  // A failed/cancelled export can reuse its job ID after lifetime is revoked.
+  // Its new paid attempt must no longer be excluded from the credit ledger.
+  db.prepare("DELETE FROM lifetime_unmetered_jobs WHERE job_family = ? AND job_id = ?").run(family, jobId);
   const previous = db.prepare("SELECT job_id FROM prepaid_credit_charges WHERE job_family = ? AND job_id = ?").get(family, jobId);
   const decision = processingChargeDecision({ paid: true, monthlyRemaining: quota.monthly.remaining,
     prepaidRemaining: quota.prepaid.remaining, passRemaining: null, creditCost: cost });
@@ -158,7 +173,7 @@ export function recordProcessingCredit(userId: string, family: "score" | "legacy
 
 export function assertStorageQuota(userId: string, incomingBytes: number) {
   const quota = getPlanQuotaUsage(userId);
-  if (incomingBytes < 0 || quota.storage.usedBytes + incomingBytes > quota.storage.limitBytes) {
+  if (incomingBytes < 0 || (!quota.unlimited && quota.storage.usedBytes + incomingBytes > quota.storage.limitBytes)) {
     throw new PlanQuotaExceededError("PLAN_STORAGE_QUOTA_EXCEEDED", quota);
   }
   return quota;

@@ -1,5 +1,7 @@
 "use client";
 
+import { getLifetimeCopy } from "@score/shared";
+
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -74,7 +76,7 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
   const token = useSyncExternalStore(subscribeAuthChanges, getStoredToken, getServerAuthToken);
   const [loginHref, setLoginHref] = useState<string>(APP_ROUTES.login);
   useEffect(() => { setLoginHref(preferredLoginPath(returnPath)); }, [returnPath, token]);
-  const [balance, setBalance] = useState<{ token: string; remaining: number; hasCreditPool: boolean } | null>(null);
+  const [balance, setBalance] = useState<{ token: string; remaining: number; hasCreditPool: boolean; unlimited: boolean } | null>(null);
   const isAuthScreen = [APP_ROUTES.login, APP_ROUTES.register, APP_ROUTES.forgotPassword, APP_ROUTES.resetPassword].some(route => pathname === route);
   const remainingCredits = !isAuthScreen && token && balance?.token === token ? balance.remaining : null;
   const primaryHref = `${APP_ROUTES.scores}#free-scan`;
@@ -97,7 +99,7 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
 
     async function refreshCredits() {
       const currentRequest = ++requestId;
-      const result = await apiRequest<{ usage: { tier: string; creditMode?: "monthly" | "prepaid"; jobs: { remaining: number } } }>("/api/payments/billing/usage", {
+      const result = await apiRequest<{ usage: { tier: string; creditMode?: "monthly" | "prepaid" | "unlimited"; jobs: { remaining: number } } }>("/api/payments/billing/usage", {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
@@ -108,7 +110,7 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
         return;
       }
       const remaining = result.data?.usage?.jobs?.remaining;
-      setBalance(Number.isSafeInteger(remaining) && remaining >= 0 ? { token: token!, remaining, hasCreditPool: result.data.usage.tier !== "free" || result.data.usage.creditMode === "prepaid" } : null);
+      setBalance(Number.isSafeInteger(remaining) && remaining >= 0 ? { token: token!, remaining, unlimited: result.data.usage.creditMode === "unlimited", hasCreditPool: result.data.usage.tier !== "free" || result.data.usage.creditMode === "prepaid" } : null);
     }
 
     const handleFocus = () => { void refreshCredits(); };
@@ -134,7 +136,7 @@ export function AppChrome({ children, copy, reviewEntryCopy }: { children: React
   const actions: SiteShellAction[] = [
     !token
       ? { href: loginHref, label: copy.login, tone: "secondary" }
-      : { href: APP_ROUTES.billing, label: remainingCredits === null || (balance?.token === token && !balance.hasCreditPool) ? getPurchaseOptionsCopy(locale).manage : `${copy.credits}: ${formatNumber(remainingCredits, locale)}`, tone: "credit", icon: <SparkIcon width={16} height={16} /> },
+      : { href: APP_ROUTES.billing, label: balance?.token === token && balance?.unlimited ? getLifetimeCopy(locale).unlimited : remainingCredits === null || (balance?.token === token && !balance.hasCreditPool) ? getPurchaseOptionsCopy(locale).manage : `${copy.credits}: ${formatNumber(remainingCredits, locale)}`, tone: "credit", icon: <SparkIcon width={16} height={16} /> },
     ...(checkoutAvailable ? [{ href: upgradePath(returnPath), label: copy.upgrade, tone: "tertiary" as const, onClick: () => { trackFunnelEvent("upgrade_click", { source: "app_header" }); } }] : []),
     { href: primaryHref, label: copy.primaryAction, tone: "primary", icon: <ArrowNorthEastIcon width={16} height={16} /> },
   ];

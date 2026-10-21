@@ -1,4 +1,5 @@
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
+import { claimWithLifetimeLimit } from "@score/runtime-database";
 
 export type ClaimedLegacyJob = {
   id: string;
@@ -10,20 +11,15 @@ export type ClaimedLegacyJob = {
 };
 
 export function claimNextLegacyJob(db: RuntimeDatabaseLike, timestamp: string) {
-  return db.prepare(`
+  return claimWithLifetimeLimit(db, "legacy", undefined, (jobId) => db.prepare(`
     UPDATE jobs
     SET status = 'processing', started_at = ?, updated_at = ?
-    WHERE id = (
-      SELECT id FROM jobs
-      WHERE status = 'queued'
-      ORDER BY datetime(created_at) ASC, id ASC
-      LIMIT 1
-    ) AND status = 'queued'
+    WHERE id = ? AND status = 'queued'
     RETURNING id, user_id, input_file_id, direction, request_id, trace_id
-  `).get(timestamp, timestamp) as ClaimedLegacyJob | undefined;
+  `).get(timestamp, timestamp, jobId) as ClaimedLegacyJob | undefined);
 }
 export function claimLegacyJobById(db: RuntimeDatabaseLike, input: { timestamp: string; jobId: string; brokerJobId: string }) {
-  return db.prepare(`
+  return claimWithLifetimeLimit(db, "legacy", input.jobId, () => db.prepare(`
     UPDATE jobs
     SET status = 'processing',
         started_at = CASE WHEN status = 'queued' THEN ? ELSE started_at END,
@@ -32,5 +28,5 @@ export function claimLegacyJobById(db: RuntimeDatabaseLike, input: { timestamp: 
     WHERE id = ?
       AND (status = 'queued' OR (status = 'processing' AND broker_job_id = ?))
     RETURNING id, user_id, input_file_id, direction, request_id, trace_id
-  `).get(input.timestamp, input.timestamp, input.brokerJobId, input.jobId, input.brokerJobId) as ClaimedLegacyJob | undefined;
+  `).get(input.timestamp, input.timestamp, input.brokerJobId, input.jobId, input.brokerJobId) as ClaimedLegacyJob | undefined);
 }

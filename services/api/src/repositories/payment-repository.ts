@@ -1,3 +1,4 @@
+import { lifetimeForOrder } from "./lifetime-repository.js";
 import { randomBytes } from "node:crypto";
 import type { PaymentOrderStatus, PaymentProvider } from "@score/shared";
 import { db } from "../db.js";
@@ -290,6 +291,7 @@ export function completePaymentOrder(input: {
 }
 
 export function mapPaymentOrderForPublic(order: PaymentOrderRow, includePrivate = false) {
+  const lifetime = order.checkout_plan_code === "converter-pro-lifetime" ? lifetimeForOrder(db, order.id) : undefined;
   const purchase = order.billing_kind === "one_time" ? findOneTimePurchase(db, order.id) : undefined;
   return {
     id: order.id,
@@ -312,6 +314,7 @@ export function mapPaymentOrderForPublic(order: PaymentOrderRow, includePrivate 
     accessStartsAt: purchase?.starts_at ?? null,
     accessEndsAt: purchase?.ends_at ?? null,
     purchaseStatus: purchase?.status ?? null,
+    lifetime: lifetime ? { status: lifetime.status, expiresAt: null, grantedAt: lifetime.granted_at, revokedAt: lifetime.revoked_at, transactionId: lifetime.payment_intent_id } : null,
     planCode: order.checkout_plan_code ?? purchase?.plan_code ?? null,
     passMode: order.pass_mode,
     providerCheckoutStartedAt: includePrivate ? order.provider_checkout_started_at : null,

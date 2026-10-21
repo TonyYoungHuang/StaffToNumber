@@ -9,3 +9,5 @@ export * from "./transactional.ts";
 export * from "./score-preflight-messages.ts";
 export * from "./percent-progress-messages.ts";
 export * from "./recognition-experience-messages.ts";
+
+export { getLifetimeQueueMessage } from "./lifetime-messages.ts";

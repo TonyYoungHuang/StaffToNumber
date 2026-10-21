@@ -56,6 +56,7 @@ type PaidSession = {
 };
 
 export function fulfillOneTimePurchase(db: RuntimeDatabaseLike, session: PaidSession, now = new Date().toISOString()) {
+  if (session.metadata?.planCode === "converter-pro-lifetime") return null; // Signature-verified lifetime webhook owns fulfillment.
   if (session.mode !== "payment" || session.metadata?.billingKind !== "one_time") return null;
   if (session.status !== "complete" || (session.payment_status !== "paid"
     && !(session.payment_status === "no_payment_required" && session.amount_total === 0))) return null;
@@ -106,6 +107,7 @@ export function applyOneTimeRefund(db: RuntimeDatabaseLike, charge: {
   payment_intent: string | { id: string } | null; amount: number; amount_refunded: number;
   metadata: Record<string, string>;
 }) {
+  if (charge.metadata.planCode === "converter-pro-lifetime") return;
   if (charge.metadata.billingKind !== "one_time" || !charge.metadata.orderId) return;
   const purchase = findOneTimePurchase(db, charge.metadata.orderId);
   const intentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;

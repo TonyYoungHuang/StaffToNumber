@@ -1,3 +1,4 @@
+import { activeLifetimeEntitlement } from "@score/runtime-database";
 import { listScorePasses } from "../lib/score-passes.js";
 import { randomBytes } from "node:crypto";
 import { isShopCreditPackCode, SINGLE_SCORE_PASS, type ActivationCodeStatus, type EntitlementStatus, type ShopActivationPlanCode } from "@score/shared";
@@ -421,7 +422,10 @@ export function getUserProfile(userId: string) {
     entitlementStatus = new Date(entitlement.ends_at) > now ? "active" : "expired";
   }
 
-  const effectiveEntitlement = prepaid.total > 0 && entitlementStatus !== "active"
+  const lifetime = activeLifetimeEntitlement(db, userId);
+  const effectiveEntitlement = lifetime
+    ? { status: "active" as const, startsAt: lifetime.granted_at, endsAt: null, source: "lifetime" as const, provider: "stripe" as const, organizationId: null, lifetime: true, productCode: lifetime.product_code }
+    : prepaid.total > 0 && entitlementStatus !== "active"
     ? { status: "active" as const, startsAt: prepaid.startsAt, endsAt: null, source: "prepaid_credits" as const, provider: null, organizationId: null }
     : subscriptionEntitlement
     ? {

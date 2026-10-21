@@ -80,7 +80,7 @@ export function localizeHomepagePlans(
   const translations = getHomepageLocalization(locale).plans;
   return presentPricingPlans(locale, plans.map((plan) => ({
     ...plan,
-    ...translations[plan.code],
+    ...translations[plan.code === "converter-pro-lifetime" ? "converter-pro-annual" : plan.code],
     code: plan.code,
     price: localizeUsdText(plan.price, locale),
     featured: plan.featured,
@@ -91,5 +91,6 @@ export function getHomepagePlanTranslation(
   locale: SupportedLocale,
   code: PricingPlanDisplay["code"],
 ): HomepagePlanTranslation {
-  return getHomepageLocalization(locale).plans[code];
+  const plan = getHomepageLocalization(locale).plans[code === "converter-pro-lifetime" ? "converter-pro-annual" : code];
+  return code === "converter-pro-lifetime" ? presentPricingPlans(locale, [{ ...plan, code, price: "$99", featured: false }])[0] : plan;
 }

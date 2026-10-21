@@ -4,6 +4,8 @@ import { Worker } from "node:worker_threads";
 export { assertAccountStorageQuota, resolveStorageQuotaTier, storageQuotaPolicyFromEnv } from "./storage-quota.js";
 export { recognitionCreditSettlement, settleRecognitionCredits, settledRecognitionCreditCost, type RecognitionCreditSettlement, type RecognitionCreditSettlementInput } from "./recognition-credit-settlement.js";
 
+export { renewLifetimeRecognitionSlot, releaseLifetimeRecognitionSlot, LIFETIME_SCHEMA_SQL, activeLifetimeEntitlement, hasLifetimeSchema, assertLifetimeRecognitionQueue, LifetimeRecognitionBusyError, LifetimeRecognitionDeferredError, claimWithLifetimeLimit, type LifetimeEntitlement } from "./lifetime.js";
+
 export type RuntimeDatabasePrimary = "sqlite" | "postgres";
 
 export type RuntimeRunResult = {

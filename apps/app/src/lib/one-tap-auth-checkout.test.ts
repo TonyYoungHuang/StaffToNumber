@@ -554,7 +554,7 @@ test("payment return recognizes top-ups by group membership and resumes only whe
     "../lib/auth-storage": { getStoredToken: () => "fixture-auth", clearStoredToken() {} },
     "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
     "../lib/flow-return": { readCheckoutReturn: () => ({ next: "/scores/part-1", retry: "/checkout", createdAt: 1 }) },
-    "../lib/analytics": { trackFunnelEventOnce() {} },
+    "../lib/analytics": { trackConfirmedPurchase() {} },
     "../lib/api": { apiRequest: async (path: string, init?: RequestInit) => {
       requests.push({ path, init });
       if (path === "/api/auth/me") return { ok: true, data: { user: { id: "user-1", entitlement: { status: "inactive" }, scorePasses: [{ id: "root-pass", documentId: "root-1", documentIds: ["root-1", "part-1"] }] } } };
@@ -591,7 +591,7 @@ test("server return path restores its query and panel, and upload recognition wa
       "../lib/auth-storage": { getStoredToken: () => null, clearStoredToken() {} },
       "../lib/flow-messages/client": { useFlowMessages: () => ({}) },
       "../lib/flow-return": { readCheckoutReturn: () => ({ next: "/scores/cache#wrong", retry: "/checkout", createdAt: 1 }) },
-      "../lib/analytics": { trackFunnelEventOnce() {} },
+      "../lib/analytics": { trackConfirmedPurchase() {} },
       "../lib/api": { apiRequest: async (path: string, init?: RequestInit) => {
         requests.push({ path, init });
         if (path === "/api/auth/me") return { ok: true, data: { user: { id: "owner", entitlement: { status: "active" } } } };

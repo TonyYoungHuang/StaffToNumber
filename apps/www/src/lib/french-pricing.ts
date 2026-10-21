@@ -17,7 +17,7 @@ export function getFrenchPricingPlans(kind: CheckoutBillingKind) {
   return localizeHomepagePlans("fr", getPricingPlanCatalog("en"))
     .filter(plan => plan.code !== "free")
     .map(plan => {
-      if (kind === "subscription" || plan.code === "converter-pro-annual") return plan;
+      if (kind === "subscription" || plan.code === "converter-pro-lifetime") return plan;
       const duration = plan.code.endsWith("-annual") ? purchase.year : purchase.month;
       return {
         ...plan,

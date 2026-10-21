@@ -20,8 +20,8 @@ export class RecognitionPriceChangedError extends Error {
   constructor() { super("The recognition price changed. Review the current price and confirm again."); }
 }
 
-export function assertRecognitionQuote(mode: ScoreRecognitionMode, expectedCreditCost: number | undefined) {
-  if (expectedCreditCost !== undefined && expectedCreditCost !== recognitionCreditCost(mode)) throw new RecognitionPriceChangedError();
+export function assertRecognitionQuote(mode: ScoreRecognitionMode, expectedCreditCost: number | undefined, userId?: string) {
+  if (expectedCreditCost !== undefined && expectedCreditCost !== recognitionCreditCost(mode, userId)) throw new RecognitionPriceChangedError();
 }
 
 export function normalizeRecognitionMode(value: unknown): ScoreRecognitionMode {
@@ -34,12 +34,12 @@ export function normalizeRecognitionMode(value: unknown): ScoreRecognitionMode {
 export function resolveRecognitionAccess(userId: string, mode: ScoreRecognitionMode): {
   mode: ScoreRecognitionMode; creditCost: number; creditSource: ScoreRecognitionCreditSource;
 } {
-  const creditCost = recognitionCreditCost(mode);
+  const creditCost = recognitionCreditCost(mode, userId);
   const quota = getPlanQuotaUsage(userId);
   const paid = getUserProfile(userId)?.entitlement.status === "active";
   const passes = listScorePasses(db, userId).filter(pass => !pass.documentId);
   const pass = passes.find(pass => pass.remaining >= creditCost) ?? passes[0];
-  const decision = processingChargeDecision({ paid, monthlyRemaining: quota.monthly.remaining, prepaidRemaining: quota.prepaid.remaining,
+  const decision = processingChargeDecision({ unlimited: quota.unlimited, paid, monthlyRemaining: quota.monthly.remaining, prepaidRemaining: quota.prepaid.remaining,
     passRemaining: pass?.remaining ?? null, creditCost, allowFreeTrial: mode === "simple" && getFreeTrialAccess(userId).available });
   if (decision.canSubmit) return { mode, creditCost, creditSource: decision.source === "monthly" || decision.source === "prepaid" ? "plan" : decision.source };
   if (passes.length) throw new ScorePassError("SCORE_PASS_CREDITS_EXHAUSTED", "This score pass does not have enough processing credits.");
@@ -55,7 +55,7 @@ export function getRecognitionOptions(userId: string) {
       return { ...resolveRecognitionAccess(userId, mode), canSubmit: true, reason: null };
     } catch (error) {
       if (!(error instanceof RecognitionAccessError || error instanceof PlanQuotaExceededError || error instanceof FreeTrialLimitError || error instanceof ScorePassError)) throw error;
-      return { mode, creditCost: recognitionCreditCost(mode), canSubmit: false, creditSource: null, reason: error.code };
+      return { mode, creditCost: recognitionCreditCost(mode, userId), canSubmit: false, creditSource: null, reason: error.code };
     }
   });
   return { defaultMode: "simple" as const, quota: getPlanQuotaUsage(userId), freeTrial: getFreeTrialAccess(userId), scorePasses: listScorePasses(db, userId), options };

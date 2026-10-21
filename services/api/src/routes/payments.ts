@@ -1,3 +1,4 @@
+import { lifetimeForOrder } from "../repositories/lifetime-repository.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { isPurchasePlanCode, isCheckoutBillingKind, type CheckoutBillingKind, type PurchasePlanCode, type PaymentProvider } from "@score/shared";
@@ -173,8 +174,17 @@ function mirrorOrderView(order: PaymentOrderRow, includePrivate: boolean) {
       recoveryCode: view.continuation.consumed ? null : "CHECKOUT_RECOVERY_ACTION_UNAVAILABLE" } : null };
 }
 
+function lifetimeOrderVerification(order: PaymentOrderRow): PaymentVerification {
+  if (order.status === "cancelled" || order.status === "failed") return { status: order.status, retryable: false };
+  const entitlement = lifetimeForOrder(db, order.id);
+  if (entitlement?.status === "revoked") return { status: "refunded", retryable: false };
+  if (entitlement?.status === "active" && entitlement.user_id === order.user_id && order.status === "paid") return { status: "ready", retryable: false };
+  return { status: "waiting_fulfillment", retryable: true };
+}
+
 function mirrorOrderVerification(order: PaymentOrderRow, userId: string | undefined): PaymentVerification {
   if (order.status === "cancelled" || order.status === "failed") return { status: order.status, retryable: false };
+  if (order.checkout_plan_code === "converter-pro-lifetime") return lifetimeOrderVerification(order);
   const purchase = findOneTimePurchase(db, order.id);
   if (purchase?.status === "refunded") return { status: "refunded", retryable: false };
   if (order.status !== "paid" || !userId || order.user_id !== userId) return { status: "verification_failed", retryable: true };
@@ -277,6 +287,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
 
   const verifyAndFulfill = async (order: PaymentOrderRow, publicToken: string, sessionId?: string, transactionId?: string): Promise<PaymentVerification> => {
     const result = (status: PaymentVerificationStatus, retryable = false) => ({ status, retryable });
+    if (order.checkout_plan_code === "converter-pro-lifetime") return lifetimeOrderVerification(order);
     if (order.status === "cancelled") return result("cancelled");
     if (order.status === "failed") return result("failed");
     let paymentConfirmed = order.status === "paid";
@@ -390,7 +401,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
       }
       const planCode = body.planCode;
       const billingKind = body.billingKind ?? "subscription";
-      if (!isCheckoutBillingKind(billingKind) || (planCode === "single-score" && billingKind !== "one_time") || (billingKind === "one_time" && body.provider !== "stripe")) {
+      if (!isCheckoutBillingKind(billingKind) || ((planCode === "single-score" || planCode === "converter-pro-lifetime") && billingKind !== "one_time") || (billingKind === "one_time" && body.provider !== "stripe")) {
         return reply.code(400).send({ error: "Invalid purchase type or payment provider." });
       }
 
@@ -433,7 +444,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
 
       const organizationId = typeof body.organizationId === "string" && body.organizationId.trim() ? body.organizationId.trim() : null;
       const seatQuantity = organizationId ? Math.max(2, Math.min(Number(body.seatQuantity) || 2, 100_000)) : 1;
-      if (billingKind === "one_time" && (organizationId || (planCode !== "single-score" && hasRenewingSubscription(db, request.authUserId!)))) {
+      if (billingKind === "one_time" && (organizationId || (planCode !== "single-score" && planCode !== "converter-pro-lifetime" && hasRenewingSubscription(db, request.authUserId!)))) {
         return reply.code(409).send({ error: "Cancel future subscription renewals in Billing before buying a one-time personal plan.", code: "ACTIVE_RECURRING_SUBSCRIPTION" });
       }
       if (organizationId) {
@@ -647,7 +658,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
     }
     const planCode = body.planCode;
     const billingKind = body.billingKind ?? "subscription";
-    if (!isCheckoutBillingKind(billingKind) || (planCode === "single-score" && billingKind !== "one_time") || (billingKind === "one_time" && body.provider !== "stripe")) {
+    if (!isCheckoutBillingKind(billingKind) || ((planCode === "single-score" || planCode === "converter-pro-lifetime") && billingKind !== "one_time") || (billingKind === "one_time" && body.provider !== "stripe")) {
       return reply.code(400).send({ error: "Invalid purchase type or payment provider." });
     }
 
@@ -667,7 +678,7 @@ export async function paymentRoutes(app: FastifyInstance, options: { durableServ
         code: "ACCOUNT_REQUIRED",
       });
     }
-    if (billingKind === "one_time" && planCode !== "single-score" && hasRenewingSubscription(db, account.id)) {
+    if (billingKind === "one_time" && planCode !== "single-score" && planCode !== "converter-pro-lifetime" && hasRenewingSubscription(db, account.id)) {
       return reply.code(409).send({ error: "Cancel future subscription renewals in Billing before buying a one-time plan.", code: "ACTIVE_RECURRING_SUBSCRIPTION" });
     }
     let returnContext;

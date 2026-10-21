@@ -1,11 +1,7 @@
-import type { SupportedLocale } from "@score/i18n";
+import { getLifetimeQueueMessage, type SupportedLocale } from "@score/i18n";
 import type { PricingPlanDisplay } from "./index.ts";
 
-// Presentation only. TODO(lifetime-checkout): converter-pro-annual still resolves
-// to the existing ANNUAL Stripe Price and subscription/term entitlement.
-// Before release, provision a one-time Price (mode=payment), lifetime entitlement,
-// quota/refund/migration rules and webhook tests. Do not change billing here.
-export const LIFETIME_PRESENTATION_PLAN = "converter-pro-annual";
+export const LIFETIME_PRESENTATION_PLAN = "converter-pro-lifetime";
 
 const copy = {
   en: ["Lifetime access", "Lifetime", "One-time payment", "Unlimited for life", "Pay once. Keep Converter Pro permanently.", "Unlimited score recognition for life", "Unlimited editing, transposition and playback for life", "Unlimited score and audio exports for life", "All Converter Pro features for life", "Permanent access · no expiry", "No recurring payments", "Choose lifetime access"],
@@ -28,5 +24,10 @@ export function presentLifetimePlan(locale: SupportedLocale, plan: PricingPlanDi
 
 export function presentPricingPlans(locale: SupportedLocale, plans: readonly PricingPlanDisplay[]): readonly PricingPlanDisplay[] {
   const order = ["free", "starter-monthly", "converter-pro-monthly", "starter-annual", LIFETIME_PRESENTATION_PLAN];
-  return plans.map(plan => presentLifetimePlan(locale, plan)).sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
+  return plans.map(plan => presentLifetimePlan(locale, plan.code === "converter-pro-annual" ? { ...plan, code: LIFETIME_PRESENTATION_PLAN } : plan)).sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
+}
+
+export function getLifetimeCopy(locale: SupportedLocale) {
+  const text = copy[locale];
+  return { name: `Converter Pro · ${text[1]}`, unlimited: text[3], permanent: text[9], payment: text[2], queueLimit: getLifetimeQueueMessage(locale) };
 }

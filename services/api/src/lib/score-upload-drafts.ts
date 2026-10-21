@@ -28,7 +28,7 @@ export function mapScoreUploadDraft(draft: ScoreUploadDraftRow) {
   const document = findScoreDocumentById(draft.document_id);
   const source = document?.source_file_id ? findStoredFileById(document.source_file_id) : undefined;
   return { id: draft.id, documentId: draft.document_id, title: document?.title ?? source?.original_name ?? "",
-    filename: source?.original_name ?? "", mode: draft.recognition_mode, creditCost: recognitionCreditCost(draft.recognition_mode),
+    filename: source?.original_name ?? "", mode: draft.recognition_mode, creditCost: recognitionCreditCost(draft.recognition_mode, draft.user_id),
     status: draft.status, expiresAt: draft.expires_at, taskId: draft.task_id, confirmation: "required" as const,
     memoryAssessment: readDraftAssessment(draft.document_id, draft.user_id).memoryAssessment };
 }

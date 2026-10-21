@@ -19,7 +19,7 @@ export type RecognitionCreditSettlement = {
 /** Four decimal places, rounded toward the customer, using integer arithmetic. */
 export function recognitionCreditSettlement(input: Omit<RecognitionCreditSettlementInput, "jobId">): RecognitionCreditSettlement {
   const delivered = Array.isArray(input.deliveredPages) ? new Set(input.deliveredPages).size : input.deliveredPages;
-  if (!Number.isSafeInteger(input.quotedCredits) || input.quotedCredits < 1 || !Number.isSafeInteger(input.sourcePageCount) || input.sourcePageCount < 1 ||
+  if (!Number.isSafeInteger(input.quotedCredits) || input.quotedCredits < 0 || !Number.isSafeInteger(input.sourcePageCount) || input.sourcePageCount < 1 ||
       !Number.isSafeInteger(delivered) || delivered < 0 || delivered > input.sourcePageCount ||
       (Array.isArray(input.deliveredPages) && input.deliveredPages.some(page => !Number.isSafeInteger(page) || page < 1 || page > input.sourcePageCount))) {
     throw new Error("Invalid recognition delivery credit settlement.");

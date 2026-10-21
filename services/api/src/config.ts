@@ -153,6 +153,8 @@ export const config = {
   stripeConverterProAnnualPriceId: process.env.STRIPE_CONVERTER_PRO_ANNUAL_PRICE_ID?.trim() ?? "",
   stripeManagedPaymentsEnabled: process.env.STRIPE_MANAGED_PAYMENTS_ENABLED === "true",
   stripeSingleScorePriceId: process.env.STRIPE_SINGLE_SCORE_PRICE_ID?.trim() || "",
+  stripeLifetimePriceId: process.env.STRIPE_PRICE_CONVERTER_PRO_LIFETIME?.trim() ?? "",
+  stripeTestOnly: process.env.STRIPE_TEST_ONLY === "true",
   stripeOneTimePriceIds: {
     "starter-monthly": process.env.STRIPE_STARTER_MONTHLY_ONE_TIME_PRICE_ID?.trim() ?? "",
     "starter-annual": process.env.STRIPE_STARTER_ANNUAL_ONE_TIME_PRICE_ID?.trim() ?? "",

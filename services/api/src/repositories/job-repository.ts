@@ -1,3 +1,4 @@
+import { assertLifetimeRecognitionQueue } from "@score/runtime-database";
 import type { ConversionDirection, JobResultKind, JobStatus } from "@score/shared";
 import { db } from "../db.js";
 import { createId } from "../lib/auth.js";
@@ -33,6 +34,7 @@ export function createJob(input: { userId: string; inputFileId: string; directio
   db.exec("BEGIN IMMEDIATE");
   try {
     lockScorePassAccount(db, input.userId);
+    assertLifetimeRecognitionQueue(db, input.userId);
     const quota = assertProcessingQuota(input.userId);
     db.prepare(
       `

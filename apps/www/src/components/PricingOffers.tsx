@@ -11,7 +11,7 @@ export function PricingOffers({ locale, title }: { locale: SupportedLocale; titl
   const localizedPlans = localizeHomepagePlans(locale, getPricingPlanCatalog("en")).filter(plan => plan.code !== "free");
   const plans = Object.fromEntries((["subscription", "one_time"] as const).map(kind => {
     return [kind, localizedPlans.map(plan => {
-      if (kind === "subscription" || plan.code === "converter-pro-annual") return plan;
+      if (kind === "subscription" || plan.code === "converter-pro-lifetime") return plan;
       const duration = plan.code.endsWith("annual") ? purchase.year : purchase.month;
       return { ...plan, cycle: duration, badge: purchase.oneTime, cta: purchase.buyTemplate.replace("{name}", plan.name).replace("{duration}", duration) };
     })];

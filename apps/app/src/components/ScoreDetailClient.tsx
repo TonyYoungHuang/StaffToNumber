@@ -13,7 +13,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { formatDateTime, formatMessage, formatNumber, localizeApiError, type SupportedLocale } from "@score/i18n";
 import { pitchClassLabel, semitoneCount } from "../lib/music-labels";
-import { APP_ROUTES, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
+import { getLifetimeCopy, APP_ROUTES, readScoreTaskIntent, scoreTaskDocumentPath, scoreTaskEntryPath, SCORE_RANGE_PROFILES, TRANSPOSING_INSTRUMENT_PROFILES } from "@score/shared";
 import type {
   CheckoutIntendedAction,
   AssignmentPracticeSettings,
@@ -921,6 +921,7 @@ function ScoreDetailContent({ ensemble, onUpgrade }: { ensemble: boolean; onUpgr
     const option = exportQuoteOption(exportQuote, format);
     if (!option || !exportQuote) return exportQuoteError ? exportCostCopy.unavailable : exportCostCopy.checking;
     if (option.reason === "SCORE_PASS_REQUIRED") return `${wb.pass} · Starter / Pro`;
+    if (exportQuote.balance.creditSource === "lifetime") return getLifetimeCopy(locale).unlimited;
     if (option.creditCost === 0 && exportQuote.options.some(item => item.reason === "SCORE_PASS_REQUIRED")) return exportCostCopy.freeFormat;
     const shared = exportQuote.balance.creditSource === "score_pass" ? ` · ${formatMessage(scorePassCopy.sharedBalance, { balance: formatNumber(exportQuote.balance.available, locale) })}` : "";
     return `${formatMessage(option.creditCost === 1 ? exportCostCopy.costSingle : exportCostCopy.costMultiple, { count: formatNumber(option.creditCost, locale) })} · ${formatMessage(exportCostCopy.balance, {

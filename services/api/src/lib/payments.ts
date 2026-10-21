@@ -180,6 +180,7 @@ function configuredCheckoutPriceIds(provider: PaymentProvider): CheckoutPlanPric
 }
 
 export function getCheckoutPriceId(provider: PaymentProvider, planCode: PurchasePlanCode, billingKind: CheckoutBillingKind = "subscription") {
+  if (planCode === "converter-pro-lifetime") return provider === "stripe" && billingKind === "one_time" ? config.stripeLifetimePriceId || null : null;
   if (planCode === "single-score") return provider === "stripe" && billingKind === "one_time" ? config.stripeSingleScorePriceId || null : null;
   if (billingKind === "one_time") return provider === "stripe" ? resolveCheckoutPriceId(planCode, config.stripeOneTimePriceIds) : null;
   return resolveCheckoutPriceId(planCode, configuredCheckoutPriceIds(provider));
@@ -197,6 +198,12 @@ export function buildStripeCheckoutSessionParams(
   input: StripeCheckoutSessionInput,
   options: { managedPaymentsEnabled?: boolean } = {},
 ) {
+  if (input.planCode === "converter-pro-lifetime" && (input.billingKind !== "one_time" || input.organizationId || (input.seatQuantity ?? 1) !== 1)) throw new Error("Lifetime is a one-time individual purchase.");
+  // Tax/merchant-of-record policy for the fixed $99 offer is still undecided.
+  // Fail before collecting money if global Managed Payments could add tax.
+  if (input.planCode === "converter-pro-lifetime" && (options.managedPaymentsEnabled ?? config.stripeManagedPaymentsEnabled)) {
+    throw new Error("Lifetime checkout requires a confirmed $99 USD tax policy before enabling Managed Payments.");
+  }
   const priceId = normalizeStripeCredential(input.priceId);
   if (!priceId) {
     throw new Error("Stripe is not configured.");
@@ -217,7 +224,8 @@ export function buildStripeCheckoutSessionParams(
     locale: selectedLocale === "zh-CN" ? "zh" : selectedLocale ?? "auto",
     mode: input.billingKind ? input.billingKind === "one_time" ? "payment" : "subscription" : config.paymentBillingMode,
     billing_address_collection: "auto",
-    allow_promotion_codes: true,
+    allow_promotion_codes: input.planCode !== "converter-pro-lifetime",
+    ...(input.planCode === "converter-pro-lifetime" ? { adaptive_pricing: { enabled: false } } : {}),
     line_items: [
       {
         price: priceId,
@@ -272,6 +280,16 @@ export function stripeSessionMatchesPaymentOrder(
   }
 }
 
+export function assertStripeTestSafety() {
+  if (config.stripeTestOnly && !/^(sk|rk)_test_/.test(config.stripeSecretKey.trim())) throw new Error("Stripe TEST-only guard rejected this credential.");
+}
+
+export async function retrieveStripeCharge(chargeId: string) {
+  assertStripeTestSafety();
+  if (!stripeClient) throw new Error("Stripe is not configured.");
+  return stripeClient.charges.retrieve(chargeId);
+}
+
 export function normalizeStripeCredential(value: string) {
   return value.replace(/\s+/gu, "");
 }
@@ -299,11 +317,21 @@ export function buildStripeCheckoutRequestOptions(orderId: string, managedPaymen
 }
 
 export async function createStripeCheckoutSession(input: StripeCheckoutSessionInput) {
+  assertStripeTestSafety();
   if (!stripeClient) {
     throw new Error("Stripe is not configured.");
   }
 
   const params = buildStripeCheckoutSessionParams(input);
+  if (input.planCode === "converter-pro-lifetime") {
+    assertStripeTestSafety();
+    const price = await stripeClient.prices.retrieve(input.priceId);
+    assertStripeEventMode(price, config.stripeSecretKey);
+    if (!price.active || price.type !== "one_time" || price.recurring || price.currency !== "usd" || price.unit_amount !== 9900) {
+      throw new Error("Configured lifetime Price must be active, one-time, and exactly $99 USD.");
+    }
+  }
+  assertStripeTestSafety();
   const session = await stripeClient.checkout.sessions.create(
     params,
     buildStripeCheckoutRequestOptions(input.orderId),
@@ -313,6 +341,7 @@ export async function createStripeCheckoutSession(input: StripeCheckoutSessionIn
 }
 
 export async function retrieveStripeCheckoutSession(sessionId: string) {
+  assertStripeTestSafety();
   if (!stripeClient) {
     throw new Error("Stripe is not configured.");
   }
@@ -321,6 +350,7 @@ export async function retrieveStripeCheckoutSession(sessionId: string) {
 }
 
 export async function retrieveStripeSubscription(subscriptionId: string) {
+  assertStripeTestSafety();
   if (!stripeClient) throw new Error("Stripe is not configured.");
   return stripeClient.subscriptions.retrieve(subscriptionId);
 }
@@ -338,6 +368,7 @@ export async function retrievePaddleSubscription(subscriptionId: string) {
 }
 
 export function verifyStripeWebhook(rawBody: Buffer, signature: string) {
+  assertStripeTestSafety();
   const webhookSecret = normalizeWebhookSigningSecret(config.stripeWebhookSecret);
   if (!stripeClient || !webhookSecret) {
     throw new Error("Stripe webhook is not configured.");
@@ -349,14 +380,17 @@ export function verifyStripeWebhook(rawBody: Buffer, signature: string) {
 }
 
 export async function expireStripeCheckoutSession(sessionId: string) {
+  assertStripeTestSafety();
   if (!stripeClient) throw new Error("Stripe is not configured.");
   return stripeClient.checkout.sessions.expire(sessionId);
 }
 
 export async function cancelStripeSubscription(subscriptionId: string, atPeriodEnd: boolean) {
+  assertStripeTestSafety();
   if (!stripeClient) throw new Error("Stripe is not configured.");
   const current = await stripeClient.subscriptions.retrieve(subscriptionId);
   if (current.status === "canceled" || (atPeriodEnd && current.cancel_at_period_end)) return current;
+  assertStripeTestSafety();
   return atPeriodEnd
     ? stripeClient.subscriptions.update(subscriptionId, { cancel_at_period_end: true })
     : stripeClient.subscriptions.cancel(subscriptionId);
@@ -497,6 +531,7 @@ export function verifyPaddleWebhook(rawBody: Buffer, signatureHeader: string) {
 }
 
 export async function createStripeBillingPortalSession(customerId: string, returnUrl: string) {
+  assertStripeTestSafety();
   if (!stripeClient) throw new Error("Stripe is not configured.");
   return stripeClient.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
 }

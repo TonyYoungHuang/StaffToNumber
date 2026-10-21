@@ -30,12 +30,12 @@ test("English and Spanish purchase types preserve amounts and quotas without rec
   for (const locale of ["en", "es"] as const) {
     const subscription = getLocalizedPaidPlans(locale, "subscription");
     const oneTime = getLocalizedPaidPlans(locale, "one_time");
-    assert.deepEqual(oneTime.map(plan => plan.code), ["starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-annual"]);
+    assert.deepEqual(oneTime.map(plan => plan.code), ["starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-lifetime"]);
     for (const [index, plan] of oneTime.entries()) {
       assert.equal(plan.price, subscription[index].price);
       assert.equal(plan.credits, subscription[index].credits);
       assert.deepEqual(plan.benefits, subscription[index].benefits);
-      if (plan.code === "converter-pro-annual") { assert.equal(plan.cycle, subscription[index].cycle); continue; }
+      if (plan.code === "converter-pro-lifetime") { assert.equal(plan.cycle, subscription[index].cycle); continue; }
       assert.notEqual(plan.cycle, subscription[index].cycle);
       assert.doesNotMatch(plan.resources.slice(0, -1).join(" "), /renewal|renovación|twelve monthly|doce pagos/iu);
     }
@@ -56,11 +56,11 @@ test("German and Russian prices share plan codes, amounts and quotas across purc
   for (const locale of ["de", "ru"] as const) {
     const recurring = getLocalizedPaidPlans(locale,"subscription");
     const prepaid = getLocalizedPaidPlans(locale,"one_time");
-    assert.deepEqual(prepaid.map(plan=>plan.code), ["starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-annual"]);
+    assert.deepEqual(prepaid.map(plan=>plan.code), ["starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-lifetime"]);
     assert.deepEqual(prepaid.map(plan=>plan.price.replace(/\s/gu," ")), ["7,99 USD","14,99 USD","49,00 USD","99,00 USD"]);
     for (const [index,plan] of prepaid.entries()) {
       assert.equal(plan.price,recurring[index].price); assert.equal(plan.credits,recurring[index].credits);
-      if (plan.code === "converter-pro-annual") { assert.equal(plan.cycle, recurring[index].cycle); continue; }
+      if (plan.code === "converter-pro-lifetime") { assert.equal(plan.cycle, recurring[index].cycle); continue; }
       assert.notEqual(plan.cycle,recurring[index].cycle);
       assert.doesNotMatch(plan.resources.slice(0,-1).join(" "),/automatische Verlängerung|Автоматическое продление/);
     }
@@ -74,13 +74,13 @@ test("German and Russian prices share plan codes, amounts and quotas across purc
 test("French pricing distinguishes one-time access without changing amounts or quotas", () => {
   const recurring = getFrenchPricingPlans("subscription");
   const prepaid = getFrenchPricingPlans("one_time");
-  assert.deepEqual(prepaid.map(plan => plan.code), ["starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-annual"]);
+  assert.deepEqual(prepaid.map(plan => plan.code), ["starter-monthly", "converter-pro-monthly", "starter-annual", "converter-pro-lifetime"]);
   assert.deepEqual(prepaid.map(plan => plan.price.replace(/\s/gu, " ")), ["7,99 $US", "14,99 $US", "49,00 $US", "99,00 $US"]);
   for (const [index, plan] of prepaid.entries()) {
     assert.equal(plan.price, recurring[index].price);
     assert.equal(plan.credits, recurring[index].credits);
     assert.deepEqual(plan.benefits, recurring[index].benefits);
-    if (plan.code === "converter-pro-annual") { assert.equal(plan.cycle, "À vie"); continue; }
+    if (plan.code === "converter-pro-lifetime") { assert.equal(plan.cycle, "À vie"); continue; }
     assert.match(plan.cta, /une fois/u);
     assert.match(plan.resources.join(" "), /Sans renouvellement automatique/u);
     assert.doesNotMatch(plan.resources.join(" "), /Renouvellement mensuel|douze mensualités/u);

@@ -87,9 +87,9 @@ export function canConfirmScoreRecognition(input: {
   quoteError: string | null;
 }) {
   return input.file !== null && input.preflight.status === "ready" && input.preflight.file === input.file && Boolean(input.preflight.stagedUploadId?.trim()) && !isScoreRecognitionRejected(input.preflight.result) &&
-    !(needsBigRecognitionLane(input.preflight.result.memoryAssessment, input.selectedMode) && input.quote?.creditSource !== "plan" && input.quote?.creditSource !== "score_pass") &&
+    !(needsBigRecognitionLane(input.preflight.result.memoryAssessment, input.selectedMode) && input.quote?.creditSource !== "lifetime" && input.quote?.creditSource !== "plan" && input.quote?.creditSource !== "score_pass") &&
     input.selectedMode !== null && input.quote?.mode === input.selectedMode && input.quote.canSubmit &&
-    Number.isSafeInteger(input.quote.creditCost) && input.quote.creditCost > 0 && !input.quoteLoading && !input.quoteError;
+    Number.isSafeInteger(input.quote.creditCost) && input.quote.creditCost >= 0 && !input.quoteLoading && !input.quoteError;
 }
 
 /** An async result may update the UI only while it still belongs to the selected upload. */

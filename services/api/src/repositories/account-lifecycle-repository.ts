@@ -137,6 +137,7 @@ export function buildAccountDataExport(userId: string) {
        FROM payment_orders WHERE user_id = ? ORDER BY created_at`,
       userId,
     ),
+    lifetimeEntitlements: rows("SELECT * FROM lifetime_entitlements WHERE user_id = ? ORDER BY granted_at", userId),
     oneTimePurchases: rows(
       `SELECT id, plan_code, status, starts_at, ends_at, paid_at, amount_minor, currency, amount_refunded_minor
        FROM billing_one_time_purchases WHERE user_id = ? ORDER BY created_at`, userId,

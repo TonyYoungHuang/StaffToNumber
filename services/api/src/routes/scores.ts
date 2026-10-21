@@ -1,3 +1,4 @@
+import { LifetimeRecognitionBusyError } from "@score/runtime-database";
 import { CheckoutContinuationError, consumeCheckoutContinuation } from "../lib/checkout-continuation.js";
 import { normalizeScoreExportRequest } from "../lib/score-export-request.js";
 import { saveDurablePaymentOrder } from "../lib/payment-order-durable-store.js";
@@ -1608,6 +1609,7 @@ export async function scoreRoutes(app: FastifyInstance) {
   registerScoreUploadDraftRoutes(app);
   registerScoreRecognitionResultRoutes(app);
   app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof LifetimeRecognitionBusyError) return reply.code(error.statusCode).send({ code: error.code, error: error.message });
     if (error instanceof RecognitionAdmissionError) return reply.code(error.statusCode).send({code:error.code,error:error.message});
     if (error instanceof StagedOmrUploadError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
     if (error instanceof ScoreCoverageReviewRequiredError) return reply.code(error.statusCode).send({ error: error.message, code: error.code });
@@ -5313,9 +5315,9 @@ export async function scoreRoutes(app: FastifyInstance) {
         return reply.code(400).send({ code: "INVALID_EXPECTED_CREDIT_COST", error: "Conflicting expected recognition credits were supplied." });
       }
       if (suppliedCost !== undefined) {
-        if ((typeof suppliedCost !== "number" && typeof suppliedCost !== "string") || !/^[1-9]\d*$/.test(String(suppliedCost))
+        if ((typeof suppliedCost !== "number" && typeof suppliedCost !== "string") || !/^(0|[1-9]\d*)$/.test(String(suppliedCost))
           || !Number.isSafeInteger(Number(suppliedCost))) {
-          return reply.code(400).send({ code: "INVALID_EXPECTED_CREDIT_COST", error: "Expected recognition credits must be a positive integer." });
+          return reply.code(400).send({ code: "INVALID_EXPECTED_CREDIT_COST", error: "Expected recognition credits must be a non-negative integer." });
         }
         expectedCreditCost = Number(suppliedCost);
       }
@@ -5328,7 +5330,7 @@ export async function scoreRoutes(app: FastifyInstance) {
       const queryMode = modes[0];
       let recognitionMode = normalizeRecognitionMode(queryMode);
       if (queryMode !== undefined) {
-        try { assertRecognitionQuote(recognitionMode, expectedCreditCost); }
+        try { assertRecognitionQuote(recognitionMode, expectedCreditCost, request.authUserId!); }
         catch (error) { if (error instanceof RecognitionPriceChangedError) return priceChangedResponse(); throw error; }
       }
       // Reject ineligible requests before reading/storing their upload.
@@ -5386,7 +5388,7 @@ export async function scoreRoutes(app: FastifyInstance) {
           throw new RecognitionAccessError("INVALID_RECOGNITION_MODE", "Conflicting recognition modes were supplied.");
         }
         recognitionMode = normalizeRecognitionMode(queryMode ?? fieldValue);
-        assertRecognitionQuote(recognitionMode, expectedCreditCost);
+        assertRecognitionQuote(recognitionMode, expectedCreditCost, request.authUserId!);
         recognition = resolveRecognitionAccess(request.authUserId!, recognitionMode);
       } catch (error) {
         await fs.promises.rm(targetPath, { force: true });

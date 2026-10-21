@@ -1,5 +1,7 @@
 "use client";
 
+import { getLifetimeCopy } from "@score/shared";
+
 import { workbenchCopy } from "@score/ui";
 import { getSingleScorePassCopy } from "@score/shared";
 
@@ -71,7 +73,7 @@ type QuotaUsage = {
   periodStart: string;
   periodEnd: string;
   jobs: { used: number; limit: number; remaining: number };
-  creditMode?: "monthly" | "prepaid";
+  creditMode?: "monthly" | "prepaid" | "unlimited";
   prepaid?: { total: number; used: number; remaining: number };
   storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
 };
@@ -312,7 +314,14 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
         </div>)}
       </section> : null}
 
-      {quota?.tier === "free" && quota.creditMode !== "prepaid" ? (
+      {quota?.creditMode === "unlimited" ? (
+        <section className="surface-panel stack-lg" aria-label={getLifetimeCopy(locale).name}>
+          <h2 className="card-title">{getLifetimeCopy(locale).name}</h2>
+          <p>{getLifetimeCopy(locale).unlimited} · {getLifetimeCopy(locale).permanent}</p>
+          <p>{copy.storage}: {formatBillingBytes(quota.storage.usedBytes, locale)} · {getLifetimeCopy(locale).unlimited}</p>
+          <p className="helper-copy">{getLifetimeCopy(locale).queueLimit}</p>
+        </section>
+      ) : quota?.tier === "free" && quota.creditMode !== "prepaid" ? (
         <section className="surface-panel stack-lg">
           <h2 className="card-title">{copy.quotaTiers.free}</h2>
           <QuotaMeter label={copy.storage} used={quota.storage.usedBytes} limit={quota.storage.limitBytes} value={`${formatBillingBytes(quota.storage.usedBytes, locale)} / ${formatBillingBytes(quota.storage.limitBytes, locale)}`} />
@@ -378,7 +387,7 @@ export function BillingManager({ locale, copy, freePlanCredits }: BillingManager
                 : Date.parse(purchase.startsAt) > Date.now() ? "upcoming" : "active";
             return <div className="list-item" key={purchase.id}>
               <div className="stack-sm">
-                <p className="item-title">{purchase.planCode === "single-score" ? passCopy.name : purchase.planCode.startsWith("converter-pro") ? "Converter Pro" : "Starter"} · {purchase.planCode === "single-score" ? passCopy.once : purchase.planCode.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month}{" "}
+                <p className="item-title">{purchase.planCode === "single-score" ? passCopy.name : purchase.planCode.startsWith("converter-pro") ? "Converter Pro" : "Starter"} · {purchase.planCode === "converter-pro-lifetime" ? getLifetimeCopy(locale).permanent : purchase.planCode === "single-score" ? passCopy.once : purchase.planCode.endsWith("annual") ? purchaseCopy.year : purchaseCopy.month}{" "}
                   <span className={`status-chip ${state === "active" ? "tone-green" : "tone-amber"}`}>{purchaseCopy[state]}</span>
                 </p>
                 <p className="item-meta">{formatBillingMoney(purchase.amountMinor, purchase.currency, locale, copy.amountPending)}</p>

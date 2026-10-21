@@ -1,4 +1,5 @@
 import type { RuntimeDatabaseLike } from "@score/runtime-database";
+import { claimWithLifetimeLimit } from "@score/runtime-database";
 import type { ScoreJobType } from "@score/shared";
 import { recognitionLaneFromParams, type RecognitionLane } from "./recognition-lane.js";
 
@@ -14,7 +15,7 @@ export type ClaimedScoreJob = {
 };
 
 export function claimNextScoreJob(db: RuntimeDatabaseLike, timestamp: string): ClaimedScoreJob | undefined {
-  return db.prepare(
+  return claimWithLifetimeLimit(db, "score", undefined, (jobId) => db.prepare(
     `
       UPDATE score_jobs
       SET status = 'processing',
@@ -23,17 +24,11 @@ export function claimNextScoreJob(db: RuntimeDatabaseLike, timestamp: string): C
           completed_at = NULL,
           progress_percent = 1,
           attempt_count = attempt_count + 1
-      WHERE id = (
-        SELECT id
-        FROM score_jobs
-        WHERE status = 'queued'
-        ORDER BY datetime(created_at) ASC, id ASC
-        LIMIT 1
-      )
+      WHERE id = ?
         AND status = 'queued'
       RETURNING id, user_id, document_id, input_file_id, job_type, params_json, request_id, trace_id
     `,
-  ).get(timestamp, timestamp) as ClaimedScoreJob | undefined;
+  ).get(timestamp, timestamp, jobId) as ClaimedScoreJob | undefined);
 }
 export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: string; jobId: string; brokerJobId: string; lane?: RecognitionLane; lanesEnabled?: boolean }) {
   if (input.lane) {
@@ -41,7 +36,7 @@ export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: s
     const lane = source?.job_type === "omr_import" ? recognitionLaneFromParams(source.params_json, input.lanesEnabled) : "normal";
     if (input.lane !== lane) throw new Error("Broker recognition lane does not match the stored admission snapshot.");
   }
-  return db.prepare(`
+  return claimWithLifetimeLimit(db, "score", input.jobId, () => db.prepare(`
     UPDATE score_jobs
     SET status = 'processing',
         started_at = CASE WHEN status = 'queued' THEN ? ELSE started_at END,
@@ -53,5 +48,5 @@ export function claimScoreJobById(db: RuntimeDatabaseLike, input: { timestamp: s
     WHERE id = ?
       AND status = 'queued'
     RETURNING id, user_id, document_id, input_file_id, job_type, params_json, request_id, trace_id
-  `).get(input.timestamp, input.timestamp, input.brokerJobId, input.jobId) as ClaimedScoreJob | undefined;
+  `).get(input.timestamp, input.timestamp, input.brokerJobId, input.jobId) as ClaimedScoreJob | undefined);
 }

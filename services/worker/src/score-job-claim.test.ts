@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { claimNextScoreJob, claimScoreJobById } from "./score-job-claim.js";
+import { claimNextLegacyJob, claimLegacyJobById } from "./legacy-job-claim.js";
+import { LIFETIME_SCHEMA_SQL, releaseLifetimeRecognitionSlot, LifetimeRecognitionDeferredError } from "@score/runtime-database";
 
 function queueDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -27,6 +29,40 @@ function queueDatabase() {
   `);
   return db;
 }
+
+test("worker polling and broker claims serialize lifetime recognition across job families without blocking exports or other accounts", () => {
+  const db = queueDatabase(), timestamp = "2026-10-21T00:00:00.000Z";
+  db.exec(`CREATE TABLE users (id TEXT PRIMARY KEY, updated_at TEXT);
+    INSERT INTO users VALUES ('lifetime', '${timestamp}'), ('monthly', '${timestamp}');
+    CREATE TABLE jobs (id TEXT PRIMARY KEY, user_id TEXT, status TEXT, created_at TEXT, updated_at TEXT, started_at TEXT,
+      input_file_id TEXT, direction TEXT, request_id TEXT, trace_id TEXT, broker_job_id TEXT);`);
+  db.exec(LIFETIME_SCHEMA_SQL);
+  db.prepare(`INSERT INTO lifetime_entitlements (id,user_id,product_code,source_order_id,checkout_session_id,payment_intent_id,status,granted_at,reason)
+    VALUES ('ent','lifetime','converter-pro-lifetime','order','session','intent','active',?,'paid_checkout')`).run(timestamp);
+  const insert = db.prepare("INSERT INTO score_jobs (id,user_id,job_type,status,created_at,updated_at) VALUES (?,?,?,'queued',?,?)");
+  insert.run("omr-1", "lifetime", "omr_import", timestamp, timestamp);
+  insert.run("omr-2", "lifetime", "omr_import", timestamp, timestamp);
+  db.prepare("INSERT INTO jobs (id,user_id,status,created_at,updated_at) VALUES ('legacy','lifetime','queued',?,?)").run(timestamp, timestamp);
+  assert.equal(claimScoreJobById(db, { timestamp, jobId: "omr-1", brokerJobId: "dispatch-1" })?.id, "omr-1");
+  assert.throws(() => claimLegacyJobById(db, { timestamp, jobId: "legacy", brokerJobId: "dispatch-2" }), LifetimeRecognitionDeferredError);
+  assert.throws(() => claimScoreJobById(db, { timestamp, jobId: "omr-2", brokerJobId: "dispatch-3" }), LifetimeRecognitionDeferredError);
+  assert.equal(claimNextScoreJob(db, timestamp), undefined);
+  assert.equal(claimNextLegacyJob(db, timestamp), undefined);
+  insert.run("export", "lifetime", "render_export", timestamp, timestamp);
+  insert.run("monthly", "monthly", "omr_import", timestamp, timestamp);
+  assert.equal(claimNextScoreJob(db, timestamp)?.id, "export");
+  assert.equal(claimNextScoreJob(db, timestamp)?.id, "monthly");
+  assert.equal((db.prepare("SELECT attempt_count FROM score_jobs WHERE id = 'omr-2'").get() as { attempt_count: number }).attempt_count, 0);
+  db.exec("UPDATE score_jobs SET status = 'cancelled' WHERE id = 'omr-1'");
+  assert.equal(claimNextLegacyJob(db, timestamp), undefined, "Cancellation must not free a slot while the engine is stopping");
+  releaseLifetimeRecognitionSlot(db, "score", "omr-1");
+  assert.equal(claimNextLegacyJob(db, timestamp)?.id, "legacy");
+  assert.equal(claimNextScoreJob(db, timestamp), undefined);
+  db.exec("UPDATE jobs SET status = 'failed' WHERE id = 'legacy'");
+  releaseLifetimeRecognitionSlot(db, "legacy", "legacy");
+  assert.equal(claimNextScoreJob(db, timestamp)?.id, "omr-2");
+  db.close();
+});
 
 test("claims one queued score job exactly once", () => {
   const db = queueDatabase();

@@ -1,3 +1,4 @@
+import { assertLifetimeRecognitionQueue } from "@score/runtime-database";
 import { assertScorePassCredit, bindScorePass, lockScorePassAccount, mapExtractedScorePassDocument, recordScorePassJob, scorePassForDocument, ScorePassError } from "../lib/score-passes.js";
 import { processingChargeDecision } from "../lib/processing-charge-decision.js";
 import type {
@@ -650,9 +651,9 @@ export function createOmrImportScoreDocument(input: {
   sourceOrientations?:Record<string,0|90|180|270>;
 }) {
   const recognitionMode = normalizeRecognitionMode(input.recognitionMode);
-  const creditCost = recognitionCreditCost(recognitionMode);
+  const creditCost = recognitionCreditCost(recognitionMode, input.userId);
   revalidateRecognitionAssessment(input.memoryAssessment);
-  assertRecognitionQuote(recognitionMode, input.expectedCreditCost);
+  assertRecognitionQuote(recognitionMode, input.expectedCreditCost, input.userId);
   const timestamp = nowIso();
   const documentId = input.documentId ?? createId();
   const jobId = createId();
@@ -669,13 +670,14 @@ export function createOmrImportScoreDocument(input: {
     // account: a purchase or another upload may have changed access meanwhile.
     const existingPass = input.existingDraft ? scorePassForDocument(db, input.userId, documentId) : null;
     const requestedPass = input.scorePass ?? (Boolean(existingPass) || (input.freeTrial === undefined && resolveRecognitionAccess(input.userId, recognitionMode).creditSource === "score_pass"));
-    const usePass = processingChargeDecision({ paid: isPaid, monthlyRemaining: allowance.monthly.remaining, prepaidRemaining: allowance.prepaid.remaining,
+    const usePass = processingChargeDecision({ unlimited: allowance.unlimited, paid: isPaid, monthlyRemaining: allowance.monthly.remaining, prepaidRemaining: allowance.prepaid.remaining,
       passRemaining: requestedPass ? existingPass?.remaining ?? Number.POSITIVE_INFINITY : null, creditCost, allowFreeTrial: true }).source === "score_pass";
     if (recognitionMode === "complex" && !isPaid && (!usePass || input.freeTrial)) {
       throw new RecognitionAccessError("COMPLEX_RECOGNITION_ENTITLEMENT_REQUIRED", "Complex recognition needs an active membership or a paid One Score Pass with enough credits.");
     }
     const freeTrial = !isPaid && !usePass;
     if (freeTrial && input.memoryAssessment?.lane === "big") throw new RecognitionAdmissionError("BIG_RECOGNITION_ENTITLEMENT_REQUIRED", "This file is too large for the normal lane. Choose Starter, or a $2.99 One Score Pass.", 403);
+    assertLifetimeRecognitionQueue(db, input.userId);
     const quota = assertProcessingQuota(input.userId, usePass || freeTrial, creditCost);
     if (freeTrial) assertFreeTrialOmrAvailable(input.userId);
     if (input.existingDraft) {
@@ -721,7 +723,7 @@ export function createOmrImportScoreDocument(input: {
         freeTrial,
         recognitionMode,
         creditCost,
-        creditSource: passId ? "score_pass" : freeTrial ? "free_trial" : "plan",
+        creditSource: quota.unlimited ? "lifetime" : passId ? "score_pass" : freeTrial ? "free_trial" : "plan",
         creditReservedAt: timestamp,
         memoryAssessment: input.memoryAssessment,
         recognitionLane: input.memoryAssessment?.lane ?? "normal",
@@ -784,6 +786,7 @@ export function createAudioTranscribeScoreDocument(input: {
 
   try {
     lockScorePassAccount(db, input.userId);
+    assertLifetimeRecognitionQueue(db, input.userId);
     const quota = assertProcessingQuota(input.userId);
     db.prepare(
       `
@@ -858,6 +861,7 @@ export function createAudioTranscribeScoreDocumentFromUrl(input: {
 
   try {
     lockScorePassAccount(db, input.userId);
+    assertLifetimeRecognitionQueue(db, input.userId);
     const quota = assertProcessingQuota(input.userId);
     db.prepare(
       `
@@ -2472,8 +2476,8 @@ export function createScoreExportJob(input: {
     throw new ScorePassError("SCORE_PASS_REQUIRED", "Choose a $2.99 One Score Pass or Starter to export this score.");
   }
   const allowance = getPlanQuotaUsage(input.userId);
-  const creditCost = processingJobCreditCost({ job_type: "render_export", params_json: null });
-  const usePass = processingChargeDecision({ paid: getUserProfile(input.userId)?.entitlement.status === "active", monthlyRemaining: allowance.monthly.remaining,
+  const creditCost = allowance.unlimited ? 0 : processingJobCreditCost({ job_type: "render_export", params_json: null });
+  const usePass = processingChargeDecision({ unlimited: allowance.unlimited, paid: getUserProfile(input.userId)?.entitlement.status === "active", monthlyRemaining: allowance.monthly.remaining,
     prepaidRemaining: allowance.prepaid.remaining, passRemaining: scorePassForDocument(db, input.userId, input.documentId)?.remaining ?? null, creditCost }).source === "score_pass";
   const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
   const quota = assertProcessingQuota(input.userId, Boolean(passId), creditCost);
@@ -2489,7 +2493,7 @@ export function createScoreExportJob(input: {
       )
       VALUES (?, ?, ?, NULL, 'render_export', 'queued', ?, NULL, NULL, NULL, 0, 0, NULL, ?, ?, ?, ?, NULL, NULL)
     `,
-  ).run(jobId, input.userId, input.documentId, JSON.stringify({ ...input.params, creditReservedAt: timestamp }), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
+  ).run(jobId, input.userId, input.documentId, JSON.stringify({ ...input.params, ...(quota.unlimited ? { creditCost: 0, creditSource: "lifetime" } : {}), creditReservedAt: timestamp }), context?.requestId ?? null, context?.traceId ?? null, timestamp, timestamp);
   if (passId) recordScorePassJob(db, passId, jobId);
   else recordProcessingCredit(input.userId, "score", jobId, quota, creditCost);
   if (!input.inTransaction) db.exec("COMMIT");
@@ -2539,13 +2543,13 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
     // A new recognition attempt reserves its original quote, never the delivered
     // fraction settled by the previous attempt.
     const originalQuote = typeof params.creditCost === "number" && Number.isSafeInteger(params.creditCost) && params.creditCost > 0
-      ? params.creditCost : recognitionCreditCost(recognitionMode);
-    const creditCost = newOmrAttempt
-      ? input.recognitionMode !== undefined ? recognitionCreditCost(recognitionMode) : originalQuote
-      : processingJobCreditCost(existing);
-    const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
+      ? params.creditCost : recognitionCreditCost(recognitionMode, input.userId);
     const allowance = getPlanQuotaUsage(input.userId);
-    const usePass = processingChargeDecision({ paid: isPaid, monthlyRemaining: allowance.monthly.remaining, prepaidRemaining: allowance.prepaid.remaining,
+    const creditCost = allowance.unlimited ? 0 : newOmrAttempt
+      ? input.recognitionMode !== undefined ? recognitionCreditCost(recognitionMode, input.userId) : originalQuote
+      : params.creditSource === "lifetime" ? 1 : processingJobCreditCost(existing);
+    const isPaid = getUserProfile(input.userId)?.entitlement.status === "active";
+    const usePass = processingChargeDecision({ unlimited: allowance.unlimited, paid: isPaid, monthlyRemaining: allowance.monthly.remaining, prepaidRemaining: allowance.prepaid.remaining,
       passRemaining: scorePassForDocument(db, input.userId, input.documentId)?.remaining ?? null, creditCost }).source === "score_pass";
     const freeTrial = newOmrAttempt && params.freeTrial === true && !isPaid && !usePass;
     if (freeTrial) {
@@ -2566,6 +2570,7 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
       throw new ScorePassError("SCORE_PASS_REQUIRED", "Choose a $2.99 One Score Pass or Starter to recognize this score again.");
     }
     const passId = usePass ? assertScorePassCredit(db, input.userId, input.documentId, creditCost) : null;
+    if (existing.job_type === "omr_import" || existing.job_type === "audio_transcribe") assertLifetimeRecognitionQueue(db, input.userId);
     const quota = assertProcessingQuota(input.userId, Boolean(passId) || freeTrial, creditCost);
     if (passId) recordScorePassJob(db, passId, retryJobId);
     else if (!freeTrial) {
@@ -2589,8 +2594,8 @@ export function retryScoreJob(input: { jobId: string; userId: string; documentId
       memoryAssessment: params.memoryAssessment, photoCorners: params.photoCorners, sourceOrientations: params.sourceOrientations,
       recognitionLane: assessment?.lane === "big" || (!assessment && !params.fallbackUsed && params.recognitionLane === "big") ? "big" : "normal",
       fallbackUsed: false, recognitionMode, creditCost, creditReservedAt: timestamp, recoveryOfJobId: existing.id,
-      creditSource: passId ? "score_pass" : isPaid ? "plan" : "free_trial", freeTrial: !isPaid && !passId && params.freeTrial === true,
-    } : { ...params, creditReservedAt: timestamp });
+      creditSource: quota.unlimited ? "lifetime" : passId ? "score_pass" : isPaid ? "plan" : "free_trial", freeTrial: !isPaid && !passId && params.freeTrial === true,
+    } : { ...params, ...(quota.unlimited || params.creditSource === "lifetime" ? { creditCost, creditSource: quota.unlimited ? "lifetime" : passId ? "score_pass" : "plan" } : {}), creditReservedAt: timestamp });
     let changed: number;
     if (newOmrAttempt) {
       changed = db.prepare(`INSERT INTO score_jobs (

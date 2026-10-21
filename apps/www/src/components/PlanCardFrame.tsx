@@ -7,6 +7,7 @@ const labels: Record<PurchasePlanCode, string> = {
   "starter-monthly": "FLEXIBLE",
   "starter-annual": "MOST POPULAR",
   "converter-pro-monthly": "FOR PROFESSIONALS",
+  "converter-pro-lifetime": "HIGH VOLUME",
   "converter-pro-annual": "HIGH VOLUME",
 };
 
